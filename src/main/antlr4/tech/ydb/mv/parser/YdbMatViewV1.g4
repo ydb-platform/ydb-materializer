@@ -22,8 +22,9 @@ opaque_expression_body: '#[' .+? ']#';
 simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
   ON join_condition (AND join_condition)*;
 
-join_condition: column_reference EQUALS (column_reference | integer_constant | string_constant);
-column_reference: table_alias DOT column_name;
+join_condition: column_reference_right EQUALS (column_reference_left | integer_constant | string_constant);
+column_reference_right: table_alias DOT column_name;
+column_reference_left: table_alias DOT column_name;
 
 integer_constant: MINUS? DIGITS;
 string_constant: (QUOTE_SINGLE STRING_CORE_SINGLE* QUOTE_SINGLE);
@@ -38,7 +39,9 @@ table_alias: ID_PLAIN;
 
 column_alias: ID_PLAIN;
 
-process_stmt: PROCESS ;
+process_stmt: PROCESS main_table_ref CHANGEFEED changefeed_name AS (STREAM | BATCH);
+
+changefeed_name: identifier;
 
 identifier: ID_PLAIN | ID_QUOTED;
 
@@ -57,8 +60,10 @@ STRING_CORE_SINGLE: ~('\'' | '\\') | ('\\' .);
 
 AND: A N D;
 AS: A S;
-CREATE: C R E A T E;
+BATCH: B A T C H;
+CHANGEFEED: C H A N G E F E E D;
 COMPUTE: C O M P U T E;
+CREATE: C R E A T E;
 FROM: F R O M;
 JOIN: J O I N;
 INNER: I N N E R;
@@ -68,6 +73,7 @@ ON: O N;
 OUTER: O U T E R;
 PROCESS: P R O C E S S;
 SELECT:  S E L E C T;
+STREAM: S T R E A M;
 VIEW: V I E W;
 WHERE: W H E R E;
 

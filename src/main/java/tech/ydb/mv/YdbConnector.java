@@ -1,4 +1,4 @@
-package tech.ydb.samples.materializer;
+package tech.ydb.mv;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
