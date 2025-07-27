@@ -19,7 +19,7 @@ import tech.ydb.mv.model.MvTableRef;
 import tech.ydb.mv.model.MvTarget;
 
 /**
- * Parsing, linking and logical checks for input SQL script.
+ * Parsing, linking and minimal logical checks for input SQL script.
  * @author mzinal
  */
 public class MvParser {
@@ -49,7 +49,6 @@ public class MvParser {
             fill(ctx, stmt.process_stmt());
         }
         link(ctx);
-        validate(ctx);
         return ctx;
     }
 
@@ -178,10 +177,6 @@ public class MvParser {
                 mc.addIssue(new MvIssue.UnknownAlias(t, src.getAlias(), c));
             }
         }
-    }
-
-    public static void validate(MvContext mc) {
-
     }
 
 }
