@@ -7,28 +7,28 @@ This diagram shows the relationships between all classes in the `tech.ydb.mv.mod
 ```mermaid
 classDiagram
     class MvContext {
-        -ArrayList~MvTarget~ views
-        -ArrayList~MvInput~ inputs
-        -ArrayList~MvIssue~ errors
-        -ArrayList~MvIssue~ warnings
+        -ArrayList views
+        -ArrayList inputs
+        -ArrayList errors
+        -ArrayList warnings
         +isValid() boolean
-        +getViews() ArrayList~MvTarget~
-        +getInputs() ArrayList~MvInput~
-        +getErrors() ArrayList~MvIssue~
-        +getWarnings() ArrayList~MvIssue~
+        +getViews() ArrayList
+        +getInputs() ArrayList
+        +getErrors() ArrayList
+        +getWarnings() ArrayList
     }
 
     class MvTarget {
         -String name
-        -ArrayList~MvTableRef~ sources
-        -ArrayList~MvColumn~ columns
+        -ArrayList sources
+        -ArrayList columns
         -MvComputation filter
         -MvInputPosition inputPosition
         +MvTarget(MvInputPosition)
         +getName() String
         +setName(String)
-        +getSources() ArrayList~MvTableRef~
-        +getColumns() ArrayList~MvColumn~
+        +getSources() ArrayList
+        +getColumns() ArrayList
         +getFilter() MvComputation
         +setFilter(MvComputation)
         +getInputPosition() MvInputPosition
@@ -58,7 +58,7 @@ classDiagram
         -String reference
         -String alias
         -Mode mode
-        -ArrayList~MvJoinCondition~ conditions
+        -ArrayList conditions
         -MvInputPosition inputPosition
         +MvTableRef(MvInputPosition)
         +getReference() String
@@ -67,12 +67,12 @@ classDiagram
         +setAlias(String)
         +getMode() Mode
         +setMode(Mode)
-        +getConditions() ArrayList~MvJoinCondition~
+        +getConditions() ArrayList
         +getInputPosition() MvInputPosition
         +setInputPosition(MvInputPosition)
     }
 
-    class MvTableRef.Mode {
+    class MvTableRefMode {
         <<enumeration>>
         MAIN
         INNER
@@ -100,18 +100,18 @@ classDiagram
     }
 
     class MvComputation {
-        -ArrayList~Source~ sources
+        -ArrayList sources
         -String expression
         -MvInputPosition inputPosition
         +MvComputation(MvInputPosition)
         +getExpression() String
         +setExpression(String)
-        +getSources() ArrayList~Source~
+        +getSources() ArrayList
         +getInputPosition() MvInputPosition
         +setInputPosition(MvInputPosition)
     }
 
-    class MvComputation.Source {
+    class MvComputationSource {
         -String alias
         -MvTableRef reference
         +Source(String)
@@ -167,48 +167,46 @@ classDiagram
         +getMessage() String
     }
 
-    class MvIssue.Error {
+    class MvIssueError {
         <<abstract>>
         +isError() boolean
     }
 
-    class MvIssue.Warning {
+    class MvIssueWarning {
         <<abstract>>
         +isError() boolean
     }
 
-    %% Relationships
-    MvContext ||--o{ MvTarget : contains
-    MvContext ||--o{ MvInput : contains
-    MvContext ||--o{ MvIssue : contains
+    MvContext --> MvTarget : contains
+    MvContext --> MvInput : contains
+    MvContext --> MvIssue : contains
 
-    MvTarget ||--o{ MvTableRef : sources
-    MvTarget ||--o{ MvColumn : columns
-    MvTarget ||--o| MvComputation : filter
+    MvTarget --> MvTableRef : sources
+    MvTarget --> MvColumn : columns
+    MvTarget --> MvComputation : filter
 
-    MvInput ||--o| MvTableRef : tableRef
+    MvInput --> MvTableRef : tableRef
 
-    MvTableRef ||--o{ MvJoinCondition : conditions
-    MvTableRef ||--|| MvTableRef.Mode : mode
+    MvTableRef --> MvJoinCondition : conditions
+    MvTableRef --> MvTableRefMode : mode
 
-    MvColumn ||--o| MvComputation : computation
+    MvColumn --> MvComputation : computation
 
-    MvComputation ||--o{ MvComputation.Source : sources
-    MvComputation.Source ||--o| MvTableRef : reference
+    MvComputation --> MvComputationSource : sources
+    MvComputationSource --> MvTableRef : reference
 
-    MvJoinCondition ||--o| MvTableRef : firstRef
-    MvJoinCondition ||--o| MvTableRef : secondRef
+    MvJoinCondition --> MvTableRef : firstRef
+    MvJoinCondition --> MvTableRef : secondRef
 
-    MvIssue <|-- MvIssue.Error
-    MvIssue <|-- MvIssue.Warning
+    MvIssue <|-- MvIssueError
+    MvIssue <|-- MvIssueWarning
 
-    %% All classes have inputPosition
-    MvTarget ||--|| MvInputPosition : inputPosition
-    MvInput ||--|| MvInputPosition : inputPosition
-    MvTableRef ||--|| MvInputPosition : inputPosition
-    MvColumn ||--|| MvInputPosition : inputPosition
-    MvComputation ||--|| MvInputPosition : inputPosition
-    MvJoinCondition ||--|| MvInputPosition : inputPosition
+    MvTarget --> MvInputPosition : inputPosition
+    MvInput --> MvInputPosition : inputPosition
+    MvTableRef --> MvInputPosition : inputPosition
+    MvColumn --> MvInputPosition : inputPosition
+    MvComputation --> MvInputPosition : inputPosition
+    MvJoinCondition --> MvInputPosition : inputPosition
 ```
 
 ## Class Descriptions
