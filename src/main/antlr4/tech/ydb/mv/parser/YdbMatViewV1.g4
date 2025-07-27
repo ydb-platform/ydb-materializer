@@ -113,7 +113,7 @@ fragment Y:('y'|'Y');
 fragment Z:('z'|'Z');
 
 // Lexer rules
-WS: (' ' | '\r' | '\t' | '\u000C' | '\n') -> skip;
+WS: (' ' | '\r' | '\t' | '\u000C' | '\n') -> channel(HIDDEN);
 fragment MULTILINE_COMMENT: '/*' .+? '*/';
 fragment LINE_COMMENT: '--' ~('\n' | '\r')* ('\r' '\n'? | '\n' | EOF);
-COMMENT: (MULTILINE_COMMENT | LINE_COMMENT) -> skip;
+COMMENT: (MULTILINE_COMMENT | LINE_COMMENT) -> channel(HIDDEN);

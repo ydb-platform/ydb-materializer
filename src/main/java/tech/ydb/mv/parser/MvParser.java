@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -31,6 +32,7 @@ public class MvParser {
     public MvParser(CharStream cs) {
         this.lexer = new YdbMatViewV1Lexer(cs);
         this.parser = new YdbMatViewV1Parser(new CommonTokenStream(lexer));
+        this.parser.setErrorHandler(new BailErrorStrategy());
         this.root = parser.sql_script();
     }
 
