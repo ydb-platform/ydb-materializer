@@ -195,7 +195,11 @@ public class YdbConnector implements AutoCloseable {
                     props.getProperty(prefix + "preferLocalDc", "false"));
             String spool = props.getProperty(prefix + "poolSize");
             if (spool != null && spool.length() > 0) {
-                poolSize = Integer.parseInt(spool);
+                try {
+                    poolSize = Integer.parseInt(spool);
+                } catch (NumberFormatException e) {
+                    LOG.warn("Invalid pool size value '{}', using default: {}", spool, poolSize);
+                }
             }
             this.properties.putAll(props);
         }
@@ -256,9 +260,10 @@ public class YdbConnector implements AutoCloseable {
 
         public void setAuthMode(AuthMode authMode) {
             if (authMode == null) {
-                authMode = AuthMode.NONE;
+                this.authMode = AuthMode.NONE;
+            } else {
+                this.authMode = authMode;
             }
-            this.authMode = authMode;
         }
 
         public String getSaKeyFile() {
