@@ -99,12 +99,12 @@ public class MvParser {
         MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
-            var v = cond.column_reference_first();
+            var v = cond.column_reference_first().column_reference();
             mjc.setFirstAlias(v.table_alias().ID_PLAIN().getText());
             mjc.setFirstColumn(v.column_name().identifier().getText());
         }
         if (cond.column_reference_second()!=null) {
-            var v = cond.column_reference_second();
+            var v = cond.column_reference_second().column_reference();
             mjc.setSecondAlias(v.table_alias().ID_PLAIN().getText());
             mjc.setSecondColumn(v.column_name().identifier().getText());
         }
@@ -131,11 +131,9 @@ public class MvParser {
                 expr.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));
             }
         }
-        if (cc.column_name()!=null) {
-            column.setSourceColumn(cc.column_name().identifier().ID_PLAIN().getText());
-        }
-        if (cc.table_alias()!=null) {
-            column.setSourceAlias(cc.table_alias().ID_PLAIN().getText());
+        if (cc.column_reference()!=null) {
+            column.setSourceColumn(cc.column_reference().column_name().identifier().getText());
+            column.setSourceAlias(cc.column_reference().table_alias().ID_PLAIN().getText());
         }
     }
 

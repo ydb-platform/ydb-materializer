@@ -18,7 +18,7 @@ simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
 simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
   ON join_condition (AND join_condition)*;
 
-result_column: ((table_alias DOT column_name) | opaque_expression) AS column_alias;
+result_column: (column_reference | opaque_expression) AS column_alias;
 
 opaque_expression: COMPUTE ON table_alias (COMMA table_alias)* opaque_expression_body;
 
@@ -26,27 +26,10 @@ opaque_expression_body: '#[' opaque_expression_body_text ']#';
 opaque_expression_body_text: .+?;
 
 join_condition: (column_reference_first | constant_first) EQUALS (column_reference_second | constant_second);
-column_reference_first: table_alias DOT column_name;
-column_reference_second: table_alias DOT column_name;
+column_reference_first: column_reference;
+column_reference_second: column_reference;
 constant_first: integer_constant | string_constant;
 constant_second: integer_constant | string_constant;
-
-integer_constant: MINUS? DIGITS;
-string_constant: (QUOTE_SINGLE (~('\'' | '\\') | ('\\' .))+? QUOTE_SINGLE);
-
-column_name: identifier;
-
-main_table_ref: identifier;
-
-join_table_ref: identifier;
-
-table_alias: ID_PLAIN;
-
-column_alias: ID_PLAIN;
-
-changefeed_name: identifier;
-
-identifier: ID_PLAIN | ID_QUOTED;
 
 AND: A N D;
 AS: A S;
@@ -67,6 +50,21 @@ SELECT:  S E L E C T;
 STREAM: S T R E A M;
 VIEW: V I E W;
 WHERE: W H E R E;
+
+integer_constant: MINUS? DIGITS;
+string_constant: (QUOTE_SINGLE (~('\'' | '\\') | ('\\' .))+? QUOTE_SINGLE);
+
+column_reference: table_alias DOT column_name;
+
+column_name: identifier;
+main_table_ref: identifier;
+join_table_ref: identifier;
+changefeed_name: identifier;
+
+table_alias: ID_PLAIN;
+column_alias: ID_PLAIN;
+
+identifier: ID_PLAIN | ID_QUOTED;
 
 fragment DIGIT: '0'..'9';
 DIGITS: DIGIT+;
