@@ -192,6 +192,7 @@ public class MvParser {
 
     private static void link(MvTarget t, MvContext mc) {
         t.getColumns().stream().forEach(c -> link(c, t, mc));
+        t.getSources().stream().forEach(s -> link(s, t, mc));
     }
 
     private static void link(MvColumn c, MvTarget t, MvContext mc) {
@@ -212,6 +213,27 @@ public class MvParser {
             src.setReference(ref);
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, src.getAlias(), c));
+            }
+        }
+    }
+
+    private static void link(MvTableRef s, MvTarget t, MvContext mc) {
+        s.getConditions().stream().forEach(c -> link(c, t, mc));
+    }
+
+    private static void link(MvJoinCondition c, MvTarget t, MvContext mc) {
+        if (c.getFirstAlias()!=null) {
+            var ref = t.getSourceByName(c.getFirstAlias());
+            c.setFirstRef(ref);
+            if (ref==null) {
+                mc.addIssue(new MvIssue.UnknownAlias(t, c.getFirstAlias(), c));
+            }
+        }
+        if (c.getSecondAlias()!=null) {
+            var ref = t.getSourceByName(c.getSecondAlias());
+            c.setSecondRef(ref);
+            if (ref==null) {
+                mc.addIssue(new MvIssue.UnknownAlias(t, c.getSecondAlias(), c));
             }
         }
     }
