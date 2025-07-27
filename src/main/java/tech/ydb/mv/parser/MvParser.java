@@ -47,14 +47,21 @@ public class MvParser {
     public MvContext fill() {
         MvContext ctx = new MvContext();
         for ( var stmt : root.sql_stmt() ) {
-            fill(ctx, stmt.create_mat_view_stmt());
-            fill(ctx, stmt.process_stmt());
+            if (stmt.create_mat_view_stmt()!=null) {
+                fill(ctx, stmt.create_mat_view_stmt());
+            }
+            if (stmt.process_stmt()!=null) {
+                fill(ctx, stmt.process_stmt());
+            }
         }
         link(ctx);
         return ctx;
     }
 
     private static MvInputPosition toInputPosition(ParserRuleContext ctx) {
+        if (ctx==null) {
+            return null;
+        }
         var p = ctx.getStart();
         if (p!=null) {
             return new MvInputPosition(p.getLine(), p.getCharPositionInLine());

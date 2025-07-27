@@ -22,9 +22,6 @@ result_column: (column_reference | opaque_expression) AS column_alias;
 
 opaque_expression: COMPUTE ON table_alias (COMMA table_alias)* opaque_expression_body;
 
-opaque_expression_body: '#[' opaque_expression_body_text ']#';
-opaque_expression_body_text: .+?;
-
 join_condition: (column_reference_first | constant_first) EQUALS (column_reference_second | constant_second);
 column_reference_first: column_reference;
 column_reference_second: column_reference;
@@ -66,19 +63,19 @@ column_alias: ID_PLAIN;
 
 identifier: ID_PLAIN | ID_QUOTED;
 
-fragment DIGIT: '0'..'9';
-DIGITS: DIGIT+;
-
-fragment BACKTICK: '`';
-ID_PLAIN: ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | DIGIT)+?;
-ID_QUOTED: BACKTICK ('\\' . | '``' | ~('`' | '\\'))+? BACKTICK;
-
 SEMICOLON: ';';
 COMMA: ',';
 DOT: '.';
 MINUS: '-';
 EQUALS: '=';
 QUOTE_SINGLE: '\'';
+
+fragment DIGIT: '0'..'9';
+DIGITS: DIGIT+;
+
+fragment BACKTICK: '`';
+ID_PLAIN: ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | DIGIT)*;
+ID_QUOTED: BACKTICK ('\\' . | '``' | ~('`' | '\\'))+? BACKTICK;
 
 // case insensitive chars
 fragment A:('a'|'A');
@@ -112,4 +109,7 @@ fragment MULTILINE_COMMENT: '/*' .+? '*/';
 fragment LINE_COMMENT: '--' ~('\n' | '\r')* ('\r' '\n'? | '\n' | EOF);
 COMMENT: (MULTILINE_COMMENT | LINE_COMMENT) -> channel(HIDDEN);
 
-WS: (' ' | '\r' | '\t' | '\u000C' | '\n') -> channel(HIDDEN);
+opaque_expression_body: '#[' opaque_expression_body_text ']#';
+opaque_expression_body_text: .+?;
+
+WS: (' ' | '\r' | '\t' | '\n') -> channel(HIDDEN);
