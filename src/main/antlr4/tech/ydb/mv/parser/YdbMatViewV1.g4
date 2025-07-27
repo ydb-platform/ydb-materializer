@@ -17,14 +17,17 @@ result_column: ((table_alias DOT column_name) | opaque_expression) AS column_ali
 
 opaque_expression: COMPUTE ON table_alias (COMMA table_alias)* opaque_expression_body;
 
-opaque_expression_body: '#[' .+? ']#';
+opaque_expression_body: '#[' opaque_expression_body_text ']#';
+opaque_expression_body_text: .+?;
 
 simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
   ON join_condition (AND join_condition)*;
 
-join_condition: column_reference_right EQUALS (column_reference_left | integer_constant | string_constant);
-column_reference_right: table_alias DOT column_name;
-column_reference_left: table_alias DOT column_name;
+join_condition: (column_reference_first | constant_first) EQUALS (column_reference_second | constant_second);
+column_reference_first: table_alias DOT column_name;
+column_reference_second: table_alias DOT column_name;
+constant_first: integer_constant | string_constant;
+constant_second: integer_constant | string_constant;
 
 integer_constant: MINUS? DIGITS;
 string_constant: (QUOTE_SINGLE STRING_CORE_SINGLE* QUOTE_SINGLE);
@@ -108,3 +111,9 @@ fragment W:('w'|'W');
 fragment X:('x'|'X');
 fragment Y:('y'|'Y');
 fragment Z:('z'|'Z');
+
+// Lexer rules
+WS: (' ' | '\r' | '\t' | '\u000C' | '\n') -> skip;
+fragment MULTILINE_COMMENT: '/*' .+? '*/';
+fragment LINE_COMMENT: '--' ~('\n' | '\r')* ('\r' '\n'? | '\n' | EOF);
+COMMENT: (MULTILINE_COMMENT | LINE_COMMENT) -> skip;

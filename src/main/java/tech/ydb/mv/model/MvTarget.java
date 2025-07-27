@@ -12,6 +12,7 @@ public class MvTarget {
     private final ArrayList<MvTableRef> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private MvComputation filter;
+    private MvInputPosition inputPosition;
 
     public MvTarget(String name) {
         this.name = name;
@@ -39,6 +40,14 @@ public class MvTarget {
 
     public void setFilter(MvComputation filter) {
         this.filter = filter;
+    }
+
+    public MvInputPosition getInputPosition() {
+        return inputPosition;
+    }
+
+    public void setInputPosition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
 }

@@ -10,16 +10,9 @@ public class MvColumn {
     private String sourceAlias;
     private String sourceColumn;
     private MvComputation computation;
+    private MvInputPosition inputPosition;
 
-    public MvColumn(String name, String sourceAlias, String sourceColumn) {
-        this.name = name;
-        this.sourceAlias = sourceAlias;
-        this.sourceColumn = sourceColumn;
-    }
-
-    public MvColumn(String name, MvComputation computation) {
-        this.name = name;
-        this.computation = computation;
+    public MvColumn() {
     }
 
     public boolean isComputation() {
@@ -56,6 +49,14 @@ public class MvColumn {
 
     public void setComputation(MvComputation computation) {
         this.computation = computation;
+    }
+
+    public MvInputPosition getInputPosition() {
+        return inputPosition;
+    }
+
+    public void setInputPosition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
 }

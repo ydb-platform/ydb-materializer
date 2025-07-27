@@ -6,82 +6,89 @@ package tech.ydb.mv.model;
  */
 public class MvJoinCondition {
 
-    private MvTableRef rightRef;
-    private String rightAlias;
-    private String rightColumn;
-    private String leftLiteral;
-    private MvTableRef leftRef;
-    private String leftAlias;
-    private String leftColumn;
+    private String firstLiteral;
+    private MvTableRef firstRef;
+    private String firstAlias;
+    private String firstColumn;
+    private String secondLiteral;
+    private MvTableRef secondRef;
+    private String secondAlias;
+    private String secondColumn;
+    private MvInputPosition inputPosition;
 
-    public MvJoinCondition(MvTableRef rightRef, String rightColumn) {
-        this.rightRef = rightRef;
-        this.rightAlias = rightRef.getAlias();
-        this.rightColumn = rightColumn;
+    public MvJoinCondition() {
     }
 
-    public boolean isReady() {
-        return (leftLiteral!=null) || (leftRef!=null && leftColumn!=null);
+    public String getFirstLiteral() {
+        return firstLiteral;
     }
 
-    public boolean isLiteral() {
-        return leftLiteral != null;
+    public void setFirstLiteral(String firstLiteral) {
+        this.firstLiteral = firstLiteral;
     }
 
-    public MvTableRef getRightRef() {
-        return rightRef;
+    public MvTableRef getFirstRef() {
+        return firstRef;
     }
 
-    public void setRightRef(MvTableRef rightRef) {
-        this.rightRef = rightRef;
+    public void setFirstRef(MvTableRef firstRef) {
+        this.firstRef = firstRef;
     }
 
-    public String getRightAlias() {
-        return rightAlias;
+    public String getFirstAlias() {
+        return firstAlias;
     }
 
-    public void setRightAlias(String rightAlias) {
-        this.rightAlias = rightAlias;
+    public void setFirstAlias(String firstAlias) {
+        this.firstAlias = firstAlias;
     }
 
-    public String getRightColumn() {
-        return rightColumn;
+    public String getFirstColumn() {
+        return firstColumn;
     }
 
-    public void setRightColumn(String rightColumn) {
-        this.rightColumn = rightColumn;
+    public void setFirstColumn(String firstColumn) {
+        this.firstColumn = firstColumn;
     }
 
-    public String getLeftLiteral() {
-        return leftLiteral;
+    public String getSecondLiteral() {
+        return secondLiteral;
     }
 
-    public void setLeftLiteral(String leftLiteral) {
-        this.leftLiteral = leftLiteral;
+    public void setSecondLiteral(String secondLiteral) {
+        this.secondLiteral = secondLiteral;
     }
 
-    public MvTableRef getLeftRef() {
-        return leftRef;
+    public MvTableRef getSecondRef() {
+        return secondRef;
     }
 
-    public void setLeftRef(MvTableRef leftRef) {
-        this.leftRef = leftRef;
+    public void setSecondRef(MvTableRef secondRef) {
+        this.secondRef = secondRef;
     }
 
-    public String getLeftAlias() {
-        return leftAlias;
+    public String getSecondAlias() {
+        return secondAlias;
     }
 
-    public void setLeftAlias(String leftAlias) {
-        this.leftAlias = leftAlias;
+    public void setSecondAlias(String secondAlias) {
+        this.secondAlias = secondAlias;
     }
 
-    public String getLeftColumn() {
-        return leftColumn;
+    public String getSecondColumn() {
+        return secondColumn;
     }
 
-    public void setLeftColumn(String leftColumn) {
-        this.leftColumn = leftColumn;
+    public void setSecondColumn(String secondColumn) {
+        this.secondColumn = secondColumn;
+    }
+
+    public MvInputPosition getInputPosition() {
+        return inputPosition;
+    }
+
+    public void setInputPosition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
 }

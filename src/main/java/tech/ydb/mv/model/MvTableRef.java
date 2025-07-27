@@ -12,6 +12,7 @@ public class MvTableRef {
     private String alias;
     private Mode mode;
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
+    private MvInputPosition inputPosition;
 
     public MvTableRef(String reference, String alias, Mode mode) {
         this.reference = reference;
@@ -45,6 +46,14 @@ public class MvTableRef {
 
     public ArrayList<MvJoinCondition> getConditions() {
         return conditions;
+    }
+
+    public MvInputPosition getInputPosition() {
+        return inputPosition;
+    }
+
+    public void setInputPosition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public static enum Mode {

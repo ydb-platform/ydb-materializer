@@ -10,6 +10,7 @@ public class MvComputation {
 
     private final ArrayList<Source> sources = new ArrayList<>();
     private String expression;
+    private MvInputPosition inputPosition;
 
     public MvComputation(String expression) {
         this.expression = expression;
@@ -25,6 +26,14 @@ public class MvComputation {
 
     public ArrayList<Source> getSources() {
         return sources;
+    }
+
+    public MvInputPosition getInputPosition() {
+        return inputPosition;
+    }
+
+    public void setInputPosition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public static class Source {
