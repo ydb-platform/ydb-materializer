@@ -48,18 +48,6 @@ changefeed_name: identifier;
 
 identifier: ID_PLAIN | ID_QUOTED;
 
-ID_PLAIN: ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | DIGIT)+?;
-
-fragment ID_QUOTED_CORE: '\\' . | '``' | ~('`' | '\\');
-ID_QUOTED: BACKTICK ID_QUOTED_CORE* BACKTICK;
-
-SEMICOLON: ';';
-COMMA: ',';
-DOT: '.';
-MINUS: '-';
-EQUALS: '=';
-QUOTE_SINGLE: '\'';
-
 AND: A N D;
 AS: A S;
 ASYNC: A S Y N C;
@@ -81,8 +69,18 @@ VIEW: V I E W;
 WHERE: W H E R E;
 
 fragment DIGIT: '0'..'9';
-fragment BACKTICK: '`';
 DIGITS: DIGIT+;
+
+fragment BACKTICK: '`';
+ID_PLAIN: ('a'..'z' | 'A'..'Z' | '_') ('a'..'z' | 'A'..'Z' | '_' | DIGIT)+?;
+ID_QUOTED: BACKTICK ('\\' . | '``' | ~('`' | '\\'))+? BACKTICK;
+
+SEMICOLON: ';';
+COMMA: ',';
+DOT: '.';
+MINUS: '-';
+EQUALS: '=';
+QUOTE_SINGLE: '\'';
 
 // case insensitive chars
 fragment A:('a'|'A');
