@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.DiagnosticErrorListener;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.ParserRuleContext;
 import tech.ydb.mv.model.MvColumn;
@@ -31,6 +32,7 @@ public class MvParser {
 
     public MvParser(CharStream cs) {
         this.lexer = new YdbMatViewV1Lexer(cs);
+        this.lexer.addErrorListener(new DiagnosticErrorListener());
         this.parser = new YdbMatViewV1Parser(new CommonTokenStream(lexer));
         this.parser.setErrorHandler(new BailErrorStrategy());
         this.root = parser.sql_script();
@@ -85,6 +87,20 @@ public class MvParser {
         for (var cc : sel.result_column()) {
             fill(mt, cc);
         }
+        if (sel.opaque_expression()!=null) {
+            fillCondition(mt, sel.opaque_expression());
+        }
+    }
+
+    private void fillCondition(MvTarget mt, YdbMatViewV1Parser.Opaque_expressionContext cond) {
+        MvComputation filter = new MvComputation(toInputPosition(cond));
+        mt.setFilter(filter);
+        filter.setExpression(cond
+                .opaque_expression_body()
+                .getText());
+        for (var tabref : cond.table_alias()) {
+            filter.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));
+        }
     }
 
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
@@ -132,7 +148,6 @@ public class MvParser {
             column.setComputation(expr);
             expr.setExpression(cc.opaque_expression()
                     .opaque_expression_body()
-                    .opaque_expression_body_text()
                     .getText());
             for (var tabref : cc.opaque_expression().table_alias()) {
                 expr.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));

@@ -21,6 +21,11 @@ simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
 result_column: (column_reference | opaque_expression) AS column_alias;
 
 opaque_expression: COMPUTE ON table_alias (COMMA table_alias)* opaque_expression_body;
+opaque_expression_body: OPAQUE_EXPRESSION;
+
+fragment OPAQUE_BEGIN: '#[';
+fragment OPAQUE_END: ']#';
+OPAQUE_EXPRESSION: OPAQUE_BEGIN .*? OPAQUE_END;
 
 join_condition: (column_reference_first | constant_first) EQUALS (column_reference_second | constant_second);
 column_reference_first: column_reference;
@@ -105,11 +110,8 @@ fragment X:('x'|'X');
 fragment Y:('y'|'Y');
 fragment Z:('z'|'Z');
 
-fragment MULTILINE_COMMENT: '/*' .+? '*/';
+fragment MULTILINE_COMMENT: '/*' .*? '*/';
 fragment LINE_COMMENT: '--' ~('\n' | '\r')* ('\r' '\n'? | '\n' | EOF);
 COMMENT: (MULTILINE_COMMENT | LINE_COMMENT) -> channel(HIDDEN);
 
-opaque_expression_body: '#[' opaque_expression_body_text ']#';
-opaque_expression_body_text: .+?;
-
-WS: (' ' | '\r' | '\t' | '\n') -> channel(HIDDEN);
+WS: (' ' | '\r' | '\t' | '\n')+ -> channel(HIDDEN);
