@@ -6,11 +6,6 @@ This diagram shows the relationships between all classes in the `tech.ydb.mv.mod
 
 ```mermaid
 classDiagram
-    class MvPositionHolder {
-        <<interface>>
-        +getInputPosition() MvInputPosition
-    }
-
     class MvContext {
         -ArrayList views
         -ArrayList inputs
@@ -29,7 +24,6 @@ classDiagram
         -ArrayList sources
         -ArrayList columns
         -MvComputation filter
-        -MvInputPosition inputPosition
         +MvTarget(MvInputPosition)
         +getSourceByName(String) MvTableRef
         +getName() String
@@ -38,8 +32,6 @@ classDiagram
         +getColumns() ArrayList
         +getFilter() MvComputation
         +setFilter(MvComputation)
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
         +toString() String
     }
 
@@ -48,7 +40,6 @@ classDiagram
         -MvTableRef tableRef
         -String changeFeed
         -boolean batchMode
-        -MvInputPosition inputPosition
         +MvInput(MvInputPosition)
         +getTableName() String
         +setTableName(String)
@@ -58,8 +49,6 @@ classDiagram
         +setChangeFeed(String)
         +isBatchMode() boolean
         +setBatchMode(boolean)
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
     }
 
     class MvTableRef {
@@ -67,7 +56,6 @@ classDiagram
         -String alias
         -Mode mode
         -ArrayList conditions
-        -MvInputPosition inputPosition
         +MvTableRef(MvInputPosition)
         +getReference() String
         +setReference(String)
@@ -76,8 +64,6 @@ classDiagram
         +getMode() Mode
         +setMode(Mode)
         +getConditions() ArrayList
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
     }
 
     class MvTableRefMode {
@@ -93,7 +79,6 @@ classDiagram
         -String sourceColumn
         -MvTableRef sourceRef
         -MvComputation computation
-        -MvInputPosition inputPosition
         +MvColumn(MvInputPosition)
         +isComputation() boolean
         +getName() String
@@ -106,20 +91,15 @@ classDiagram
         +setSourceRef(MvTableRef)
         +getComputation() MvComputation
         +setComputation(MvComputation)
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
     }
 
     class MvComputation {
         -ArrayList sources
         -String expression
-        -MvInputPosition inputPosition
         +MvComputation(MvInputPosition)
         +getExpression() String
         +setExpression(String)
         +getSources() ArrayList
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
     }
 
     class MvComputationSource {
@@ -142,7 +122,6 @@ classDiagram
         -MvTableRef secondRef
         -String secondAlias
         -String secondColumn
-        -MvInputPosition inputPosition
         +MvJoinCondition(MvInputPosition)
         +getFirstLiteral() String
         +setFirstLiteral(String)
@@ -160,16 +139,6 @@ classDiagram
         +setSecondAlias(String)
         +getSecondColumn() String
         +setSecondColumn(String)
-        +getInputPosition() MvInputPosition
-        +setInputPosition(MvInputPosition)
-    }
-
-    class MvInputPosition {
-        -int line
-        -int column
-        +MvInputPosition(int, int)
-        +getLine() int
-        +getColumn() int
     }
 
     class MvIssue {
@@ -178,39 +147,6 @@ classDiagram
         +getMessage() String
         +getPosition() MvInputPosition
     }
-
-    class MvIssueIssue {
-        <<abstract>>
-        -MvInputPosition mip
-        +Issue(MvInputPosition)
-        +getPosition() MvInputPosition
-    }
-
-    class MvIssueError {
-        <<abstract>>
-        +Error(MvInputPosition)
-        +isError() boolean
-    }
-
-    class MvIssueWarning {
-        <<abstract>>
-        +Warning(MvInputPosition)
-        +isError() boolean
-    }
-
-    class MvIssueUnknownAlias {
-        -MvTarget target
-        -String aliasName
-        +UnknownAlias(MvTarget, String, MvPositionHolder)
-        +getMessage() String
-    }
-
-    MvPositionHolder <|.. MvTarget : implements
-    MvPositionHolder <|.. MvInput : implements
-    MvPositionHolder <|.. MvTableRef : implements
-    MvPositionHolder <|.. MvColumn : implements
-    MvPositionHolder <|.. MvComputation : implements
-    MvPositionHolder <|.. MvJoinCondition : implements
 
     MvContext --> MvTarget : contains
     MvContext --> MvInput : contains
@@ -234,24 +170,13 @@ classDiagram
     MvJoinCondition --> MvTableRef : firstRef
     MvJoinCondition --> MvTableRef : secondRef
 
-    MvIssue <|-- MvIssueIssue
-    MvIssueIssue <|-- MvIssueError
-    MvIssueIssue <|-- MvIssueWarning
-    MvIssueError <|-- MvIssueUnknownAlias
 
-    MvTarget --> MvInputPosition : inputPosition
-    MvInput --> MvInputPosition : inputPosition
-    MvTableRef --> MvInputPosition : inputPosition
-    MvColumn --> MvInputPosition : inputPosition
-    MvComputation --> MvInputPosition : inputPosition
-    MvJoinCondition --> MvInputPosition : inputPosition
 ```
 
 ## Class Descriptions
 
 ### Core Classes
 
-- **MvPositionHolder**: Interface implemented by all model classes to provide position tracking for error reporting
 - **MvContext**: The main container class that holds all materialized view definitions, inputs, and validation issues with issue management
 - **MvTarget**: Represents a materialized view target with its sources, columns, and optional filter, includes source lookup functionality
 - **MvInput**: Represents an input table with optional change feed configuration
@@ -259,23 +184,15 @@ classDiagram
 - **MvColumn**: Represents a column definition, either from a source or computed, with enhanced source reference tracking
 - **MvComputation**: Represents computed expressions with their sources
 - **MvJoinCondition**: Represents join conditions between tables
-- **MvInputPosition**: Tracks the position in the input for error reporting
 - **MvIssue**: Interface for validation errors and warnings with position tracking
 
-### Issue Management Classes
 
-- **MvIssue.Issue**: Abstract base class for all issues with position tracking
-- **MvIssue.Error**: Abstract base class for error-type issues
-- **MvIssue.Warning**: Abstract base class for warning-type issues
-- **MvIssue.UnknownAlias**: Concrete error implementation for unresolved alias references
 
 ### Key Relationships
 
-1. **MvPositionHolder** is implemented by all model classes for consistent position tracking
-2. **MvContext** is the root container that holds all materialized view definitions and manages issue collection
-3. **MvTarget** represents individual materialized views with enhanced source lookup capabilities
-4. **MvTableRef** represents table references in joins with their conditions
-5. **MvColumn** can reference either a source column or a computation, with enhanced source reference tracking
-6. **MvComputation** can have multiple sources and represents computed expressions
-7. **MvIssue** provides a comprehensive hierarchy for error and warning reporting with position tracking
-8. All model classes implement **MvPositionHolder** for consistent error reporting 
+1. **MvContext** is the root container that holds all materialized view definitions and manages issue collection
+2. **MvTarget** represents individual materialized views with enhanced source lookup capabilities
+3. **MvTableRef** represents table references in joins with their conditions
+4. **MvColumn** can reference either a source column or a computation, with enhanced source reference tracking
+5. **MvComputation** can have multiple sources and represents computed expressions
+6. **MvIssue** provides a comprehensive hierarchy for error and warning reporting with position tracking 

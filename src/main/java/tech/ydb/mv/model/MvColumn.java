@@ -1,12 +1,15 @@
 package tech.ydb.mv.model;
 
+import tech.ydb.table.values.Type;
+
 /**
- *
+ * Column of the materialized view table.
  * @author mzinal
  */
 public class MvColumn implements MvPositionHolder {
 
     private String name;
+    private Type type;
     private String sourceAlias;
     private String sourceColumn;
     private MvTableRef sourceRef;
@@ -27,6 +30,14 @@ public class MvColumn implements MvPositionHolder {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public void setType(Type type) {
+        this.type = type;
     }
 
     public String getSourceAlias() {
