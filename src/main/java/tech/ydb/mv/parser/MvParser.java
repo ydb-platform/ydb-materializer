@@ -56,17 +56,15 @@ public class MvParser {
     }
 
     private void handle(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        MvTarget mt = new MvTarget(stmt.identifier().getText());
-        mt.setInputPosition(toInputPosition(stmt));
+        MvTarget mt = new MvTarget(toInputPosition(stmt));
         mc.getViews().add(mt);
+        mt.setName(stmt.identifier().getText());
         var sel = stmt.simple_select_stmt();
-        var src = new MvTableRef(
-                sel.main_table_ref().identifier().getText(),
-                sel.table_alias().ID_PLAIN().getText(),
-                MvTableRef.Mode.MAIN
-        );
-        src.setInputPosition(toInputPosition(sel.main_table_ref()));
+        var src = new MvTableRef(toInputPosition(sel.main_table_ref()));
         mt.getSources().add(src);
+        src.setReference(sel.main_table_ref().identifier().getText());
+        src.setAlias(sel.table_alias().ID_PLAIN().getText());
+        src.setMode(MvTableRef.Mode.MAIN);
         for (var part : sel.simple_join_part()) {
             handle(mt, part);
         }
@@ -76,25 +74,22 @@ public class MvParser {
     }
 
     private void handle(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
-        MvTableRef.Mode mode = MvTableRef.Mode.INNER;
-        if (part.LEFT()!=null) {
-            mode = MvTableRef.Mode.LEFT;
-        }
-        MvTableRef src = new MvTableRef (
-            part.join_table_ref().identifier().getText(),
-            part.table_alias().ID_PLAIN().getText(),
-            mode
-        );
-        src.setInputPosition(toInputPosition(part));
+        MvTableRef src = new MvTableRef(toInputPosition(part));
         mt.getSources().add(src);
+        src.setReference(part.join_table_ref().identifier().getText());
+        src.setAlias(part.table_alias().ID_PLAIN().getText());
+        if (part.LEFT()!=null) {
+            src.setMode(MvTableRef.Mode.LEFT);
+        } else {
+            src.setMode(MvTableRef.Mode.INNER);
+        }
         for (var cond : part.join_condition()) {
             handle(src, cond);
         }
     }
 
     private void handle(MvTableRef src, YdbMatViewV1Parser.Join_conditionContext cond) {
-        MvJoinCondition mjc = new MvJoinCondition();
-        mjc.setInputPosition(toInputPosition(cond));
+        MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
             var v = cond.column_reference_first();
@@ -115,17 +110,16 @@ public class MvParser {
     }
 
     private void handle(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
-        var column = new MvColumn();
-        column.setInputPosition(toInputPosition(cc));
+        var column = new MvColumn(toInputPosition(cc));
         mt.getColumns().add(column);
         column.setName(cc.column_alias().ID_PLAIN().getText());
         if (cc.opaque_expression()!=null) {
-            MvComputation expr = new MvComputation(cc.opaque_expression()
+            MvComputation expr = new MvComputation(toInputPosition(cc.opaque_expression()));
+            column.setComputation(expr);
+            expr.setExpression(cc.opaque_expression()
                     .opaque_expression_body()
                     .opaque_expression_body_text()
                     .getText());
-            expr.setInputPosition(toInputPosition(cc.opaque_expression()));
-            column.setComputation(expr);
             for (var tabref : cc.opaque_expression().table_alias()) {
                 expr.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));
             }
@@ -139,10 +133,15 @@ public class MvParser {
     }
 
     private void handle(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
-        MvInput mi = new MvInput(stmt.main_table_ref().identifier().getText(),
-                stmt.changefeed_name().identifier().getText());
-        mi.setInputPosition(toInputPosition(stmt));
+        MvInput mi = new MvInput(toInputPosition(stmt));
         mc.getInputs().add(mi);
+        mi.setTableName(stmt.main_table_ref().identifier().getText());
+        mi.setChangeFeed(stmt.changefeed_name().identifier().getText());
+        if (stmt.STREAM()!=null) {
+            mi.setBatchMode(false);
+        } else {
+            mi.setBatchMode(true);
+        }
     }
 
     private MvInputPosition toInputPosition(ParserRuleContext ctx) {

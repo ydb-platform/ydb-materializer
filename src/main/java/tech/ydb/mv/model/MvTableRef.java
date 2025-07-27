@@ -14,10 +14,8 @@ public class MvTableRef {
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
     private MvInputPosition inputPosition;
 
-    public MvTableRef(String reference, String alias, Mode mode) {
-        this.reference = reference;
-        this.alias = alias;
-        this.mode = mode;
+    public MvTableRef(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public String getReference() {

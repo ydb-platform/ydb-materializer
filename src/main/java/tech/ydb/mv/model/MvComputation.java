@@ -12,8 +12,8 @@ public class MvComputation {
     private String expression;
     private MvInputPosition inputPosition;
 
-    public MvComputation(String expression) {
-        this.expression = expression;
+    public MvComputation(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public String getExpression() {

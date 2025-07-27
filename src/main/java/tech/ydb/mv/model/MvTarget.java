@@ -14,8 +14,8 @@ public class MvTarget {
     private MvComputation filter;
     private MvInputPosition inputPosition;
 
-    public MvTarget(String name) {
-        this.name = name;
+    public MvTarget(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public String getName() {

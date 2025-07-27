@@ -16,7 +16,8 @@ public class MvJoinCondition {
     private String secondColumn;
     private MvInputPosition inputPosition;
 
-    public MvJoinCondition() {
+    public MvJoinCondition(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public String getFirstLiteral() {

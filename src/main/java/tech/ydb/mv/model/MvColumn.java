@@ -12,7 +12,8 @@ public class MvColumn {
     private MvComputation computation;
     private MvInputPosition inputPosition;
 
-    public MvColumn() {
+    public MvColumn(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public boolean isComputation() {

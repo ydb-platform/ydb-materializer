@@ -9,17 +9,11 @@ public class MvInput {
     private String tableName;
     private MvTableRef tableRef;
     private String changeFeed;
+    private boolean batchMode;
     private MvInputPosition inputPosition;
 
-    public MvInput(String tableName, String changeFeed) {
-        this.tableName = tableName;
-        this.changeFeed = changeFeed;
-    }
-
-    public MvInput(MvTableRef tableRef, String changeFeed) {
-        this.tableRef = tableRef;
-        this.tableName = tableRef.getReference();
-        this.changeFeed = changeFeed;
+    public MvInput(MvInputPosition inputPosition) {
+        this.inputPosition = inputPosition;
     }
 
     public String getTableName() {
@@ -44,6 +38,14 @@ public class MvInput {
 
     public void setChangeFeed(String changeFeed) {
         this.changeFeed = changeFeed;
+    }
+
+    public boolean isBatchMode() {
+        return batchMode;
+    }
+
+    public void setBatchMode(boolean batchMode) {
+        this.batchMode = batchMode;
     }
 
     public MvInputPosition getInputPosition() {
