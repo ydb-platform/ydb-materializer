@@ -48,11 +48,8 @@ public class MvParser {
             handle(ctx, stmt.process_stmt());
         }
         link(ctx);
+        validate(ctx);
         return ctx;
-    }
-
-    private void link(MvContext mc) {
-
     }
 
     private void handle(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
@@ -150,6 +147,30 @@ public class MvParser {
             return new MvInputPosition(p.getLine(), p.getCharPositionInLine());
         }
         return null;
+    }
+
+    private void link(MvContext mc) {
+        mc.getViews().stream().forEach(t -> link(t));
+    }
+
+    private void link(MvTarget t) {
+        t.getColumns().stream().forEach(c -> link(c, t));
+    }
+
+    private void link(MvColumn c, MvTarget t) {
+        if (c.isComputation()) {
+            link(c.getComputation(), t);
+        } else {
+            
+        }
+    }
+    
+    private void link(MvComputation c, MvTarget t) {
+        
+    }
+
+    private void validate(MvContext mc) {
+
     }
 
 }

@@ -4,7 +4,7 @@ package tech.ydb.mv.model;
  *
  * @author mzinal
  */
-public class MvInput {
+public class MvInput implements MvPositionHolder {
 
     private String tableName;
     private MvTableRef tableRef;
@@ -48,6 +48,7 @@ public class MvInput {
         this.batchMode = batchMode;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }

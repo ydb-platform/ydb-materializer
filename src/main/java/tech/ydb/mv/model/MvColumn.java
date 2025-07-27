@@ -4,11 +4,12 @@ package tech.ydb.mv.model;
  *
  * @author mzinal
  */
-public class MvColumn {
+public class MvColumn implements MvPositionHolder {
 
     private String name;
     private String sourceAlias;
     private String sourceColumn;
+    private MvTableRef sourceRef;
     private MvComputation computation;
     private MvInputPosition inputPosition;
 
@@ -44,6 +45,14 @@ public class MvColumn {
         this.sourceColumn = sourceColumn;
     }
 
+    public MvTableRef getSourceRef() {
+        return sourceRef;
+    }
+
+    public void setSourceRef(MvTableRef sourceRef) {
+        this.sourceRef = sourceRef;
+    }
+
     public MvComputation getComputation() {
         return computation;
     }
@@ -52,6 +61,7 @@ public class MvColumn {
         this.computation = computation;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }

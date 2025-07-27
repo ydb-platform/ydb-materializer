@@ -6,7 +6,7 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvComputation {
+public class MvComputation implements MvPositionHolder {
 
     private final ArrayList<Source> sources = new ArrayList<>();
     private String expression;
@@ -28,6 +28,7 @@ public class MvComputation {
         return sources;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }

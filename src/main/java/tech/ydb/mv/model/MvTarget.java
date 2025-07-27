@@ -6,7 +6,7 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvTarget {
+public class MvTarget implements MvPositionHolder {
 
     private String name;
     private final ArrayList<MvTableRef> sources = new ArrayList<>();
@@ -16,6 +16,14 @@ public class MvTarget {
 
     public MvTarget(MvInputPosition inputPosition) {
         this.inputPosition = inputPosition;
+    }
+
+    public MvTableRef getSourceByName(String name) {
+        for (MvTableRef tr : sources) {
+            if (name.equalsIgnoreCase(tr.getAlias()))
+                return tr;
+        }
+        return null;
     }
 
     public String getName() {
@@ -42,6 +50,7 @@ public class MvTarget {
         this.filter = filter;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }

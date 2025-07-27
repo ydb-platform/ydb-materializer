@@ -10,6 +10,7 @@ public class MvContext {
 
     private final ArrayList<MvTarget> views = new ArrayList<>();
     private final ArrayList<MvInput> inputs = new ArrayList<>();
+
     private final ArrayList<MvIssue> errors = new ArrayList<>();
     private final ArrayList<MvIssue> warnings = new ArrayList<>();
 

@@ -4,7 +4,7 @@ package tech.ydb.mv.model;
  *
  * @author mzinal
  */
-public class MvJoinCondition {
+public class MvJoinCondition implements MvPositionHolder {
 
     private String firstLiteral;
     private MvTableRef firstRef;
@@ -84,6 +84,7 @@ public class MvJoinCondition {
         this.secondColumn = secondColumn;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }

@@ -6,7 +6,7 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvTableRef {
+public class MvTableRef implements MvPositionHolder {
 
     private String reference;
     private String alias;
@@ -46,6 +46,7 @@ public class MvTableRef {
         return conditions;
     }
 
+    @Override
     public MvInputPosition getInputPosition() {
         return inputPosition;
     }
