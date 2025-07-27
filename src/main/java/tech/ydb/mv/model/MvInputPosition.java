@@ -5,7 +5,7 @@ package tech.ydb.mv.model;
  * @author zinal
  */
 public class MvInputPosition {
-    
+
     private final int line;
     private final int column;
 
@@ -21,5 +21,10 @@ public class MvInputPosition {
     public int getColumn() {
         return column;
     }
-    
+
+    @Override
+    public String toString() {
+        return "position [" + line + ":" + column + ']';
+    }
+
 }

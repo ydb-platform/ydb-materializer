@@ -47,4 +47,24 @@ public interface MvIssue {
         }
     }
 
+    public static class UnknownAlias extends Error {
+
+        private final MvTarget target;
+        private final String aliasName;
+
+        public UnknownAlias(MvTarget target, String aliasName, MvPositionHolder place) {
+            super(place.getInputPosition());
+            this.target = target;
+            this.aliasName = aliasName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Cannot resolve alias `" + aliasName
+                    + "` in target " + target
+                    + " at " + mip;
+        }
+
+    }
+
 }

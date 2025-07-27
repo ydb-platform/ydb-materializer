@@ -18,6 +18,14 @@ public class MvContext {
         return errors.isEmpty();
     }
 
+    public void addIssue(MvIssue i) {
+        if (i.isError()) {
+            errors.add(i);
+        } else {
+            warnings.add(i);
+        }
+    }
+
     public ArrayList<MvTarget> getViews() {
         return views;
     }

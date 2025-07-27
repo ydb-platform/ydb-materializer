@@ -59,4 +59,9 @@ public class MvTarget implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
+    @Override
+    public String toString() {
+        return "MV `" + name + "`";
+    }
+
 }

@@ -13,6 +13,7 @@ import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvInputPosition;
+import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvTableRef;
 import tech.ydb.mv.model.MvTarget;
@@ -44,15 +45,23 @@ public class MvParser {
     public MvContext fill() {
         MvContext ctx = new MvContext();
         for ( var stmt : root.sql_stmt() ) {
-            handle(ctx, stmt.create_mat_view_stmt());
-            handle(ctx, stmt.process_stmt());
+            fill(ctx, stmt.create_mat_view_stmt());
+            fill(ctx, stmt.process_stmt());
         }
         link(ctx);
         validate(ctx);
         return ctx;
     }
 
-    private void handle(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
+    private static MvInputPosition toInputPosition(ParserRuleContext ctx) {
+        var p = ctx.getStart();
+        if (p!=null) {
+            return new MvInputPosition(p.getLine(), p.getCharPositionInLine());
+        }
+        return null;
+    }
+
+    private void fill(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
         MvTarget mt = new MvTarget(toInputPosition(stmt));
         mc.getViews().add(mt);
         mt.setName(stmt.identifier().getText());
@@ -63,14 +72,14 @@ public class MvParser {
         src.setAlias(sel.table_alias().ID_PLAIN().getText());
         src.setMode(MvTableRef.Mode.MAIN);
         for (var part : sel.simple_join_part()) {
-            handle(mt, part);
+            fill(mt, part);
         }
         for (var cc : sel.result_column()) {
-            handle(mt, cc);
+            fill(mt, cc);
         }
     }
 
-    private void handle(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
+    private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvTableRef src = new MvTableRef(toInputPosition(part));
         mt.getSources().add(src);
         src.setReference(part.join_table_ref().identifier().getText());
@@ -81,11 +90,11 @@ public class MvParser {
             src.setMode(MvTableRef.Mode.INNER);
         }
         for (var cond : part.join_condition()) {
-            handle(src, cond);
+            fill(src, cond);
         }
     }
 
-    private void handle(MvTableRef src, YdbMatViewV1Parser.Join_conditionContext cond) {
+    private void fill(MvTableRef src, YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
@@ -106,7 +115,7 @@ public class MvParser {
         }
     }
 
-    private void handle(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
+    private void fill(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
         var column = new MvColumn(toInputPosition(cc));
         mt.getColumns().add(column);
         column.setName(cc.column_alias().ID_PLAIN().getText());
@@ -129,7 +138,7 @@ public class MvParser {
         }
     }
 
-    private void handle(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
+    private void fill(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
         MvInput mi = new MvInput(toInputPosition(stmt));
         mc.getInputs().add(mi);
         mi.setTableName(stmt.main_table_ref().identifier().getText());
@@ -141,35 +150,37 @@ public class MvParser {
         }
     }
 
-    private MvInputPosition toInputPosition(ParserRuleContext ctx) {
-        var p = ctx.getStart();
-        if (p!=null) {
-            return new MvInputPosition(p.getLine(), p.getCharPositionInLine());
-        }
-        return null;
+    public static void link(MvContext mc) {
+        mc.getViews().stream().forEach(t -> link(t, mc));
     }
 
-    private void link(MvContext mc) {
-        mc.getViews().stream().forEach(t -> link(t));
+    private static void link(MvTarget t, MvContext mc) {
+        t.getColumns().stream().forEach(c -> link(c, t, mc));
     }
 
-    private void link(MvTarget t) {
-        t.getColumns().stream().forEach(c -> link(c, t));
-    }
-
-    private void link(MvColumn c, MvTarget t) {
+    private static void link(MvColumn c, MvTarget t, MvContext mc) {
         if (c.isComputation()) {
-            link(c.getComputation(), t);
+            link(c.getComputation(), t, mc);
         } else {
-            
+            var ref = t.getSourceByName(c.getSourceAlias());
+            c.setSourceRef(ref);
+            if (ref==null) {
+                mc.addIssue(new MvIssue.UnknownAlias(t, c.getSourceAlias(), c));
+            }
         }
     }
-    
-    private void link(MvComputation c, MvTarget t) {
-        
+
+    private static void link(MvComputation c, MvTarget t, MvContext mc) {
+        for (var src : c.getSources()) {
+            var ref = t.getSourceByName(src.getAlias());
+            src.setReference(ref);
+            if (ref==null) {
+                mc.addIssue(new MvIssue.UnknownAlias(t, src.getAlias(), c));
+            }
+        }
     }
 
-    private void validate(MvContext mc) {
+    public static void validate(MvContext mc) {
 
     }
 
