@@ -18,7 +18,7 @@ import tech.ydb.mv.model.MvTableRef;
 import tech.ydb.mv.model.MvTarget;
 
 /**
- *
+ * Parsing, linking and logical checks for input SQL script.
  * @author mzinal
  */
 public class MvParser {
