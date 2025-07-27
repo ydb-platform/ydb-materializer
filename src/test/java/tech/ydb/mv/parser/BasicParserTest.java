@@ -24,7 +24,7 @@ INNER JOIN sub_table1 AS sub1
   ON main.c1=sub1.c1 AND main.c2=sub1.c2
 LEFT JOIN sub_table2 AS sub2
   ON main.c3=sub2.c3 AND 'val1'=sub2.c4
-INNER JOIN sub_table3 AS sub3
+INNER JOIN `schema2/sub_table3` AS sub3
   ON sub3.c5=58
 WHERE COMPUTE ON main, sub2
 #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ]#;
@@ -32,7 +32,7 @@ WHERE COMPUTE ON main, sub2
 PROCESS main_table CHANGEFEED cf1 AS STREAM;
 PROCESS sub_table1 CHANGEFEED cf1 AS STREAM;
 PROCESS sub_table2 CHANGEFEED cf1 AS STREAM;
-PROCESS sub_table3 CHANGEFEED cf1 AS BATCH;
+PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
 """;
 
     @Test
@@ -73,7 +73,7 @@ PROCESS sub_table3 CHANGEFEED cf1 AS BATCH;
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
         var sub3Source = view0.getSources().get(3);
-        Assertions.assertEquals("sub_table3", sub3Source.getReference());
+        Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getReference());
         Assertions.assertEquals("sub3", sub3Source.getAlias());
         Assertions.assertEquals(MvTableRef.Mode.INNER, sub3Source.getMode());
         Assertions.assertEquals(1, sub3Source.getConditions().size());
@@ -173,7 +173,7 @@ PROCESS sub_table3 CHANGEFEED cf1 AS BATCH;
         Assertions.assertFalse(input3.isBatchMode());
 
         var input4 = mc.getInputs().get(3);
-        Assertions.assertEquals("sub_table3", input4.getTableName());
+        Assertions.assertEquals("`schema2/sub_table3`", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangeFeed());
         Assertions.assertTrue(input4.isBatchMode());
     }

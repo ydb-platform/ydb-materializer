@@ -23,6 +23,11 @@ public interface MvIssue {
         public MvInputPosition getPosition() {
             return mip;
         }
+
+        @Override
+        public String toString() {
+            return getMessage();
+        }
     }
 
     public static abstract class Error extends Issue {

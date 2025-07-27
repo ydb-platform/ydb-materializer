@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -256,17 +255,22 @@ public class MvParser {
     private class ParserListener extends DefaultErrorStrategy {
         @Override
         public void recover(Parser recognizer, RecognitionException e) {
+            String msg = e.getMessage();
+            if (msg==null) {
+                if (e.getOffendingToken() != null) {
+                    msg = "Offending token: [" + e.getOffendingToken().getText() + "]";
+                }
+            }
             issues.add(new MvIssue.ParserError(
                     e.getOffendingToken().getLine(),
                     e.getOffendingToken().getCharPositionInLine(),
-                    e.getMessage()));
+                    msg));
             super.recover(recognizer, e);
         }
 
         @Override
         public Token recoverInline(Parser recognizer)
                 throws RecognitionException {
-            InputMismatchException e = new InputMismatchException(recognizer);
             issues.add(new MvIssue.ParserError(
                     recognizer.getCurrentToken().getLine(),
                     recognizer.getCurrentToken().getCharPositionInLine(),
