@@ -19,6 +19,9 @@ public class MvTarget implements MvPositionHolder {
     }
 
     public MvTableRef getSourceByName(String name) {
+        if (name==null) {
+            return null;
+        }
         for (MvTableRef tr : sources) {
             if (name.equalsIgnoreCase(tr.getAlias()))
                 return tr;

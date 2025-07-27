@@ -47,8 +47,35 @@ public interface MvIssue {
         }
     }
 
-    public static class UnknownAlias extends Error {
+    public static class LexerError extends Error {
+        private final String msg;
 
+        public LexerError(int row, int column, String msg) {
+            super(new MvInputPosition(row, column));
+            this.msg = msg;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Lexer error at " + mip + ": " + msg;
+        }
+    }
+
+    public static class ParserError extends Error {
+        private final String msg;
+
+        public ParserError(int row, int column, String msg) {
+            super(new MvInputPosition(row, column));
+            this.msg = msg;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Parser error at " + mip + ": " + msg;
+        }
+    }
+
+    public static class UnknownAlias extends Error {
         private final MvTarget target;
         private final String aliasName;
 
@@ -64,7 +91,6 @@ public interface MvIssue {
                     + "` in target " + target
                     + " at " + mip;
         }
-
     }
 
 }

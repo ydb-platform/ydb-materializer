@@ -93,11 +93,11 @@ public class YdbConnector implements AutoCloseable {
     public YdbConnector(Properties props, String prefix) {
         this(new Config(props, prefix));
     }
-    
+
     public YdbConnector(String fname, String prefix) {
         this(Config.fromFile(fname, prefix));
     }
-    
+
     public YdbConnector(String fname) {
         this(Config.fromFile(fname));
     }
@@ -117,7 +117,7 @@ public class YdbConnector implements AutoCloseable {
     public String getDatabase() {
         return database;
     }
-    
+
     public QuerySession createQuerySession() {
         return queryClient.createSession(Duration.ofSeconds(60))
                 .join().getValue();
@@ -256,9 +256,10 @@ public class YdbConnector implements AutoCloseable {
 
         public void setAuthMode(AuthMode authMode) {
             if (authMode == null) {
-                authMode = AuthMode.NONE;
+                this.authMode = AuthMode.NONE;
+            } else {
+                this.authMode = authMode;
             }
-            this.authMode = authMode;
         }
 
         public String getSaKeyFile() {
@@ -318,7 +319,7 @@ public class YdbConnector implements AutoCloseable {
 
     }
 
-    /** 
+    /**
      * Supported authentication modes for YDB connections.
      */
     public static enum AuthMode {

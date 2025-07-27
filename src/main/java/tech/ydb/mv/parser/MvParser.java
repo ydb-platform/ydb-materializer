@@ -3,15 +3,20 @@ package tech.ydb.mv.parser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.DefaultErrorStrategy;
+import org.antlr.v4.runtime.InputMismatchException;
 import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
@@ -31,12 +36,13 @@ public class MvParser {
     private final Lexer lexer;
     private final YdbMatViewV1Parser parser;
     private final YdbMatViewV1Parser.Sql_scriptContext root;
+    private final ArrayList<MvIssue> issues = new ArrayList<>();
 
     public MvParser(CharStream cs) {
         this.lexer = new YdbMatViewV1Lexer(cs);
         this.lexer.addErrorListener(new LexerListener());
         this.parser = new YdbMatViewV1Parser(new CommonTokenStream(lexer));
-        this.parser.setErrorHandler(new BailErrorStrategy());
+        this.parser.setErrorHandler(new ParserListener());
         this.root = parser.sql_script();
     }
 
@@ -50,6 +56,7 @@ public class MvParser {
 
     public MvContext fill() {
         MvContext ctx = new MvContext();
+        ctx.getErrors().addAll(issues);
         for ( var stmt : root.sql_stmt() ) {
             if (stmt.create_mat_view_stmt()!=null) {
                 fill(ctx, stmt.create_mat_view_stmt());
@@ -238,14 +245,34 @@ public class MvParser {
         }
     }
 
-    private static class LexerListener extends BaseErrorListener {
-
+    private class LexerListener extends BaseErrorListener {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
                 int line, int charPositionInLine, String msg, RecognitionException e) {
-            throw new RuntimeException("Syntax error at line " + line + ", column " + charPositionInLine + ": " + msg);
+            issues.add(new MvIssue.LexerError(line, charPositionInLine, msg));
+        }
+    }
+
+    private class ParserListener extends DefaultErrorStrategy {
+        @Override
+        public void recover(Parser recognizer, RecognitionException e) {
+            issues.add(new MvIssue.ParserError(
+                    e.getOffendingToken().getLine(),
+                    e.getOffendingToken().getCharPositionInLine(),
+                    e.getMessage()));
+            super.recover(recognizer, e);
         }
 
+        @Override
+        public Token recoverInline(Parser recognizer)
+                throws RecognitionException {
+            InputMismatchException e = new InputMismatchException(recognizer);
+            issues.add(new MvIssue.ParserError(
+                    recognizer.getCurrentToken().getLine(),
+                    recognizer.getCurrentToken().getCharPositionInLine(),
+                    "Unexpected token: " + recognizer.getCurrentToken().getText()));
+            return super.recoverInline(recognizer);
+        }
     }
 
 }
