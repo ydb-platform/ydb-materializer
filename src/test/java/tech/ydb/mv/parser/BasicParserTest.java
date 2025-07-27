@@ -1,7 +1,5 @@
 package tech.ydb.mv.parser;
 
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
@@ -14,7 +12,7 @@ public class BasicParserTest {
 
     private static final String SQL1 =
 """
-CREATE MATERIALIZED VIEW m1 AS
+CREATE ASYNC MATERIALIZED VIEW m1 AS
 SELECT main.id AS id, main.c1 AS c1, main.c2 AS c3, main.c3 AS c3,
        sub1.c8 AS c8, sub2.c9 AS c9, sub3.c10 AS c10
 FROM main_table AS main
