@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvIssue;
 
 /**
  *
@@ -36,7 +37,9 @@ WHERE COMPUTE ON main, sub2
         Assertions.assertEquals(3, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
 
-        System.out.println("Errors: " + mc.getErrors());
+        for (MvIssue i : mc.getErrors()) {
+            System.out.println("\t" + i.getMessage());
+        }
     }
 
 }
