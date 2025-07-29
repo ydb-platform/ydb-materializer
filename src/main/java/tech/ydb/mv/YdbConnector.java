@@ -150,6 +150,28 @@ public class YdbConnector implements AutoCloseable {
         LOG.info("Disconnected from YDB.");
     }
 
+    public String getProperty(String name) {
+        return config.properties.getProperty(name);
+    }
+
+    public String getProperty(String name, String defval) {
+        return config.properties.getProperty(name, defval);
+    }
+
+    public int getProperty(String name, int defval) {
+        String v = config.properties.getProperty(name, String.valueOf(defval));
+        return Integer.parseInt(v);
+    }
+
+    public long getProperty(String name, long defval) {
+        String v = config.properties.getProperty(name, String.valueOf(defval));
+        return Long.parseLong(v);
+    }
+
+    public static String safe(String value) {
+        return value.replaceAll("[;.()$+-\\\\]", "_");
+    }
+
     /**
     * Configuration class for YDB database connections.
     * It holds various properties for connection strings, authentication settings,
