@@ -122,7 +122,7 @@ public class MvParser {
                 retval = retval.substring(0, retval.length()-2);
             }
         }
-        return retval;
+        return retval.trim();
     }
 
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {

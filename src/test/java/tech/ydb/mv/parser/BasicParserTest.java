@@ -18,7 +18,8 @@ public class BasicParserTest {
 CREATE ASYNC MATERIALIZED VIEW m1 AS
 SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
        sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
-       COMPUTE ON main #[ Substring(main.c20,3,5) ]# AS c11
+       COMPUTE ON main #[ Substring(main.c20,3,5) ]# AS c11,
+       COMPUTE #[ CAST(NULL AS Int32?) ]# AS c12
 FROM main_table AS main /* something */
 INNER JOIN sub_table1 AS sub1
   ON main.c1=sub1.c1 AND main.c2=sub1.c2
@@ -50,7 +51,7 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         var view0 = mc.getTargets().get(0);
         Assertions.assertEquals("m1", view0.getName());
         Assertions.assertEquals(4, view0.getSources().size());
-        Assertions.assertEquals(8, view0.getColumns().size());
+        Assertions.assertEquals(9, view0.getColumns().size());
         Assertions.assertNotNull(view0.getFilter());
 
         // Test MvTableRef sources
@@ -141,7 +142,7 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         Assertions.assertNull(view0.getColumns().get(7).getSourceAlias());
         Assertions.assertNull(view0.getColumns().get(7).getSourceColumn());
         Assertions.assertTrue(view0.getColumns().get(7).isComputation());
-        Assertions.assertEquals(" Substring(main.c20,3,5) ",
+        Assertions.assertEquals("Substring(main.c20,3,5)",
                 view0.getColumns().get(7).getComputation().getExpression());
         Assertions.assertEquals(1,
                 view0.getColumns().get(7).getComputation().getSources().size());
@@ -150,8 +151,17 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         Assertions.assertEquals("main",
                 view0.getColumns().get(7).getComputation().getSources().get(0).getReference().getAlias());
 
+        Assertions.assertEquals("c12", view0.getColumns().get(8).getName());
+        Assertions.assertNull(view0.getColumns().get(8).getSourceAlias());
+        Assertions.assertNull(view0.getColumns().get(8).getSourceColumn());
+        Assertions.assertTrue(view0.getColumns().get(8).isComputation());
+        Assertions.assertEquals("CAST(NULL AS Int32?)",
+                view0.getColumns().get(8).getComputation().getExpression());
+        Assertions.assertEquals(0,
+                view0.getColumns().get(8).getComputation().getSources().size());
+
         // Test MvComputation filter
-        Assertions.assertEquals(" main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ", view0.getFilter().getExpression());
+        Assertions.assertEquals("main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2')", view0.getFilter().getExpression());
         Assertions.assertEquals(2, view0.getFilter().getSources().size());
         Assertions.assertEquals("main", view0.getFilter().getSources().get(0).getAlias());
         Assertions.assertEquals("sub2", view0.getFilter().getSources().get(1).getAlias());
