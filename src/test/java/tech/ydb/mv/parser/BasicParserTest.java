@@ -48,32 +48,35 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         Assertions.assertEquals(4, mc.getInputs().size());
 
         // Test MvTarget (view) structure
-        var view0 = mc.getTargets().get(0);
-        Assertions.assertEquals("m1", view0.getName());
-        Assertions.assertEquals(4, view0.getSources().size());
-        Assertions.assertEquals(9, view0.getColumns().size());
-        Assertions.assertNotNull(view0.getFilter());
+        var target0 = mc.getTargets().get(0);
+        Assertions.assertEquals("m1", target0.getName());
+        Assertions.assertEquals(4, target0.getSources().size());
+        Assertions.assertEquals(9, target0.getColumns().size());
+        Assertions.assertNotNull(target0.getFilter());
+        Assertions.assertNotNull(target0.getLiterals());
+        Assertions.assertEquals(2, target0.getLiterals().size());
+
 
         // Test MvTableRef sources
-        var mainSource = view0.getSources().get(0);
+        var mainSource = target0.getSources().get(0);
         Assertions.assertEquals("main_table", mainSource.getTableName());
         Assertions.assertEquals("main", mainSource.getAlias());
         Assertions.assertEquals(MvJoinSource.Mode.MAIN, mainSource.getMode());
         Assertions.assertEquals(0, mainSource.getConditions().size());
 
-        var sub1Source = view0.getSources().get(1);
+        var sub1Source = target0.getSources().get(1);
         Assertions.assertEquals("sub_table1", sub1Source.getTableName());
         Assertions.assertEquals("sub1", sub1Source.getAlias());
         Assertions.assertEquals(MvJoinSource.Mode.INNER, sub1Source.getMode());
         Assertions.assertEquals(2, sub1Source.getConditions().size());
 
-        var sub2Source = view0.getSources().get(2);
+        var sub2Source = target0.getSources().get(2);
         Assertions.assertEquals("sub_table2", sub2Source.getTableName());
         Assertions.assertEquals("sub2", sub2Source.getAlias());
         Assertions.assertEquals(MvJoinSource.Mode.LEFT, sub2Source.getMode());
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
-        var sub3Source = view0.getSources().get(3);
+        var sub3Source = target0.getSources().get(3);
         Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getTableName());
         Assertions.assertEquals("sub3", sub3Source.getAlias());
         Assertions.assertEquals(MvJoinSource.Mode.INNER, sub3Source.getMode());
@@ -96,75 +99,75 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         checkJoinCondition(sub3Cond1, "sub3", "c5", null, null, null, "58");
 
         // Test MvColumn structure
-        Assertions.assertEquals("id", view0.getColumns().get(0).getName());
-        Assertions.assertEquals("main", view0.getColumns().get(0).getSourceAlias());
-        Assertions.assertEquals("id", view0.getColumns().get(0).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(0).isComputation());
-        Assertions.assertNull(view0.getColumns().get(0).getComputation());
+        Assertions.assertEquals("id", target0.getColumns().get(0).getName());
+        Assertions.assertEquals("main", target0.getColumns().get(0).getSourceAlias());
+        Assertions.assertEquals("id", target0.getColumns().get(0).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(0).isComputation());
+        Assertions.assertNull(target0.getColumns().get(0).getComputation());
 
-        Assertions.assertEquals("c1", view0.getColumns().get(1).getName());
-        Assertions.assertEquals("main", view0.getColumns().get(1).getSourceAlias());
-        Assertions.assertEquals("c1", view0.getColumns().get(1).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(1).isComputation());
-        Assertions.assertNull(view0.getColumns().get(1).getComputation());
+        Assertions.assertEquals("c1", target0.getColumns().get(1).getName());
+        Assertions.assertEquals("main", target0.getColumns().get(1).getSourceAlias());
+        Assertions.assertEquals("c1", target0.getColumns().get(1).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(1).isComputation());
+        Assertions.assertNull(target0.getColumns().get(1).getComputation());
 
-        Assertions.assertEquals("c2", view0.getColumns().get(2).getName());
-        Assertions.assertEquals("main", view0.getColumns().get(2).getSourceAlias());
-        Assertions.assertEquals("c2", view0.getColumns().get(2).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(2).isComputation());
-        Assertions.assertNull(view0.getColumns().get(2).getComputation());
+        Assertions.assertEquals("c2", target0.getColumns().get(2).getName());
+        Assertions.assertEquals("main", target0.getColumns().get(2).getSourceAlias());
+        Assertions.assertEquals("c2", target0.getColumns().get(2).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(2).isComputation());
+        Assertions.assertNull(target0.getColumns().get(2).getComputation());
 
-        Assertions.assertEquals("c3", view0.getColumns().get(3).getName());
-        Assertions.assertEquals("main", view0.getColumns().get(3).getSourceAlias());
-        Assertions.assertEquals("c3", view0.getColumns().get(3).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(3).isComputation());
-        Assertions.assertNull(view0.getColumns().get(3).getComputation());
+        Assertions.assertEquals("c3", target0.getColumns().get(3).getName());
+        Assertions.assertEquals("main", target0.getColumns().get(3).getSourceAlias());
+        Assertions.assertEquals("c3", target0.getColumns().get(3).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(3).isComputation());
+        Assertions.assertNull(target0.getColumns().get(3).getComputation());
 
-        Assertions.assertEquals("c8", view0.getColumns().get(4).getName());
-        Assertions.assertEquals("sub1", view0.getColumns().get(4).getSourceAlias());
-        Assertions.assertEquals("c8", view0.getColumns().get(4).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(4).isComputation());
-        Assertions.assertNull(view0.getColumns().get(4).getComputation());
+        Assertions.assertEquals("c8", target0.getColumns().get(4).getName());
+        Assertions.assertEquals("sub1", target0.getColumns().get(4).getSourceAlias());
+        Assertions.assertEquals("c8", target0.getColumns().get(4).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(4).isComputation());
+        Assertions.assertNull(target0.getColumns().get(4).getComputation());
 
-        Assertions.assertEquals("c9", view0.getColumns().get(5).getName());
-        Assertions.assertEquals("sub2", view0.getColumns().get(5).getSourceAlias());
-        Assertions.assertEquals("c9", view0.getColumns().get(5).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(5).isComputation());
-        Assertions.assertNull(view0.getColumns().get(5).getComputation());
+        Assertions.assertEquals("c9", target0.getColumns().get(5).getName());
+        Assertions.assertEquals("sub2", target0.getColumns().get(5).getSourceAlias());
+        Assertions.assertEquals("c9", target0.getColumns().get(5).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(5).isComputation());
+        Assertions.assertNull(target0.getColumns().get(5).getComputation());
 
-        Assertions.assertEquals("c10", view0.getColumns().get(6).getName());
-        Assertions.assertEquals("sub3", view0.getColumns().get(6).getSourceAlias());
-        Assertions.assertEquals("c10", view0.getColumns().get(6).getSourceColumn());
-        Assertions.assertFalse(view0.getColumns().get(6).isComputation());
-        Assertions.assertNull(view0.getColumns().get(6).getComputation());
+        Assertions.assertEquals("c10", target0.getColumns().get(6).getName());
+        Assertions.assertEquals("sub3", target0.getColumns().get(6).getSourceAlias());
+        Assertions.assertEquals("c10", target0.getColumns().get(6).getSourceColumn());
+        Assertions.assertFalse(target0.getColumns().get(6).isComputation());
+        Assertions.assertNull(target0.getColumns().get(6).getComputation());
 
-        Assertions.assertEquals("c11", view0.getColumns().get(7).getName());
-        Assertions.assertNull(view0.getColumns().get(7).getSourceAlias());
-        Assertions.assertNull(view0.getColumns().get(7).getSourceColumn());
-        Assertions.assertTrue(view0.getColumns().get(7).isComputation());
+        Assertions.assertEquals("c11", target0.getColumns().get(7).getName());
+        Assertions.assertNull(target0.getColumns().get(7).getSourceAlias());
+        Assertions.assertNull(target0.getColumns().get(7).getSourceColumn());
+        Assertions.assertTrue(target0.getColumns().get(7).isComputation());
         Assertions.assertEquals("Substring(main.c20,3,5)",
-                view0.getColumns().get(7).getComputation().getExpression());
+                target0.getColumns().get(7).getComputation().getExpression());
         Assertions.assertEquals(1,
-                view0.getColumns().get(7).getComputation().getSources().size());
+                target0.getColumns().get(7).getComputation().getSources().size());
         Assertions.assertEquals("main",
-                view0.getColumns().get(7).getComputation().getSources().get(0).getAlias());
+                target0.getColumns().get(7).getComputation().getSources().get(0).getAlias());
         Assertions.assertEquals("main",
-                view0.getColumns().get(7).getComputation().getSources().get(0).getReference().getAlias());
+                target0.getColumns().get(7).getComputation().getSources().get(0).getReference().getAlias());
 
-        Assertions.assertEquals("c12", view0.getColumns().get(8).getName());
-        Assertions.assertNull(view0.getColumns().get(8).getSourceAlias());
-        Assertions.assertNull(view0.getColumns().get(8).getSourceColumn());
-        Assertions.assertTrue(view0.getColumns().get(8).isComputation());
+        Assertions.assertEquals("c12", target0.getColumns().get(8).getName());
+        Assertions.assertNull(target0.getColumns().get(8).getSourceAlias());
+        Assertions.assertNull(target0.getColumns().get(8).getSourceColumn());
+        Assertions.assertTrue(target0.getColumns().get(8).isComputation());
         Assertions.assertEquals("CAST(NULL AS Int32?)",
-                view0.getColumns().get(8).getComputation().getExpression());
+                target0.getColumns().get(8).getComputation().getExpression());
         Assertions.assertEquals(0,
-                view0.getColumns().get(8).getComputation().getSources().size());
+                target0.getColumns().get(8).getComputation().getSources().size());
 
         // Test MvComputation filter
-        Assertions.assertEquals("main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2')", view0.getFilter().getExpression());
-        Assertions.assertEquals(2, view0.getFilter().getSources().size());
-        Assertions.assertEquals("main", view0.getFilter().getSources().get(0).getAlias());
-        Assertions.assertEquals("sub2", view0.getFilter().getSources().get(1).getAlias());
+        Assertions.assertEquals("main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2')", target0.getFilter().getExpression());
+        Assertions.assertEquals(2, target0.getFilter().getSources().size());
+        Assertions.assertEquals("main", target0.getFilter().getSources().get(0).getAlias());
+        Assertions.assertEquals("sub2", target0.getFilter().getSources().get(1).getAlias());
 
         // Test MvInput structure
         var input1 = mc.getInputs().get(0);
@@ -198,7 +201,8 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
             Assertions.assertNotNull(cond.getFirstRef());
             Assertions.assertEquals(firstAlias, cond.getFirstRef().getAlias());
         } else {
-            Assertions.assertEquals(firstLiteral, cond.getFirstLiteral());
+            Assertions.assertNotNull(cond.getFirstLiteral());
+            Assertions.assertEquals(firstLiteral, cond.getFirstLiteral().getValue());
             Assertions.assertNull(cond.getFirstAlias());
             Assertions.assertNull(cond.getFirstColumn());
             Assertions.assertNull(cond.getFirstRef());
@@ -210,7 +214,8 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
             Assertions.assertNotNull(cond.getSecondRef());
             Assertions.assertEquals(secondAlias, cond.getSecondRef().getAlias());
         } else {
-            Assertions.assertEquals(secondLiteral, cond.getSecondLiteral());
+            Assertions.assertNotNull(cond.getSecondLiteral());
+            Assertions.assertEquals(secondLiteral, cond.getSecondLiteral().getValue());
             Assertions.assertNull(cond.getSecondAlias());
             Assertions.assertNull(cond.getSecondColumn());
             Assertions.assertNull(cond.getSecondRef());

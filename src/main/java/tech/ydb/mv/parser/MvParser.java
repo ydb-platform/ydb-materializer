@@ -136,11 +136,11 @@ public class MvParser {
             src.setMode(MvJoinSource.Mode.INNER);
         }
         for (var cond : part.join_condition()) {
-            fill(src, cond);
+            fill(mt, src, cond);
         }
     }
 
-    private void fill(MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
+    private void fill(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
@@ -154,10 +154,10 @@ public class MvParser {
             mjc.setSecondColumn(v.column_name().identifier().getText());
         }
         if (cond.constant_first()!=null) {
-            mjc.setFirstLiteral(cond.constant_first().getText());
+            mjc.setFirstLiteral(mt.addLiteral(cond.constant_first().getText()));
         }
         if (cond.constant_second()!=null) {
-            mjc.setSecondLiteral(cond.constant_second().getText());
+            mjc.setSecondLiteral(mt.addLiteral(cond.constant_second().getText()));
         }
     }
 

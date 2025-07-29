@@ -1,6 +1,9 @@
 package tech.ydb.mv.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
  *
@@ -11,6 +14,7 @@ public class MvTarget implements MvPositionHolder {
     private String name;
     private final ArrayList<MvJoinSource> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
+    private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
     private MvInputPosition inputPosition;
 
@@ -51,6 +55,27 @@ public class MvTarget implements MvPositionHolder {
 
     public void setFilter(MvComputation filter) {
         this.filter = filter;
+    }
+
+    public MvLiteral addLiteral(String value) {
+        if (value==null) {
+            throw new NullPointerException();
+        }
+        value = value.trim();
+        MvLiteral l = literals.get(value);
+        if (l==null) {
+            l = new MvLiteral(value, literals.size());
+            literals.put(value, l);
+        }
+        return l;
+    }
+
+    public MvLiteral getLiteral(String value) {
+        return literals.get(value);
+    }
+
+    public Collection<MvLiteral> getLiterals() {
+        return literals.values();
     }
 
     @Override

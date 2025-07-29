@@ -6,11 +6,11 @@ package tech.ydb.mv.model;
  */
 public class MvJoinCondition implements MvPositionHolder {
 
-    private String firstLiteral;
+    private MvLiteral firstLiteral;
     private MvJoinSource firstRef;
     private String firstAlias;
     private String firstColumn;
-    private String secondLiteral;
+    private MvLiteral secondLiteral;
     private MvJoinSource secondRef;
     private String secondAlias;
     private String secondColumn;
@@ -20,11 +20,11 @@ public class MvJoinCondition implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
-    public String getFirstLiteral() {
+    public MvLiteral getFirstLiteral() {
         return firstLiteral;
     }
 
-    public void setFirstLiteral(String firstLiteral) {
+    public void setFirstLiteral(MvLiteral firstLiteral) {
         this.firstLiteral = firstLiteral;
     }
 
@@ -52,11 +52,11 @@ public class MvJoinCondition implements MvPositionHolder {
         this.firstColumn = firstColumn;
     }
 
-    public String getSecondLiteral() {
+    public MvLiteral getSecondLiteral() {
         return secondLiteral;
     }
 
-    public void setSecondLiteral(String secondLiteral) {
+    public void setSecondLiteral(MvLiteral secondLiteral) {
         this.secondLiteral = secondLiteral;
     }
 
