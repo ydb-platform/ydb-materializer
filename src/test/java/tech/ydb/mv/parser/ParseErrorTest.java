@@ -14,7 +14,7 @@ public class ParseErrorTest {
 
     @Test
     public void parserTest() {
-        MvContext mc = new MvParser(SqlConstants.SQL2).fill();
+        MvContext mc = new MvParser(SqlConstants.SQL_BAD1).fill();
 
         // Test MvContext structure
         Assertions.assertFalse(mc.isValid());

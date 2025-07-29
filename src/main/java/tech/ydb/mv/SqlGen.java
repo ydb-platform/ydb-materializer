@@ -1,6 +1,7 @@
 package tech.ydb.mv;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.regex.Pattern;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
@@ -9,6 +10,9 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvJoinMode;
+import tech.ydb.mv.model.MvTableInfo;
+import tech.ydb.table.values.StructType;
+import tech.ydb.table.values.Type;
 
 /**
  *
@@ -29,6 +33,19 @@ public class SqlGen {
         sb.append("CREATE VIEW ");
         safeId(sb, target.getName()).append(eol);
         sb.append("  WITH (security_invoker=TRUE) AS").append(eol);
+        genFullSelect(sb);
+        sb.append(";").append(eol);
+        return sb.toString();
+    }
+
+    public String makeUpsert() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("CREATE VIEW ");
+        safeId(sb, target.getName()).append(eol);
+        return sb.toString();
+    }
+
+    private void genFullSelect(StringBuilder sb) {
         sb.append("SELECT").append(eol);
 
         // Generate column list
@@ -61,9 +78,6 @@ public class SqlGen {
             genExpression(sb, target.getFilter());
             sb.append(eol);
         }
-
-        sb.append(";").append(eol);
-        return sb.toString();
     }
 
     private boolean hasLiteralsInJoins() {
@@ -77,30 +91,21 @@ public class SqlGen {
         // Add CROSS JOIN with main table and proper joins with other tables
         boolean firstJoin = true;
         for (MvJoinSource source : target.getSources()) {
-            if (source.getMode() == MvJoinMode.MAIN) {
-                if (firstJoin) {
-                    sb.append("CROSS JOIN ");
-                    firstJoin = false;
-                } else {
-                    // Add join type
-                    switch (source.getMode()) {
-                        case INNER ->
-                            sb.append("INNER JOIN ");
-                        case LEFT ->
-                            sb.append("LEFT JOIN ");
-                        default ->
-                            throw new IllegalStateException("Unsupported join mode: " + source.getMode());
-                    }
+            if (firstJoin) {
+                sb.append("CROSS JOIN ");
+                firstJoin = false;
+            } else {
+                // Add join type
+                switch (source.getMode()) {
+                    case INNER ->
+                        sb.append("INNER JOIN ");
+                    case LEFT ->
+                        sb.append("LEFT JOIN ");
+                    default ->
+                        throw new IllegalStateException("Unsupported join mode: " + source.getMode());
                 }
-                genJoinTable(sb, source);
             }
-        }
-
-        // Add other joins
-        for (MvJoinSource source : target.getSources()) {
-            if (source.getMode() != MvJoinMode.MAIN) {
-                genJoinSource(sb, source);
-            }
+            genJoinTable(sb, source);
         }
     }
 
@@ -144,8 +149,6 @@ public class SqlGen {
             default ->
                 throw new IllegalStateException("Unsupported join mode: " + source.getMode());
         }
-
-        genJoinTable(sb, source);
     }
 
     private void genJoinTable(StringBuilder sb, MvJoinSource source) {
@@ -224,6 +227,36 @@ public class SqlGen {
 
     private void genExpression(StringBuilder sb, MvComputation c) {
         sb.append(c.getExpression());
+    }
+
+    private StructType toKeyType(MvTableInfo ti) {
+        final HashMap<String, Type> m = new HashMap<>();
+        for (String k : ti.getKey()) {
+            m.put(k, ti.getColumns().get(k));
+        }
+        return StructType.of(m);
+    }
+
+    public static String typeToString(Type t) {
+        if (t==null) {
+            throw new NullPointerException();
+        }
+        if (!(t instanceof StructType)) {
+            return t.toString();
+        }
+        StructType st = (StructType) t;
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Struct<");
+        for (int i=0; i<st.getMembersCount(); ++i) {
+            String name = st.getMemberName(i);
+            String type = typeToString(st.getMemberType(i));
+            if (i>0) {
+                sb.append(",");
+            }
+            sb.append(name).append(":").append(type);
+        }
+        sb.append(">");
+        return sb.toString();
     }
 
 }

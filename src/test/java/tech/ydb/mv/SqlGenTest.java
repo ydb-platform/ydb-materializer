@@ -15,7 +15,7 @@ public class SqlGenTest {
     @Test
     public void testMakeCreateView() {
         // Parse the input SQL
-        MvContext mc = new MvParser(SqlConstants.SQL1).fill();
+        MvContext mc = new MvParser(SqlConstants.SQL_GOOD1).fill();
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
