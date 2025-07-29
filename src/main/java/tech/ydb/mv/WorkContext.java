@@ -47,6 +47,10 @@ public class WorkContext implements AutoCloseable {
     }
 
     private void refreshMetadata() {
+        if (! context.isValid()) {
+            LOG.warn("Context is not valid after parsing - metadata retrieval skipped.");
+            return;
+        }
         HashMap<String, MvTableInfo> info = new HashMap<>();
         for (String tabname : collectTables()) {
             MvTableInfo ti = describeTable(tabname);
@@ -55,11 +59,12 @@ public class WorkContext implements AutoCloseable {
             }
         }
         linkTables(info);
+        validate();
     }
 
     private TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
-        for (MvTarget t : context.getViews()) {
+        for (MvTarget t : context.getTargets()) {
             for (MvTableRef r : t.getSources()) {
                 ret.add(r.getTableName());
             }
@@ -71,7 +76,7 @@ public class WorkContext implements AutoCloseable {
     }
 
     private void linkTables(HashMap<String, MvTableInfo> info) {
-        for (MvTarget t : context.getViews()) {
+        for (MvTarget t : context.getTargets()) {
             for (MvTableRef r : t.getSources()) {
                 r.setTableInfo(info.get(r.getTableName()));
             }
@@ -108,6 +113,23 @@ public class WorkContext implements AutoCloseable {
             LOG.warn("Failed to obtain description for table {}", tabname);
             return null;
         }
+    }
+
+    private void validate() {
+        if (! context.isValid()) {
+            LOG.warn("Context already invalid, validation skipped.");
+            return;
+        }
+        context.getTargets().forEach(t -> validate(t));
+        context.getInputs().forEach(i -> validate(i));
+    }
+
+    private void validate(MvTarget t) {
+        // TODO: implementation
+    }
+
+    private void validate(MvInput i) {
+        // TODO: implementation
     }
 
     private static MvContext readContext(YdbConnector ydb) {

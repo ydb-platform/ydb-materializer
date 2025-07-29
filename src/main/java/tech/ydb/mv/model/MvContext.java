@@ -8,7 +8,7 @@ import java.util.ArrayList;
  */
 public class MvContext {
 
-    private final ArrayList<MvTarget> views = new ArrayList<>();
+    private final ArrayList<MvTarget> targets = new ArrayList<>();
     private final ArrayList<MvInput> inputs = new ArrayList<>();
 
     private final ArrayList<MvIssue> errors = new ArrayList<>();
@@ -26,8 +26,8 @@ public class MvContext {
         }
     }
 
-    public ArrayList<MvTarget> getViews() {
-        return views;
+    public ArrayList<MvTarget> getTargets() {
+        return targets;
     }
 
     public ArrayList<MvInput> getInputs() {

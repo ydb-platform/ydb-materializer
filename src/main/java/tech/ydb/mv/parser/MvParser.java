@@ -80,7 +80,7 @@ public class MvParser {
 
     private void fill(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
         MvTarget mt = new MvTarget(toInputPosition(stmt));
-        mc.getViews().add(mt);
+        mc.getTargets().add(mt);
         mt.setName(stmt.identifier().getText());
         var sel = stmt.simple_select_stmt();
         var src = new MvTableRef(toInputPosition(sel.main_table_ref()));
@@ -192,7 +192,7 @@ public class MvParser {
     }
 
     public static void link(MvContext mc) {
-        mc.getViews().stream().forEach(t -> link(t, mc));
+        mc.getTargets().stream().forEach(t -> link(t, mc));
     }
 
     private static void link(MvTarget t, MvContext mc) {

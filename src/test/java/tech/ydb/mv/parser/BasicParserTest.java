@@ -43,11 +43,11 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         Assertions.assertTrue(mc.isValid());
         Assertions.assertEquals(0, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
-        Assertions.assertEquals(1, mc.getViews().size());
+        Assertions.assertEquals(1, mc.getTargets().size());
         Assertions.assertEquals(4, mc.getInputs().size());
 
         // Test MvTarget (view) structure
-        var view0 = mc.getViews().get(0);
+        var view0 = mc.getTargets().get(0);
         Assertions.assertEquals("m1", view0.getName());
         Assertions.assertEquals(4, view0.getSources().size());
         Assertions.assertEquals(8, view0.getColumns().size());
