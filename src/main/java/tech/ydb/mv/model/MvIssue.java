@@ -98,4 +98,40 @@ public interface MvIssue {
         }
     }
 
+    public static class UnknownSourceTable extends Error {
+        private final MvTarget target;
+        private final String tableName;
+
+        public UnknownSourceTable(MvTarget target, String tableName, MvPositionHolder place) {
+            super(place.getInputPosition());
+            this.target = target;
+            this.tableName = tableName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown table `" + tableName
+                    + "` in target " + target
+                    + " at " + mip;
+        }
+    }
+
+    public static class UnknownInputTable extends Error {
+        private final MvInput input;
+        private final String tableName;
+
+        public UnknownInputTable(MvInput input, String tableName, MvPositionHolder place) {
+            super(place.getInputPosition());
+            this.input = input;
+            this.tableName = tableName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown table `" + tableName
+                    + "` in input " + input
+                    + " at " + mip;
+        }
+    }
+
 }

@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  *
@@ -23,6 +24,12 @@ public class MvContext {
             errors.add(i);
         } else {
             warnings.add(i);
+        }
+    }
+
+    public void addIssues(Collection<? extends MvIssue> ix) {
+        for (MvIssue i : ix) {
+            addIssue(i);
         }
     }
 

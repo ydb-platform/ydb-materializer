@@ -9,8 +9,9 @@ import java.util.TreeSet;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTableRef;
+import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvParser;
 import tech.ydb.query.tools.QueryReader;
@@ -65,7 +66,7 @@ public class WorkContext implements AutoCloseable {
     private TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
         for (MvTarget t : context.getTargets()) {
-            for (MvTableRef r : t.getSources()) {
+            for (MvJoinSource r : t.getSources()) {
                 ret.add(r.getTableName());
             }
         }
@@ -77,7 +78,7 @@ public class WorkContext implements AutoCloseable {
 
     private void linkTables(HashMap<String, MvTableInfo> info) {
         for (MvTarget t : context.getTargets()) {
-            for (MvTableRef r : t.getSources()) {
+            for (MvJoinSource r : t.getSources()) {
                 r.setTableInfo(info.get(r.getTableName()));
             }
         }
@@ -125,11 +126,17 @@ public class WorkContext implements AutoCloseable {
     }
 
     private void validate(MvTarget t) {
-        // TODO: implementation
+        context.addIssues(t.getSources()
+                .stream()
+                .filter(js -> !js.isTableKnown())
+                .map(js -> new MvIssue.UnknownSourceTable(t, js.getTableName(), js))
+                .toList());
     }
 
     private void validate(MvInput i) {
-        // TODO: implementation
+        if (!i.isTableKnown()) {
+            context.addIssue(new MvIssue.UnknownInputTable(i, i.getTableName(), i));
+        }
     }
 
     private static MvContext readContext(YdbConnector ydb) {

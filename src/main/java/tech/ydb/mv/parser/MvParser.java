@@ -22,7 +22,7 @@ import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvInputPosition;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
-import tech.ydb.mv.model.MvTableRef;
+import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -83,11 +83,11 @@ public class MvParser {
         mc.getTargets().add(mt);
         mt.setName(stmt.identifier().getText());
         var sel = stmt.simple_select_stmt();
-        var src = new MvTableRef(toInputPosition(sel.main_table_ref()));
+        var src = new MvJoinSource(toInputPosition(sel.main_table_ref()));
         mt.getSources().add(src);
         src.setTableName(sel.main_table_ref().identifier().getText());
         src.setAlias(sel.table_alias().ID_PLAIN().getText());
-        src.setMode(MvTableRef.Mode.MAIN);
+        src.setMode(MvJoinSource.Mode.MAIN);
         for (var part : sel.simple_join_part()) {
             fill(mt, part);
         }
@@ -126,21 +126,21 @@ public class MvParser {
     }
 
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
-        MvTableRef src = new MvTableRef(toInputPosition(part));
+        MvJoinSource src = new MvJoinSource(toInputPosition(part));
         mt.getSources().add(src);
         src.setTableName(part.join_table_ref().identifier().getText());
         src.setAlias(part.table_alias().ID_PLAIN().getText());
         if (part.LEFT()!=null) {
-            src.setMode(MvTableRef.Mode.LEFT);
+            src.setMode(MvJoinSource.Mode.LEFT);
         } else {
-            src.setMode(MvTableRef.Mode.INNER);
+            src.setMode(MvJoinSource.Mode.INNER);
         }
         for (var cond : part.join_condition()) {
             fill(src, cond);
         }
     }
 
-    private void fill(MvTableRef src, YdbMatViewV1Parser.Join_conditionContext cond) {
+    private void fill(MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
@@ -222,7 +222,7 @@ public class MvParser {
         }
     }
 
-    private static void link(MvTableRef s, MvTarget t, MvContext mc) {
+    private static void link(MvJoinSource s, MvTarget t, MvContext mc) {
         s.getConditions().stream().forEach(c -> link(c, t, mc));
     }
 

@@ -6,7 +6,7 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvTableRef implements MvPositionHolder {
+public class MvJoinSource implements MvPositionHolder {
 
     private String tableName;
     private String alias;
@@ -15,8 +15,13 @@ public class MvTableRef implements MvPositionHolder {
     private MvTableInfo tableInfo;
     private MvInputPosition inputPosition;
 
-    public MvTableRef(MvInputPosition inputPosition) {
+    public MvJoinSource(MvInputPosition inputPosition) {
         this.inputPosition = inputPosition;
+    }
+
+    public boolean isTableKnown() {
+        return (tableInfo!=null) && (tableName!=null)
+                && tableName.equals(tableInfo.getName());
     }
 
     public String getTableName() {

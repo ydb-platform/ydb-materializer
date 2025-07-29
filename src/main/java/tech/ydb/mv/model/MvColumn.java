@@ -12,7 +12,7 @@ public class MvColumn implements MvPositionHolder {
     private Type type;
     private String sourceAlias;
     private String sourceColumn;
-    private MvTableRef sourceRef;
+    private MvJoinSource sourceRef;
     private MvComputation computation;
     private MvInputPosition inputPosition;
 
@@ -56,11 +56,11 @@ public class MvColumn implements MvPositionHolder {
         this.sourceColumn = sourceColumn;
     }
 
-    public MvTableRef getSourceRef() {
+    public MvJoinSource getSourceRef() {
         return sourceRef;
     }
 
-    public void setSourceRef(MvTableRef sourceRef) {
+    public void setSourceRef(MvJoinSource sourceRef) {
         this.sourceRef = sourceRef;
     }
 

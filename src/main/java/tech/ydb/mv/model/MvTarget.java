@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class MvTarget implements MvPositionHolder {
 
     private String name;
-    private final ArrayList<MvTableRef> sources = new ArrayList<>();
+    private final ArrayList<MvJoinSource> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private MvComputation filter;
     private MvInputPosition inputPosition;
@@ -18,11 +18,11 @@ public class MvTarget implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
-    public MvTableRef getSourceByAlias(String name) {
+    public MvJoinSource getSourceByAlias(String name) {
         if (name==null) {
             return null;
         }
-        for (MvTableRef tr : sources) {
+        for (MvJoinSource tr : sources) {
             if (name.equalsIgnoreCase(tr.getAlias()))
                 return tr;
         }
@@ -37,7 +37,7 @@ public class MvTarget implements MvPositionHolder {
         this.name = name;
     }
 
-    public ArrayList<MvTableRef> getSources() {
+    public ArrayList<MvJoinSource> getSources() {
         return sources;
     }
 

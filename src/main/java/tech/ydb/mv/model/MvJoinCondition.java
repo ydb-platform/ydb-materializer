@@ -7,11 +7,11 @@ package tech.ydb.mv.model;
 public class MvJoinCondition implements MvPositionHolder {
 
     private String firstLiteral;
-    private MvTableRef firstRef;
+    private MvJoinSource firstRef;
     private String firstAlias;
     private String firstColumn;
     private String secondLiteral;
-    private MvTableRef secondRef;
+    private MvJoinSource secondRef;
     private String secondAlias;
     private String secondColumn;
     private MvInputPosition inputPosition;
@@ -28,11 +28,11 @@ public class MvJoinCondition implements MvPositionHolder {
         this.firstLiteral = firstLiteral;
     }
 
-    public MvTableRef getFirstRef() {
+    public MvJoinSource getFirstRef() {
         return firstRef;
     }
 
-    public void setFirstRef(MvTableRef firstRef) {
+    public void setFirstRef(MvJoinSource firstRef) {
         this.firstRef = firstRef;
     }
 
@@ -60,11 +60,11 @@ public class MvJoinCondition implements MvPositionHolder {
         this.secondLiteral = secondLiteral;
     }
 
-    public MvTableRef getSecondRef() {
+    public MvJoinSource getSecondRef() {
         return secondRef;
     }
 
-    public void setSecondRef(MvTableRef secondRef) {
+    public void setSecondRef(MvJoinSource secondRef) {
         this.secondRef = secondRef;
     }
 

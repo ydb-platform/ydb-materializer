@@ -40,13 +40,13 @@ public class MvComputation implements MvPositionHolder {
     public static class Source {
 
         private String alias;
-        private MvTableRef reference;
+        private MvJoinSource reference;
 
         public Source(String alias) {
             this.alias = alias;
         }
 
-        public Source(String alias, MvTableRef reference) {
+        public Source(String alias, MvJoinSource reference) {
             this.alias = alias;
             this.reference = reference;
         }
@@ -59,11 +59,11 @@ public class MvComputation implements MvPositionHolder {
             this.alias = alias;
         }
 
-        public MvTableRef getReference() {
+        public MvJoinSource getReference() {
             return reference;
         }
 
-        public void setReference(MvTableRef reference) {
+        public void setReference(MvJoinSource reference) {
             this.reference = reference;
         }
 

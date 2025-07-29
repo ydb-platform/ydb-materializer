@@ -16,6 +16,11 @@ public class MvInput implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
+    public boolean isTableKnown() {
+        return (tableInfo!=null) && (tableName!=null)
+                && tableName.equals(tableInfo.getName());
+    }
+
     public String getTableName() {
         return tableName;
     }
