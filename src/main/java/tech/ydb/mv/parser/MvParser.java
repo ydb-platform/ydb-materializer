@@ -22,6 +22,7 @@ import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvInputPosition;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
+import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
@@ -86,8 +87,8 @@ public class MvParser {
         var src = new MvJoinSource(toInputPosition(sel.main_table_ref()));
         mt.getSources().add(src);
         src.setTableName(sel.main_table_ref().identifier().getText());
-        src.setAlias(sel.table_alias().ID_PLAIN().getText());
-        src.setMode(MvJoinSource.Mode.MAIN);
+        src.setTableAlias(sel.table_alias().ID_PLAIN().getText());
+        src.setMode(MvJoinMode.MAIN);
         for (var part : sel.simple_join_part()) {
             fill(mt, part);
         }
@@ -129,11 +130,11 @@ public class MvParser {
         MvJoinSource src = new MvJoinSource(toInputPosition(part));
         mt.getSources().add(src);
         src.setTableName(part.join_table_ref().identifier().getText());
-        src.setAlias(part.table_alias().ID_PLAIN().getText());
+        src.setTableAlias(part.table_alias().ID_PLAIN().getText());
         if (part.LEFT()!=null) {
-            src.setMode(MvJoinSource.Mode.LEFT);
+            src.setMode(MvJoinMode.LEFT);
         } else {
-            src.setMode(MvJoinSource.Mode.INNER);
+            src.setMode(MvJoinMode.INNER);
         }
         for (var cond : part.join_condition()) {
             fill(mt, src, cond);

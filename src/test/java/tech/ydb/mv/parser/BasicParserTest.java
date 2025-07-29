@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvJoinCondition;
-import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvJoinMode;
 
 /**
  *
@@ -60,26 +60,26 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         // Test MvTableRef sources
         var mainSource = target0.getSources().get(0);
         Assertions.assertEquals("main_table", mainSource.getTableName());
-        Assertions.assertEquals("main", mainSource.getAlias());
-        Assertions.assertEquals(MvJoinSource.Mode.MAIN, mainSource.getMode());
+        Assertions.assertEquals("main", mainSource.getTableAlias());
+        Assertions.assertEquals(MvJoinMode.MAIN, mainSource.getMode());
         Assertions.assertEquals(0, mainSource.getConditions().size());
 
         var sub1Source = target0.getSources().get(1);
         Assertions.assertEquals("sub_table1", sub1Source.getTableName());
-        Assertions.assertEquals("sub1", sub1Source.getAlias());
-        Assertions.assertEquals(MvJoinSource.Mode.INNER, sub1Source.getMode());
+        Assertions.assertEquals("sub1", sub1Source.getTableAlias());
+        Assertions.assertEquals(MvJoinMode.INNER, sub1Source.getMode());
         Assertions.assertEquals(2, sub1Source.getConditions().size());
 
         var sub2Source = target0.getSources().get(2);
         Assertions.assertEquals("sub_table2", sub2Source.getTableName());
-        Assertions.assertEquals("sub2", sub2Source.getAlias());
-        Assertions.assertEquals(MvJoinSource.Mode.LEFT, sub2Source.getMode());
+        Assertions.assertEquals("sub2", sub2Source.getTableAlias());
+        Assertions.assertEquals(MvJoinMode.LEFT, sub2Source.getMode());
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
         var sub3Source = target0.getSources().get(3);
         Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getTableName());
-        Assertions.assertEquals("sub3", sub3Source.getAlias());
-        Assertions.assertEquals(MvJoinSource.Mode.INNER, sub3Source.getMode());
+        Assertions.assertEquals("sub3", sub3Source.getTableAlias());
+        Assertions.assertEquals(MvJoinMode.INNER, sub3Source.getMode());
         Assertions.assertEquals(1, sub3Source.getConditions().size());
 
         // Test MvJoinCondition for sub1
@@ -152,7 +152,7 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
         Assertions.assertEquals("main",
                 target0.getColumns().get(7).getComputation().getSources().get(0).getAlias());
         Assertions.assertEquals("main",
-                target0.getColumns().get(7).getComputation().getSources().get(0).getReference().getAlias());
+                target0.getColumns().get(7).getComputation().getSources().get(0).getReference().getTableAlias());
 
         Assertions.assertEquals("c12", target0.getColumns().get(8).getName());
         Assertions.assertNull(target0.getColumns().get(8).getSourceAlias());
@@ -199,7 +199,7 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
             Assertions.assertEquals(firstAlias, cond.getFirstAlias());
             Assertions.assertEquals(firstColumn, cond.getFirstColumn());
             Assertions.assertNotNull(cond.getFirstRef());
-            Assertions.assertEquals(firstAlias, cond.getFirstRef().getAlias());
+            Assertions.assertEquals(firstAlias, cond.getFirstRef().getTableAlias());
         } else {
             Assertions.assertNotNull(cond.getFirstLiteral());
             Assertions.assertEquals(firstLiteral, cond.getFirstLiteral().getValue());
@@ -212,7 +212,7 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
             Assertions.assertEquals(secondAlias, cond.getSecondAlias());
             Assertions.assertEquals(secondColumn, cond.getSecondColumn());
             Assertions.assertNotNull(cond.getSecondRef());
-            Assertions.assertEquals(secondAlias, cond.getSecondRef().getAlias());
+            Assertions.assertEquals(secondAlias, cond.getSecondRef().getTableAlias());
         } else {
             Assertions.assertNotNull(cond.getSecondLiteral());
             Assertions.assertEquals(secondLiteral, cond.getSecondLiteral().getValue());

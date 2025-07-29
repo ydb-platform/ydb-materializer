@@ -1,10 +1,14 @@
 package tech.ydb.mv;
 
+import java.util.ArrayList;
 import java.util.regex.Pattern;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvJoinCondition;
+import tech.ydb.mv.model.MvLiteral;
+import tech.ydb.mv.model.MvJoinMode;
 
 /**
  *
@@ -22,9 +26,12 @@ public class SqlGen {
 
     public String makeCreateView() {
         final StringBuilder sb = new StringBuilder();
-        sb.append("CREATE VIEW "); safeId(sb, target.getName()).append(eol);
+        sb.append("CREATE VIEW `"); 
+        sb.append(target.getName()).append("`").append(eol);
         sb.append("  WITH (security_invoker=TRUE) AS").append(eol);
         sb.append("SELECT").append(eol);
+        
+        // Generate column list
         boolean comma = false;
         for (MvColumn c : target.getColumns()) {
             if (comma) {
@@ -36,15 +43,159 @@ public class SqlGen {
             genColumn(sb, c);
             sb.append(eol);
         }
-        for (MvJoinSource j : target.getSources()) {
-            genJoin(sb, j);
+        
+        // Check if we have any literals in join conditions
+        boolean hasLiterals = hasLiteralsInJoins();
+        
+        if (hasLiterals) {
+            // Generate constants subquery and CROSS JOIN
+            genFromWithConstants(sb);
+        } else {
+            // Generate simple FROM/JOIN structure
+            genFromSimple(sb);
         }
+        
+        // Add WHERE clause if present
+        if (target.getFilter() != null) {
+            sb.append("WHERE ");
+            genExpression(sb, target.getFilter());
+            sb.append(eol);
+        }
+        
         sb.append(";").append(eol);
         return sb.toString();
     }
 
+    private boolean hasLiteralsInJoins() {
+        return !target.getLiterals().isEmpty();
+    }
+
+        private void genFromWithConstants(StringBuilder sb) {
+        // Start with constants subquery
+        genConstantsSubquery(sb);
+        
+        // Add CROSS JOIN with main table
+        boolean firstJoin = true;
+        for (MvJoinSource source : target.getSources()) {
+            if (source.getMode() == MvJoinMode.MAIN) {
+                if (firstJoin) {
+                    sb.append("CROSS JOIN ");
+                    firstJoin = false;
+                } else {
+                    sb.append("INNER JOIN ");
+                }
+                genJoinTable(sb, source);
+            }
+        }
+        
+        // Add other joins
+        for (MvJoinSource source : target.getSources()) {
+            if (source.getMode() != MvJoinMode.MAIN) {
+                genJoinSource(sb, source);
+            }
+        }
+    }
+
+    private void genFromSimple(StringBuilder sb) {
+        boolean firstJoin = true;
+        for (MvJoinSource source : target.getSources()) {
+            if (firstJoin) {
+                sb.append("FROM ");
+                firstJoin = false;
+            } else {
+                genJoinSource(sb, source);
+            }
+            genJoinTable(sb, source);
+        }
+    }
+
+    private void genConstantsSubquery(StringBuilder sb) {
+        sb.append("FROM (SELECT ");
+        boolean comma = false;
+        for (MvLiteral literal : target.getLiterals()) {
+            if (comma) {
+                sb.append("  ,");
+            } else {
+                sb.append("   ");
+                comma = true;
+            }
+            String value = literal.getValue();
+            // If the value is already quoted, remove the outer quotes and re-quote properly
+            if (value.startsWith("'") && value.endsWith("'")) {
+                String unquotedValue = value.substring(1, value.length() - 1);
+                sb.append("'").append(unquotedValue.replace("'", "''")).append("' AS `").append(literal.getIdentity()).append("`");
+            } else {
+                sb.append("'").append(value.replace("'", "''")).append("' AS `").append(literal.getIdentity()).append("`");
+            }
+            sb.append(eol);
+        }
+        sb.append(") AS constants").append(eol);
+    }
+
+    private void genJoinSource(StringBuilder sb, MvJoinSource source) {
+        // Add join type
+        switch (source.getMode()) {
+            case INNER -> sb.append("INNER JOIN ");
+            case LEFT -> sb.append("LEFT JOIN ");
+            default -> throw new IllegalStateException("Unsupported join mode: " + source.getMode());
+        }
+        
+        genJoinTable(sb, source);
+    }
+
+    private void genJoinTable(StringBuilder sb, MvJoinSource source) {
+        // Add table name and alias
+        safeId(sb, source.getTableName());
+        sb.append(" AS ");
+        safeId(sb, source.getTableAlias());
+        sb.append(eol);
+        
+        // Add ON conditions
+        genJoinConditions(sb, source.getConditions());
+    }
+
+    private void genJoinConditions(StringBuilder sb, ArrayList<MvJoinCondition> conditions) {
+        if (!conditions.isEmpty()) {
+            sb.append("ON ");
+            boolean firstCondition = true;
+            for (MvJoinCondition condition : conditions) {
+                if (!firstCondition) {
+                    sb.append(" AND ");
+                }
+                genJoinCondition(sb, condition);
+                firstCondition = false;
+            }
+            sb.append(eol);
+        }
+    }
+
+    private void genJoinCondition(StringBuilder sb, MvJoinCondition condition) {
+        // First side of the condition
+        if (condition.getFirstLiteral() != null) {
+            sb.append("constants.`").append(condition.getFirstLiteral().getIdentity()).append("`");
+        } else {
+            safeId(sb, condition.getFirstAlias());
+            sb.append(".");
+            safeId(sb, condition.getFirstColumn());
+        }
+        
+        sb.append(" = ");
+        
+        // Second side of the condition
+        if (condition.getSecondLiteral() != null) {
+            sb.append("constants.`").append(condition.getSecondLiteral().getIdentity()).append("`");
+        } else {
+            safeId(sb, condition.getSecondAlias());
+            sb.append(".");
+            safeId(sb, condition.getSecondColumn());
+        }
+    }
+
     private StringBuilder safeId(StringBuilder sb, String identifier) {
         if (safeIdPattern.matcher(identifier).matches()) {
+            sb.append(identifier);
+        } else if (identifier.startsWith("`") && identifier.endsWith("`")) {
+            // Already quoted identifier, preserve as is
             sb.append(identifier);
         } else {
             sb.append("`").append(identifier.replace('`', '_')).append("`");
@@ -67,15 +218,6 @@ public class SqlGen {
         sb.append(c.getExpression());
     }
 
-    private void genJoin(StringBuilder sb, MvJoinSource j) {
-        switch (j.getMode()) {
-            case MAIN -> { sb.append("FROM "); }
-            case INNER -> { sb.append("INNER JOIN "); }
-            case LEFT -> { sb.append("LEFT JOIN "); }
-            default -> { throw new IllegalStateException(); }
-        }
-        safeId(sb, j.getTableName());
-    }
 
 
 }

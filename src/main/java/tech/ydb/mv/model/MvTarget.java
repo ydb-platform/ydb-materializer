@@ -27,7 +27,7 @@ public class MvTarget implements MvPositionHolder {
             return null;
         }
         for (MvJoinSource tr : sources) {
-            if (name.equalsIgnoreCase(tr.getAlias()))
+            if (name.equalsIgnoreCase(tr.getTableAlias()))
                 return tr;
         }
         return null;

@@ -9,8 +9,8 @@ import java.util.ArrayList;
 public class MvJoinSource implements MvPositionHolder {
 
     private String tableName;
-    private String alias;
-    private Mode mode;
+    private String tableAlias;
+    private MvJoinMode mode;
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
     private MvTableInfo tableInfo;
     private MvInputPosition inputPosition;
@@ -32,19 +32,19 @@ public class MvJoinSource implements MvPositionHolder {
         this.tableName = tableName;
     }
 
-    public String getAlias() {
-        return alias;
+    public String getTableAlias() {
+        return tableAlias;
     }
 
-    public void setAlias(String alias) {
-        this.alias = alias;
+    public void setTableAlias(String alias) {
+        this.tableAlias = alias;
     }
 
-    public Mode getMode() {
+    public MvJoinMode getMode() {
         return mode;
     }
 
-    public void setMode(Mode mode) {
+    public void setMode(MvJoinMode mode) {
         this.mode = mode;
     }
 
@@ -69,9 +69,4 @@ public class MvJoinSource implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
-    public static enum Mode {
-        MAIN,
-        INNER,
-        LEFT
-    }
 }
