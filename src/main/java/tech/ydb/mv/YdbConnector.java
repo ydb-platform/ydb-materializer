@@ -14,6 +14,8 @@ import tech.ydb.core.grpc.GrpcTransportBuilder;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
 import tech.ydb.scheme.SchemeClient;
+import tech.ydb.table.SessionRetryContext;
+import tech.ydb.table.TableClient;
 
 /**
  * The helper class which creates the YDB connection from the set of properties.
@@ -27,6 +29,8 @@ public class YdbConnector implements AutoCloseable {
     private final GrpcTransport transport;
     private final QueryClient queryClient;
     private final SchemeClient schemeClient;
+    private final TableClient tableClient;
+    private final SessionRetryContext tableRetryCtx;
     private final String database;
     private final Config config;
 
@@ -71,6 +75,11 @@ public class YdbConnector implements AutoCloseable {
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
+            this.tableClient = QueryClient.newTableClient(tempTransport).build();
+            this.tableRetryCtx = SessionRetryContext
+                    .create(this.tableClient)
+                    .idempotent(true)
+                    .build();
             this.queryClient = QueryClient.newClient(tempTransport)
                     .sessionPoolMinSize(1)
                     .sessionPoolMaxSize(config.getPoolSize())
@@ -106,6 +115,14 @@ public class YdbConnector implements AutoCloseable {
         return config;
     }
 
+    public TableClient getTableClient() {
+        return tableClient;
+    }
+
+    public SessionRetryContext getTableRetryCtx() {
+        return tableRetryCtx;
+    }
+
     public QueryClient getQueryClient() {
         return queryClient;
     }
@@ -126,6 +143,13 @@ public class YdbConnector implements AutoCloseable {
     @Override
     public void close() {
         LOG.info("Closing YDB connections...");
+        if (tableClient != null) {
+            try {
+                tableClient.close();
+            } catch (Exception ex) {
+                LOG.warn("TableClient closing threw an exception", ex);
+            }
+        }
         if (queryClient != null) {
             try {
                 queryClient.close();

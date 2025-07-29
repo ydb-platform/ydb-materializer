@@ -18,7 +18,7 @@ public class MvTarget implements MvPositionHolder {
         this.inputPosition = inputPosition;
     }
 
-    public MvTableRef getSourceByName(String name) {
+    public MvTableRef getSourceByAlias(String name) {
         if (name==null) {
             return null;
         }

@@ -3,8 +3,15 @@ package tech.ydb.mv;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.TreeSet;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvTableInfo;
+import tech.ydb.mv.model.MvTableRef;
+import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvParser;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
@@ -14,6 +21,8 @@ import tech.ydb.query.tools.SessionRetryContext;
  * @author mzinal
  */
 public class WorkContext implements AutoCloseable {
+
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(WorkContext.class);
 
     private final YdbConnector connector;
     private final MvContext context;
@@ -38,7 +47,67 @@ public class WorkContext implements AutoCloseable {
     }
 
     private void refreshMetadata() {
+        HashMap<String, MvTableInfo> info = new HashMap<>();
+        for (String tabname : collectTables()) {
+            MvTableInfo ti = describeTable(tabname);
+            if (ti!=null) {
+                info.put(tabname, ti);
+            }
+        }
+        linkTables(info);
+    }
 
+    private TreeSet<String> collectTables() {
+        TreeSet<String> ret = new TreeSet<>();
+        for (MvTarget t : context.getViews()) {
+            for (MvTableRef r : t.getSources()) {
+                ret.add(r.getTableName());
+            }
+        }
+        for (MvInput i : context.getInputs()) {
+            ret.add(i.getTableName());
+        }
+        return ret;
+    }
+
+    private void linkTables(HashMap<String, MvTableInfo> info) {
+        for (MvTarget t : context.getViews()) {
+            for (MvTableRef r : t.getSources()) {
+                r.setTableInfo(info.get(r.getTableName()));
+            }
+        }
+        for (MvInput i : context.getInputs()) {
+            i.setTableInfo(info.get(i.getTableName()));
+        }
+    }
+
+    private MvTableInfo describeTable(String tabname) {
+        String path;
+        if (tabname.startsWith("/")) {
+            path = tabname;
+        } else {
+            path = connector.getDatabase() + "/" + tabname;
+        }
+        LOG.info("Describing table {} ...", tabname);
+        try {
+            var desc = connector.getTableRetryCtx()
+                    .supplyResult(sess -> sess.describeTable(path))
+                    .join().getValue();
+            MvTableInfo ret = new MvTableInfo(tabname);
+            for (var c : desc.getColumns()) {
+                ret.getColumns().putLast(c.getName(), c.getType());
+            }
+            for (String k : desc.getPrimaryKeys()) {
+                ret.getKey().add(k);
+            }
+            for (var i : desc.getIndexes()) {
+                ret.getIndexes().put(i.getName(), new ArrayList<>(i.getColumns()));
+            }
+            return ret;
+        } catch(Exception ex) {
+            LOG.warn("Failed to obtain description for table {}", tabname);
+            return null;
+        }
     }
 
     private static MvContext readContext(YdbConnector ydb) {

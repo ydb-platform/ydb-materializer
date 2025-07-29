@@ -85,7 +85,7 @@ public class MvParser {
         var sel = stmt.simple_select_stmt();
         var src = new MvTableRef(toInputPosition(sel.main_table_ref()));
         mt.getSources().add(src);
-        src.setReference(sel.main_table_ref().identifier().getText());
+        src.setTableName(sel.main_table_ref().identifier().getText());
         src.setAlias(sel.table_alias().ID_PLAIN().getText());
         src.setMode(MvTableRef.Mode.MAIN);
         for (var part : sel.simple_join_part()) {
@@ -128,7 +128,7 @@ public class MvParser {
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvTableRef src = new MvTableRef(toInputPosition(part));
         mt.getSources().add(src);
-        src.setReference(part.join_table_ref().identifier().getText());
+        src.setTableName(part.join_table_ref().identifier().getText());
         src.setAlias(part.table_alias().ID_PLAIN().getText());
         if (part.LEFT()!=null) {
             src.setMode(MvTableRef.Mode.LEFT);
@@ -204,7 +204,7 @@ public class MvParser {
         if (c.isComputation()) {
             link(c.getComputation(), t, mc);
         } else {
-            var ref = t.getSourceByName(c.getSourceAlias());
+            var ref = t.getSourceByAlias(c.getSourceAlias());
             c.setSourceRef(ref);
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getSourceAlias(), c));
@@ -214,7 +214,7 @@ public class MvParser {
 
     private static void link(MvComputation c, MvTarget t, MvContext mc) {
         for (var src : c.getSources()) {
-            var ref = t.getSourceByName(src.getAlias());
+            var ref = t.getSourceByAlias(src.getAlias());
             src.setReference(ref);
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, src.getAlias(), c));
@@ -228,14 +228,14 @@ public class MvParser {
 
     private static void link(MvJoinCondition c, MvTarget t, MvContext mc) {
         if (c.getFirstAlias()!=null) {
-            var ref = t.getSourceByName(c.getFirstAlias());
+            var ref = t.getSourceByAlias(c.getFirstAlias());
             c.setFirstRef(ref);
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getFirstAlias(), c));
             }
         }
         if (c.getSecondAlias()!=null) {
-            var ref = t.getSourceByName(c.getSecondAlias());
+            var ref = t.getSourceByAlias(c.getSecondAlias());
             c.setSecondRef(ref);
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getSecondAlias(), c));

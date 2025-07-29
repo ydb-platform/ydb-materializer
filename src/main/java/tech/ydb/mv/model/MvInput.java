@@ -7,8 +7,8 @@ package tech.ydb.mv.model;
 public class MvInput implements MvPositionHolder {
 
     private String tableName;
-    private MvTableRef tableRef;
     private String changeFeed;
+    private MvTableInfo tableInfo;
     private boolean batchMode;
     private MvInputPosition inputPosition;
 
@@ -24,12 +24,12 @@ public class MvInput implements MvPositionHolder {
         this.tableName = tableName;
     }
 
-    public MvTableRef getTableRef() {
-        return tableRef;
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
     }
 
-    public void setTableRef(MvTableRef tableRef) {
-        this.tableRef = tableRef;
+    public void setTableInfo(MvTableInfo tableInfo) {
+        this.tableInfo = tableInfo;
     }
 
     public String getChangeFeed() {

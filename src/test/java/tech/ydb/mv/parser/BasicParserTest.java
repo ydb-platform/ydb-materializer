@@ -55,25 +55,25 @@ PROCESS `schema2/sub_table3` CHANGEFEED cf1 AS BATCH;
 
         // Test MvTableRef sources
         var mainSource = view0.getSources().get(0);
-        Assertions.assertEquals("main_table", mainSource.getReference());
+        Assertions.assertEquals("main_table", mainSource.getTableName());
         Assertions.assertEquals("main", mainSource.getAlias());
         Assertions.assertEquals(MvTableRef.Mode.MAIN, mainSource.getMode());
         Assertions.assertEquals(0, mainSource.getConditions().size());
 
         var sub1Source = view0.getSources().get(1);
-        Assertions.assertEquals("sub_table1", sub1Source.getReference());
+        Assertions.assertEquals("sub_table1", sub1Source.getTableName());
         Assertions.assertEquals("sub1", sub1Source.getAlias());
         Assertions.assertEquals(MvTableRef.Mode.INNER, sub1Source.getMode());
         Assertions.assertEquals(2, sub1Source.getConditions().size());
 
         var sub2Source = view0.getSources().get(2);
-        Assertions.assertEquals("sub_table2", sub2Source.getReference());
+        Assertions.assertEquals("sub_table2", sub2Source.getTableName());
         Assertions.assertEquals("sub2", sub2Source.getAlias());
         Assertions.assertEquals(MvTableRef.Mode.LEFT, sub2Source.getMode());
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
         var sub3Source = view0.getSources().get(3);
-        Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getReference());
+        Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getTableName());
         Assertions.assertEquals("sub3", sub3Source.getAlias());
         Assertions.assertEquals(MvTableRef.Mode.INNER, sub3Source.getMode());
         Assertions.assertEquals(1, sub3Source.getConditions().size());

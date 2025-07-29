@@ -8,22 +8,23 @@ import java.util.ArrayList;
  */
 public class MvTableRef implements MvPositionHolder {
 
-    private String reference;
+    private String tableName;
     private String alias;
     private Mode mode;
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
+    private MvTableInfo tableInfo;
     private MvInputPosition inputPosition;
 
     public MvTableRef(MvInputPosition inputPosition) {
         this.inputPosition = inputPosition;
     }
 
-    public String getReference() {
-        return reference;
+    public String getTableName() {
+        return tableName;
     }
 
-    public void setReference(String reference) {
-        this.reference = reference;
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
     }
 
     public String getAlias() {
@@ -44,6 +45,14 @@ public class MvTableRef implements MvPositionHolder {
 
     public ArrayList<MvJoinCondition> getConditions() {
         return conditions;
+    }
+
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
+    }
+
+    public void setTableInfo(MvTableInfo tableInfo) {
+        this.tableInfo = tableInfo;
     }
 
     @Override
