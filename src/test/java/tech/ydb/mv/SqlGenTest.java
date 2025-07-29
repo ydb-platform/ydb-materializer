@@ -13,7 +13,7 @@ import tech.ydb.mv.parser.MvParser;
 public class SqlGenTest {
 
     @Test
-    public void testMakeCreateView() {
+    public void testMakeCreateView1() {
         // Parse the input SQL
         MvContext mc = new MvParser(SqlConstants.SQL_GOOD1).fill();
 
@@ -31,10 +31,32 @@ public class SqlGenTest {
         System.out.println(generatedSql);
 
         // Validate the generated SQL structure
-        validateGeneratedSql(generatedSql, target);
+        validateGeneratedSql1(generatedSql, target);
     }
 
-    private void validateGeneratedSql(String sql, tech.ydb.mv.model.MvTarget target) {
+    @Test
+    public void testMakeCreateView2() {
+        // Parse the input SQL
+        MvContext mc = new MvParser(SqlConstants.SQL_GOOD2).fill();
+
+        // Verify parsing was successful
+        Assertions.assertTrue(mc.isValid());
+        Assertions.assertEquals(1, mc.getTargets().size());
+
+        // Get the target and generate SQL
+        var target = mc.getTargets().get(0);
+        SqlGen sqlGen = new SqlGen(target);
+        String generatedSql = sqlGen.makeCreateView();
+
+        // Print the generated SQL for debugging
+        System.out.println("Generated SQL for SQL_GOOD2:");
+        System.out.println(generatedSql);
+
+        // Validate the generated SQL structure for SQL_GOOD2
+        validateGeneratedSql2(generatedSql, target);
+    }
+
+    private void validateGeneratedSql1(String sql, tech.ydb.mv.model.MvTarget target) {
         // Check that SQL starts with CREATE VIEW
         Assertions.assertTrue(sql.startsWith("CREATE VIEW "),
                 "SQL should start with 'CREATE VIEW'");
@@ -100,8 +122,91 @@ public class SqlGenTest {
         // Validate specific join conditions
         validateJoinConditions(sql);
 
-        // Validate constants usage
-        validateConstantsUsage(sql, target);
+        // Validate constants usage (only if there are literals)
+        if (target.getLiterals().size() > 0) {
+            validateConstantsUsage(sql, target);
+        }
+    }
+
+    private void validateGeneratedSql2(String sql, tech.ydb.mv.model.MvTarget target) {
+        // Check that SQL starts with CREATE VIEW
+        Assertions.assertTrue(sql.startsWith("CREATE VIEW "),
+                "SQL should start with 'CREATE VIEW'");
+
+        // Check that view name is present (plain identifier, no quotes needed)
+        Assertions.assertTrue(sql.contains("CREATE VIEW m1"),
+                "View name should be present");
+
+        // Check for WITH clause
+        Assertions.assertTrue(sql.contains("WITH (security_invoker=TRUE) AS"),
+                "SQL should contain WITH clause");
+
+        // Check for SELECT clause
+        Assertions.assertTrue(sql.contains("SELECT"),
+                "SQL should contain SELECT clause");
+
+        // Check that all columns are present
+        for (var column : target.getColumns()) {
+            Assertions.assertTrue(sql.contains(" AS " + column.getName()),
+                    "SQL should contain column: " + column.getName());
+        }
+
+        // Check for constants subquery (since we have literals in join conditions)
+        // For SQL_GOOD2, there are no literals in join conditions, so this check is not applicable
+        // The constants subquery would only be present if there are literals
+        if (target.getLiterals().size() > 0) {
+            Assertions.assertTrue(sql.contains("FROM (SELECT"),
+                    "SQL should contain constants subquery");
+            Assertions.assertTrue(sql.contains(") AS constants"),
+                    "SQL should have constants alias");
+        }
+
+        // Check for CROSS JOIN with main table (only if there are literals)
+        // For SQL_GOOD2, there are no literals, so no CROSS JOIN is needed
+        if (target.getLiterals().size() > 0) {
+            Assertions.assertTrue(sql.contains("CROSS JOIN"),
+                    "SQL should contain CROSS JOIN for main table");
+        } else {
+            // Should have standard FROM/JOIN structure
+            Assertions.assertTrue(sql.contains("FROM "),
+                    "SQL should contain FROM clause");
+        }
+
+        // Check for other joins
+        Assertions.assertTrue(sql.contains("INNER JOIN"),
+                "SQL should contain INNER JOIN");
+        Assertions.assertTrue(sql.contains("LEFT JOIN"),
+                "SQL should contain LEFT JOIN");
+
+        // Check for table aliases
+        Assertions.assertTrue(sql.contains("AS main"),
+                "SQL should contain main table alias");
+        Assertions.assertTrue(sql.contains("AS sub1"),
+                "SQL should contain sub1 table alias");
+        Assertions.assertTrue(sql.contains("AS sub2"),
+                "SQL should contain sub2 table alias");
+        Assertions.assertTrue(sql.contains("AS sub3"),
+                "SQL should contain sub3 table alias");
+
+        // Check for ON conditions
+        Assertions.assertTrue(sql.contains("ON "),
+                "SQL should contain ON conditions");
+
+        // Check for WHERE clause
+        Assertions.assertTrue(sql.contains("WHERE "),
+                "SQL should contain WHERE clause");
+
+        // Check for semicolon at the end
+        Assertions.assertTrue(sql.trim().endsWith(";"),
+                "SQL should end with semicolon");
+
+        // Validate specific join conditions for SQL_GOOD2
+        validateJoinConditions2(sql);
+
+        // Validate constants usage (only if there are literals)
+        if (target.getLiterals().size() > 0) {
+            validateConstantsUsage(sql, target);
+        }
     }
 
     private void validateJoinConditions(String sql) {
@@ -126,6 +231,33 @@ public class SqlGenTest {
                 "SQL should contain sub2.c3 reference");
         Assertions.assertTrue(sql.contains("sub2.c4"),
                 "SQL should contain sub2.c4 reference");
+        Assertions.assertTrue(sql.contains("sub3.c5"),
+                "SQL should contain sub3.c5 reference");
+    }
+
+    private void validateJoinConditions2(String sql) {
+        // For SQL_GOOD2, there are no literal constants in join conditions
+        // All joins are column-to-column comparisons
+
+        // Check that regular column references are present
+        Assertions.assertTrue(sql.contains("main.c1"),
+                "SQL should contain main.c1 reference");
+        Assertions.assertTrue(sql.contains("sub1.c1"),
+                "SQL should contain sub1.c1 reference");
+        Assertions.assertTrue(sql.contains("main.c2"),
+                "SQL should contain main.c2 reference");
+        Assertions.assertTrue(sql.contains("sub1.c2"),
+                "SQL should contain sub1.c2 reference");
+        Assertions.assertTrue(sql.contains("main.c3"),
+                "SQL should contain main.c3 reference");
+        Assertions.assertTrue(sql.contains("sub2.c3"),
+                "SQL should contain sub2.c3 reference");
+        Assertions.assertTrue(sql.contains("main.c4"),
+                "SQL should contain main.c4 reference");
+        Assertions.assertTrue(sql.contains("sub2.c4"),
+                "SQL should contain sub2.c4 reference");
+        Assertions.assertTrue(sql.contains("sub2.c5"),
+                "SQL should contain sub2.c5 reference");
         Assertions.assertTrue(sql.contains("sub3.c5"),
                 "SQL should contain sub3.c5 reference");
     }
