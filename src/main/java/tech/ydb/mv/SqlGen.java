@@ -74,7 +74,7 @@ public class SqlGen {
         // Start with constants subquery
         genConstantsSubquery(sb);
 
-        // Add CROSS JOIN with main table
+        // Add CROSS JOIN with main table and proper joins with other tables
         boolean firstJoin = true;
         for (MvJoinSource source : target.getSources()) {
             if (source.getMode() == MvJoinMode.MAIN) {
@@ -82,7 +82,15 @@ public class SqlGen {
                     sb.append("CROSS JOIN ");
                     firstJoin = false;
                 } else {
-                    sb.append("INNER JOIN ");
+                    // Add join type
+                    switch (source.getMode()) {
+                        case INNER ->
+                            sb.append("INNER JOIN ");
+                        case LEFT ->
+                            sb.append("LEFT JOIN ");
+                        default ->
+                            throw new IllegalStateException("Unsupported join mode: " + source.getMode());
+                    }
                 }
                 genJoinTable(sb, source);
             }
@@ -110,7 +118,7 @@ public class SqlGen {
     }
 
     private void genConstantsSubquery(StringBuilder sb) {
-        sb.append("FROM (SELECT ");
+        sb.append("FROM (SELECT").append(eol);
         boolean comma = false;
         for (MvLiteral literal : target.getLiterals()) {
             if (comma) {
@@ -119,16 +127,8 @@ public class SqlGen {
                 sb.append("   ");
                 comma = true;
             }
-            String value = literal.getValue();
-            // If the value is already quoted, remove the outer quotes and re-quote properly
-            if (value.startsWith("'") && value.endsWith("'")) {
-                String unquotedValue = value.substring(1, value.length() - 1);
-                sb.append("'").append(unquotedValue.replace("'", "''")).append("' AS ");
-                safeId(sb, literal.getIdentity());
-            } else {
-                sb.append("'").append(value.replace("'", "''")).append("' AS ");
-                safeId(sb, literal.getIdentity());
-            }
+            sb.append(literal.getValue()).append(" AS ");
+            safeId(sb, literal.getIdentity());
             sb.append(eol);
         }
         sb.append(") AS constants").append(eol);
@@ -161,7 +161,7 @@ public class SqlGen {
 
     private void genJoinConditions(StringBuilder sb, ArrayList<MvJoinCondition> conditions) {
         if (!conditions.isEmpty()) {
-            sb.append("ON ");
+            sb.append("    ON ");
             boolean firstCondition = true;
             for (MvJoinCondition condition : conditions) {
                 if (!firstCondition) {
