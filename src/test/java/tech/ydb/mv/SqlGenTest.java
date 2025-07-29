@@ -39,9 +39,9 @@ public class SqlGenTest {
         Assertions.assertTrue(sql.startsWith("CREATE VIEW "),
             "SQL should start with 'CREATE VIEW'");
 
-        // Check that view name is properly quoted
-        Assertions.assertTrue(sql.contains("CREATE VIEW `m1`"),
-            "View name should be properly quoted");
+        // Check that view name is present (plain identifier, no quotes needed)
+        Assertions.assertTrue(sql.contains("CREATE VIEW m1"),
+            "View name should be present");
 
         // Check for WITH clause
         Assertions.assertTrue(sql.contains("WITH (security_invoker=TRUE) AS"),
@@ -53,7 +53,7 @@ public class SqlGenTest {
 
         // Check that all columns are present
         for (var column : target.getColumns()) {
-            Assertions.assertTrue(sql.contains("`" + column.getName() + "`"),
+            Assertions.assertTrue(sql.contains(" AS " + column.getName()),
                 "SQL should contain column: " + column.getName());
         }
 
@@ -106,9 +106,9 @@ public class SqlGenTest {
 
     private void validateJoinConditions(String sql) {
         // Check that join conditions reference constants properly
-        Assertions.assertTrue(sql.contains("constants.`c0`"),
+        Assertions.assertTrue(sql.contains("constants.c0"),
             "SQL should reference constant c0");
-        Assertions.assertTrue(sql.contains("constants.`c1`"),
+        Assertions.assertTrue(sql.contains("constants.c1"),
             "SQL should reference constant c1");
 
         // Check that regular column references are present
@@ -143,9 +143,9 @@ public class SqlGenTest {
                 "SQL should contain properly quoted literal: " + expectedQuotedValue);
         }
 
-        // Check that constants are referenced with proper identity
+                // Check that constants are referenced with proper identity
         for (var literal : target.getLiterals()) {
-            Assertions.assertTrue(sql.contains("constants.`" + literal.getIdentity() + "`"),
+            Assertions.assertTrue(sql.contains("constants." + literal.getIdentity()), 
                 "SQL should reference constant with identity: " + literal.getIdentity());
         }
     }
