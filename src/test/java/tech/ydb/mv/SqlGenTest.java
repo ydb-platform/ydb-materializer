@@ -80,11 +80,11 @@ public class SqlGenTest {
         }
 
         // Check for constants subquery (since we have literals in join conditions)
-        Assertions.assertTrue(target.getLiterals().size() > 0,
+        Assertions.assertTrue(!target.getLiterals().isEmpty(),
                 "Target should have literals");
         Assertions.assertTrue(sql.contains("FROM (SELECT"),
                 "SQL should contain constants subquery");
-        Assertions.assertTrue(sql.contains(") AS constants"),
+        Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
                 "SQL should have constants alias");
 
         // Check for CROSS JOIN with main table
@@ -123,7 +123,7 @@ public class SqlGenTest {
         validateJoinConditions(sql);
 
         // Validate constants usage (only if there are literals)
-        if (target.getLiterals().size() > 0) {
+        if (!target.getLiterals().isEmpty()) {
             validateConstantsUsage(sql, target);
         }
     }
@@ -154,7 +154,7 @@ public class SqlGenTest {
         // Check for constants subquery (since we have literals in join conditions)
         // For SQL_GOOD2, there are no literals in join conditions, so this check is not applicable
         // The constants subquery would only be present if there are literals
-        if (target.getLiterals().size() > 0) {
+        if (!target.getLiterals().isEmpty()) {
             Assertions.assertTrue(sql.contains("FROM (SELECT"),
                     "SQL should contain constants subquery");
             Assertions.assertTrue(sql.contains(") AS constants"),
@@ -163,7 +163,7 @@ public class SqlGenTest {
 
         // Check for CROSS JOIN with main table (only if there are literals)
         // For SQL_GOOD2, there are no literals, so no CROSS JOIN is needed
-        if (target.getLiterals().size() > 0) {
+        if (!target.getLiterals().isEmpty()) {
             Assertions.assertTrue(sql.contains("CROSS JOIN"),
                     "SQL should contain CROSS JOIN for main table");
         } else {
@@ -204,16 +204,16 @@ public class SqlGenTest {
         validateJoinConditions2(sql);
 
         // Validate constants usage (only if there are literals)
-        if (target.getLiterals().size() > 0) {
+        if (!target.getLiterals().isEmpty()) {
             validateConstantsUsage(sql, target);
         }
     }
 
     private void validateJoinConditions(String sql) {
         // Check that join conditions reference constants properly
-        Assertions.assertTrue(sql.contains("constants.c0"),
+        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c0"),
                 "SQL should reference constant c0");
-        Assertions.assertTrue(sql.contains("constants.c1"),
+        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c1"),
                 "SQL should reference constant c1");
 
         // Check that regular column references are present
@@ -280,7 +280,7 @@ public class SqlGenTest {
 
         // Check that constants are referenced with proper identity
         for (var literal : target.getLiterals()) {
-            Assertions.assertTrue(sql.contains("constants." + literal.getIdentity()),
+            Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + "." + literal.getIdentity()),
                     "SQL should reference constant with identity: " + literal.getIdentity());
         }
     }

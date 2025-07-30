@@ -9,19 +9,22 @@ import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
-import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.Type;
 
 /**
- *
+ * SQL query generation logic.
  * @author mzinal
  */
 public class SqlGen {
 
+    public static final String SYS_CONST = "sys_const";
+    public static final String SYS_KEYS = "sys_keys";
+
+    private static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
+
     private final MvTarget target;
-    private final Pattern safeIdPattern = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
     private final String eol = System.getProperty("line.separator");
 
     public SqlGen(MvTarget target) {
@@ -33,19 +36,41 @@ public class SqlGen {
         sb.append("CREATE VIEW ");
         safeId(sb, target.getName()).append(eol);
         sb.append("  WITH (security_invoker=TRUE) AS").append(eol);
-        genFullSelect(sb);
+        genFullSelect(sb, false);
+        sb.append(";").append(eol);
+        return sb.toString();
+    }
+
+    public String makeSelect() {
+        final StringBuilder sb = new StringBuilder();
+        genDeclareMainKeys(sb);
+        genFullSelect(sb, true);
         sb.append(";").append(eol);
         return sb.toString();
     }
 
     public String makeUpsert() {
         final StringBuilder sb = new StringBuilder();
-        sb.append("CREATE VIEW ");
+        genDeclareMainKeys(sb);
+        sb.append("UPSERT INTO ");
         safeId(sb, target.getName()).append(eol);
+        genFullSelect(sb, true);
+        sb.append(";").append(eol);
         return sb.toString();
     }
 
-    private void genFullSelect(StringBuilder sb) {
+    private void genDeclareMainKeys(StringBuilder sb) {
+        if (target.getSources().isEmpty()) {
+            throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
+        }
+        var keyType = toKeyType(target.getSources().get(0).getTableInfo());
+        sb.append("DECLARE $").append(SYS_KEYS).append(" AS ");
+        sb.append("List<");
+        typeToString(sb, keyType);
+        sb.append(">;").append(eol);
+    }
+
+    private void genFullSelect(StringBuilder sb, boolean withInputKeys) {
         sb.append("SELECT").append(eol);
 
         // Generate column list
@@ -61,16 +86,8 @@ public class SqlGen {
             sb.append(eol);
         }
 
-        // Check if we have any literals in join conditions
-        boolean hasLiterals = hasLiteralsInJoins();
-
-        if (hasLiterals) {
-            // Generate constants subquery and CROSS JOIN
-            genFromWithConstants(sb);
-        } else {
-            // Generate simple FROM/JOIN structure
-            genFromSimple(sb);
-        }
+        // Generate simple FROM/JOIN structure
+        genSourcesPart(sb, withInputKeys);
 
         // Add WHERE clause if present
         if (target.getFilter() != null) {
@@ -84,41 +101,40 @@ public class SqlGen {
         return !target.getLiterals().isEmpty();
     }
 
-    private void genFromWithConstants(StringBuilder sb) {
-        // Start with constants subquery
-        genConstantsSubquery(sb);
+    private void genSourcesPart(StringBuilder sb, boolean withInputKeys) {
+        // Check if we have any literals in join conditions
+        boolean withConstants = hasLiteralsInJoins();
+        String mainTableStatement = "FROM";
+        if (withConstants) {
+            // Start with constants subquery
+            genConstantsSubquery(sb);
+            mainTableStatement = "CROSS JOIN";
+        }
 
-        // Add CROSS JOIN with main table and proper joins with other tables
+        // Add main table and proper joins with other tables
         boolean firstJoin = true;
         for (MvJoinSource source : target.getSources()) {
             if (firstJoin) {
-                sb.append("CROSS JOIN ");
-                firstJoin = false;
+                if (withInputKeys) {
+                    // AS_TABLE($sys_keys) AS sys_keys
+                    genInputKeys(sb);
+                }
+                // FROM / CROSS JOIN
+                sb.append(mainTableStatement).append(" ");
             } else {
                 // Add join type
-                switch (source.getMode()) {
-                    case INNER ->
-                        sb.append("INNER JOIN ");
-                    case LEFT ->
-                        sb.append("LEFT JOIN ");
-                    default ->
-                        throw new IllegalStateException("Unsupported join mode: " + source.getMode());
-                }
-            }
-            genJoinTable(sb, source);
-        }
-    }
-
-    private void genFromSimple(StringBuilder sb) {
-        boolean firstJoin = true;
-        for (MvJoinSource source : target.getSources()) {
-            if (firstJoin) {
-                sb.append("FROM ");
-                firstJoin = false;
-            } else {
                 genJoinSource(sb, source);
             }
+            // tableName AS tableAlias
             genJoinTable(sb, source);
+            if (firstJoin) {
+                if (withInputKeys) {
+                    genInputCondition(sb);
+                }
+                firstJoin = false;
+            } else {
+                genJoinConditions(sb, source.getConditions());
+            }
         }
     }
 
@@ -136,7 +152,31 @@ public class SqlGen {
             safeId(sb, literal.getIdentity());
             sb.append(eol);
         }
-        sb.append(") AS constants").append(eol);
+        sb.append(") AS ").append(SYS_CONST).append(eol);
+    }
+
+    private void genInputKeys(StringBuilder sb) {
+        sb.append("AS_TABLE($").append(SYS_KEYS)
+                .append(") AS ").append(SYS_KEYS)
+                .append(" INNER JOIN ");
+    }
+
+    private void genInputCondition(StringBuilder sb) {
+        if (target.getSources().isEmpty()) {
+            throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
+        }
+        var mainTable = target.getSources().get(0);
+        var primaryKey = mainTable.getTableInfo().getKey();
+        String statement = " ON ";
+        for (String pk : primaryKey) {
+            sb.append(statement);
+            statement = " AND ";
+            sb.append(SYS_KEYS).append(".");
+            safeId(sb, pk).append(" = ");
+            safeId(sb, mainTable.getTableAlias()).append(".");
+            safeId(sb, pk);
+        }
+        sb.append(eol);
     }
 
     private void genJoinSource(StringBuilder sb, MvJoinSource source) {
@@ -157,9 +197,6 @@ public class SqlGen {
         sb.append(" AS ");
         safeId(sb, source.getTableAlias());
         sb.append(eol);
-
-        // Add ON conditions
-        genJoinConditions(sb, source.getConditions());
     }
 
     private void genJoinConditions(StringBuilder sb, ArrayList<MvJoinCondition> conditions) {
@@ -180,7 +217,7 @@ public class SqlGen {
     private void genJoinCondition(StringBuilder sb, MvJoinCondition condition) {
         // First side of the condition
         if (condition.getFirstLiteral() != null) {
-            sb.append("constants.");
+            sb.append(SYS_CONST).append(".");
             safeId(sb, condition.getFirstLiteral().getIdentity());
         } else {
             safeId(sb, condition.getFirstAlias());
@@ -192,7 +229,7 @@ public class SqlGen {
 
         // Second side of the condition
         if (condition.getSecondLiteral() != null) {
-            sb.append("constants.");
+            sb.append(SYS_CONST).append(".");
             safeId(sb, condition.getSecondLiteral().getIdentity());
         } else {
             safeId(sb, condition.getSecondAlias());
@@ -201,8 +238,8 @@ public class SqlGen {
         }
     }
 
-    private StringBuilder safeId(StringBuilder sb, String identifier) {
-        if (safeIdPattern.matcher(identifier).matches()) {
+    public static StringBuilder safeId(StringBuilder sb, String identifier) {
+        if (SAFE_ID_PATT.matcher(identifier).matches()) {
             sb.append(identifier);
         } else if (identifier.startsWith("`") && identifier.endsWith("`")) {
             // Already quoted identifier, preserve as is
@@ -229,7 +266,7 @@ public class SqlGen {
         sb.append(c.getExpression());
     }
 
-    private StructType toKeyType(MvTableInfo ti) {
+    public static StructType toKeyType(MvTableInfo ti) {
         final HashMap<String, Type> m = new HashMap<>();
         for (String k : ti.getKey()) {
             m.put(k, ti.getColumns().get(k));
@@ -237,15 +274,10 @@ public class SqlGen {
         return StructType.of(m);
     }
 
-    public static String typeToString(Type t) {
-        if (t==null) {
+    public static StringBuilder typeToString(StringBuilder sb, StructType st) {
+        if (st==null) {
             throw new NullPointerException();
         }
-        if (!(t instanceof StructType)) {
-            return t.toString();
-        }
-        StructType st = (StructType) t;
-        final StringBuilder sb = new StringBuilder();
         sb.append("Struct<");
         for (int i=0; i<st.getMembersCount(); ++i) {
             String name = st.getMemberName(i);
@@ -253,10 +285,20 @@ public class SqlGen {
             if (i>0) {
                 sb.append(",");
             }
-            sb.append(name).append(":").append(type);
+            safeId(sb, name).append(":").append(type);
         }
         sb.append(">");
-        return sb.toString();
+        return sb;
+    }
+
+    public static String typeToString(Type t) {
+        if (t==null) {
+            throw new NullPointerException();
+        }
+        if (t instanceof StructType st) {
+             return typeToString(new StringBuilder(), st).toString();
+        }
+        return t.toString();
     }
 
 }
