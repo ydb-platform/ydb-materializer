@@ -23,16 +23,57 @@ import tech.ydb.test.junit5.YdbHelperExtension;
  */
 public class BasicIntegrationTest {
 
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(BasicIntegrationTest.class);
-
     private static final String CREATE_TABLES =
 """
 CREATE TABLE `test1/statements` (
-   statement_no Int32 NOT NULL,
-   statement_text Text NOT NULL,
-   PRIMARY KEY(statement_no)
+    statement_no Int32 NOT NULL,
+    statement_text Text NOT NULL,
+    PRIMARY KEY(statement_no)
 );
 
+CREATE TABLE `tests1/main_table` (
+    id Text NOT NULL,
+    c1 Timestamp,
+    c2 Int64,
+    c3 Decimal(22,9),
+    c20 Text,
+    PRIMARY KEY(id),
+    INDEX ix_c1 GLOBAL ON (c1)
+);
+
+CREATE TABLE `tests1/sub_table1` (
+    c1 Timestamp,
+    c2 Int64,
+    c8 Int32,
+    PRIMARY KEY(c1, c2)
+);
+
+CREATE TABLE `tests1/sub_table2` (
+    c3 Decimal(22,9),
+    c4 Text,
+    c9 Date,
+    PRIMARY KEY(c3, c4)
+);
+
+CREATE TABLE `tests1/sub_table3` (
+    c5 Int32 NOT NULL,
+    c10 Text,
+    PRIMARY KEY(c5)
+);
+
+CREATE TABLE `tests1/mv1` (
+    id Text NOT NULL,
+    c1 Timestamp,
+    c2 Int64,
+    c3 Decimal(22,9),
+    c8 Int32,
+    c9 Date,
+    c10 Text,
+    c11 Text,
+    c12 Int32,
+    PRIMARY KEY(id),
+    INDEX ix_c1 GLOBAL ON (c1)
+);
 """;
 
     @RegisterExtension
@@ -66,11 +107,11 @@ CREATE TABLE `test1/statements` (
         // has to wait a bit here
         try { Thread.sleep(5000L); } catch(InterruptedException ix) {}
         // now the work
-        LOG.info("Starting up...");
+        System.err.println("Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
-            LOG.info("Preparation: completed.");
+            System.err.println("Preparation: completed.");
         }
     }
 
@@ -79,7 +120,7 @@ CREATE TABLE `test1/statements` (
     }
 
     private void runDdl(YdbConnector conn, String sql) {
-        LOG.info("Preparation: creating tables...");
+        System.err.println("Preparation: creating tables...");
         conn.getQueryRetryCtx()
                 .supplyStatus(qs -> runDdl(qs, sql))
                 .join()
