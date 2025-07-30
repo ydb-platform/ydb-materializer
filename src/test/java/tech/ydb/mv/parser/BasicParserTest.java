@@ -54,7 +54,7 @@ public class BasicParserTest {
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
         var sub3Source = target0.getSources().get(3);
-        Assertions.assertEquals("`schema2/sub_table3`", sub3Source.getTableName());
+        Assertions.assertEquals("sub_table3", sub3Source.getTableName());
         Assertions.assertEquals("sub3", sub3Source.getTableAlias());
         Assertions.assertEquals(MvJoinMode.INNER, sub3Source.getMode());
         Assertions.assertEquals(1, sub3Source.getConditions().size());
@@ -163,7 +163,7 @@ public class BasicParserTest {
         Assertions.assertFalse(input3.isBatchMode());
 
         var input4 = mc.getInputs().get(3);
-        Assertions.assertEquals("`schema2/sub_table3`", input4.getTableName());
+        Assertions.assertEquals("sub_table3", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangeFeed());
         Assertions.assertTrue(input4.isBatchMode());
     }

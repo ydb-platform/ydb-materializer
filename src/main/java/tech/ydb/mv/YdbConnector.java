@@ -14,7 +14,6 @@ import tech.ydb.core.grpc.GrpcTransportBuilder;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
 import tech.ydb.scheme.SchemeClient;
-import tech.ydb.table.SessionRetryContext;
 import tech.ydb.table.TableClient;
 
 /**
@@ -30,7 +29,8 @@ public class YdbConnector implements AutoCloseable {
     private final QueryClient queryClient;
     private final SchemeClient schemeClient;
     private final TableClient tableClient;
-    private final SessionRetryContext tableRetryCtx;
+    private final tech.ydb.table.SessionRetryContext tableRetryCtx;
+    private final tech.ydb.query.tools.SessionRetryContext queryRetryCtx;
     private final String database;
     private final Config config;
 
@@ -76,13 +76,17 @@ public class YdbConnector implements AutoCloseable {
         this.database = tempTransport.getDatabase();
         try {
             this.tableClient = QueryClient.newTableClient(tempTransport).build();
-            this.tableRetryCtx = SessionRetryContext
+            this.tableRetryCtx = tech.ydb.table.SessionRetryContext
                     .create(this.tableClient)
                     .idempotent(true)
                     .build();
             this.queryClient = QueryClient.newClient(tempTransport)
                     .sessionPoolMinSize(1)
                     .sessionPoolMaxSize(config.getPoolSize())
+                    .build();
+            this.queryRetryCtx = tech.ydb.query.tools.SessionRetryContext
+                    .create(this.queryClient)
+                    .idempotent(true)
                     .build();
             this.schemeClient = SchemeClient.newClient(tempTransport).build();
             this.transport = tempTransport;
@@ -119,8 +123,12 @@ public class YdbConnector implements AutoCloseable {
         return tableClient;
     }
 
-    public SessionRetryContext getTableRetryCtx() {
+    public tech.ydb.table.SessionRetryContext getTableRetryCtx() {
         return tableRetryCtx;
+    }
+
+    public tech.ydb.query.tools.SessionRetryContext getQueryRetryCtx() {
+        return queryRetryCtx;
     }
 
     public QueryClient getQueryClient() {
@@ -275,6 +283,10 @@ public class YdbConnector implements AutoCloseable {
             } catch (IOException ix) {
                 throw new RuntimeException("Failed to read file " + fname, ix);
             }
+            return fromBytes(data, fname, prefix);
+        }
+
+        public static Config fromBytes(byte[] data, String fname, String prefix) {
             Properties props = new Properties();
             try {
                 props.loadFromXML(new ByteArrayInputStream(data));

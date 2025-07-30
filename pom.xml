@@ -61,6 +61,11 @@
             <version>5.13.4</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>tech.ydb.test</groupId>
+            <artifactId>ydb-junit5-support</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -162,6 +167,14 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.2.5</version>
+                        <configuration>
+                            <environmentVariables>
+                                <TESTCONTAINERS_REUSE_ENABLE>true</TESTCONTAINERS_REUSE_ENABLE>
+                                <YDB_ANONYMOUS_CREDENTIALS>1</YDB_ANONYMOUS_CREDENTIALS>
+                                <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                                <YDB_DOCKER_IMAGE>ydbplatform/local-ydb:25.1.3</YDB_DOCKER_IMAGE>
+                            </environmentVariables>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
