@@ -115,12 +115,11 @@ public class SqlGen {
         boolean firstJoin = true;
         for (MvJoinSource source : target.getSources()) {
             if (firstJoin) {
+                sb.append(mainTableStatement).append(" ");
                 if (withInputKeys) {
-                    // AS_TABLE($sys_keys) AS sys_keys
+                    // AS_TABLE($sys_keys) AS sys_keys INNER JOIN
                     genInputKeys(sb);
                 }
-                // FROM / CROSS JOIN
-                sb.append(mainTableStatement).append(" ");
             } else {
                 // Add join type
                 genJoinSource(sb, source);
@@ -157,8 +156,8 @@ public class SqlGen {
 
     private void genInputKeys(StringBuilder sb) {
         sb.append("AS_TABLE($").append(SYS_KEYS)
-                .append(") AS ").append(SYS_KEYS)
-                .append(" INNER JOIN ");
+                .append(") AS ").append(SYS_KEYS).append(eol);
+        sb.append("INNER JOIN ");
     }
 
     private void genInputCondition(StringBuilder sb) {
@@ -167,7 +166,7 @@ public class SqlGen {
         }
         var mainTable = target.getSources().get(0);
         var primaryKey = mainTable.getTableInfo().getKey();
-        String statement = " ON ";
+        String statement = "    ON ";
         for (String pk : primaryKey) {
             sb.append(statement);
             statement = " AND ";
