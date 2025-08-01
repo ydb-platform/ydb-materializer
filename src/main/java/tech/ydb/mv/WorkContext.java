@@ -17,6 +17,7 @@ import tech.ydb.mv.parser.MvParser;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.description.TableDescription;
+import tech.ydb.table.settings.DescribeTableSettings;
 
 /**
  * Work context for YDB Materializer activities.
@@ -104,8 +105,10 @@ public class WorkContext implements AutoCloseable {
         LOG.info("Describing table {} ...", path);
         TableDescription desc;
         try {
+            DescribeTableSettings dts = new DescribeTableSettings();
+            dts.setIncludeShardKeyBounds(true);
             desc = connector.getTableRetryCtx()
-                    .supplyResult(sess -> sess.describeTable(path))
+                    .supplyResult(sess -> sess.describeTable(path, dts))
                     .join().getValue();
         } catch(Exception ex) {
             LOG.warn("Failed to obtain description for table {}", path, ex);

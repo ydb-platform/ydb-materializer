@@ -190,25 +190,25 @@ public class BasicParserTest {
 
         // Test MvTableRef sources
         var mainSource = target0.getSources().get(0);
-        Assertions.assertEquals("`schema3/main_table`", mainSource.getTableName());
+        Assertions.assertEquals("schema3/main_table", mainSource.getTableName());
         Assertions.assertEquals("main", mainSource.getTableAlias());
         Assertions.assertEquals(MvJoinMode.MAIN, mainSource.getMode());
         Assertions.assertEquals(0, mainSource.getConditions().size());
 
         var sub1Source = target0.getSources().get(1);
-        Assertions.assertEquals("`schema3/sub_table1`", sub1Source.getTableName());
+        Assertions.assertEquals("schema3/sub_table1", sub1Source.getTableName());
         Assertions.assertEquals("sub1", sub1Source.getTableAlias());
         Assertions.assertEquals(MvJoinMode.INNER, sub1Source.getMode());
         Assertions.assertEquals(2, sub1Source.getConditions().size());
 
         var sub2Source = target0.getSources().get(2);
-        Assertions.assertEquals("`schema3/sub_table2`", sub2Source.getTableName());
+        Assertions.assertEquals("schema3/sub_table2", sub2Source.getTableName());
         Assertions.assertEquals("sub2", sub2Source.getTableAlias());
         Assertions.assertEquals(MvJoinMode.LEFT, sub2Source.getMode());
         Assertions.assertEquals(2, sub2Source.getConditions().size());
 
         var sub3Source = target0.getSources().get(3);
-        Assertions.assertEquals("`schema3/sub_table3`", sub3Source.getTableName());
+        Assertions.assertEquals("schema3/sub_table3", sub3Source.getTableName());
         Assertions.assertEquals("sub3", sub3Source.getTableAlias());
         Assertions.assertEquals(MvJoinMode.INNER, sub3Source.getMode());
         Assertions.assertEquals(1, sub3Source.getConditions().size());
@@ -302,22 +302,22 @@ public class BasicParserTest {
 
         // Test MvInput structure
         var input1 = mc.getInputs().get(0);
-        Assertions.assertEquals("`schema3/main_table`", input1.getTableName());
+        Assertions.assertEquals("schema3/main_table", input1.getTableName());
         Assertions.assertEquals("cf1", input1.getChangeFeed());
         Assertions.assertFalse(input1.isBatchMode());
 
         var input2 = mc.getInputs().get(1);
-        Assertions.assertEquals("`schema3/sub_table1`", input2.getTableName());
+        Assertions.assertEquals("schema3/sub_table1", input2.getTableName());
         Assertions.assertEquals("cf1", input2.getChangeFeed());
         Assertions.assertFalse(input2.isBatchMode());
 
         var input3 = mc.getInputs().get(2);
-        Assertions.assertEquals("`schema3/sub_table2`", input3.getTableName());
+        Assertions.assertEquals("schema3/sub_table2", input3.getTableName());
         Assertions.assertEquals("cf1", input3.getChangeFeed());
         Assertions.assertFalse(input3.isBatchMode());
 
         var input4 = mc.getInputs().get(3);
-        Assertions.assertEquals("`schema3/sub_table3`", input4.getTableName());
+        Assertions.assertEquals("schema3/sub_table3", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangeFeed());
         Assertions.assertTrue(input4.isBatchMode());
     }
