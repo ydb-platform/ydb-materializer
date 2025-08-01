@@ -15,6 +15,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
@@ -86,8 +87,8 @@ public class MvParser {
         var sel = stmt.simple_select_stmt();
         var src = new MvJoinSource(toInputPosition(sel.main_table_ref()));
         mt.getSources().add(src);
-        src.setTableName(sel.main_table_ref().identifier().getText());
-        src.setTableAlias(sel.table_alias().ID_PLAIN().getText());
+        src.setTableName(unquote(sel.main_table_ref().identifier()));
+        src.setTableAlias(unquote(sel.table_alias().ID_PLAIN()));
         src.setMode(MvJoinMode.MAIN);
         for (var part : sel.simple_join_part()) {
             fill(mt, part);
@@ -105,7 +106,7 @@ public class MvParser {
         mt.setFilter(filter);
         filter.setExpression(getExpressionText(cond.opaque_expression_body()));
         for (var tabref : cond.table_alias()) {
-            filter.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));
+            filter.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
         }
     }
 
@@ -129,8 +130,8 @@ public class MvParser {
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvJoinSource src = new MvJoinSource(toInputPosition(part));
         mt.getSources().add(src);
-        src.setTableName(part.join_table_ref().identifier().getText());
-        src.setTableAlias(part.table_alias().ID_PLAIN().getText());
+        src.setTableName(unquote(part.join_table_ref().identifier()));
+        src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
         if (part.LEFT()!=null) {
             src.setMode(MvJoinMode.LEFT);
         } else {
@@ -146,13 +147,13 @@ public class MvParser {
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
             var v = cond.column_reference_first().column_reference();
-            mjc.setFirstAlias(v.table_alias().ID_PLAIN().getText());
-            mjc.setFirstColumn(v.column_name().identifier().getText());
+            mjc.setFirstAlias(unquote(v.table_alias().ID_PLAIN()));
+            mjc.setFirstColumn(unquote(v.column_name().identifier()));
         }
         if (cond.column_reference_second()!=null) {
             var v = cond.column_reference_second().column_reference();
-            mjc.setSecondAlias(v.table_alias().ID_PLAIN().getText());
-            mjc.setSecondColumn(v.column_name().identifier().getText());
+            mjc.setSecondAlias(unquote(v.table_alias().ID_PLAIN()));
+            mjc.setSecondColumn(unquote(v.column_name().identifier()));
         }
         if (cond.constant_first()!=null) {
             mjc.setFirstLiteral(mt.addLiteral(cond.constant_first().getText()));
@@ -165,31 +166,39 @@ public class MvParser {
     private void fill(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
         var column = new MvColumn(toInputPosition(cc));
         mt.getColumns().add(column);
-        column.setName(cc.column_alias().ID_PLAIN().getText());
+        column.setName(unquote(cc.column_alias().ID_PLAIN()));
         if (cc.opaque_expression()!=null) {
             MvComputation expr = new MvComputation(toInputPosition(cc.opaque_expression()));
             column.setComputation(expr);
             expr.setExpression(getExpressionText(cc.opaque_expression().opaque_expression_body()));
             for (var tabref : cc.opaque_expression().table_alias()) {
-                expr.getSources().add(new MvComputation.Source(tabref.ID_PLAIN().getText()));
+                expr.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
             }
         }
         if (cc.column_reference()!=null) {
-            column.setSourceColumn(cc.column_reference().column_name().identifier().getText());
-            column.setSourceAlias(cc.column_reference().table_alias().ID_PLAIN().getText());
+            column.setSourceColumn(unquote(cc.column_reference().column_name().identifier()));
+            column.setSourceAlias(unquote(cc.column_reference().table_alias().ID_PLAIN()));
         }
     }
 
     private void fill(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
         MvInput mi = new MvInput(toInputPosition(stmt));
         mc.getInputs().add(mi);
-        mi.setTableName(stmt.main_table_ref().identifier().getText());
-        mi.setChangeFeed(stmt.changefeed_name().identifier().getText());
+        mi.setTableName(unquote(stmt.main_table_ref().identifier()));
+        mi.setChangeFeed(unquote(stmt.changefeed_name().identifier()));
         if (stmt.STREAM()!=null) {
             mi.setBatchMode(false);
         } else {
             mi.setBatchMode(true);
         }
+    }
+
+    private static String unquote(ParseTree node) {
+        String v = node.getText();
+        if (v.length() > 2 && v.startsWith("`") && v.endsWith("`")) {
+            v = v.substring(1, v.length()-1);
+        }
+        return v;
     }
 
     public static void link(MvContext mc) {

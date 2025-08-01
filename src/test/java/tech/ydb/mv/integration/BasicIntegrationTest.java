@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import tech.ydb.common.transaction.TxMode;
@@ -93,7 +94,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INNER JOIN `test1/sub_table3` AS sub3
     ON sub3.c5=58
   WHERE COMPUTE ON main, sub2
-  #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;);@@),
+  #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
   (2, @@PROCESS `test1/main_table` CHANGEFEED cf1 AS STREAM;@@),
   (3, @@PROCESS `test1/sub_table1` CHANGEFEED cf2 AS STREAM;@@),
   (4, @@PROCESS `test1/sub_table2` CHANGEFEED cf3 AS STREAM;@@),
@@ -137,9 +138,13 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
             fillDatabase(conn);
             System.err.println("Preparation: completed.");
             try (WorkContext wc = new WorkContext(conn)) {
-                wc.getContext();
+                validateContext(wc);
             }
         }
+    }
+
+    void validateContext(WorkContext wc) {
+        Assertions.assertTrue(wc.getContext().isValid());
     }
 
     private void fillDatabase(YdbConnector conn) {

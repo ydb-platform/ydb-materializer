@@ -16,6 +16,7 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvParser;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
+import tech.ydb.table.description.TableDescription;
 
 /**
  * Work context for YDB Materializer activities.
@@ -100,26 +101,28 @@ public class WorkContext implements AutoCloseable {
         } else {
             path = connector.getDatabase() + "/" + tabname;
         }
-        LOG.info("Describing table {} ...", tabname);
+        LOG.info("Describing table {} ...", path);
+        TableDescription desc;
         try {
-            var desc = connector.getTableRetryCtx()
+            desc = connector.getTableRetryCtx()
                     .supplyResult(sess -> sess.describeTable(path))
                     .join().getValue();
-            MvTableInfo ret = new MvTableInfo(tabname);
-            for (var c : desc.getColumns()) {
-                ret.getColumns().putLast(c.getName(), c.getType());
-            }
-            for (String k : desc.getPrimaryKeys()) {
-                ret.getKey().add(k);
-            }
-            for (var i : desc.getIndexes()) {
-                ret.getIndexes().put(i.getName(), new ArrayList<>(i.getColumns()));
-            }
-            return ret;
         } catch(Exception ex) {
-            LOG.warn("Failed to obtain description for table {}", tabname);
+            LOG.warn("Failed to obtain description for table {}", path, ex);
             return null;
         }
+
+        MvTableInfo ret = new MvTableInfo(tabname);
+        for (var c : desc.getColumns()) {
+            ret.getColumns().putLast(c.getName(), c.getType());
+        }
+        for (String k : desc.getPrimaryKeys()) {
+            ret.getKey().add(k);
+        }
+        for (var i : desc.getIndexes()) {
+            ret.getIndexes().put(i.getName(), new ArrayList<>(i.getColumns()));
+        }
+        return ret;
     }
 
     private void validate() {
