@@ -201,7 +201,7 @@ public class YdbConnector implements AutoCloseable {
     }
 
     public static String safe(String value) {
-        return value.replaceAll("[;.()$+-\\\\]", "_");
+        return value.replaceAll("[;.$`'\\\"()\\\\]", "_");
     }
 
     /**

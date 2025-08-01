@@ -34,6 +34,12 @@ public class WorkContext implements AutoCloseable {
         refreshMetadata();
     }
 
+    public WorkContext(YdbConnector connector) {
+        this.connector = connector;
+        this.context = readContext(this.connector);
+        refreshMetadata();
+    }
+
     public YdbConnector getConnector() {
         return connector;
     }
