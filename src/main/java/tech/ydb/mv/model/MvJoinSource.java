@@ -6,17 +6,17 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvJoinSource implements MvPositionHolder {
+public class MvJoinSource implements MvSqlPosHolder {
 
     private String tableName;
     private String tableAlias;
     private MvJoinMode mode;
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
     private MvTableInfo tableInfo;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvJoinSource(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvJoinSource(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public boolean isTableKnown() {
@@ -61,12 +61,12 @@ public class MvJoinSource implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
 }

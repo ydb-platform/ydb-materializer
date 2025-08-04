@@ -6,7 +6,7 @@ import tech.ydb.table.values.Type;
  * Column of the materialized view table.
  * @author mzinal
  */
-public class MvColumn implements MvPositionHolder {
+public class MvColumn implements MvSqlPosHolder {
 
     private String name;
     private Type type;
@@ -14,10 +14,10 @@ public class MvColumn implements MvPositionHolder {
     private String sourceColumn;
     private MvJoinSource sourceRef;
     private MvComputation computation;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvColumn(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvColumn(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public boolean isComputation() {
@@ -73,12 +73,12 @@ public class MvColumn implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
 }

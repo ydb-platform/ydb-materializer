@@ -3,23 +3,22 @@ package tech.ydb.mv.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 
 /**
  *
  * @author mzinal
  */
-public class MvTarget implements MvPositionHolder {
+public class MvTarget implements MvSqlPosHolder {
 
     private String name;
     private final ArrayList<MvJoinSource> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvTarget(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvTarget(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public MvJoinSource getSourceByAlias(String name) {
@@ -79,12 +78,12 @@ public class MvTarget implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     @Override

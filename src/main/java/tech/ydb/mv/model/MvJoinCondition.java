@@ -4,7 +4,7 @@ package tech.ydb.mv.model;
  *
  * @author mzinal
  */
-public class MvJoinCondition implements MvPositionHolder {
+public class MvJoinCondition implements MvSqlPosHolder {
 
     private MvLiteral firstLiteral;
     private MvJoinSource firstRef;
@@ -14,10 +14,10 @@ public class MvJoinCondition implements MvPositionHolder {
     private MvJoinSource secondRef;
     private String secondAlias;
     private String secondColumn;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvJoinCondition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvJoinCondition(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public MvLiteral getFirstLiteral() {
@@ -85,12 +85,12 @@ public class MvJoinCondition implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
 }

@@ -143,6 +143,20 @@ public class YdbConnector implements AutoCloseable {
         return database;
     }
 
+    public String fullTableName(String tableName) {
+        while (tableName.endsWith("/")) {
+            tableName = tableName.substring(0, tableName.length()-1);
+        }
+        if (tableName.startsWith("/")) {
+            return tableName;
+        }
+        return database + "/" + tableName;
+    }
+
+    public String fullCdcTopicName(String tableName, String changefeed) {
+        return fullTableName(tableName) + "/" + changefeed;
+    }
+
     public QuerySession createQuerySession() {
         return queryClient.createSession(Duration.ofSeconds(60))
                 .join().getValue();

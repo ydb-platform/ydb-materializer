@@ -4,16 +4,16 @@ package tech.ydb.mv.model;
  *
  * @author mzinal
  */
-public class MvInput implements MvPositionHolder {
+public class MvInput implements MvSqlPosHolder {
 
     private String tableName;
     private String changeFeed;
     private MvTableInfo tableInfo;
     private boolean batchMode;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvInput(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvInput(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public boolean isTableKnown() {
@@ -54,12 +54,12 @@ public class MvInput implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos inputPosition) {
+        this.sqlPos = inputPosition;
     }
 
 }

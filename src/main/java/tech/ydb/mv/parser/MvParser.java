@@ -20,7 +20,7 @@ import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvInputPosition;
+import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
@@ -69,23 +69,23 @@ public class MvParser {
         return ctx;
     }
 
-    private static MvInputPosition toInputPosition(ParserRuleContext ctx) {
+    private static MvSqlPos toSqlPos(ParserRuleContext ctx) {
         if (ctx==null) {
             return null;
         }
         var p = ctx.getStart();
         if (p!=null) {
-            return new MvInputPosition(p.getLine(), p.getCharPositionInLine());
+            return new MvSqlPos(p.getLine(), p.getCharPositionInLine());
         }
         return null;
     }
 
     private void fill(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        MvTarget mt = new MvTarget(toInputPosition(stmt));
+        MvTarget mt = new MvTarget(toSqlPos(stmt));
         mc.getTargets().add(mt);
         mt.setName(stmt.identifier().getText());
         var sel = stmt.simple_select_stmt();
-        var src = new MvJoinSource(toInputPosition(sel.main_table_ref()));
+        var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
         mt.getSources().add(src);
         src.setTableName(unquote(sel.main_table_ref().identifier()));
         src.setTableAlias(unquote(sel.table_alias().ID_PLAIN()));
@@ -102,7 +102,7 @@ public class MvParser {
     }
 
     private void fillCondition(MvTarget mt, YdbMatViewV1Parser.Opaque_expressionContext cond) {
-        MvComputation filter = new MvComputation(toInputPosition(cond));
+        MvComputation filter = new MvComputation(toSqlPos(cond));
         mt.setFilter(filter);
         filter.setExpression(getExpressionText(cond.opaque_expression_body()));
         for (var tabref : cond.table_alias()) {
@@ -128,7 +128,7 @@ public class MvParser {
     }
 
     private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
-        MvJoinSource src = new MvJoinSource(toInputPosition(part));
+        MvJoinSource src = new MvJoinSource(toSqlPos(part));
         mt.getSources().add(src);
         src.setTableName(unquote(part.join_table_ref().identifier()));
         src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
@@ -143,7 +143,7 @@ public class MvParser {
     }
 
     private void fill(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
-        MvJoinCondition mjc = new MvJoinCondition(toInputPosition(cond));
+        MvJoinCondition mjc = new MvJoinCondition(toSqlPos(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
             var v = cond.column_reference_first().column_reference();
@@ -164,11 +164,11 @@ public class MvParser {
     }
 
     private void fill(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
-        var column = new MvColumn(toInputPosition(cc));
+        var column = new MvColumn(toSqlPos(cc));
         mt.getColumns().add(column);
         column.setName(unquote(cc.column_alias().ID_PLAIN()));
         if (cc.opaque_expression()!=null) {
-            MvComputation expr = new MvComputation(toInputPosition(cc.opaque_expression()));
+            MvComputation expr = new MvComputation(toSqlPos(cc.opaque_expression()));
             column.setComputation(expr);
             expr.setExpression(getExpressionText(cc.opaque_expression().opaque_expression_body()));
             for (var tabref : cc.opaque_expression().table_alias()) {
@@ -182,7 +182,7 @@ public class MvParser {
     }
 
     private void fill(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
-        MvInput mi = new MvInput(toInputPosition(stmt));
+        MvInput mi = new MvInput(toSqlPos(stmt));
         mc.getInputs().add(mi);
         mi.setTableName(unquote(stmt.main_table_ref().identifier()));
         mi.setChangeFeed(unquote(stmt.changefeed_name().identifier()));

@@ -4,24 +4,22 @@ package tech.ydb.mv.model;
  * Logical check issues.
  * @author zinal
  */
-public interface MvIssue {
+public interface MvIssue extends MvSqlPosHolder {
 
     boolean isError();
 
     String getMessage();
 
-    MvInputPosition getPosition();
-
     public static abstract class Issue implements MvIssue {
-        final MvInputPosition mip;
+        final MvSqlPos sqlPos;
 
-        public Issue(MvInputPosition mip) {
-            this.mip = mip;
+        public Issue(MvSqlPos mip) {
+            this.sqlPos = mip;
         }
 
         @Override
-        public MvInputPosition getPosition() {
-            return mip;
+        public MvSqlPos getSqlPos() {
+            return sqlPos;
         }
 
         @Override
@@ -31,7 +29,7 @@ public interface MvIssue {
     }
 
     public static abstract class Error extends Issue {
-        public Error(MvInputPosition mip) {
+        public Error(MvSqlPos mip) {
             super(mip);
         }
 
@@ -42,7 +40,7 @@ public interface MvIssue {
     }
 
     public static abstract class Warning extends Issue {
-        public Warning(MvInputPosition mip) {
+        public Warning(MvSqlPos mip) {
             super(mip);
         }
 
@@ -56,13 +54,13 @@ public interface MvIssue {
         private final String msg;
 
         public LexerError(int row, int column, String msg) {
-            super(new MvInputPosition(row, column));
+            super(new MvSqlPos(row, column));
             this.msg = msg;
         }
 
         @Override
         public String getMessage() {
-            return "Lexer error at " + mip + ": " + msg;
+            return "Lexer error at " + sqlPos + ": " + msg;
         }
     }
 
@@ -70,13 +68,13 @@ public interface MvIssue {
         private final String msg;
 
         public ParserError(int row, int column, String msg) {
-            super(new MvInputPosition(row, column));
+            super(new MvSqlPos(row, column));
             this.msg = msg;
         }
 
         @Override
         public String getMessage() {
-            return "Parser error at " + mip + ": " + msg;
+            return "Parser error at " + sqlPos + ": " + msg;
         }
     }
 
@@ -84,8 +82,8 @@ public interface MvIssue {
         private final MvTarget target;
         private final String aliasName;
 
-        public UnknownAlias(MvTarget target, String aliasName, MvPositionHolder place) {
-            super(place.getInputPosition());
+        public UnknownAlias(MvTarget target, String aliasName, MvSqlPosHolder place) {
+            super(place.getSqlPos());
             this.target = target;
             this.aliasName = aliasName;
         }
@@ -94,7 +92,7 @@ public interface MvIssue {
         public String getMessage() {
             return "Cannot resolve alias `" + aliasName
                     + "` in target " + target
-                    + " at " + mip;
+                    + " at " + sqlPos;
         }
     }
 
@@ -102,8 +100,8 @@ public interface MvIssue {
         private final MvTarget target;
         private final String tableName;
 
-        public UnknownSourceTable(MvTarget target, String tableName, MvPositionHolder place) {
-            super(place.getInputPosition());
+        public UnknownSourceTable(MvTarget target, String tableName, MvSqlPosHolder place) {
+            super(place.getSqlPos());
             this.target = target;
             this.tableName = tableName;
         }
@@ -112,7 +110,7 @@ public interface MvIssue {
         public String getMessage() {
             return "Unknown table `" + tableName
                     + "` in target " + target
-                    + " at " + mip;
+                    + " at " + sqlPos;
         }
     }
 
@@ -120,8 +118,8 @@ public interface MvIssue {
         private final MvInput input;
         private final String tableName;
 
-        public UnknownInputTable(MvInput input, String tableName, MvPositionHolder place) {
-            super(place.getInputPosition());
+        public UnknownInputTable(MvInput input, String tableName, MvSqlPosHolder place) {
+            super(place.getSqlPos());
             this.input = input;
             this.tableName = tableName;
         }
@@ -130,7 +128,7 @@ public interface MvIssue {
         public String getMessage() {
             return "Unknown table `" + tableName
                     + "` in input " + input
-                    + " at " + mip;
+                    + " at " + sqlPos;
         }
     }
 

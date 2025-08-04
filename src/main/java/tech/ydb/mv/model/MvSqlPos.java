@@ -4,12 +4,12 @@ package tech.ydb.mv.model;
  *
  * @author zinal
  */
-public class MvInputPosition {
+public class MvSqlPos {
 
     private final int line;
     private final int column;
 
-    public MvInputPosition(int line, int column) {
+    public MvSqlPos(int line, int column) {
         this.line = line;
         this.column = column;
     }

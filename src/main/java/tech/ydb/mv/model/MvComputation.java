@@ -6,14 +6,14 @@ import java.util.ArrayList;
  *
  * @author mzinal
  */
-public class MvComputation implements MvPositionHolder {
+public class MvComputation implements MvSqlPosHolder {
 
     private final ArrayList<Source> sources = new ArrayList<>();
     private String expression;
-    private MvInputPosition inputPosition;
+    private MvSqlPos sqlPos;
 
-    public MvComputation(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public MvComputation(MvSqlPos sqlPos) {
+        this.sqlPos = sqlPos;
     }
 
     public String getExpression() {
@@ -29,12 +29,12 @@ public class MvComputation implements MvPositionHolder {
     }
 
     @Override
-    public MvInputPosition getInputPosition() {
-        return inputPosition;
+    public MvSqlPos getSqlPos() {
+        return sqlPos;
     }
 
-    public void setInputPosition(MvInputPosition inputPosition) {
-        this.inputPosition = inputPosition;
+    public void setSqlPos(MvSqlPos inputPosition) {
+        this.sqlPos = inputPosition;
     }
 
     public static class Source {
