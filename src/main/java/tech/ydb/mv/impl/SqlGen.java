@@ -1,4 +1,4 @@
-package tech.ydb.mv;
+package tech.ydb.mv.impl;
 
 import java.util.ArrayList;
 import java.util.HashMap;

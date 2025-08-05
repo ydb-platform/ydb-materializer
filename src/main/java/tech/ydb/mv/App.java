@@ -22,7 +22,7 @@ public class App {
         }
         try {
             YdbConnector.Config ycc = YdbConnector.Config.fromFile(args[0]);
-            try (WorkContext wc = new WorkContext(ycc)) {
+            try (MvService wc = new MvService(ycc)) {
                 switch (parseMode(args[1])) {
                     case CHECK:
                         break;

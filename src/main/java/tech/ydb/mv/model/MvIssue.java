@@ -116,18 +116,64 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownInputTable extends Error {
         private final MvInput input;
-        private final String tableName;
 
-        public UnknownInputTable(MvInput input, String tableName, MvSqlPosHolder place) {
-            super(place.getSqlPos());
+        public UnknownInputTable(MvInput input) {
+            super(input.getSqlPos());
             this.input = input;
-            this.tableName = tableName;
         }
 
         @Override
         public String getMessage() {
-            return "Unknown table `" + tableName
-                    + "` in input " + input
+            return "Unknown table `" + input.getTableName()
+                    + "` at " + sqlPos;
+        }
+    }
+
+    public static class UnknownChangefeed extends Error {
+        private final MvInput input;
+
+        public UnknownChangefeed(MvInput input) {
+            super(input.getSqlPos());
+            this.input = input;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown or illegal changefeed `" + input.getChangeFeed()
+                    + "` for table `" + input.getTableName()
+                    + "` at " + sqlPos;
+        }
+    }
+
+    public static class UselessInput extends Warning {
+        private final MvInput input;
+
+        public UselessInput(MvInput input) {
+            super(input.getSqlPos());
+            this.input = input;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Useless input for table `" + input.getTableName()
+                    + "` at " + sqlPos;
+        }
+    }
+
+    public static class MissingInput extends Warning {
+        private final MvTarget target;
+        private final MvJoinSource source;
+
+        public MissingInput(MvTarget target, MvJoinSource source) {
+            super(source.getSqlPos());
+            this.target = target;
+            this.source = source;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Missing changefeed input for table `" + source.getTableName()
+                    + "` in target " + target
                     + " at " + sqlPos;
         }
     }

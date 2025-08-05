@@ -3,6 +3,8 @@ package tech.ydb.mv.integration;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Assertions;
@@ -11,8 +13,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.mv.App;
-import tech.ydb.mv.WorkContext;
+import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.model.MvIssue;
 import tech.ydb.query.QuerySession;
 
 import tech.ydb.test.junit5.YdbHelperExtension;
@@ -76,6 +79,11 @@ CREATE TABLE `test1/mv1` (
     PRIMARY KEY(id),
     INDEX ix_c1 GLOBAL ON (c1)
 );
+
+ALTER TABLE `test1/main_table` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+ALTER TABLE `test1/sub_table1` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 """;
 
     private static final String UPSERT_DATA =
@@ -137,14 +145,27 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
             System.err.println("Preparation: completed.");
-            try (WorkContext wc = new WorkContext(conn)) {
+            try (MvService wc = new MvService(conn)) {
                 validateContext(wc);
             }
         }
     }
 
-    void validateContext(WorkContext wc) {
+    private void validateContext(MvService wc) {
+        printIssues("warnings", wc.getContext().getWarnings());
+        printIssues("errors", wc.getContext().getErrors());
         Assertions.assertTrue(wc.getContext().isValid());
+    }
+
+    private void printIssues(String type, List<MvIssue> issues) {
+        if (issues==null || issues.isEmpty()) {
+            System.out.println("\tno " + type);
+            return;
+        }
+        System.out.println("\tCurrent " + type + ":");
+        for (MvIssue mi : issues) {
+            System.out.println("\t\t" + mi.getMessage());
+        }
     }
 
     private void fillDatabase(YdbConnector conn) {
