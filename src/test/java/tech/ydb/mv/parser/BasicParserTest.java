@@ -22,10 +22,11 @@ public class BasicParserTest {
         Assertions.assertEquals(0, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
         Assertions.assertEquals(1, mc.getTargets().size());
-        Assertions.assertEquals(4, mc.getInputs().size());
+        Assertions.assertEquals(1, mc.getHandlers().size());
+        Assertions.assertEquals(4, mc.getHandlers().values().iterator().next().getInputs().size());
 
         // Test MvTarget (view) structure
-        var target0 = mc.getTargets().get(0);
+        var target0 = mc.getTargets().values().iterator().next();
         Assertions.assertEquals("m1", target0.getName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
@@ -147,22 +148,23 @@ public class BasicParserTest {
         Assertions.assertEquals("sub2", target0.getFilter().getSources().get(1).getAlias());
 
         // Test MvInput structure
-        var input1 = mc.getInputs().get(0);
+        var handler1 = mc.getHandlers().values().iterator().next();
+        var input1 = handler1.getInputs().get(0);
         Assertions.assertEquals("main_table", input1.getTableName());
         Assertions.assertEquals("cf1", input1.getChangeFeed());
         Assertions.assertFalse(input1.isBatchMode());
 
-        var input2 = mc.getInputs().get(1);
+        var input2 = handler1.getInputs().get(1);
         Assertions.assertEquals("sub_table1", input2.getTableName());
         Assertions.assertEquals("cf1", input2.getChangeFeed());
         Assertions.assertFalse(input2.isBatchMode());
 
-        var input3 = mc.getInputs().get(2);
+        var input3 = handler1.getInputs().get(2);
         Assertions.assertEquals("sub_table2", input3.getTableName());
         Assertions.assertEquals("cf1", input3.getChangeFeed());
         Assertions.assertFalse(input3.isBatchMode());
 
-        var input4 = mc.getInputs().get(3);
+        var input4 = handler1.getInputs().get(3);
         Assertions.assertEquals("sub_table3", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangeFeed());
         Assertions.assertTrue(input4.isBatchMode());
@@ -177,11 +179,12 @@ public class BasicParserTest {
         Assertions.assertEquals(0, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
         Assertions.assertEquals(1, mc.getTargets().size());
-        Assertions.assertEquals(4, mc.getInputs().size());
+        Assertions.assertEquals(1, mc.getHandlers().size());
+        Assertions.assertEquals(4, mc.getHandlers().values().iterator().next().getInputs().size());
 
         // Test MvTarget (view) structure
-        var target0 = mc.getTargets().get(0);
-        Assertions.assertEquals("m1", target0.getName());
+        var target0 = mc.getTargets().values().iterator().next();
+        Assertions.assertEquals("schema3/mv1", target0.getName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
         Assertions.assertNotNull(target0.getFilter());
@@ -301,22 +304,23 @@ public class BasicParserTest {
         Assertions.assertEquals("sub2", target0.getFilter().getSources().get(1).getAlias());
 
         // Test MvInput structure
-        var input1 = mc.getInputs().get(0);
+        var handler1 = mc.getHandlers().values().iterator().next();
+        var input1 = handler1.getInputs().get(0);
         Assertions.assertEquals("schema3/main_table", input1.getTableName());
         Assertions.assertEquals("cf1", input1.getChangeFeed());
         Assertions.assertFalse(input1.isBatchMode());
 
-        var input2 = mc.getInputs().get(1);
+        var input2 = handler1.getInputs().get(1);
         Assertions.assertEquals("schema3/sub_table1", input2.getTableName());
         Assertions.assertEquals("cf1", input2.getChangeFeed());
         Assertions.assertFalse(input2.isBatchMode());
 
-        var input3 = mc.getInputs().get(2);
+        var input3 = handler1.getInputs().get(2);
         Assertions.assertEquals("schema3/sub_table2", input3.getTableName());
         Assertions.assertEquals("cf1", input3.getChangeFeed());
         Assertions.assertFalse(input3.isBatchMode());
 
-        var input4 = mc.getInputs().get(3);
+        var input4 = handler1.getInputs().get(3);
         Assertions.assertEquals("schema3/sub_table3", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangeFeed());
         Assertions.assertTrue(input4.isBatchMode());

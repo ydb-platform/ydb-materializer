@@ -25,7 +25,7 @@ public class SqlGenSelectUpsertTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         addTableInfoToTarget(target);
 
         // Generate SQL
@@ -50,7 +50,7 @@ public class SqlGenSelectUpsertTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         addTableInfoToTarget(target);
 
         // Generate SQL
@@ -75,7 +75,7 @@ public class SqlGenSelectUpsertTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         addTableInfoToTarget2(target);
 
         // Generate SQL
@@ -100,7 +100,7 @@ public class SqlGenSelectUpsertTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         addTableInfoToTarget2(target);
 
         // Generate SQL
@@ -474,7 +474,7 @@ public class SqlGenSelectUpsertTest {
                 "Type declaration should include id field");
 
         // Check for UPSERT INTO clause
-        Assertions.assertTrue(sql.contains("UPSERT INTO " + target.getName()),
+        Assertions.assertTrue(sql.contains("UPSERT INTO `" + target.getName()),
                 "SQL should contain UPSERT INTO clause");
 
         // Check for AS_TABLE subquery
@@ -626,4 +626,4 @@ public class SqlGenSelectUpsertTest {
                     "SQL should reference constant with identity: " + literal.getIdentity());
         }
     }
-} 
+}

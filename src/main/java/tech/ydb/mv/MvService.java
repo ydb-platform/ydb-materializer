@@ -11,6 +11,7 @@ import tech.ydb.table.settings.DescribeTableSettings;
 import tech.ydb.mv.impl.MvContextReader;
 import tech.ydb.mv.impl.MvContextValidator;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvJoinSource;
@@ -71,25 +72,29 @@ public class MvService implements AutoCloseable {
 
     private TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
-        for (MvTarget t : context.getTargets()) {
+        for (MvTarget t : context.getTargets().values()) {
             for (MvJoinSource r : t.getSources()) {
                 ret.add(r.getTableName());
             }
         }
-        for (MvInput i : context.getInputs()) {
-            ret.add(i.getTableName());
+        for (MvHandler h : context.getHandlers().values()) {
+            for (MvInput i : h.getInputs()) {
+                ret.add(i.getTableName());
+            }
         }
         return ret;
     }
 
     private void linkTables(HashMap<String, MvTableInfo> info) {
-        for (MvTarget t : context.getTargets()) {
+        for (MvTarget t : context.getTargets().values()) {
             for (MvJoinSource r : t.getSources()) {
                 r.setTableInfo(info.get(r.getTableName()));
             }
         }
-        for (MvInput i : context.getInputs()) {
-            i.setTableInfo(info.get(i.getTableName()));
+        for (MvHandler h : context.getHandlers().values()) {
+            for (MvInput i : h.getInputs()) {
+                i.setTableInfo(info.get(i.getTableName()));
+            }
         }
     }
 

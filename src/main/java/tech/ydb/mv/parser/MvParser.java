@@ -19,6 +19,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvIssue;
@@ -59,10 +60,10 @@ public class MvParser {
         ctx.getErrors().addAll(issues);
         for ( var stmt : root.sql_stmt() ) {
             if (stmt.create_mat_view_stmt()!=null) {
-                fill(ctx, stmt.create_mat_view_stmt());
+                fillTarget(ctx, stmt.create_mat_view_stmt());
             }
-            if (stmt.process_stmt()!=null) {
-                fill(ctx, stmt.process_stmt());
+            if (stmt.create_handler_stmt()!=null) {
+                fillHandler(ctx, stmt.create_handler_stmt());
             }
         }
         link(ctx);
@@ -80,10 +81,9 @@ public class MvParser {
         return null;
     }
 
-    private void fill(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        MvTarget mt = new MvTarget(toSqlPos(stmt));
-        mc.getTargets().add(mt);
-        mt.setName(stmt.identifier().getText());
+    private void fillTarget(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
+        MvTarget mt = new MvTarget(unquote(stmt.identifier()), toSqlPos(stmt));
+        mc.addTarget(mt);
         var sel = stmt.simple_select_stmt();
         var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
         mt.getSources().add(src);
@@ -91,10 +91,10 @@ public class MvParser {
         src.setTableAlias(unquote(sel.table_alias().ID_PLAIN()));
         src.setMode(MvJoinMode.MAIN);
         for (var part : sel.simple_join_part()) {
-            fill(mt, part);
+            fillJoinSource(mt, part);
         }
         for (var cc : sel.result_column()) {
-            fill(mt, cc);
+            fillColumn(mt, cc);
         }
         if (sel.opaque_expression()!=null) {
             fillCondition(mt, sel.opaque_expression());
@@ -127,7 +127,7 @@ public class MvParser {
         return retval.trim();
     }
 
-    private void fill(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
+    private void fillJoinSource(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvJoinSource src = new MvJoinSource(toSqlPos(part));
         mt.getSources().add(src);
         src.setTableName(unquote(part.join_table_ref().identifier()));
@@ -138,11 +138,11 @@ public class MvParser {
             src.setMode(MvJoinMode.INNER);
         }
         for (var cond : part.join_condition()) {
-            fill(mt, src, cond);
+            fillJoinCondition(mt, src, cond);
         }
     }
 
-    private void fill(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
+    private void fillJoinCondition(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toSqlPos(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first()!=null) {
@@ -163,7 +163,7 @@ public class MvParser {
         }
     }
 
-    private void fill(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
+    private void fillColumn(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
         var column = new MvColumn(toSqlPos(cc));
         mt.getColumns().add(column);
         column.setName(unquote(cc.column_alias().ID_PLAIN()));
@@ -181,12 +181,20 @@ public class MvParser {
         }
     }
 
-    private void fill(MvContext mc, YdbMatViewV1Parser.Process_stmtContext stmt) {
-        MvInput mi = new MvInput(toSqlPos(stmt));
-        mc.getInputs().add(mi);
-        mi.setTableName(unquote(stmt.main_table_ref().identifier()));
-        mi.setChangeFeed(unquote(stmt.changefeed_name().identifier()));
-        if (stmt.STREAM()!=null) {
+    private void fillHandler(MvContext mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
+        var mh = new MvHandler(unquote(stmt.identifier()));
+        mc.addHandler(mh);
+        for (var part : stmt.handler_process_part()) {
+            fillInput(mh, part);
+        }
+    }
+
+    private void fillInput(MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+        MvInput mi = new MvInput(toSqlPos(part));
+        mh.getInputs().add(mi);
+        mi.setTableName(unquote(part.main_table_ref().identifier()));
+        mi.setChangeFeed(unquote(part.changefeed_name().identifier()));
+        if (part.STREAM()!=null) {
             mi.setBatchMode(false);
         } else {
             mi.setBatchMode(true);
@@ -202,17 +210,17 @@ public class MvParser {
     }
 
     public static void link(MvContext mc) {
-        mc.getTargets().stream().forEach(t -> link(t, mc));
+        mc.getTargets().values().stream().forEach(t -> linkTarget(t, mc));
     }
 
-    private static void link(MvTarget t, MvContext mc) {
-        t.getColumns().stream().forEach(c -> link(c, t, mc));
-        t.getSources().stream().forEach(s -> link(s, t, mc));
+    private static void linkTarget(MvTarget t, MvContext mc) {
+        t.getColumns().stream().forEach(c -> linkColumn(c, t, mc));
+        t.getSources().stream().forEach(s -> linkSource(s, t, mc));
     }
 
-    private static void link(MvColumn c, MvTarget t, MvContext mc) {
+    private static void linkColumn(MvColumn c, MvTarget t, MvContext mc) {
         if (c.isComputation()) {
-            link(c.getComputation(), t, mc);
+            linkComputation(c.getComputation(), t, mc);
         } else {
             var ref = t.getSourceByAlias(c.getSourceAlias());
             c.setSourceRef(ref);
@@ -222,7 +230,7 @@ public class MvParser {
         }
     }
 
-    private static void link(MvComputation c, MvTarget t, MvContext mc) {
+    private static void linkComputation(MvComputation c, MvTarget t, MvContext mc) {
         for (var src : c.getSources()) {
             var ref = t.getSourceByAlias(src.getAlias());
             src.setReference(ref);
@@ -232,11 +240,11 @@ public class MvParser {
         }
     }
 
-    private static void link(MvJoinSource s, MvTarget t, MvContext mc) {
-        s.getConditions().stream().forEach(c -> link(c, t, mc));
+    private static void linkSource(MvJoinSource s, MvTarget t, MvContext mc) {
+        s.getConditions().stream().forEach(c -> linkJoinCondition(c, t, mc));
     }
 
-    private static void link(MvJoinCondition c, MvTarget t, MvContext mc) {
+    private static void linkJoinCondition(MvJoinCondition c, MvTarget t, MvContext mc) {
         if (c.getFirstAlias()!=null) {
             var ref = t.getSourceByAlias(c.getFirstAlias());
             c.setFirstRef(ref);

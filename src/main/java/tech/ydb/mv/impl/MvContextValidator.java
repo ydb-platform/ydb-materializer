@@ -2,6 +2,7 @@ package tech.ydb.mv.impl;
 
 import java.util.HashMap;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTarget;
@@ -27,7 +28,7 @@ public class MvContextValidator {
     }
 
     private void doValidate() {
-        checkInputs();
+        checkHandlers();
         checkTargets();
         if (context.isValid()) {
             // cross-checks, if other things valid
@@ -36,18 +37,20 @@ public class MvContextValidator {
         }
     }
 
-    private void checkInputs() {
-        context.getInputs().forEach(i -> checkInput(i));
+    private void checkHandlers() {
+        context.getHandlers().values().forEach(h -> checkHandler(h));
     }
 
-    private void checkInput(MvInput i) {
-        if (!i.isTableKnown()) {
-            context.addIssue(new MvIssue.UnknownInputTable(i));
+    private void checkHandler(MvHandler h) {
+        for (MvInput i : h.getInputs()) {
+            if (!i.isTableKnown()) {
+                context.addIssue(new MvIssue.UnknownInputTable(i));
+            }
         }
     }
 
     private void checkTargets() {
-        context.getTargets().forEach(t -> checkTarget(t));
+        context.getTargets().values().forEach(t -> checkTarget(t));
     }
 
     private void checkTarget(MvTarget t) {
@@ -59,7 +62,9 @@ public class MvContextValidator {
     }
 
     private void checkChangefeeds() {
-        context.getInputs().forEach(i -> checkChangefeed(i));
+        context.getHandlers().values().stream()
+                .flatMap(h -> h.getInputs().stream())
+                .forEach(i -> checkChangefeed(i));
     }
 
     private void checkChangefeed(MvInput i) {
@@ -75,9 +80,14 @@ public class MvContextValidator {
 
     private void checkInputsVsTargets() {
         final HashMap<String, MvInput> inputs = new HashMap<>();
-        context.getInputs().forEach(i -> inputs.put(i.getTableName(), i));
-        context.getTargets().forEach(t -> checkTargetVsInputs(t, inputs));
-        context.getInputs().forEach(i -> checkInputVsTargets(i));
+        context.getHandlers().values().stream()
+                .flatMap(h -> h.getInputs().stream())
+                .forEach(i -> inputs.put(i.getTableName(), i));
+        context.getTargets().values()
+                .forEach(t -> checkTargetVsInputs(t, inputs));
+        context.getHandlers().values().stream()
+                .flatMap(h -> h.getInputs().stream())
+                .forEach(i -> checkInputVsTargets(i));
     }
 
     private void checkTargetVsInputs(MvTarget t, HashMap<String, MvInput> inputs) {
@@ -90,7 +100,7 @@ public class MvContextValidator {
 
     private void checkInputVsTargets(MvInput i) {
         boolean found = false;
-        for (var t : context.getTargets()) {
+        for (var t : context.getTargets().values()) {
             for (var s : t.getSources()) {
                 if ( i.getTableName().equals(s.getTableName()) ) {
                     found = true;

@@ -3,22 +3,23 @@ package tech.ydb.mv.integration;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
+import tech.ydb.test.junit5.YdbHelperExtension;
+
 import tech.ydb.mv.App;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.query.QuerySession;
-
-import tech.ydb.test.junit5.YdbHelperExtension;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
@@ -89,7 +90,7 @@ ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE 
     private static final String UPSERT_DATA =
 """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
-  (1, @@CREATE ASYNC MATERIALIZED VIEW m1 AS
+  (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
          COMPUTE ON main #[ Substring(main.c20,3,5) ]# AS c11,
@@ -103,10 +104,11 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     ON sub3.c5=58
   WHERE COMPUTE ON main, sub2
   #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
-  (2, @@PROCESS `test1/main_table` CHANGEFEED cf1 AS STREAM;@@),
-  (3, @@PROCESS `test1/sub_table1` CHANGEFEED cf2 AS STREAM;@@),
-  (4, @@PROCESS `test1/sub_table2` CHANGEFEED cf3 AS STREAM;@@),
-  (5, @@PROCESS `test1/sub_table3` CHANGEFEED cf4 AS BATCH;@@);
+  (2, @@CREATE ASYNC HANDLER handler1
+  PROCESS `test1/main_table` CHANGEFEED cf1 AS STREAM,
+  PROCESS `test1/sub_table1` CHANGEFEED cf2 AS STREAM,
+  PROCESS `test1/sub_table2` CHANGEFEED cf3 AS STREAM,
+  PROCESS `test1/sub_table3` CHANGEFEED cf4 AS BATCH;@@);
 """;
 
     @RegisterExtension

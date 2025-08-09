@@ -23,7 +23,7 @@ public class SqlGenTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and generate SQL
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         SqlGen sqlGen = new SqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
@@ -45,7 +45,7 @@ public class SqlGenTest {
         Assertions.assertEquals(1, mc.getTargets().size());
 
         // Get the target and generate SQL
-        var target = mc.getTargets().get(0);
+        var target = mc.getTargets().values().iterator().next();
         SqlGen sqlGen = new SqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
@@ -135,7 +135,7 @@ public class SqlGenTest {
                 "SQL should start with 'CREATE VIEW'");
 
         // Check that view name is present (plain identifier, no quotes needed)
-        Assertions.assertTrue(sql.contains("CREATE VIEW m1"),
+        Assertions.assertTrue(sql.contains("CREATE VIEW `schema3/mv1`"),
                 "View name should be present");
 
         // Check for WITH clause

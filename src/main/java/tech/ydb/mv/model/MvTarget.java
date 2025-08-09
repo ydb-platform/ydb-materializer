@@ -10,14 +10,15 @@ import java.util.LinkedHashMap;
  */
 public class MvTarget implements MvSqlPosHolder {
 
-    private String name;
+    private final String name;
     private final ArrayList<MvJoinSource> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
     private MvSqlPos sqlPos;
 
-    public MvTarget(MvSqlPos sqlPos) {
+    public MvTarget(String name, MvSqlPos sqlPos) {
+        this.name = name;
         this.sqlPos = sqlPos;
     }
 
@@ -34,10 +35,6 @@ public class MvTarget implements MvSqlPosHolder {
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public ArrayList<MvJoinSource> getSources() {

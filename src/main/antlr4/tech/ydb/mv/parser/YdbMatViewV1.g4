@@ -4,11 +4,14 @@ grammar YdbMatViewV1;
 // SQL Script is the sequence of SQL statements.
 sql_script: SEMICOLON* sql_stmt (SEMICOLON+ sql_stmt)* SEMICOLON* EOF;
 
-sql_stmt: create_mat_view_stmt | process_stmt;
+sql_stmt: create_mat_view_stmt | create_handler_stmt;
 
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier AS simple_select_stmt;
 
-process_stmt: PROCESS main_table_ref CHANGEFEED changefeed_name AS (STREAM | BATCH);
+create_handler_stmt: CREATE ASYNC HANDLER identifier
+  handler_process_part (COMMA handler_process_part)* COMMA?;
+
+handler_process_part: PROCESS main_table_ref CHANGEFEED changefeed_name AS (STREAM | BATCH);
 
 simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
   FROM main_table_ref AS table_alias
@@ -42,6 +45,7 @@ COMPUTE: C O M P U T E;
 CREATE: C R E A T E;
 FROM: F R O M;
 JOIN: J O I N;
+HANDLER: H A N D L E R;
 INNER: I N N E R;
 LEFT: L E F T;
 MATERIALIZED: M A T E R I A L I Z E D;

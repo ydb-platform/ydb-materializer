@@ -2,6 +2,8 @@ package tech.ydb.mv.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -9,14 +11,38 @@ import java.util.Collection;
  */
 public class MvContext {
 
-    private final ArrayList<MvTarget> targets = new ArrayList<>();
-    private final ArrayList<MvInput> inputs = new ArrayList<>();
+    private final HashMap<String, MvTarget> targets = new HashMap<>();
+    private final HashMap<String, MvHandler> handlers = new HashMap<>();
 
     private final ArrayList<MvIssue> errors = new ArrayList<>();
     private final ArrayList<MvIssue> warnings = new ArrayList<>();
 
+    public Map<String, MvTarget> getTargets() {
+        return targets;
+    }
+
+    public Map<String, MvHandler> getHandlers() {
+        return handlers;
+    }
+
+    public ArrayList<MvIssue> getErrors() {
+        return errors;
+    }
+
+    public ArrayList<MvIssue> getWarnings() {
+        return warnings;
+    }
+
     public boolean isValid() {
         return errors.isEmpty();
+    }
+
+    public void addTarget(MvTarget t) {
+        targets.put(t.getName(), t);
+    }
+
+    public void addHandler(MvHandler h) {
+        handlers.put(h.getName(), h);
     }
 
     public void addIssue(MvIssue i) {
@@ -31,22 +57,6 @@ public class MvContext {
         for (MvIssue i : ix) {
             addIssue(i);
         }
-    }
-
-    public ArrayList<MvTarget> getTargets() {
-        return targets;
-    }
-
-    public ArrayList<MvInput> getInputs() {
-        return inputs;
-    }
-
-    public ArrayList<MvIssue> getErrors() {
-        return errors;
-    }
-
-    public ArrayList<MvIssue> getWarnings() {
-        return warnings;
     }
 
 }
