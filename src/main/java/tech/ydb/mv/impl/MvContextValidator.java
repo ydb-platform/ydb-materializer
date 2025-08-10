@@ -1,6 +1,5 @@
 package tech.ydb.mv.impl;
 
-import java.util.HashMap;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
@@ -42,7 +41,7 @@ public class MvContextValidator {
     }
 
     private void checkHandler(MvHandler h) {
-        for (MvInput i : h.getInputs()) {
+        for (MvInput i : h.getInputs().values()) {
             if (!i.isTableKnown()) {
                 context.addIssue(new MvIssue.UnknownInputTable(i));
             }
@@ -63,7 +62,7 @@ public class MvContextValidator {
 
     private void checkChangefeeds() {
         context.getHandlers().values().stream()
-                .flatMap(h -> h.getInputs().stream())
+                .flatMap(h -> h.getInputs().values().stream())
                 .forEach(i -> checkChangefeed(i));
     }
 
@@ -79,20 +78,16 @@ public class MvContextValidator {
     }
 
     private void checkInputsVsTargets() {
-        final HashMap<String, MvInput> inputs = new HashMap<>();
-        context.getHandlers().values().stream()
-                .flatMap(h -> h.getInputs().stream())
-                .forEach(i -> inputs.put(i.getTableName(), i));
         context.getTargets().values()
-                .forEach(t -> checkTargetVsInputs(t, inputs));
+                .forEach(t -> checkTargetVsInputs(t));
         context.getHandlers().values().stream()
-                .flatMap(h -> h.getInputs().stream())
+                .flatMap(h -> h.getInputs().values().stream())
                 .forEach(i -> checkInputVsTargets(i));
     }
 
-    private void checkTargetVsInputs(MvTarget t, HashMap<String, MvInput> inputs) {
+    private void checkTargetVsInputs(MvTarget t) {
         for (var s : t.getSources()) {
-            if (inputs.get(s.getTableName())==null) {
+            if (context.getInput(s.getTableName())==null) {
                 context.addIssue(new MvIssue.MissingInput(t, s));
             }
         }

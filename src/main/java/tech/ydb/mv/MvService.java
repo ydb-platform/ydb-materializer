@@ -2,7 +2,6 @@ package tech.ydb.mv;
 
 import java.util.HashMap;
 import java.util.Properties;
-import java.util.TreeSet;
 
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.Changefeed;
@@ -60,7 +59,7 @@ public class MvService implements AutoCloseable {
             return;
         }
         HashMap<String, MvTableInfo> info = new HashMap<>();
-        for (String tabname : collectTables()) {
+        for (String tabname : context.collectTables()) {
             MvTableInfo ti = describeTable(tabname);
             if (ti!=null) {
                 info.put(tabname, ti);
@@ -70,21 +69,6 @@ public class MvService implements AutoCloseable {
         validate();
     }
 
-    private TreeSet<String> collectTables() {
-        TreeSet<String> ret = new TreeSet<>();
-        for (MvTarget t : context.getTargets().values()) {
-            for (MvJoinSource r : t.getSources()) {
-                ret.add(r.getTableName());
-            }
-        }
-        for (MvHandler h : context.getHandlers().values()) {
-            for (MvInput i : h.getInputs()) {
-                ret.add(i.getTableName());
-            }
-        }
-        return ret;
-    }
-
     private void linkTables(HashMap<String, MvTableInfo> info) {
         for (MvTarget t : context.getTargets().values()) {
             for (MvJoinSource r : t.getSources()) {
@@ -92,7 +76,7 @@ public class MvService implements AutoCloseable {
             }
         }
         for (MvHandler h : context.getHandlers().values()) {
-            for (MvInput i : h.getInputs()) {
+            for (MvInput i : h.getInputs().values()) {
                 i.setTableInfo(info.get(i.getTableName()));
             }
         }

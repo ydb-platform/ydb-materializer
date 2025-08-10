@@ -145,6 +145,60 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class DuplicateTarget extends Error {
+        private final MvTarget cur;
+        private final MvTarget prev;
+
+        public DuplicateTarget(MvTarget cur, MvTarget prev) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+            this.prev = prev;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Duplicate target `" + cur.getName()
+                    + "` at " + sqlPos + ", already defined at "
+                    + prev.getSqlPos();
+        }
+    }
+
+    public static class DuplicateHandler extends Error {
+        private final MvHandler cur;
+        private final MvHandler prev;
+
+        public DuplicateHandler(MvHandler cur, MvHandler prev) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+            this.prev = prev;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Duplicate handler `" + cur.getName()
+                    + "` at " + sqlPos + ", already defined at "
+                    + prev.getSqlPos();
+        }
+    }
+
+    public static class DuplicateInput extends Error {
+        private final MvInput cur;
+        private final MvInput prev;
+
+        public DuplicateInput(MvInput cur, MvInput prev) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+            this.prev = prev;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Duplicate input for table `" + cur.getTableName()
+                    + "` at " + sqlPos + ", already defined at "
+                    + prev.getSqlPos();
+        }
+    }
+
     public static class UselessInput extends Warning {
         private final MvInput input;
 

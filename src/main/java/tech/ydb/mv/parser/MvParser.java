@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -16,6 +17,7 @@ import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
+
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvContext;
@@ -37,7 +39,7 @@ public class MvParser {
     private final Lexer lexer;
     private final YdbMatViewV1Parser parser;
     private final YdbMatViewV1Parser.Sql_scriptContext root;
-    private final ArrayList<MvIssue> issues = new ArrayList<>();
+    private final ArrayList<MvIssue> parseTimeIssues = new ArrayList<>();
 
     public MvParser(CharStream cs) {
         this.lexer = new YdbMatViewV1Lexer(cs);
@@ -57,7 +59,7 @@ public class MvParser {
 
     public MvContext fill() {
         MvContext ctx = new MvContext();
-        ctx.getErrors().addAll(issues);
+        ctx.addIssues(parseTimeIssues);
         for ( var stmt : root.sql_stmt() ) {
             if (stmt.create_mat_view_stmt()!=null) {
                 fillTarget(ctx, stmt.create_mat_view_stmt());
@@ -82,8 +84,7 @@ public class MvParser {
     }
 
     private void fillTarget(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        MvTarget mt = new MvTarget(unquote(stmt.identifier()), toSqlPos(stmt));
-        mc.addTarget(mt);
+        var mt = new MvTarget(unquote(stmt.identifier()), toSqlPos(stmt));
         var sel = stmt.simple_select_stmt();
         var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
         mt.getSources().add(src);
@@ -98,6 +99,10 @@ public class MvParser {
         }
         if (sel.opaque_expression()!=null) {
             fillCondition(mt, sel.opaque_expression());
+        }
+        var prev = mc.addTarget(mt);
+        if (prev!=null) {
+            mc.addIssue(new MvIssue.DuplicateTarget(mt, prev));
         }
     }
 
@@ -183,23 +188,29 @@ public class MvParser {
     }
 
     private void fillHandler(MvContext mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
-        var mh = new MvHandler(unquote(stmt.identifier()));
-        mc.addHandler(mh);
+        var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
         for (var part : stmt.handler_process_part()) {
-            fillInput(mh, part);
+            fillInput(mc, mh, part);
+        }
+        var prev = mc.addHandler(mh);
+        if (prev!=null) {
+            mc.addIssue(new MvIssue.DuplicateHandler(mh, prev));
         }
     }
 
-    private void fillInput(MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+    private void fillInput(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
         MvInput mi = new MvInput(
                 unquote(part.main_table_ref().identifier()),
                 unquote(part.changefeed_name().identifier()),
                 toSqlPos(part));
-        mh.getInputs().add(mi);
         if (part.STREAM()!=null) {
             mi.setBatchMode(false);
         } else {
             mi.setBatchMode(true);
+        }
+        MvInput prev = mh.addInput(mi);
+        if (prev!=null) {
+            mc.addIssue(new MvIssue.DuplicateInput(mi, prev));
         }
     }
 
@@ -267,7 +278,7 @@ public class MvParser {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
                 int line, int charPositionInLine, String msg, RecognitionException e) {
-            issues.add(new MvIssue.LexerError(line, charPositionInLine, msg));
+            parseTimeIssues.add(new MvIssue.LexerError(line, charPositionInLine, msg));
         }
     }
 
@@ -280,7 +291,7 @@ public class MvParser {
                     msg = "Offending token: [" + e.getOffendingToken().getText() + "]";
                 }
             }
-            issues.add(new MvIssue.ParserError(
+            parseTimeIssues.add(new MvIssue.ParserError(
                     e.getOffendingToken().getLine(),
                     e.getOffendingToken().getCharPositionInLine(),
                     msg));
@@ -290,7 +301,7 @@ public class MvParser {
         @Override
         public Token recoverInline(Parser recognizer)
                 throws RecognitionException {
-            issues.add(new MvIssue.ParserError(
+            parseTimeIssues.add(new MvIssue.ParserError(
                     recognizer.getCurrentToken().getLine(),
                     recognizer.getCurrentToken().getCharPositionInLine(),
                     "Unexpected token: " + recognizer.getCurrentToken().getText()));

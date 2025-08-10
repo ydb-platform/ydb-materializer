@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeSet;
 
 /**
  *
@@ -37,12 +38,37 @@ public class MvContext {
         return errors.isEmpty();
     }
 
-    public void addTarget(MvTarget t) {
-        targets.put(t.getName(), t);
+    public MvTarget addTarget(MvTarget t) {
+        return targets.put(t.getName(), t);
     }
 
-    public void addHandler(MvHandler h) {
-        handlers.put(h.getName(), h);
+    public MvHandler addHandler(MvHandler h) {
+        return handlers.put(h.getName(), h);
+    }
+
+    public MvInput getInput(String tableName) {
+        for (var handler : handlers.values()) {
+            MvInput ret = handler.getInput(tableName);
+            if (ret!=null) {
+                return ret;
+            }
+        }
+        return null;
+    }
+
+    public TreeSet<String> collectTables() {
+        TreeSet<String> ret = new TreeSet<>();
+        for (MvTarget t : targets.values()) {
+            for (MvJoinSource r : t.getSources()) {
+                ret.add(r.getTableName());
+            }
+        }
+        for (MvHandler h : handlers.values()) {
+            for (MvInput i : h.getInputs().values()) {
+                ret.add(i.getTableName());
+            }
+        }
+        return ret;
     }
 
     public void addIssue(MvIssue i) {
