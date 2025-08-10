@@ -7,6 +7,7 @@ import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTarget;
 
 /**
+ * MV configuration validation logic.
  *
  * @author mzinal
  */

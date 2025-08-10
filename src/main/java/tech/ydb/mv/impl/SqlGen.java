@@ -3,6 +3,10 @@ package tech.ydb.mv.impl;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.Pattern;
+
+import tech.ydb.table.values.StructType;
+import tech.ydb.table.values.Type;
+
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinSource;
@@ -10,11 +14,10 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.table.values.StructType;
-import tech.ydb.table.values.Type;
 
 /**
  * SQL query generation logic.
+ *
  * @author mzinal
  */
 public class SqlGen {

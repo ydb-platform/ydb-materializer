@@ -13,6 +13,7 @@ import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.parser.MvParser;
 
 /**
+ * MV configuration reader logic.
  *
  * @author mzinal
  */
