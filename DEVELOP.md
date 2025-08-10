@@ -56,10 +56,6 @@ classDiagram
 
     class MvTableInfo
 
-    class MvTableInfoIndex
-
-    class MvTableInfoChangefeed
-
     class MvJoinSource {
         +isTableKnown() boolean
         +getTableName() String
