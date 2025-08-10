@@ -6,13 +6,15 @@ package tech.ydb.mv.model;
  */
 public class MvInput implements MvSqlPosHolder {
 
-    private String tableName;
-    private String changeFeed;
+    private final String tableName;
+    private final String changeFeed;
     private MvTableInfo tableInfo;
     private boolean batchMode;
-    private MvSqlPos sqlPos;
+    private final MvSqlPos sqlPos;
 
-    public MvInput(MvSqlPos sqlPos) {
+    public MvInput(String tableName, String changeFeed, MvSqlPos sqlPos) {
+        this.tableName = tableName;
+        this.changeFeed = changeFeed;
         this.sqlPos = sqlPos;
     }
 
@@ -23,10 +25,6 @@ public class MvInput implements MvSqlPosHolder {
 
     public String getTableName() {
         return tableName;
-    }
-
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
     }
 
     public MvTableInfo getTableInfo() {
@@ -41,10 +39,6 @@ public class MvInput implements MvSqlPosHolder {
         return changeFeed;
     }
 
-    public void setChangeFeed(String changeFeed) {
-        this.changeFeed = changeFeed;
-    }
-
     public boolean isBatchMode() {
         return batchMode;
     }
@@ -56,10 +50,6 @@ public class MvInput implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
-    }
-
-    public void setSqlPos(MvSqlPos inputPosition) {
-        this.sqlPos = inputPosition;
     }
 
 }

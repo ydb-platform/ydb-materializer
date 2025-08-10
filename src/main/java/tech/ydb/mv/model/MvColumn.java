@@ -8,15 +8,16 @@ import tech.ydb.table.values.Type;
  */
 public class MvColumn implements MvSqlPosHolder {
 
-    private String name;
+    private final String name;
     private Type type;
     private String sourceAlias;
     private String sourceColumn;
     private MvJoinSource sourceRef;
     private MvComputation computation;
-    private MvSqlPos sqlPos;
+    private final MvSqlPos sqlPos;
 
-    public MvColumn(MvSqlPos sqlPos) {
+    public MvColumn(String name, MvSqlPos sqlPos) {
+        this.name = name;
         this.sqlPos = sqlPos;
     }
 
@@ -26,10 +27,6 @@ public class MvColumn implements MvSqlPosHolder {
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public Type getType() {
@@ -75,10 +72,6 @@ public class MvColumn implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
-    }
-
-    public void setSqlPos(MvSqlPos sqlPos) {
-        this.sqlPos = sqlPos;
     }
 
 }

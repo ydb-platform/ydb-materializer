@@ -164,9 +164,10 @@ public class MvParser {
     }
 
     private void fillColumn(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
-        var column = new MvColumn(toSqlPos(cc));
+        var column = new MvColumn(
+                unquote(cc.column_alias().ID_PLAIN()),
+                toSqlPos(cc));
         mt.getColumns().add(column);
-        column.setName(unquote(cc.column_alias().ID_PLAIN()));
         if (cc.opaque_expression()!=null) {
             MvComputation expr = new MvComputation(toSqlPos(cc.opaque_expression()));
             column.setComputation(expr);
@@ -190,10 +191,11 @@ public class MvParser {
     }
 
     private void fillInput(MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
-        MvInput mi = new MvInput(toSqlPos(part));
+        MvInput mi = new MvInput(
+                unquote(part.main_table_ref().identifier()),
+                unquote(part.changefeed_name().identifier()),
+                toSqlPos(part));
         mh.getInputs().add(mi);
-        mi.setTableName(unquote(part.main_table_ref().identifier()));
-        mi.setChangeFeed(unquote(part.changefeed_name().identifier()));
         if (part.STREAM()!=null) {
             mi.setBatchMode(false);
         } else {

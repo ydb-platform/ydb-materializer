@@ -10,7 +10,7 @@ public class MvComputation implements MvSqlPosHolder {
 
     private final ArrayList<Source> sources = new ArrayList<>();
     private String expression;
-    private MvSqlPos sqlPos;
+    private final MvSqlPos sqlPos;
 
     public MvComputation(MvSqlPos sqlPos) {
         this.sqlPos = sqlPos;
@@ -31,10 +31,6 @@ public class MvComputation implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
-    }
-
-    public void setSqlPos(MvSqlPos inputPosition) {
-        this.sqlPos = inputPosition;
     }
 
     public static class Source {

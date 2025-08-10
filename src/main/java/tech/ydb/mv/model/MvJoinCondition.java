@@ -14,7 +14,7 @@ public class MvJoinCondition implements MvSqlPosHolder {
     private MvJoinSource secondRef;
     private String secondAlias;
     private String secondColumn;
-    private MvSqlPos sqlPos;
+    private final MvSqlPos sqlPos;
 
     public MvJoinCondition(MvSqlPos sqlPos) {
         this.sqlPos = sqlPos;
@@ -87,10 +87,6 @@ public class MvJoinCondition implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
-    }
-
-    public void setSqlPos(MvSqlPos sqlPos) {
-        this.sqlPos = sqlPos;
     }
 
 }

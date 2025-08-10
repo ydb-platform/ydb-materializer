@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 
 /**
- *
+ * Materialized view defined as a target of the transformation.
  * @author mzinal
  */
 public class MvTarget implements MvSqlPosHolder {
@@ -15,7 +15,7 @@ public class MvTarget implements MvSqlPosHolder {
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
-    private MvSqlPos sqlPos;
+    private final MvSqlPos sqlPos;
 
     public MvTarget(String name, MvSqlPos sqlPos) {
         this.name = name;
@@ -77,10 +77,6 @@ public class MvTarget implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
-    }
-
-    public void setSqlPos(MvSqlPos sqlPos) {
-        this.sqlPos = sqlPos;
     }
 
     @Override
