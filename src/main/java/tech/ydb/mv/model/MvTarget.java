@@ -3,6 +3,7 @@ package tech.ydb.mv.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
  * Materialized view defined as a target of the transformation.
@@ -31,6 +32,13 @@ public class MvTarget implements MvSqlPosHolder {
                 return tr;
         }
         return null;
+    }
+
+    public List<String> getInputKeyColumns() {
+        if (sources.isEmpty() || sources.get(0).getTableInfo()==null) {
+            throw new IllegalStateException();
+        }
+        return sources.get(0).getTableInfo().getKey();
     }
 
     public String getName() {

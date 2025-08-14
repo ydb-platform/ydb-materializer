@@ -20,27 +20,42 @@ import tech.ydb.mv.model.MvTableInfo;
  *
  * @author mzinal
  */
-public class SqlGen {
+public class SqlGen implements AutoCloseable {
 
     public static final String SYS_CONST = "sys_const";
     public static final String SYS_KEYS = "sys_keys";
 
     private static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
+    private static final String EOL = System.getProperty("line.separator");
 
     private final MvTarget target;
-    private final String eol = System.getProperty("line.separator");
+    private final StructType keyType;
 
     public SqlGen(MvTarget target) {
         this.target = target;
+        this.keyType = toKeyType(target);
+    }
+
+    @Override
+    public void close() {
+        /* noop */
+    }
+
+    public StructType getKeyType() {
+        return keyType;
+    }
+
+    public String getMainTable() {
+        return target.getSources().get(0).getTableInfo().getName();
     }
 
     public String makeCreateView() {
         final StringBuilder sb = new StringBuilder();
         sb.append("CREATE VIEW ");
-        safeId(sb, target.getName()).append(eol);
-        sb.append("  WITH (security_invoker=TRUE) AS").append(eol);
+        safeId(sb, target.getName()).append(EOL);
+        sb.append("  WITH (security_invoker=TRUE) AS").append(EOL);
         genFullSelect(sb, false);
-        sb.append(";").append(eol);
+        sb.append(";").append(EOL);
         return sb.toString();
     }
 
@@ -48,7 +63,7 @@ public class SqlGen {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeys(sb);
         genFullSelect(sb, true);
-        sb.append(";").append(eol);
+        sb.append(";").append(EOL);
         return sb.toString();
     }
 
@@ -56,9 +71,9 @@ public class SqlGen {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeys(sb);
         sb.append("UPSERT INTO ");
-        safeId(sb, target.getName()).append(eol);
+        safeId(sb, target.getName()).append(EOL);
         genFullSelect(sb, true);
-        sb.append(";").append(eol);
+        sb.append(";").append(EOL);
         return sb.toString();
     }
 
@@ -66,15 +81,14 @@ public class SqlGen {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
         }
-        var keyType = toKeyType(target.getSources().get(0).getTableInfo());
         sb.append("DECLARE $").append(SYS_KEYS).append(" AS ");
         sb.append("List<");
         typeToString(sb, keyType);
-        sb.append(">;").append(eol);
+        sb.append(">;").append(EOL);
     }
 
     private void genFullSelect(StringBuilder sb, boolean withInputKeys) {
-        sb.append("SELECT").append(eol);
+        sb.append("SELECT").append(EOL);
 
         // Generate column list
         boolean comma = false;
@@ -86,7 +100,7 @@ public class SqlGen {
                 comma = true;
             }
             genColumn(sb, c);
-            sb.append(eol);
+            sb.append(EOL);
         }
 
         // Generate simple FROM/JOIN structure
@@ -96,7 +110,7 @@ public class SqlGen {
         if (target.getFilter() != null) {
             sb.append("WHERE ");
             genExpression(sb, target.getFilter());
-            sb.append(eol);
+            sb.append(EOL);
         }
     }
 
@@ -141,7 +155,7 @@ public class SqlGen {
     }
 
     private void genConstantsSubquery(StringBuilder sb) {
-        sb.append("FROM (SELECT").append(eol);
+        sb.append("FROM (SELECT").append(EOL);
         boolean comma = false;
         for (MvLiteral literal : target.getLiterals()) {
             if (comma) {
@@ -152,14 +166,14 @@ public class SqlGen {
             }
             sb.append(literal.getValue()).append(" AS ");
             safeId(sb, literal.getIdentity());
-            sb.append(eol);
+            sb.append(EOL);
         }
-        sb.append(") AS ").append(SYS_CONST).append(eol);
+        sb.append(") AS ").append(SYS_CONST).append(EOL);
     }
 
     private void genInputKeys(StringBuilder sb) {
         sb.append("AS_TABLE($").append(SYS_KEYS)
-                .append(") AS ").append(SYS_KEYS).append(eol);
+                .append(") AS ").append(SYS_KEYS).append(EOL);
         sb.append("INNER JOIN ");
     }
 
@@ -178,7 +192,7 @@ public class SqlGen {
             safeId(sb, mainTable.getTableAlias()).append(".");
             safeId(sb, pk);
         }
-        sb.append(eol);
+        sb.append(EOL);
     }
 
     private void genJoinSource(StringBuilder sb, MvJoinSource source) {
@@ -198,7 +212,7 @@ public class SqlGen {
         safeId(sb, source.getTableName());
         sb.append(" AS ");
         safeId(sb, source.getTableAlias());
-        sb.append(eol);
+        sb.append(EOL);
     }
 
     private void genJoinConditions(StringBuilder sb, ArrayList<MvJoinCondition> conditions) {
@@ -212,7 +226,7 @@ public class SqlGen {
                 genJoinCondition(sb, condition);
                 firstCondition = false;
             }
-            sb.append(eol);
+            sb.append(EOL);
         }
     }
 
@@ -266,6 +280,13 @@ public class SqlGen {
 
     private void genExpression(StringBuilder sb, MvComputation c) {
         sb.append(c.getExpression());
+    }
+
+    public static StructType toKeyType(MvTarget target) {
+        if (target==null || target.getSources().isEmpty()) {
+            throw new IllegalArgumentException();
+        }
+        return toKeyType(target.getSources().get(0).getTableInfo());
     }
 
     public static StructType toKeyType(MvTableInfo ti) {
