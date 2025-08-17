@@ -129,6 +129,8 @@ public class MvUpdater {
 
     private class Worker implements Runnable {
         final Thread thread;
+        final ArrayList<QueueItem> items = new ArrayList<>();
+        boolean showErrors = true;
 
         Worker(int num) {
             this.thread = new Thread(this, "MvUpdater-" + target.getName()
@@ -139,7 +141,6 @@ public class MvUpdater {
 
         @Override
         public void run() {
-            ArrayList<QueueItem> items = new ArrayList<>();
             while (isRunning()) {
                 if (Thread.interrupted()) {
                     break;
@@ -153,15 +154,27 @@ public class MvUpdater {
                 if (items.isEmpty()) {
                     shortSleep();
                 } else {
-                    try {
-                        process(items);
-                        commit(items);
-                        items.clear(); // clear on success
-                    } catch(Exception ex) {
-                        LOG.error("Failed to process the updates on MV {}",
-                                target.getName(), ex);
-                    }
+                    handleItems();
                 }
+            }
+        }
+
+        private void handleItems() {
+            try {
+                process(items);
+                commit(items);
+                items.clear(); // clear on success
+                if (!showErrors) {
+                    showErrors = true;
+                    LOG.info("Error logging resumed");
+                }
+            } catch(Exception ex) {
+                if (showErrors) {
+                    showErrors = false;
+                    LOG.error("Failed to process the updates on MV {}, error logging suspended",
+                            target.getName(), ex);
+                }
+                shortSleep();
             }
         }
     }
