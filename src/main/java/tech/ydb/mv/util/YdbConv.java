@@ -123,95 +123,212 @@ public abstract class YdbConv {
     }
 
     private static Value<?> boolFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Boolean) {
+            return PrimitiveValue.newBool((Boolean) v);
+        }
+        return PrimitiveValue.newBool(Boolean.parseBoolean(v.toString()));
     }
 
     private static Value<?> bytesFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof YdbBytes) {
+            return PrimitiveValue.newBytes(((YdbBytes) v).getValue());
+        }
+        if (v instanceof byte[]) {
+            return PrimitiveValue.newBytes((byte[]) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newBytes(new YdbBytes((String) v).getValue());
+        }
+        return PrimitiveValue.newBytes(v.toString().getBytes());
     }
 
     private static Value<?> dateFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.LocalDate) {
+            return PrimitiveValue.newDate((java.time.LocalDate) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newDate(java.time.LocalDate.parse((String) v));
+        }
+        return PrimitiveValue.newDate(java.time.LocalDate.parse(v.toString()));
     }
 
     private static Value<?> date32FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.LocalDate) {
+            return PrimitiveValue.newDate32((java.time.LocalDate) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newDate32(java.time.LocalDate.parse((String) v));
+        }
+        return PrimitiveValue.newDate32(java.time.LocalDate.parse(v.toString()));
     }
 
     private static Value<?> datetimeFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.LocalDateTime) {
+            return PrimitiveValue.newDatetime((java.time.LocalDateTime) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newDatetime(java.time.LocalDateTime.parse((String) v));
+        }
+        return PrimitiveValue.newDatetime(java.time.LocalDateTime.parse(v.toString()));
     }
 
     private static Value<?> doubleFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Double) {
+            return PrimitiveValue.newDouble((Double) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newDouble(((Number) v).doubleValue());
+        }
+        return PrimitiveValue.newDouble(Double.parseDouble(v.toString()));
     }
 
     private static Value<?> floatFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Float) {
+            return PrimitiveValue.newFloat((Float) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newFloat(((Number) v).floatValue());
+        }
+        return PrimitiveValue.newFloat(Float.parseFloat(v.toString()));
     }
 
     private static Value<?> int16FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Short) {
+            return PrimitiveValue.newInt16((Short) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newInt16(((Number) v).shortValue());
+        }
+        return PrimitiveValue.newInt16(Short.parseShort(v.toString()));
     }
 
     private static Value<?> int32FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Integer) {
+            return PrimitiveValue.newInt32((Integer) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newInt32(((Number) v).intValue());
+        }
+        return PrimitiveValue.newInt32(Integer.parseInt(v.toString()));
     }
 
     private static Value<?> int64FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Long) {
+            return PrimitiveValue.newInt64((Long) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newInt64(((Number) v).longValue());
+        }
+        return PrimitiveValue.newInt64(Long.parseLong(v.toString()));
     }
 
     private static Value<?> int8FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Byte) {
+            return PrimitiveValue.newInt8((Byte) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newInt8(((Number) v).byteValue());
+        }
+        return PrimitiveValue.newInt8(Byte.parseByte(v.toString()));
     }
 
     private static Value<?> intervalFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.Duration) {
+            return PrimitiveValue.newInterval((java.time.Duration) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newInterval(java.time.Duration.parse((String) v));
+        }
+        return PrimitiveValue.newInterval(java.time.Duration.parse(v.toString()));
     }
 
     private static Value<?> interval64FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.Duration) {
+            return PrimitiveValue.newInterval64((java.time.Duration) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newInterval64(java.time.Duration.parse((String) v));
+        }
+        return PrimitiveValue.newInterval64(java.time.Duration.parse(v.toString()));
     }
 
     private static Value<?> jsonFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return PrimitiveValue.newJson(v.toString());
     }
 
     private static Value<?> jsonDocumentFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return PrimitiveValue.newJsonDocument(v.toString());
     }
 
     private static Value<?> textFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return PrimitiveValue.newText(v.toString());
     }
 
     private static Value<?> timestampFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.Instant) {
+            return PrimitiveValue.newTimestamp((java.time.Instant) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newTimestamp(java.time.Instant.parse((String) v));
+        }
+        return PrimitiveValue.newTimestamp(java.time.Instant.parse(v.toString()));
     }
 
     private static Value<?> timestamp64FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.time.Instant) {
+            return PrimitiveValue.newTimestamp64((java.time.Instant) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newTimestamp64(java.time.Instant.parse((String) v));
+        }
+        return PrimitiveValue.newTimestamp64(java.time.Instant.parse(v.toString()));
     }
 
     private static Value<?> uint16FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Number) {
+            return PrimitiveValue.newUint16(((Number) v).intValue());
+        }
+        return PrimitiveValue.newUint16(Integer.parseInt(v.toString()));
     }
 
     private static Value<?> uint32FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Number) {
+            return PrimitiveValue.newUint32(((Number) v).longValue());
+        }
+        return PrimitiveValue.newUint32(Long.parseLong(v.toString()));
     }
 
     private static Value<?> uint64FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof YdbUnsigned) {
+            return PrimitiveValue.newUint64(((YdbUnsigned) v).getValue());
+        }
+        if (v instanceof Long) {
+            return PrimitiveValue.newUint64((Long) v);
+        }
+        if (v instanceof Number) {
+            return PrimitiveValue.newUint64(((Number) v).longValue());
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newUint64(Long.parseUnsignedLong((String) v));
+        }
+        return PrimitiveValue.newUint64(Long.parseUnsignedLong(v.toString()));
     }
 
     private static Value<?> uint8FromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof Number) {
+            return PrimitiveValue.newUint8(((Number) v).intValue());
+        }
+        return PrimitiveValue.newUint8(Integer.parseInt(v.toString()));
     }
 
     private static Value<?> uuidFromPojo(Object v) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (v instanceof java.util.UUID) {
+            return PrimitiveValue.newUuid((java.util.UUID) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newUuid(java.util.UUID.fromString((String) v));
+        }
+        return PrimitiveValue.newUuid(java.util.UUID.fromString(v.toString()));
     }
 
     public static Comparable<?> toPojo(Value<?> v) {
