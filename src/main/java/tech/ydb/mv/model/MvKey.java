@@ -4,6 +4,7 @@ import java.util.HashMap;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import tech.ydb.mv.util.YdbBytes;
 
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.StructValue;
@@ -19,7 +20,9 @@ import tech.ydb.mv.util.YdbConv;
  */
 public class MvKey implements Comparable<MvKey> {
 
-    public static final Gson GSON = new GsonBuilder().create();
+    public static final Gson GSON = new GsonBuilder()
+            .registerTypeHierarchyAdapter(YdbBytes.class, new YdbBytes.GsonAdapter())
+            .create();
 
     private final MvKeyInfo info;
     private final Comparable[] values;
@@ -79,6 +82,10 @@ public class MvKey implements Comparable<MvKey> {
     @Override
     @SuppressWarnings("unchecked")
     public int compareTo(MvKey other) {
+        if (! this.getClass().equals(other.getClass())) {
+            throw new IllegalArgumentException("Cannot compare instance of type "
+                    + this.getClass() + " with " + other.getClass());
+        }
         if (! this.info.equals(other.info)) {
             throw new IllegalArgumentException("Cannot compare keys of type "
                     + this.info + " with " + other.info);
@@ -88,12 +95,12 @@ public class MvKey implements Comparable<MvKey> {
                     + this.values.length + ", got " + other.values.length);
         }
         for (int pos = 0; pos < this.values.length; ++pos) {
-            if (this.values==null) {
-                if (other.values==null) {
+            if (this.values[pos]==null) {
+                if (other.values[pos]==null) {
                     continue;
                 }
                 return -1;
-            } else if (other.values==null) {
+            } else if (other.values[pos]==null) {
                 return 1;
             }
             int cmp = this.values[pos].compareTo(other.values[pos]);
