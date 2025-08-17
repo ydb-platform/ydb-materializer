@@ -325,12 +325,14 @@ public class YdbStruct implements Serializable {
         return ret;
     }
 
+    @SuppressWarnings("rawtypes")
     private static <T> TypeInfo<T> typeInfo(Class<T> clazz, String typeCode,
                  Function<Comparable, String> fnOut,
                  Function<String, Comparable> fnIn) {
         return new TypeInfo<>(clazz, typeCode, fnOut, fnIn);
     }
 
+    @SuppressWarnings("rawtypes")
     public static class TypeInfo<T> {
         public final String typeCode;
         public final Class<T> clazz;

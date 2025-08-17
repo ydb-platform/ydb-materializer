@@ -6,6 +6,7 @@ import tech.ydb.table.description.KeyBound;
  *
  * @author zinal
  */
+@SuppressWarnings("rawtypes")
 public class MvKeyPrefix extends MvKey {
 
     public MvKeyPrefix(KeyBound kb, MvKeyInfo info) {

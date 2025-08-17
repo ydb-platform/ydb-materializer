@@ -1,9 +1,6 @@
 package tech.ydb.mv.util;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import tech.ydb.table.values.DecimalType;
 import tech.ydb.table.values.DecimalValue;
@@ -46,8 +43,9 @@ public abstract class YdbConv {
                 return fromPojo(v, (PrimitiveType)t);
             case NULL:
                 return NullValue.of();
+            default:
+                throw new IllegalArgumentException("Unsupported data type: " + t);
         }
-        throw new IllegalArgumentException("Unsupported data type: " + t);
     }
 
     public static Value<?> fromPojo(Object v, PrimitiveType t) {
@@ -233,8 +231,9 @@ public abstract class YdbConv {
                 return toPojo(v.asData());
             case NULL:
                 return null;
+            default:
+                throw new IllegalArgumentException("Unsupported data type: " + v.getType());
         }
-        throw new IllegalArgumentException("Unsupported data type: " + v.getType());
     }
 
     public static Comparable<?> toPojo(PrimitiveValue v) {

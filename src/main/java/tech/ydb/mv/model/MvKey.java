@@ -1,7 +1,5 @@
 package tech.ydb.mv.model;
 
-import java.util.HashMap;
-
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Value;
@@ -15,6 +13,7 @@ import tech.ydb.mv.util.YdbStruct;
  *
  * @author zinal
  */
+@SuppressWarnings("rawtypes")
 public class MvKey implements Comparable<MvKey> {
 
     protected final MvKeyInfo info;
