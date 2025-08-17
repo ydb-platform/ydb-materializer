@@ -1,5 +1,6 @@
 package tech.ydb.mv.model;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.TupleType;
@@ -84,6 +85,37 @@ public class MvKeyInfo {
             }
         }
         return index;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 11 * hash + Arrays.deepHashCode(this.names);
+        hash = 11 * hash + Arrays.deepHashCode(this.types);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvKeyInfo other = (MvKeyInfo) obj;
+        if (!Arrays.deepEquals(this.names, other.names)) {
+            return false;
+        }
+        return Arrays.deepEquals(this.types, other.types);
+    }
+
+    @Override
+    public String toString() {
+        return structType.toString();
     }
 
 }

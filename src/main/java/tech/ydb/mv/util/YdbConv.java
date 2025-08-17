@@ -212,7 +212,7 @@ public abstract class YdbConv {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
-    public static Object toPojo(Value<?> v) {
+    public static Comparable<?> toPojo(Value<?> v) {
         if (v==null) {
             return null;
         }
@@ -233,12 +233,12 @@ public abstract class YdbConv {
         throw new IllegalArgumentException("Unsupported data type: " + v.getType());
     }
 
-    public static Object toPojo(PrimitiveValue v) {
+    public static Comparable<?> toPojo(PrimitiveValue v) {
         switch (v.getType()) {
             case Bool:
                 return v.getBool();
             case Bytes:
-                return v.getBytes();
+                return new YdbBytes(v.getBytes());
             case Date:
                 return v.getDate();
             case Date32:
