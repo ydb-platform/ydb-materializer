@@ -1,7 +1,5 @@
 package tech.ydb.mv.util;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -13,9 +11,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -254,6 +254,28 @@ public class YdbStruct implements Serializable {
     public YdbStruct add(String name, Duration v) {
         values.put(name, v);
         return this;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.values);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final YdbStruct other = (YdbStruct) obj;
+        return Objects.equals(this.values, other.values);
     }
 
     public String toJson() {
