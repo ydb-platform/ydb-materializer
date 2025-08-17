@@ -2,16 +2,13 @@ package tech.ydb.mv.model;
 
 import java.util.HashMap;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import tech.ydb.mv.util.YdbBytes;
-
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Value;
 import tech.ydb.table.values.TupleValue;
 
 import tech.ydb.mv.util.YdbConv;
+import tech.ydb.mv.util.YdbStruct;
 
 /**
  * Key value in the serializable and convertible form.
@@ -20,20 +17,19 @@ import tech.ydb.mv.util.YdbConv;
  */
 public class MvKey implements Comparable<MvKey> {
 
-    public static final Gson GSON = new GsonBuilder()
-            .registerTypeHierarchyAdapter(YdbBytes.class, new YdbBytes.GsonAdapter())
-            .create();
+    protected final MvKeyInfo info;
+    protected final Comparable[] values;
 
-    private final MvKeyInfo info;
-    private final Comparable[] values;
-
-    public MvKey(String json, MvKeyInfo info) {
+    public MvKey(YdbStruct ys, MvKeyInfo info) {
         this.info = info;
         this.values = new Comparable[info.size()];
-        HashMap<String, Comparable> m = GSON.fromJson(json, HashMap.class);
         for (int pos = 0; pos < info.size(); ++pos) {
-            this.values[pos] = m.get(info.getName(pos));
+            this.values[pos] = ys.get(info.getName(pos));
         }
+    }
+
+    public MvKey(String json, MvKeyInfo info) {
+        this(YdbStruct.fromJson(json), info);
     }
 
     public MvKey(ResultSetReader rsr, MvKeyInfo info) {
@@ -47,8 +43,21 @@ public class MvKey implements Comparable<MvKey> {
         }
     }
 
+    protected MvKey(MvKeyInfo info, Comparable[] values) {
+        this.info = info;
+        this.values = values;
+    }
+
     public MvKeyInfo getInfo() {
         return info;
+    }
+
+    public int size() {
+        return values.length;
+    }
+
+    public Comparable<?> getValue(int pos) {
+        return values[pos];
     }
 
     public StructValue toStructValue() {
@@ -72,11 +81,11 @@ public class MvKey implements Comparable<MvKey> {
 
     public String toJson() {
         int count = info.size();
-        HashMap<String, Object> m = new HashMap<>(count);
+        YdbStruct ys = new YdbStruct(count);
         for (int pos = 0; pos < count; ++pos) {
-            m.put(info.getName(pos), values[pos]);
+            ys.put(info.getName(pos), values[pos]);
         }
-        return GSON.toJson(m);
+        return ys.toJson();
     }
 
     @Override

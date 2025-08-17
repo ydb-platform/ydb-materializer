@@ -1,23 +1,16 @@
 package tech.ydb.mv.util;
 
-import java.lang.reflect.Type;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
-
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
 
 /**
  *
  * @author zinal
  */
-public class YdbBytes implements Comparable<YdbBytes> {
+public class YdbBytes implements Comparable<YdbBytes>, Serializable {
+    private static final long serialVersionUID = 20250817001L;
 
     private final byte[] value;
 
@@ -25,8 +18,16 @@ public class YdbBytes implements Comparable<YdbBytes> {
         this.value = value;
     }
 
+    public YdbBytes(String encodedValue) {
+        this.value = Base64.getUrlDecoder().decode(encodedValue);
+    }
+
     public byte[] getValue() {
         return value;
+    }
+
+    public String encode() {
+        return Base64.getUrlEncoder().encodeToString(value);
     }
 
     @Override
@@ -62,18 +63,6 @@ public class YdbBytes implements Comparable<YdbBytes> {
             return new String(value, StandardCharsets.UTF_8);
         } catch(Exception e) {
             return Base64.getUrlEncoder().encodeToString(value);
-        }
-    }
-
-    public static class GsonAdapter implements JsonSerializer<YdbBytes>, JsonDeserializer<YdbBytes> {
-        @Override
-        public JsonElement serialize(YdbBytes src, Type typeOfSrc, JsonSerializationContext context) {
-            return new JsonPrimitive(Base64.getUrlEncoder().encodeToString(src.getValue()));
-        }
-
-        @Override
-        public YdbBytes deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            return new YdbBytes(Base64.getUrlDecoder().decode(json.getAsString()));
         }
     }
 

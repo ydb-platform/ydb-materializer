@@ -1,6 +1,10 @@
 package tech.ydb.mv.util;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import tech.ydb.table.values.DecimalType;
 import tech.ydb.table.values.DecimalValue;
 import tech.ydb.table.values.NullValue;
@@ -278,7 +282,7 @@ public abstract class YdbConv {
             case Uint32:
                 return v.getUint32();
             case Uint64:
-                return v.getUint64();
+                return new YdbUnsigned(v.getUint64());
             case Uint8:
                 return v.getUint8();
             case Uuid:
@@ -287,6 +291,5 @@ public abstract class YdbConv {
                 throw new IllegalArgumentException("Unsupported data type: " + v.getType());
         }
     }
-
 
 }
