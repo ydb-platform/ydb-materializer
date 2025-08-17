@@ -91,7 +91,7 @@ public class MvTableKeyReader implements MvUpdater.FlowControl {
                 .orderedRead(true)
                 .columns(getKeyColumns());
         if (startKey != null) {
-            rtsb.fromKeyExclusive(startKey.toTupleValue(keyColumns));
+            rtsb.fromKeyExclusive(startKey.toTupleValue());
         }
         return rtsb.build();
     }

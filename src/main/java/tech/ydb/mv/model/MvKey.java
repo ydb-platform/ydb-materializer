@@ -1,15 +1,16 @@
 package tech.ydb.mv.model;
 
 import java.util.HashMap;
-import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.values.StructType;
-import tech.ydb.table.values.StructValue;
-import tech.ydb.table.values.Value;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.util.List;
-import tech.ydb.mv.util.YdbConv;
+
+import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.values.StructValue;
+import tech.ydb.table.values.Value;
 import tech.ydb.table.values.TupleValue;
+
+import tech.ydb.mv.util.YdbConv;
 
 /**
  * Key value in the serializable and convertible form.
@@ -20,51 +21,54 @@ public class MvKey {
 
     public static final Gson GSON = new GsonBuilder().create();
 
-    private final StructType keyType;
-    private final HashMap<String, Object> keys = new HashMap<>();
+    private final MvKeyInfo info;
+    private final Object[] values;
 
-    public MvKey(ResultSetReader rsr, StructType keyType) {
-        this.keyType = keyType;
-        for (int ix = 0; ix < keyType.getMembersCount(); ++ix) {
-            String name = keyType.getMemberName(ix);
-            int colIndex = rsr.getColumnIndex(name);
-            if (colIndex >= 0) {
-                keys.put(name, YdbConv.toPojo(rsr.getColumn(colIndex).getValue()));
-            }
+    public MvKey(String json, MvKeyInfo info) {
+        this.info = info;
+        this.values = new Object[info.size()];
+        HashMap<String, Object> m = GSON.fromJson(json, HashMap.class);
+        for (int pos = 0; pos < info.size(); ++pos) {
+            this.values[pos] = m.get(info.getName(pos));
         }
     }
 
-    public MvKey(String json, StructType keyType) {
-        this.keyType = keyType;
-        GSON.fromJson(json, HashMap.class)
-                .forEach((k, v) -> keys.put(k.toString(), v));
+    public MvKey(ResultSetReader rsr, MvKeyInfo info) {
+        this.info = info;
+        this.values = new Object[info.size()];
+        for (int pos = 0; pos < info.size(); ++pos) {
+            int colIndex = rsr.getColumnIndex(info.getName(pos));
+            if (colIndex >= 0) {
+                this.values[pos] = YdbConv.toPojo(rsr.getColumn(colIndex).getValue());
+            }
+        }
     }
 
     public StructValue toStructValue() {
-        int count = keyType.getMembersCount();
+        int count = info.size();
         Value<?>[] members = new Value<?>[count];
-        for (int ix = 0; ix < count; ++ix) {
-            Object v = keys.get(keyType.getMemberName(ix));
-            members[ix] = YdbConv.fromPojo(v, keyType.getMemberType(ix));
+        for (int pos = 0; pos < count; ++pos) {
+            int structPos = info.getStructIndex(pos);
+            members[structPos] = YdbConv.fromPojo(values[pos], info.getType(pos));
         }
-        return keyType.newValueUnsafe(members);
+        return info.getStructType().newValueUnsafe(members);
     }
 
-    public TupleValue toTupleValue(List<String> keyColumns) {
-        int count = keyColumns.size();
+    public TupleValue toTupleValue() {
+        int count = info.size();
         Value<?>[] members = new Value<?>[count];
-        for (int ix = 0; ix < count; ++ix) {
-            String name = keyColumns.get(ix);
-            int typePos = keyType.getMemberIndex(name);
-            if (typePos >= 0) {
-                Object v = keys.get(name);
-                members[ix] = YdbConv.fromPojo(v, keyType.getMemberType(typePos));
-            }
+        for (int pos = 0; pos < count; ++pos) {
+            members[pos] = YdbConv.fromPojo(values[pos], info.getType(pos));
         }
-        return TupleValue.ofOwn(members);
+        return info.getTupleType().newValueOwn(members);
     }
 
     public String toJson() {
-        return GSON.toJson(keys);
+        int count = info.size();
+        HashMap<String, Object> m = new HashMap<>(count);
+        for (int pos = 0; pos < count; ++pos) {
+            m.put(info.getName(pos), values[pos]);
+        }
+        return GSON.toJson(m);
     }
 }

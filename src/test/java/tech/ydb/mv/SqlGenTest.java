@@ -3,7 +3,6 @@ package tech.ydb.mv;
 import tech.ydb.mv.impl.SqlGen;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import tech.ydb.mv.impl.MvContextValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.parser.MvParser;
 
