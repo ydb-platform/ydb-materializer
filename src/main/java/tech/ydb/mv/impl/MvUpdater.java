@@ -14,7 +14,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvUpdater {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvUpdater.class);

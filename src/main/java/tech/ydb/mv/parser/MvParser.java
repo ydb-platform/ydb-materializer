@@ -32,7 +32,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  * Parsing, linking and minimal logical checks for input SQL script.
- * @author mzinal
+ * @author zinal
  */
 public class MvParser {
 

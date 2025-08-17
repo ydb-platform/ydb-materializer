@@ -14,7 +14,7 @@ import tech.ydb.table.values.TupleValue;
 /**
  * Key value in the serializable and convertible form.
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvKey {
 

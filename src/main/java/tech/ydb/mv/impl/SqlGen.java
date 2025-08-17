@@ -18,7 +18,7 @@ import tech.ydb.mv.model.MvTableInfo;
 /**
  * SQL query generation logic.
  *
- * @author mzinal
+ * @author zinal
  */
 public class SqlGen implements AutoCloseable {
 

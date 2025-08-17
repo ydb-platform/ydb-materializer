@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.settings.Changefeed;
 import tech.ydb.table.settings.DescribeTableSettings;
 
 import tech.ydb.mv.impl.MvContextReader;
@@ -18,7 +17,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  * Work context for YDB Materializer activities.
- * @author mzinal
+ * @author zinal
  */
 public class MvService implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
@@ -102,27 +101,7 @@ public class MvService implements AutoCloseable {
             return null;
         }
 
-        MvTableInfo ret = new MvTableInfo(tabname);
-        for (var c : desc.getColumns()) {
-            ret.getColumns().putLast(c.getName(), c.getType());
-        }
-        for (String k : desc.getPrimaryKeys()) {
-            ret.getKey().add(k);
-        }
-        for (var i : desc.getIndexes()) {
-            var idx = new MvTableInfo.Index(i.getName());
-            idx.getColumns().addAll(i.getColumns());
-            ret.getIndexes().put(idx.getName(), idx);
-        }
-        for (var c : desc.getChangefeeds()) {
-            if (! Changefeed.Format.JSON.equals(c.getFormat())) {
-                // skipping changefeeds having unsupported format
-                continue;
-            }
-            var cf = new MvTableInfo.Changefeed(c.getName());
-            ret.getChangefeeds().put(cf.getName(), cf);
-        }
-        return ret;
+        return new MvTableInfo(tabname, desc);
     }
 
     private boolean validate() {

@@ -18,7 +18,7 @@ import tech.ydb.mv.model.MvKey;
 
 /**
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvTableKeyReader implements MvUpdater.FlowControl {
 

@@ -1,5 +1,8 @@
 package tech.ydb.mv;
 
+import tech.ydb.mv.model.MvTableInfo;
+import tech.ydb.table.values.PrimitiveType;
+
 /**
  *
  * @author zinal
@@ -73,4 +76,45 @@ WHERE COMPUTE ON main, sub2
 #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ]#;
 """;
 
+    public static MvTableInfo tiMainTable(String name) {
+        return MvTableInfo.newBuilder(name)
+                .addColumn("id", PrimitiveType.Int32)
+                .addColumn("c1", PrimitiveType.Int32)
+                .addColumn("c2", PrimitiveType.Int32)
+                .addColumn("c3", PrimitiveType.Int32)
+                .addColumn("c4", PrimitiveType.Int32)
+                .addColumn("c6", PrimitiveType.Int32)
+                .addColumn("c20", PrimitiveType.Text)
+                .addKey("id")
+                .build();
+    }
+
+    public static MvTableInfo tiSubTable1(String name) {
+        return MvTableInfo.newBuilder(name)
+                .addColumn("c1", PrimitiveType.Int32)
+                .addColumn("c2", PrimitiveType.Int32)
+                .addColumn("c8", PrimitiveType.Text)
+                .addKey("c1")
+                .addKey("c2")
+                .build();
+    }
+
+    public static MvTableInfo tiSubTable2(String name) {
+        return MvTableInfo.newBuilder(name)
+                .addColumn("c3", PrimitiveType.Int32)
+                .addColumn("c4", PrimitiveType.Int32)
+                .addColumn("c5", PrimitiveType.Int32)
+                .addColumn("c7", PrimitiveType.Text)
+                .addColumn("c9", PrimitiveType.Text)
+                .addKey("c3")
+                .build();
+    }
+
+    public static MvTableInfo tiSubTable3(String name) {
+        return MvTableInfo.newBuilder(name)
+                .addColumn("c5", PrimitiveType.Int32)
+                .addColumn("c10", PrimitiveType.Text)
+                .addKey("c5")
+                .build();
+    }
 }

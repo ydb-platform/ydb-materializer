@@ -3,6 +3,7 @@ package tech.ydb.mv;
 import tech.ydb.mv.impl.SqlGen;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tech.ydb.mv.impl.MvContextValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.parser.MvParser;
 
@@ -22,8 +23,22 @@ public class SqlGenTest {
         Assertions.assertTrue(mc.isValid());
         Assertions.assertEquals(1, mc.getTargets().size());
 
-        // Get the target and generate SQL
+        // Get the target
         var target = mc.getTargets().values().iterator().next();
+        // Set table information
+        target.getSources().get(0).setTableInfo(
+                SqlConstants.tiMainTable("main_table")
+        );
+        target.getSources().get(1).setTableInfo(
+                SqlConstants.tiSubTable1("sub_table1")
+        );
+        target.getSources().get(2).setTableInfo(
+                SqlConstants.tiSubTable2("sub_table2")
+        );
+        target.getSources().get(3).setTableInfo(
+                SqlConstants.tiSubTable3("sub_table3")
+        );
+        // Generate SQL
         SqlGen sqlGen = new SqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
@@ -44,8 +59,22 @@ public class SqlGenTest {
         Assertions.assertTrue(mc.isValid());
         Assertions.assertEquals(1, mc.getTargets().size());
 
-        // Get the target and generate SQL
+        // Get the target
         var target = mc.getTargets().values().iterator().next();
+        // Set table information
+        target.getSources().get(0).setTableInfo(
+                SqlConstants.tiMainTable("schema3/main_table")
+        );
+        target.getSources().get(1).setTableInfo(
+                SqlConstants.tiSubTable1("schema3/sub_table1")
+        );
+        target.getSources().get(2).setTableInfo(
+                SqlConstants.tiSubTable2("schema3/sub_table2")
+        );
+        target.getSources().get(3).setTableInfo(
+                SqlConstants.tiSubTable3("schema3/sub_table3")
+        );
+        // Generate SQL
         SqlGen sqlGen = new SqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 

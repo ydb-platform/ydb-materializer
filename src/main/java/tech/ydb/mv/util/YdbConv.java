@@ -14,7 +14,7 @@ import tech.ydb.table.values.Value;
 /**
  * YDB data types conversion functions.
  *
- * @author mzinal
+ * @author zinal
  */
 public abstract class YdbConv {
 

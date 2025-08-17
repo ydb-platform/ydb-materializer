@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * Materialized view defined as a target of the transformation.
- * @author mzinal
+ * @author zinal
  */
 public class MvTarget implements MvSqlPosHolder {
 

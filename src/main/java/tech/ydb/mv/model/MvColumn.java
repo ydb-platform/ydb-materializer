@@ -4,7 +4,7 @@ import tech.ydb.table.values.Type;
 
 /**
  * Column of the materialized view table.
- * @author mzinal
+ * @author zinal
  */
 public class MvColumn implements MvSqlPosHolder {
 

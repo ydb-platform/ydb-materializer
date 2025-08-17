@@ -9,7 +9,7 @@ import tech.ydb.mv.model.MvTarget;
 /**
  * MV configuration validation logic.
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvContextValidator {
 
@@ -58,6 +58,12 @@ public class MvContextValidator {
                 .stream()
                 .filter(js -> !js.isTableKnown())
                 .map(js -> new MvIssue.UnknownSourceTable(t, js.getTableName(), js))
+                .toList());
+        context.addIssues(t.getSources()
+                .stream()
+                .filter(js -> js.isTableKnown())
+                .filter(js -> !js.getTableName().equals(js.getTableInfo().getName()))
+                .map(js -> new MvIssue.MismatchedSourceTable(t, js))
                 .toList());
     }
 

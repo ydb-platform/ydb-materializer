@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 /**
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvJoinSource implements MvSqlPosHolder {
 

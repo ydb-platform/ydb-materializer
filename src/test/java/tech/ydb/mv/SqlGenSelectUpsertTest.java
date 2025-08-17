@@ -4,9 +4,7 @@ import tech.ydb.mv.impl.SqlGen;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
-import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.parser.MvParser;
-import tech.ydb.table.values.PrimitiveType;
 
 /**
  * Test for SqlGen.makeSelect() and SqlGen.makeUpsert() methods
@@ -116,81 +114,33 @@ public class SqlGenSelectUpsertTest {
     }
 
     private void addTableInfoToTarget(tech.ydb.mv.model.MvTarget target) {
-        // Create MvTableInfo for main_table
-        MvTableInfo mainTableInfo = new MvTableInfo("main_table");
-        mainTableInfo.getColumns().put("id", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c1", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c2", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c3", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c6", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c20", PrimitiveType.Text);
-        mainTableInfo.getKey().add("id");
-        target.getSources().get(0).setTableInfo(mainTableInfo);
-
-        // Create MvTableInfo for sub_table1
-        MvTableInfo sub1TableInfo = new MvTableInfo("sub_table1");
-        sub1TableInfo.getColumns().put("c1", PrimitiveType.Int32);
-        sub1TableInfo.getColumns().put("c2", PrimitiveType.Int32);
-        sub1TableInfo.getColumns().put("c8", PrimitiveType.Text);
-        sub1TableInfo.getKey().add("c1");
-        sub1TableInfo.getKey().add("c2");
-        target.getSources().get(1).setTableInfo(sub1TableInfo);
-
-        // Create MvTableInfo for sub_table2
-        MvTableInfo sub2TableInfo = new MvTableInfo("sub_table2");
-        sub2TableInfo.getColumns().put("c3", PrimitiveType.Int32);
-        sub2TableInfo.getColumns().put("c4", PrimitiveType.Text);
-        sub2TableInfo.getColumns().put("c7", PrimitiveType.Text);
-        sub2TableInfo.getColumns().put("c9", PrimitiveType.Text);
-        sub2TableInfo.getKey().add("c3");
-        target.getSources().get(2).setTableInfo(sub2TableInfo);
-
-        // Create MvTableInfo for schema2/sub_table3
-        MvTableInfo sub3TableInfo = new MvTableInfo("`schema2/sub_table3`");
-        sub3TableInfo.getColumns().put("c5", PrimitiveType.Int32);
-        sub3TableInfo.getColumns().put("c10", PrimitiveType.Text);
-        sub3TableInfo.getKey().add("c5");
-        target.getSources().get(3).setTableInfo(sub3TableInfo);
+        target.getSources().get(0).setTableInfo(
+                SqlConstants.tiMainTable("main_table")
+        );
+        target.getSources().get(1).setTableInfo(
+                SqlConstants.tiSubTable1("sub_table1")
+        );
+        target.getSources().get(2).setTableInfo(
+                SqlConstants.tiSubTable2("sub_table2")
+        );
+        target.getSources().get(3).setTableInfo(
+                SqlConstants.tiSubTable3("sub_table3")
+        );
     }
 
     private void addTableInfoToTarget2(tech.ydb.mv.model.MvTarget target) {
-        // Create MvTableInfo for schema3/main_table
-        MvTableInfo mainTableInfo = new MvTableInfo("`schema3/main_table`");
-        mainTableInfo.getColumns().put("id", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c1", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c2", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c3", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c4", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c6", PrimitiveType.Int32);
-        mainTableInfo.getColumns().put("c20", PrimitiveType.Text);
-        mainTableInfo.getKey().add("id");
-        target.getSources().get(0).setTableInfo(mainTableInfo);
-
-        // Create MvTableInfo for schema3/sub_table1
-        MvTableInfo sub1TableInfo = new MvTableInfo("`schema3/sub_table1`");
-        sub1TableInfo.getColumns().put("c1", PrimitiveType.Int32);
-        sub1TableInfo.getColumns().put("c2", PrimitiveType.Int32);
-        sub1TableInfo.getColumns().put("c8", PrimitiveType.Text);
-        sub1TableInfo.getKey().add("c1");
-        sub1TableInfo.getKey().add("c2");
-        target.getSources().get(1).setTableInfo(sub1TableInfo);
-
-        // Create MvTableInfo for schema3/sub_table2
-        MvTableInfo sub2TableInfo = new MvTableInfo("`schema3/sub_table2`");
-        sub2TableInfo.getColumns().put("c3", PrimitiveType.Int32);
-        sub2TableInfo.getColumns().put("c4", PrimitiveType.Int32);
-        sub2TableInfo.getColumns().put("c5", PrimitiveType.Int32);
-        sub2TableInfo.getColumns().put("c7", PrimitiveType.Text);
-        sub2TableInfo.getColumns().put("c9", PrimitiveType.Text);
-        sub2TableInfo.getKey().add("c3");
-        target.getSources().get(2).setTableInfo(sub2TableInfo);
-
-        // Create MvTableInfo for schema3/sub_table3
-        MvTableInfo sub3TableInfo = new MvTableInfo("`schema3/sub_table3`");
-        sub3TableInfo.getColumns().put("c5", PrimitiveType.Int32);
-        sub3TableInfo.getColumns().put("c10", PrimitiveType.Text);
-        sub3TableInfo.getKey().add("c5");
-        target.getSources().get(3).setTableInfo(sub3TableInfo);
+        target.getSources().get(0).setTableInfo(
+                SqlConstants.tiMainTable("schema3/main_table")
+        );
+        target.getSources().get(1).setTableInfo(
+                SqlConstants.tiSubTable1("schema3/sub_table1")
+        );
+        target.getSources().get(2).setTableInfo(
+                SqlConstants.tiSubTable2("schema3/sub_table2")
+        );
+        target.getSources().get(3).setTableInfo(
+                SqlConstants.tiSubTable3("schema3/sub_table3")
+        );
     }
 
     private void validateGeneratedSelectSql1(String sql, tech.ydb.mv.model.MvTarget target) {

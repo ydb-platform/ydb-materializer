@@ -20,7 +20,7 @@ import tech.ydb.table.TableClient;
 /**
  * The helper class which creates the YDB connection from the set of properties.
  *
- * @author mzinal
+ * @author zinal
  */
 public class YdbConnector implements AutoCloseable {
 

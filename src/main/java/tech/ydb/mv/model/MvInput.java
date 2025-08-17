@@ -2,7 +2,7 @@ package tech.ydb.mv.model;
 
 /**
  *
- * @author mzinal
+ * @author zinal
  */
 public class MvInput implements MvSqlPosHolder {
 

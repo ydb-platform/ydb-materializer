@@ -2,7 +2,7 @@ package tech.ydb.mv;
 
 /**
  * Default application for YDB Materializer.
- * @author mzinal
+ * @author zinal
  */
 public class App {
 

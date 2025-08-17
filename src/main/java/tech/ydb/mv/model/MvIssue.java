@@ -114,6 +114,31 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class MismatchedSourceTable extends Error {
+        private final MvTarget target;
+        private final MvJoinSource js;
+
+        public MismatchedSourceTable(MvTarget target, MvJoinSource js) {
+            super(js.getSqlPos());
+            this.target = target;
+            this.js = js;
+        }
+
+        @Override
+        public String getMessage() {
+            if (js.getTableInfo()==null) {
+                return "Missing source table information `" + js.getTableName()
+                        + "` in target " + target
+                        + " at " + sqlPos;
+            } else {
+                return "Mismatched source table `" + js.getTableName()
+                        + "` vs `" + js.getTableInfo().getName()
+                        + "` in target " + target
+                        + " at " + sqlPos;
+            }
+        }
+    }
+
     public static class UnknownInputTable extends Error {
         private final MvInput input;
 
