@@ -18,13 +18,14 @@ import tech.ydb.table.values.Type;
 public class MvTableInfo {
 
     private final String name;
+    private final String path;
     private final Map<String, Type> columns;
     private final List<String> key;
     private final MvKeyInfo keyInfo;
     private final Map<String, Index> indexes;
     private final Map<String, Changefeed> changefeeds;
 
-    public MvTableInfo(String name, TableDescription td) {
+    public MvTableInfo(String name, String path, TableDescription td) {
         LinkedHashMap<String, Type> theColumns = new LinkedHashMap<>();
         for (var c : td.getColumns()) {
             theColumns.putLast(c.getName(), c.getType());
@@ -48,6 +49,7 @@ public class MvTableInfo {
             theFeeds.put(cf.getName(), cf);
         }
         this.name = name;
+        this.path = path;
         this.columns = Collections.unmodifiableMap(theColumns);
         this.key = Collections.unmodifiableList(theKey);
         this.indexes = Collections.unmodifiableMap(theIndexes);
@@ -55,10 +57,11 @@ public class MvTableInfo {
         this.keyInfo = new MvKeyInfo(this);
     }
 
-    private MvTableInfo(String name, Map<String, Type> columns,
+    private MvTableInfo(String name, String path, Map<String, Type> columns,
             List<String> key, Map<String, Index> indexes,
             Map<String, Changefeed> changefeeds) {
         this.name = name;
+        this.path = path;
         this.columns = Collections.unmodifiableMap(columns);
         this.key = Collections.unmodifiableList(key);
         this.indexes = Collections.unmodifiableMap(indexes);
@@ -68,6 +71,10 @@ public class MvTableInfo {
 
     public String getName() {
         return name;
+    }
+
+    public String getPath() {
+        return path;
     }
 
     public Map<String, Type> getColumns() {
@@ -91,7 +98,11 @@ public class MvTableInfo {
     }
 
     public static Builder newBuilder(String name) {
-        return new Builder(name);
+        return new Builder(name, name);
+    }
+
+    public static Builder newBuilder(String name, String path) {
+        return new Builder(name, path);
     }
 
     public static final class Index {
@@ -131,13 +142,15 @@ public class MvTableInfo {
 
     public static final class Builder {
         private final String name;
+        private final String path;
         private final LinkedHashMap<String, Type> columns = new LinkedHashMap<>();
         private final List<String> key = new ArrayList<>();
         private final Map<String, Index> indexes = new HashMap<>();
         private final Map<String, Changefeed> changefeeds = new HashMap<>();
 
-        private Builder(String name) {
+        private Builder(String name, String path) {
             this.name = name;
+            this.path = path;
         }
 
         public Builder addColumn(String name, Type type) {
@@ -163,7 +176,7 @@ public class MvTableInfo {
         }
 
         public MvTableInfo build() {
-            return new MvTableInfo(name, columns, key, indexes, changefeeds);
+            return new MvTableInfo(name, path, columns, key, indexes, changefeeds);
         }
     }
 

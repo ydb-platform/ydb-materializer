@@ -1,99 +1,33 @@
 package tech.ydb.mv.model;
 
 import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.values.StructValue;
-import tech.ydb.table.values.Value;
-import tech.ydb.table.values.TupleValue;
 
 import tech.ydb.mv.util.YdbConv;
 import tech.ydb.mv.util.YdbStruct;
 
 /**
- * Key value in the serializable and convertible form.
+ * Table key in the comparable form.
  *
  * @author zinal
  */
 @SuppressWarnings("rawtypes")
-public class MvKey implements Comparable<MvKey> {
-
-    protected final MvKeyInfo info;
-    protected final Comparable[] values;
+public class MvKey extends MvKeyPrefix {
 
     public MvKey(YdbStruct ys, MvKeyInfo info) {
-        this.info = info;
-        this.values = new Comparable[info.size()];
-        for (int pos = 0; pos < info.size(); ++pos) {
-            this.values[pos] = ys.get(info.getName(pos));
-        }
+        super(info, makePrefix(ys, info));
     }
 
     public MvKey(String json, MvKeyInfo info) {
-        this(YdbStruct.fromJson(json), info);
+        super(info, makePrefix(YdbStruct.fromJson(json), info));
     }
 
     public MvKey(ResultSetReader rsr, MvKeyInfo info) {
-        this.info = info;
-        this.values = new Comparable[info.size()];
-        for (int pos = 0; pos < info.size(); ++pos) {
-            int colIndex = rsr.getColumnIndex(info.getName(pos));
-            if (colIndex >= 0) {
-                this.values[pos] = YdbConv.toPojo(rsr.getColumn(colIndex).getValue());
-            }
-        }
-    }
-
-    protected MvKey(MvKeyInfo info, Comparable[] values) {
-        this.info = info;
-        this.values = values;
-    }
-
-    public MvKeyInfo getInfo() {
-        return info;
-    }
-
-    public int size() {
-        return values.length;
-    }
-
-    public Comparable<?> getValue(int pos) {
-        return values[pos];
-    }
-
-    public StructValue toStructValue() {
-        int count = info.size();
-        Value<?>[] members = new Value<?>[count];
-        for (int pos = 0; pos < count; ++pos) {
-            int structPos = info.getStructIndex(pos);
-            members[structPos] = YdbConv.fromPojo(values[pos], info.getType(pos));
-        }
-        return info.getStructType().newValueUnsafe(members);
-    }
-
-    public TupleValue toTupleValue() {
-        int count = info.size();
-        Value<?>[] members = new Value<?>[count];
-        for (int pos = 0; pos < count; ++pos) {
-            members[pos] = YdbConv.fromPojo(values[pos], info.getType(pos));
-        }
-        return info.getTupleType().newValueOwn(members);
-    }
-
-    public String toJson() {
-        int count = info.size();
-        YdbStruct ys = new YdbStruct(count);
-        for (int pos = 0; pos < count; ++pos) {
-            ys.put(info.getName(pos), values[pos]);
-        }
-        return ys.toJson();
+        super(info, makePrefix(rsr, info));
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public int compareTo(MvKey other) {
-        if (! this.getClass().equals(other.getClass())) {
-            throw new IllegalArgumentException("Cannot compare instance of type "
-                    + this.getClass() + " with " + other.getClass());
-        }
+    public int compareTo(MvKeyPrefix other) {
         if (! this.info.equals(other.info)) {
             throw new IllegalArgumentException("Cannot compare keys of type "
                     + this.info + " with " + other.info);
@@ -118,4 +52,24 @@ public class MvKey implements Comparable<MvKey> {
         }
         return 0;
     }
+
+    public static Comparable[] makePrefix(YdbStruct ys, MvKeyInfo info) {
+        Comparable[] output = new Comparable[info.size()];
+        for (int pos = 0; pos < info.size(); ++pos) {
+            output[pos] = ys.get(info.getName(pos));
+        }
+        return output;
+    }
+
+    public static Comparable[] makePrefix(ResultSetReader rsr, MvKeyInfo info) {
+        Comparable[] output = new Comparable[info.size()];
+        for (int pos = 0; pos < info.size(); ++pos) {
+            int colIndex = rsr.getColumnIndex(info.getName(pos));
+            if (colIndex >= 0) {
+                output[pos] = YdbConv.toPojo(rsr.getColumn(colIndex).getValue());
+            }
+        }
+        return output;
+    }
+
 }

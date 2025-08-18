@@ -101,7 +101,7 @@ public class MvService implements AutoCloseable {
             return null;
         }
 
-        return new MvTableInfo(tabname, desc);
+        return new MvTableInfo(tabname, path, desc);
     }
 
     private boolean validate() {

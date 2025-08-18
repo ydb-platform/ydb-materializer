@@ -1,28 +1,164 @@
 package tech.ydb.mv.model;
 
 import tech.ydb.table.description.KeyBound;
+import tech.ydb.table.values.TupleValue;
+import tech.ydb.table.values.Value;
+
+import tech.ydb.mv.util.YdbConv;
+import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.table.values.StructValue;
 
 /**
+ * Key prefix in the comparable form.
  *
  * @author zinal
  */
 @SuppressWarnings("rawtypes")
-public class MvKeyPrefix extends MvKey {
+public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
+
+    protected final MvKeyInfo info;
+    protected final Comparable[] values;
+
+    protected MvKeyPrefix(MvKeyInfo info, Comparable[] values) {
+        this.info = info;
+        this.values = values;
+    }
 
     public MvKeyPrefix(KeyBound kb, MvKeyInfo info) {
-        super(info, makePrefix(kb, info));
+        this(info, makePrefix(kb, info));
     }
 
     public MvKeyPrefix(String json, MvKeyInfo info) {
-        super(info, makePrefix(json, info));
+        this(info, makePrefix(json, info));
     }
 
-    private static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
-        return null;
+    public MvKeyInfo getInfo() {
+        return info;
     }
 
-    private static Comparable[] makePrefix(String json, MvKeyInfo info) {
-        return null;
+    public int size() {
+        return values.length;
+    }
+
+    public Comparable<?> getValue(int pos) {
+        return values[pos];
+    }
+
+    public StructValue toStructValue() {
+        int count = info.size();
+        Value<?>[] members = new Value<?>[count];
+        for (int pos = 0; pos < count; ++pos) {
+            int structPos = info.getStructIndex(pos);
+            members[structPos] = YdbConv.fromPojo(values[pos], info.getType(pos));
+        }
+        return info.getStructType().newValueUnsafe(members);
+    }
+
+    public TupleValue toTupleValue() {
+        int count = info.size();
+        Value<?>[] members = new Value<?>[count];
+        for (int pos = 0; pos < count; ++pos) {
+            members[pos] = YdbConv.fromPojo(values[pos], info.getType(pos));
+        }
+        return info.getTupleType().newValueOwn(members);
+    }
+
+    public String toJson() {
+        int count = info.size();
+        YdbStruct ys = new YdbStruct(count);
+        for (int pos = 0; pos < count; ++pos) {
+            ys.put(info.getName(pos), values[pos]);
+        }
+        return ys.toJson();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public int compareTo(MvKeyPrefix other) {
+        if (! this.info.equals(other.info)) {
+            throw new IllegalArgumentException("Cannot compare keys of type "
+                    + this.info + " with " + other.info);
+        }
+        if (this.values.length > other.values.length) {
+            throw new IllegalArgumentException("Invalid key length, "
+                    + this.values.length + " should be no more than "
+                    + other.values.length);
+        }
+        for (int pos = 0; pos < this.values.length; ++pos) {
+            if (this.values[pos]==null) {
+                if (other.values[pos]==null) {
+                    continue;
+                }
+                return -1;
+            } else if (other.values[pos]==null) {
+                return 1;
+            }
+            int cmp = this.values[pos].compareTo(other.values[pos]);
+            if (cmp!=0) {
+                return cmp;
+            }
+        }
+        // If the prefix matches, we treat values as equal.
+        return 0;
+    }
+
+    public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
+        return makePrefix(kb.getValue(), info);
+    }
+
+    public static Comparable[] makePrefix(Value<?> value, MvKeyInfo info) {
+        switch (value.getType().getKind()) {
+            case OPTIONAL:
+                if (value.asOptional().isPresent()) {
+                    return makePrefix(value.asOptional().get(), info);
+                }
+                return new Comparable[0];
+            case TUPLE:
+                return makePrefix((TupleValue)value, info);
+            case DECIMAL:
+            case PRIMITIVE: {
+                Comparable[] output = new Comparable[1];
+                output[0] = YdbConv.toPojo(value);
+                if (output[0] != null) {
+                    return output;
+                }
+                return new Comparable[0];
+            }
+            default:
+                throw new IllegalArgumentException("Unsupported value type for the prefix: "
+                        + value.getType());
+        }
+    }
+
+    public static Comparable[] makePrefix(TupleValue value, MvKeyInfo info) {
+        int prefixLen = Math.min(value.size(), info.size());
+        Comparable[] output = new Comparable[prefixLen];
+        for (int pos = 0; pos < prefixLen; ++pos) {
+            output[pos] = YdbConv.toPojo(value.get(pos));
+            if (output[pos]==null) { // can reduce tuple until first null
+                Comparable[] reduced = new Comparable[pos];
+                System.arraycopy(output, 0, reduced, 0, pos);
+                return reduced;
+            }
+        }
+        return output;
+    }
+
+    public static Comparable[] makePrefix(String json, MvKeyInfo info) {
+        YdbStruct ys = YdbStruct.fromJson(json);
+        int prefixLen = 0;
+        for (int pos = 0; pos < info.size(); ++pos) {
+            if ( ys.get(info.getName(pos)) != null ) {
+                prefixLen += 1;
+            } else {
+                break;
+            }
+        }
+        Comparable[] ret = new Comparable[prefixLen];
+        for (int pos = 0; pos < prefixLen; ++pos) {
+            ret[pos] = ys.get(info.getName(pos));
+        }
+        return ret;
     }
 
 }
