@@ -43,6 +43,30 @@ public class MvSelectWorker {
     }
 
     private Chooser load() {
+        if (workerCount < 2) {
+            // No need to describe anything: we have a single worker.
+            return new Chooser();
+        }
+        // Grab the prefixes for the table partitions.
+        MvKeyPrefix[] prefixes = readPrefixes();
+        Chooser c = new Chooser();
+        int pcount = prefixes.length;
+        if (pcount + 1 < workerCount) {
+            // we can assign a distinct worker to each prefix
+            for (int i = 0; i < pcount; ++i) {
+                c.items.put(prefixes[i], i+1);
+            }
+        } else {
+            for (int i = 0; i < pcount; ++i) {
+                // 1..workerCount, non-decreasing
+                int worker = (i * (workerCount-1)) / pcount + 1;
+                c.items.put(prefixes[i], worker);
+            }
+        }
+        return c;
+    }
+
+    private MvKeyPrefix[] readPrefixes() {
         TableDescription desc;
         DescribeTableSettings dts = new DescribeTableSettings();
         dts.setIncludeShardKeyBounds(true);
@@ -50,13 +74,11 @@ public class MvSelectWorker {
                 .createSession(Duration.ofSeconds(10)).join().getValue()) {
             desc = session.describeTable(tableInfo.getPath(), dts).join().getValue();
         }
-        Chooser c = new Chooser();
-        MvKeyPrefix[] prefixes = desc.getKeyRanges().stream()
+        return desc.getKeyRanges().stream()
                 .filter(kr -> kr.getFrom().isPresent())
                 .map(kr -> kr.getFrom().get())
                 .map(kb -> new MvKeyPrefix(kb, tableInfo.getKeyInfo()))
                 .toArray(MvKeyPrefix[]::new);
-        return c;
     }
 
     public static final class Chooser {
