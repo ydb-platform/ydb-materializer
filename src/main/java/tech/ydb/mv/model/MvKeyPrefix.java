@@ -11,6 +11,7 @@ import tech.ydb.table.values.StructValue;
 
 /**
  * Key prefix in the comparable form.
+ * Includes the link to the key information, which is linked to the specific table.
  *
  * @author zinal
  */
@@ -43,6 +44,10 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
 
     public MvKeyInfo getInfo() {
         return info;
+    }
+
+    public MvTableInfo getTableInfo() {
+        return info.getOwner();
     }
 
     public int size() {

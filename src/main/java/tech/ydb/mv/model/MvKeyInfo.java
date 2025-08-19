@@ -7,11 +7,13 @@ import tech.ydb.table.values.TupleType;
 import tech.ydb.table.values.Type;
 
 /**
+ * Key information metadata.
  *
  * @author zinal
  */
 public class MvKeyInfo {
 
+    private final MvTableInfo owner;
     private final String[] names;
     private final Type[] types;
     private final TupleType tupleType;
@@ -19,6 +21,7 @@ public class MvKeyInfo {
     private final int[] structIndex;
 
     public MvKeyInfo(MvTableInfo ti) {
+        this.owner = ti;
         int count = ti.getKey().size();
         this.names = new String[count];
         this.types = new Type[count];
@@ -35,6 +38,10 @@ public class MvKeyInfo {
         this.structType = makeStructType();
         this.tupleType = makeTupleType();
         this.structIndex = makeStructIndex();
+    }
+
+    public MvTableInfo getOwner() {
+        return owner;
     }
 
     public int size() {

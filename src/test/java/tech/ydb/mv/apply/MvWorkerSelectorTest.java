@@ -1,4 +1,4 @@
-package tech.ydb.mv.impl;
+package tech.ydb.mv.apply;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import tech.ydb.mv.util.YdbStruct;
  *
  * @author zinal
  */
-public class MvSelectWorkerTest {
+public class MvWorkerSelectorTest {
 
     private static YdbStruct YS() {
         return new YdbStruct();
@@ -34,7 +34,7 @@ public class MvSelectWorkerTest {
         MvTableInfo tableInfo = makeTableInfo();
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvSelectWorker.Chooser chooser = new MvSelectWorker.Chooser(13);
+        MvWorkerSelector.Chooser chooser = new MvWorkerSelector.Chooser(13);
         chooser.getItems().put(KP(YS().add("key1", 100), keyInfo), 0);
         chooser.getItems().put(KP(YS().add("key1", 200), keyInfo), 1);
         chooser.getItems().put(KP(YS().add("key1", 300), keyInfo), 2);
@@ -89,10 +89,10 @@ public class MvSelectWorkerTest {
 
     @Test
     public void techSelectWorkerLoader() {
-        MvSelectWorker sw = new SW(10);
+        MvWorkerSelector sw = new SW(10);
         sw.refresh();
 
-        MvSelectWorker.Chooser chooser = sw.getChooser();
+        MvWorkerSelector.Chooser chooser = sw.getChooser();
         Assertions.assertEquals(12, chooser.getItems().size());
         System.out.println("Chooser items: " + chooser.getItems());
     }
@@ -106,7 +106,7 @@ public class MvSelectWorkerTest {
                 .build();
     }
 
-    private static class SW extends MvSelectWorker {
+    private static class SW extends MvWorkerSelector {
         public SW(int workerCount) {
             super(null, makeTableInfo(), workerCount);
         }

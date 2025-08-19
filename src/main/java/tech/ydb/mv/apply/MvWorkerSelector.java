@@ -1,4 +1,4 @@
-package tech.ydb.mv.impl;
+package tech.ydb.mv.apply;
 
 import java.time.Duration;
 import java.util.Map;
@@ -20,14 +20,14 @@ import tech.ydb.mv.model.MvTableInfo;
  *
  * @author zinal
  */
-public class MvSelectWorker {
+public class MvWorkerSelector {
 
     private final TableClient tableClient;
     private final MvTableInfo tableInfo;
     private final int workerCount;
     private final AtomicReference<Chooser> chooser;
 
-    public MvSelectWorker(TableClient tableClient, MvTableInfo tableInfo, int workerCount) {
+    public MvWorkerSelector(TableClient tableClient, MvTableInfo tableInfo, int workerCount) {
         this.tableClient = tableClient;
         this.tableInfo = tableInfo;
         this.workerCount = (workerCount > 0) ? workerCount : 1;
