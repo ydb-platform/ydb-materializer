@@ -5,14 +5,15 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.table.TableClient;
-
-import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.model.MvKeyPrefix;
-import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.table.Session;
+import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
+
+import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvKeyPrefix;
+import tech.ydb.mv.model.MvTableInfo;
 
 /**
  * The utility algorithm which can choose the proper worker based on the record key.
@@ -33,7 +34,31 @@ public class MvSelectWorker {
         this.chooser = new AtomicReference<>(new Chooser(this.workerCount));
     }
 
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
+    }
+
+    public MvKeyInfo getKeyInfo() {
+        return tableInfo.getKeyInfo();
+    }
+
+    public int getWorkerCount() {
+        return workerCount;
+    }
+
+    /**
+     * For test purposes only.
+     * @return The current chooser instance.
+     */
+    public Chooser getChooser() {
+        return chooser.get();
+    }
+
     public void refresh() {
+        if (workerCount < 2) {
+            // No need to describe anything: we have a single worker.
+            return;
+        }
         Chooser newChooser = load();
         chooser.set(newChooser);
     }
@@ -43,10 +68,6 @@ public class MvSelectWorker {
     }
 
     private Chooser load() {
-        if (workerCount < 2) {
-            // No need to describe anything: we have a single worker.
-            return new Chooser(workerCount);
-        }
         // Grab the prefixes for the table partitions.
         MvKeyPrefix[] prefixes = readPrefixes();
         Chooser c = new Chooser(workerCount);
@@ -58,15 +79,15 @@ public class MvSelectWorker {
             }
         } else {
             for (int i = 0; i < pcount; ++i) {
-                // 1..workerCount, non-decreasing
-                int worker = (i * (workerCount-1)) / pcount + 1;
+                // 0..workerCount, non-decreasing
+                int worker = (i * workerCount) / pcount;
                 c.items.put(prefixes[i], worker);
             }
         }
         return c;
     }
 
-    private MvKeyPrefix[] readPrefixes() {
+    protected MvKeyPrefix[] readPrefixes() {
         TableDescription desc;
         DescribeTableSettings dts = new DescribeTableSettings();
         dts.setIncludeShardKeyBounds(true);

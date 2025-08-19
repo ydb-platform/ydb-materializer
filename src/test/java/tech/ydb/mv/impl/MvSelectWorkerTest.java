@@ -2,12 +2,14 @@ package tech.ydb.mv.impl;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import tech.ydb.table.values.PrimitiveType;
+
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.util.YdbStruct;
-import tech.ydb.table.values.PrimitiveType;
 
 /**
  *
@@ -29,12 +31,7 @@ public class MvSelectWorkerTest {
 
     @Test
     public void testChooser1() {
-        MvTableInfo tableInfo = MvTableInfo.newBuilder("table1")
-                .addColumn("key1", PrimitiveType.Int32)
-                .addColumn("key2", PrimitiveType.Int64)
-                .addKey("key1")
-                .addKey("key2")
-                .build();
+        MvTableInfo tableInfo = makeTableInfo();
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
         MvSelectWorker.Chooser chooser = new MvSelectWorker.Chooser(13);
@@ -88,6 +85,50 @@ public class MvSelectWorkerTest {
 
         result = chooser.choose(KV(YS().add("key1", 901).add("key2", 5000L), keyInfo));
         Assertions.assertEquals(12, result);
+    }
+
+    @Test
+    public void techSelectWorkerLoader() {
+        MvSelectWorker sw = new SW(10);
+        sw.refresh();
+
+        MvSelectWorker.Chooser chooser = sw.getChooser();
+        Assertions.assertEquals(12, chooser.getItems().size());
+        System.out.println("Chooser items: " + chooser.getItems());
+    }
+
+    private static MvTableInfo makeTableInfo() {
+        return MvTableInfo.newBuilder("table1")
+                .addColumn("key1", PrimitiveType.Int32)
+                .addColumn("key2", PrimitiveType.Int64)
+                .addKey("key1")
+                .addKey("key2")
+                .build();
+    }
+
+    private static class SW extends MvSelectWorker {
+        public SW(int workerCount) {
+            super(null, makeTableInfo(), workerCount);
+        }
+
+        @Override
+        protected MvKeyPrefix[] readPrefixes() {
+            MvKeyPrefix[] ret = new MvKeyPrefix[12];
+            MvKeyInfo keyInfo = getKeyInfo();
+            ret[0] = KP(YS().add("key1", 100), keyInfo);
+            ret[1] = KP(YS().add("key1", 200), keyInfo);
+            ret[2] = KP(YS().add("key1", 300), keyInfo);
+            ret[3] = KP(YS().add("key1", 400), keyInfo);
+            ret[4] = KP(YS().add("key1", 500), keyInfo);
+            ret[5] = KP(YS().add("key1", 600).add("key2", 1000L), keyInfo);
+            ret[6] = KP(YS().add("key1", 600).add("key2", 2000L), keyInfo);
+            ret[7] = KP(YS().add("key1", 600).add("key2", 3000L), keyInfo);
+            ret[8] = KP(YS().add("key1", 700).add("key2", 10000L), keyInfo);
+            ret[9] = KP(YS().add("key1", 700).add("key2", 20000L), keyInfo);
+            ret[10] = KP(YS().add("key1", 800), keyInfo);
+            ret[11] = KP(YS().add("key1", 900), keyInfo);
+            return ret;
+        }
     }
 
 }

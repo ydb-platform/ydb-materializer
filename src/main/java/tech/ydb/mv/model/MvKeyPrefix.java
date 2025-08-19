@@ -1,5 +1,6 @@
 package tech.ydb.mv.model;
 
+import java.util.Arrays;
 import tech.ydb.table.description.KeyBound;
 import tech.ydb.table.values.TupleValue;
 import tech.ydb.table.values.Value;
@@ -104,6 +105,11 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         }
         // If the prefix matches, we treat values as equal.
         return 0;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(values);
     }
 
     public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
