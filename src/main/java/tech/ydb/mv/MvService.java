@@ -6,8 +6,8 @@ import java.util.Properties;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
-import tech.ydb.mv.parser.MvContextReader;
-import tech.ydb.mv.parser.MvContextValidator;
+import tech.ydb.mv.parser.MvConfigReader;
+import tech.ydb.mv.parser.MvValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
@@ -28,7 +28,7 @@ public class MvService implements AutoCloseable {
 
     public MvService(YdbConnector connector, Properties props) {
         this.connector = connector;
-        this.context = MvContextReader.readContext(this.connector, props);
+        this.context = MvConfigReader.readContext(this.connector, props);
         refreshMetadata();
     }
 
@@ -110,6 +110,6 @@ public class MvService implements AutoCloseable {
             LOG.warn("Context already invalid, validation skipped.");
             return false;
         }
-        return new MvContextValidator(context).validate();
+        return new MvValidator(context).validate();
     }
 }

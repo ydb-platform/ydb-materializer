@@ -10,14 +10,13 @@ import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.mv.App;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvContext;
-import tech.ydb.mv.parser.MvParser;
 
 /**
  * MV configuration reader logic.
  *
  * @author zinal
  */
-public class MvContextReader {
+public class MvConfigReader {
 
     public static MvContext readContext(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(App.CONF_INPUT_MODE, App.Input.FILE.name());

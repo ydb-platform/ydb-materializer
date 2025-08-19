@@ -11,11 +11,11 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvContextValidator {
+public class MvValidator {
 
     private final MvContext context;
 
-    public MvContextValidator(MvContext context) {
+    public MvValidator(MvContext context) {
         this.context = context;
     }
 
