@@ -14,46 +14,22 @@ import tech.ydb.mv.util.YdbStruct;
 public class MvKey extends MvKeyPrefix {
 
     public MvKey(YdbStruct ys, MvKeyInfo info) {
-        super(info, makePrefix(ys, info));
+        super(info, MvKey.buildValue(ys, info));
+    }
+
+    public MvKey(YdbStruct ys, MvTableInfo tableInfo) {
+        super(tableInfo.getKeyInfo(), MvKey.buildValue(ys, tableInfo.getKeyInfo()));
     }
 
     public MvKey(String json, MvKeyInfo info) {
-        super(info, makePrefix(YdbStruct.fromJson(json), info));
+        super(info, MvKey.buildValue(YdbStruct.fromJson(json), info));
     }
 
     public MvKey(ResultSetReader rsr, MvKeyInfo info) {
-        super(info, makePrefix(rsr, info));
+        super(info, buildValue(rsr, info));
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public int compareTo(MvKeyPrefix other) {
-        if (! this.info.equals(other.info)) {
-            throw new IllegalArgumentException("Cannot compare keys of type "
-                    + this.info + " with " + other.info);
-        }
-        if (this.values.length != other.values.length) {
-            throw new IllegalArgumentException("Invalid key length, expected "
-                    + this.values.length + ", got " + other.values.length);
-        }
-        for (int pos = 0; pos < this.values.length; ++pos) {
-            if (this.values[pos]==null) {
-                if (other.values[pos]==null) {
-                    continue;
-                }
-                return -1;
-            } else if (other.values[pos]==null) {
-                return 1;
-            }
-            int cmp = this.values[pos].compareTo(other.values[pos]);
-            if (cmp!=0) {
-                return cmp;
-            }
-        }
-        return 0;
-    }
-
-    public static Comparable[] makePrefix(YdbStruct ys, MvKeyInfo info) {
+    public static Comparable[] buildValue(YdbStruct ys, MvKeyInfo info) {
         Comparable[] output = new Comparable[info.size()];
         for (int pos = 0; pos < info.size(); ++pos) {
             output[pos] = ys.get(info.getName(pos));
@@ -61,7 +37,7 @@ public class MvKey extends MvKeyPrefix {
         return output;
     }
 
-    public static Comparable[] makePrefix(ResultSetReader rsr, MvKeyInfo info) {
+    public static Comparable[] buildValue(ResultSetReader rsr, MvKeyInfo info) {
         Comparable[] output = new Comparable[info.size()];
         for (int pos = 0; pos < info.size(); ++pos) {
             int colIndex = rsr.getColumnIndex(info.getName(pos));

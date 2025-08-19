@@ -32,6 +32,14 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         this(info, makePrefix(json, info));
     }
 
+    public MvKeyPrefix(YdbStruct ys, MvKeyInfo info) {
+        this(info, makePrefix(ys, info));
+    }
+
+    public MvKeyPrefix(YdbStruct ys, MvTableInfo tableInfo) {
+        this(tableInfo.getKeyInfo(), makePrefix(ys, tableInfo.getKeyInfo()));
+    }
+
     public MvKeyInfo getInfo() {
         return info;
     }
@@ -79,12 +87,8 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
             throw new IllegalArgumentException("Cannot compare keys of type "
                     + this.info + " with " + other.info);
         }
-        if (this.values.length > other.values.length) {
-            throw new IllegalArgumentException("Invalid key length, "
-                    + this.values.length + " should be no more than "
-                    + other.values.length);
-        }
-        for (int pos = 0; pos < this.values.length; ++pos) {
+        int keyLen = Math.min(this.values.length, other.values.length);
+        for (int pos = 0; pos < keyLen; ++pos) {
             if (this.values[pos]==null) {
                 if (other.values[pos]==null) {
                     continue;
@@ -145,7 +149,10 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
     }
 
     public static Comparable[] makePrefix(String json, MvKeyInfo info) {
-        YdbStruct ys = YdbStruct.fromJson(json);
+        return makePrefix(YdbStruct.fromJson(json), info);
+    }
+
+    public static Comparable[] makePrefix(YdbStruct ys, MvKeyInfo info) {
         int prefixLen = 0;
         for (int pos = 0; pos < info.size(); ++pos) {
             if ( ys.get(info.getName(pos)) != null ) {

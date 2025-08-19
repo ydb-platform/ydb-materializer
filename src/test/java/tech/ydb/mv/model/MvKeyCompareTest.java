@@ -99,6 +99,50 @@ public class MvKeyCompareTest {
                 .build();
     }
 
+
+    @Test
+    public void basicComparisonsTest() {
+        MvTableInfo tableInfo = MvTableInfo.newBuilder("aaa")
+                .addColumn("a", PrimitiveType.Int32)
+                .addColumn("b", PrimitiveType.Int32)
+                .addKey("a").addKey("b")
+                .build();
+
+        MvKeyPrefix p1 = new MvKeyPrefix(new YdbStruct().add("a", 10), tableInfo);
+        MvKeyPrefix p2 = new MvKeyPrefix(new YdbStruct().add("a", 20), tableInfo);
+
+        MvKey k1 = new MvKey(new YdbStruct().add("a", 10).add("b", 20), tableInfo);
+        MvKey k2 = new MvKey(new YdbStruct().add("a", 15).add("b", 20), tableInfo);
+        MvKey k3 = new MvKey(new YdbStruct().add("a", 20).add("b", 20), tableInfo);
+        MvKey k4 = new MvKey(new YdbStruct().add("a", 25).add("b", 20), tableInfo);
+
+        int cmp;
+
+        cmp = p1.compareTo(k1);
+        Assertions.assertEquals(0, cmp);
+
+        cmp = p1.compareTo(k2);
+        Assertions.assertEquals(-1, cmp);
+
+        cmp = p1.compareTo(k3);
+        Assertions.assertEquals(-1, cmp);
+
+        cmp = p1.compareTo(k4);
+        Assertions.assertEquals(-1, cmp);
+
+        cmp = p2.compareTo(k1);
+        Assertions.assertEquals(1, cmp);
+
+        cmp = p2.compareTo(k2);
+        Assertions.assertEquals(1, cmp);
+
+        cmp = p2.compareTo(k3);
+        Assertions.assertEquals(0, cmp);
+
+        cmp = p2.compareTo(k4);
+        Assertions.assertEquals(-1, cmp);
+    }
+
     // Tests for single-element keys
     @Test
     public void testSingleIntegerKeyComparison() {

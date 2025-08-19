@@ -29,8 +29,8 @@ public class MvSelectWorker {
     public MvSelectWorker(TableClient tableClient, MvTableInfo tableInfo, int workerCount) {
         this.tableClient = tableClient;
         this.tableInfo = tableInfo;
-        this.workerCount = workerCount;
-        this.chooser = new AtomicReference<>(new Chooser());
+        this.workerCount = (workerCount > 0) ? workerCount : 1;
+        this.chooser = new AtomicReference<>(new Chooser(this.workerCount));
     }
 
     public void refresh() {
@@ -45,11 +45,11 @@ public class MvSelectWorker {
     private Chooser load() {
         if (workerCount < 2) {
             // No need to describe anything: we have a single worker.
-            return new Chooser();
+            return new Chooser(workerCount);
         }
         // Grab the prefixes for the table partitions.
         MvKeyPrefix[] prefixes = readPrefixes();
-        Chooser c = new Chooser();
+        Chooser c = new Chooser(workerCount);
         int pcount = prefixes.length;
         if (pcount + 1 < workerCount) {
             // we can assign a distinct worker to each prefix
@@ -75,24 +75,29 @@ public class MvSelectWorker {
             desc = session.describeTable(tableInfo.getPath(), dts).join().getValue();
         }
         return desc.getKeyRanges().stream()
-                .filter(kr -> kr.getFrom().isPresent())
-                .map(kr -> kr.getFrom().get())
+                .filter(kr -> kr.getTo().isPresent())
+                .map(kr -> kr.getTo().get())
                 .map(kb -> new MvKeyPrefix(kb, tableInfo.getKeyInfo()))
                 .toArray(MvKeyPrefix[]::new);
     }
 
     public static final class Chooser {
 
+        private final int workerCount;
         private final TreeMap<MvKeyPrefix, Integer> items = new TreeMap<>();
+
+        public Chooser(int workerCount) {
+            this.workerCount = workerCount;
+        }
 
         public TreeMap<MvKeyPrefix, Integer> getItems() {
             return items;
         }
 
         public int choose(MvKey key) {
-            Map.Entry<MvKeyPrefix, Integer> item = items.ceilingEntry(key);
+            Map.Entry<MvKeyPrefix, Integer> item = items.higherEntry(key);
             if (item==null) {
-                return 0;
+                return workerCount - 1;
             }
             return item.getValue();
         }
