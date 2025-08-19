@@ -17,6 +17,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  * Work context for YDB Materializer activities.
+ * 
  * @author zinal
  */
 public class MvService implements AutoCloseable {

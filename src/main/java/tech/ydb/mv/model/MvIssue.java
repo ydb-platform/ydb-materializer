@@ -275,7 +275,7 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
-    public static class EmptyHandler extends Warning {
+    public static class EmptyHandler extends Error {
         private final MvHandler handler;
         private final EmptyHandlerType type;
 
@@ -304,6 +304,44 @@ public interface MvIssue extends MvSqlPosHolder {
     public static enum EmptyHandlerType {
         NO_TARGETS,
         NO_INPUTS
+    }
+
+    public static class TargetMultipleHandlers extends Error {
+        private final MvTarget target;
+        private final MvHandler handler1;
+        private final MvHandler handler2;
+
+        public TargetMultipleHandlers(MvTarget target, MvHandler handler1, MvHandler handler2) {
+            super(handler2.getSqlPos());
+            this.target = target;
+            this.handler1 = handler1;
+            this.handler2 = handler2;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Target `" + target.getName()
+                    + "` referenced by handler `" + handler2.getName()
+                    + "` at " + handler2.getSqlPos()
+                    + "` is also referenced by handler `" + handler1.getName()
+                    + "` at " + handler1.getSqlPos();
+        }
+    }
+
+    public static class UselessTarget extends Warning {
+        private final MvTarget target;
+
+        public UselessTarget(MvTarget target) {
+            super(target.getSqlPos());
+            this.target = target;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Target `" + target.getName()
+                    + "` at " + sqlPos
+                    + "` is not used in any handler.";
+        }
     }
 
 }

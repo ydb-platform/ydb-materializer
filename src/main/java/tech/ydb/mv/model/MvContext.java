@@ -46,16 +46,6 @@ public class MvContext {
         return handlers.put(h.getName(), h);
     }
 
-    public MvInput getInput(String tableName) {
-        for (var handler : handlers.values()) {
-            MvInput ret = handler.getInput(tableName);
-            if (ret!=null) {
-                return ret;
-            }
-        }
-        return null;
-    }
-
     public TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
         for (MvTarget t : targets.values()) {

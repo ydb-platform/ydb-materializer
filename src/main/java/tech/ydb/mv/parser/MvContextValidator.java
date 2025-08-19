@@ -59,18 +59,33 @@ public class MvContextValidator {
         context.getTargets().values().forEach(t -> checkTarget(t));
     }
 
-    private void checkTarget(MvTarget t) {
-        context.addIssues(t.getSources()
+    private void checkTarget(MvTarget mt) {
+        context.addIssues(mt.getSources()
                 .stream()
                 .filter(js -> !js.isTableKnown())
-                .map(js -> new MvIssue.UnknownSourceTable(t, js.getTableName(), js))
+                .map(js -> new MvIssue.UnknownSourceTable(mt, js.getTableName(), js))
                 .toList());
-        context.addIssues(t.getSources()
+        context.addIssues(mt.getSources()
                 .stream()
                 .filter(js -> js.isTableKnown())
                 .filter(js -> !js.getTableName().equals(js.getTableInfo().getName()))
-                .map(js -> new MvIssue.MismatchedSourceTable(t, js))
+                .map(js -> new MvIssue.MismatchedSourceTable(mt, js))
                 .toList());
+        // Validate that the target is used in no more than one handler.
+        MvHandler firstHandler = null;
+        for (MvHandler mh : context.getHandlers().values()) {
+            if (mh.getTarget(mt.getName())!=null) {
+                if (firstHandler==null) {
+                    firstHandler = mh;
+                } else {
+                    context.addIssue(new MvIssue.TargetMultipleHandlers(mt, firstHandler, mh));
+                }
+            }
+        }
+        if (firstHandler==null) {
+            // Unused/unreferenced target, so issue a warning
+            context.addIssue(new MvIssue.UselessTarget(mt));
+        }
     }
 
     private void checkChangefeeds() {
@@ -91,25 +106,28 @@ public class MvContextValidator {
     }
 
     private void checkInputsVsTargets() {
-        context.getTargets().values()
-                .forEach(t -> checkTargetVsInputs(t));
-        context.getHandlers().values().stream()
-                .flatMap(h -> h.getInputs().values().stream())
-                .forEach(i -> checkInputVsTargets(i));
-    }
-
-    private void checkTargetVsInputs(MvTarget t) {
-        for (var s : t.getSources()) {
-            if (context.getInput(s.getTableName())==null) {
-                context.addIssue(new MvIssue.MissingInput(t, s));
+        for (MvHandler mh : context.getHandlers().values()) {
+            for (MvTarget mt : mh.getTargets().values()) {
+                checkTargetVsInputs(mh, mt);
+            }
+            for (MvInput mi : mh.getInputs().values()) {
+                checkInputVsTargets(mh, mi);
             }
         }
     }
 
-    private void checkInputVsTargets(MvInput i) {
+    private void checkTargetVsInputs(MvHandler mh, MvTarget mt) {
+        for (var joinSource : mt.getSources()) {
+            if (mh.getInput(joinSource.getTableName())==null) {
+                context.addIssue(new MvIssue.MissingInput(mt, joinSource));
+            }
+        }
+    }
+
+    private void checkInputVsTargets(MvHandler mh, MvInput i) {
         boolean found = false;
-        for (var t : context.getTargets().values()) {
-            for (var s : t.getSources()) {
+        for (var mt : mh.getTargets().values()) {
+            for (var s : mt.getSources()) {
                 if ( i.getTableName().equals(s.getTableName()) ) {
                     found = true;
                     break;
