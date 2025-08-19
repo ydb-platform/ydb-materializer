@@ -3,12 +3,16 @@ package tech.ydb.mv.model;
 import java.util.HashMap;
 
 /**
- * Handler is the context for processing multiple changefeed streams.
+ * Handler is the context for processing multiple changefeed streams
+ * to feed the materialized view targets.
+ *
  * @author zinal
  */
 public class MvHandler implements MvSqlPosHolder {
 
     private final String name;
+    // viewName -> MvTarget
+    private final HashMap<String, MvTarget> targets = new HashMap<>();
     // tableName -> MvInput
     private final HashMap<String, MvInput> inputs = new HashMap<>();
     private final MvSqlPos sqlPos;
@@ -22,8 +26,20 @@ public class MvHandler implements MvSqlPosHolder {
         return name;
     }
 
+    public HashMap<String, MvTarget> getTargets() {
+        return targets;
+    }
+
     public HashMap<String, MvInput> getInputs() {
         return inputs;
+    }
+
+    public MvTarget addTarget(MvTarget target) {
+        return targets.put(target.getName(), target);
+    }
+
+    public MvTarget getTarget(String name) {
+        return targets.get(name);
     }
 
     public MvInput addInput(MvInput input) {

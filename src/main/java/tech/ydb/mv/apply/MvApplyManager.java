@@ -1,5 +1,6 @@
 package tech.ydb.mv.apply;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import tech.ydb.mv.model.MvKey;
 
 /**
@@ -9,6 +10,12 @@ import tech.ydb.mv.model.MvKey;
  * @author zinal
  */
 public class MvApplyManager {
+
+    private final AtomicBoolean shouldRun = new AtomicBoolean(false);
+
+    public boolean isRunning() {
+        return shouldRun.get();
+    }
 
     /**
      * Start the worker threads.

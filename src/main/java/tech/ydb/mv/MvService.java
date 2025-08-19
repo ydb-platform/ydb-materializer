@@ -6,8 +6,8 @@ import java.util.Properties;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
-import tech.ydb.mv.impl.MvContextReader;
-import tech.ydb.mv.impl.MvContextValidator;
+import tech.ydb.mv.parser.MvContextReader;
+import tech.ydb.mv.parser.MvContextValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;

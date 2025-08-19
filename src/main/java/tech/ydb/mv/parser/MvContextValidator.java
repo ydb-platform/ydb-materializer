@@ -1,4 +1,4 @@
-package tech.ydb.mv.impl;
+package tech.ydb.mv.parser;
 
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
@@ -42,6 +42,12 @@ public class MvContextValidator {
     }
 
     private void checkHandler(MvHandler h) {
+        if (h.getTargets().isEmpty()) {
+            context.addIssue(new MvIssue.EmptyHandler(h, MvIssue.EmptyHandlerType.NO_TARGETS));
+        }
+        if (h.getInputs().isEmpty()) {
+            context.addIssue(new MvIssue.EmptyHandler(h, MvIssue.EmptyHandlerType.NO_INPUTS));
+        }
         for (MvInput i : h.getInputs().values()) {
             if (!i.isTableKnown()) {
                 context.addIssue(new MvIssue.UnknownInputTable(i));

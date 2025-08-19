@@ -60,10 +60,14 @@ public class MvParser {
     public MvContext fill() {
         MvContext ctx = new MvContext();
         ctx.addIssues(parseTimeIssues);
+        // first pass: add MV definitions as MvTarget objects
         for ( var stmt : root.sql_stmt() ) {
             if (stmt.create_mat_view_stmt()!=null) {
                 fillTarget(ctx, stmt.create_mat_view_stmt());
             }
+        }
+        // second pass: add handler definitions
+        for ( var stmt : root.sql_stmt() ) {
             if (stmt.create_handler_stmt()!=null) {
                 fillHandler(ctx, stmt.create_handler_stmt());
             }
@@ -189,8 +193,13 @@ public class MvParser {
 
     private void fillHandler(MvContext mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
         var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
-        for (var part : stmt.handler_process_part()) {
-            fillInput(mc, mh, part);
+        for (var part : stmt.handler_part()) {
+            if (part.handler_input_part()!=null) {
+                fillHandlerInput(mc, mh, part.handler_input_part());
+            }
+            if (part.handler_process_part()!=null) {
+                fillHandlerProcess(mc, mh, part.handler_process_part());
+            }
         }
         var prev = mc.addHandler(mh);
         if (prev!=null) {
@@ -198,7 +207,7 @@ public class MvParser {
         }
     }
 
-    private void fillInput(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+    private void fillHandlerInput(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_input_partContext part) {
         MvInput mi = new MvInput(
                 unquote(part.main_table_ref().identifier()),
                 unquote(part.changefeed_name().identifier()),
@@ -208,9 +217,22 @@ public class MvParser {
         } else {
             mi.setBatchMode(true);
         }
+        if (part.consumer_name()!=null) {
+            mi.setConsumerName(unquote(part.consumer_name().identifier()));
+        }
         MvInput prev = mh.addInput(mi);
         if (prev!=null) {
             mc.addIssue(new MvIssue.DuplicateInput(mi, prev));
+        }
+    }
+
+    private void fillHandlerProcess(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+        String mvName = unquote(part.mat_view_ref().identifier());
+        MvTarget target = mc.getTargets().get(mvName);
+        if (target==null) {
+            mc.addIssue(new MvIssue.UnknownTarget(mh, mvName));
+        } else {
+            mh.addTarget(target);
         }
     }
 

@@ -28,10 +28,11 @@ WHERE COMPUTE ON main, sub2
 #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ]#;
 
 CREATE ASYNC HANDLER h1
-  PROCESS main_table CHANGEFEED cf1 AS STREAM,
-  PROCESS sub_table1 CHANGEFEED cf1 AS STREAM,
-  PROCESS sub_table2 CHANGEFEED cf1 AS STREAM,
-  PROCESS sub_table3 CHANGEFEED cf1 AS BATCH;
+  PROCESS m1,
+  INPUT main_table CHANGEFEED cf1 AS STREAM,
+  INPUT sub_table1 CHANGEFEED cf1 AS STREAM,
+  INPUT sub_table2 CHANGEFEED cf1 AS STREAM,
+  INPUT sub_table3 CHANGEFEED cf1 AS BATCH;
 """;
 
     public static final String SQL_GOOD2 =
@@ -53,10 +54,11 @@ WHERE COMPUTE ON main, sub2
 #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ]#;
 
 CREATE ASYNC HANDLER `schema3/h1`
-  PROCESS `schema3/main_table` CHANGEFEED cf1 AS STREAM,
-  PROCESS `schema3/sub_table1` CHANGEFEED cf1 AS STREAM,
-  PROCESS `schema3/sub_table2` CHANGEFEED cf1 AS STREAM,
-  PROCESS `schema3/sub_table3` CHANGEFEED cf1 AS BATCH;
+  PROCESS `schema3/mv1`,
+  INPUT `schema3/main_table` CHANGEFEED cf1 AS STREAM,
+  INPUT `schema3/sub_table1` CHANGEFEED cf1 AS STREAM,
+  INPUT `schema3/sub_table2` CHANGEFEED cf1 AS STREAM,
+  INPUT `schema3/sub_table3` CHANGEFEED cf1 AS BATCH;
 """;
 
     public static final String SQL_BAD1 =

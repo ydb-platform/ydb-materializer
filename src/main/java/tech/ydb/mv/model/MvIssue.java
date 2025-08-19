@@ -188,6 +188,24 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class UnknownTarget extends Error {
+        private final MvHandler handler;
+        private final String name;
+
+        public UnknownTarget(MvHandler handler, String name) {
+            super(handler.getSqlPos());
+            this.handler = handler;
+            this.name = name;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Reference to undefined target `" + name
+                    + "` in handler `" + handler.getName()
+                    + "` at " + sqlPos;
+        }
+    }
+
     public static class DuplicateHandler extends Error {
         private final MvHandler cur;
         private final MvHandler prev;
@@ -255,6 +273,37 @@ public interface MvIssue extends MvSqlPosHolder {
                     + "` in target " + target
                     + " at " + sqlPos;
         }
+    }
+
+    public static class EmptyHandler extends Warning {
+        private final MvHandler handler;
+        private final EmptyHandlerType type;
+
+        public EmptyHandler(MvHandler handler, EmptyHandlerType type) {
+            super(handler.getSqlPos());
+            this.handler = handler;
+            this.type = type;
+        }
+
+        private String getTypeExplanation() {
+            switch (type) {
+                case NO_TARGETS: return "no targets";
+                case NO_INPUTS: return "no inputs";
+                default: return "something";
+            }
+        }
+
+        @Override
+        public String getMessage() {
+            return "Empty handler `" + handler.getName()
+                    + "`: " + getTypeExplanation()
+                    + " at " + sqlPos;
+        }
+    }
+
+    public static enum EmptyHandlerType {
+        NO_TARGETS,
+        NO_INPUTS
     }
 
 }

@@ -9,9 +9,16 @@ sql_stmt: create_mat_view_stmt | create_handler_stmt;
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier AS simple_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
-  handler_process_part (COMMA handler_process_part)* COMMA?;
+  handler_part (COMMA handler_part)* COMMA?;
 
-handler_process_part: PROCESS main_table_ref CHANGEFEED changefeed_name AS (STREAM | BATCH);
+handler_part: (handler_input_part | handler_process_part);
+
+handler_process_part: PROCESS mat_view_ref;
+
+handler_input_part: INPUT main_table_ref
+  CHANGEFEED changefeed_name
+  (CONSUMER consumer_name)?
+  AS (STREAM | BATCH);
 
 simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
   FROM main_table_ref AS table_alias
@@ -42,11 +49,13 @@ ASYNC: A S Y N C;
 BATCH: B A T C H;
 CHANGEFEED: C H A N G E F E E D;
 COMPUTE: C O M P U T E;
+CONSUMER: C O N S U M E R;
 CREATE: C R E A T E;
 FROM: F R O M;
 JOIN: J O I N;
 HANDLER: H A N D L E R;
 INNER: I N N E R;
+INPUT: I N P U T;
 LEFT: L E F T;
 MATERIALIZED: M A T E R I A L I Z E D;
 ON: O N;
@@ -64,8 +73,10 @@ column_reference: table_alias DOT column_name;
 
 column_name: identifier;
 main_table_ref: identifier;
+mat_view_ref: identifier;
 join_table_ref: identifier;
 changefeed_name: identifier;
+consumer_name: identifier;
 
 table_alias: ID_PLAIN;
 column_alias: ID_PLAIN;
