@@ -53,7 +53,7 @@ public class SqlGenSelectUpsertTest {
 
         // Generate SQL
         SqlGen sqlGen = new SqlGen(target);
-        String generatedSql = sqlGen.makeUpsert();
+        String generatedSql = sqlGen.makeUpsertSelect();
 
         // Print the generated SQL for debugging
         System.out.println("Generated UPSERT SQL:");
@@ -103,7 +103,7 @@ public class SqlGenSelectUpsertTest {
 
         // Generate SQL
         SqlGen sqlGen = new SqlGen(target);
-        String generatedSql = sqlGen.makeUpsert();
+        String generatedSql = sqlGen.makeUpsertSelect();
 
         // Print the generated SQL for debugging
         System.out.println("Generated UPSERT SQL for SQL_GOOD2:");

@@ -245,12 +245,20 @@ public class MvParser {
     }
 
     public static void link(MvContext mc) {
-        mc.getTargets().values().stream().forEach(t -> linkTarget(t, mc));
+        mc.getTargets().values().forEach(t -> linkTarget(t, mc));
+        mc.getHandlers().values().forEach(h -> linkHandler(h, mc));
     }
 
     private static void linkTarget(MvTarget t, MvContext mc) {
         t.getColumns().stream().forEach(c -> linkColumn(c, t, mc));
         t.getSources().stream().forEach(s -> linkSource(s, t, mc));
+    }
+
+    private static void linkHandler(MvHandler mh, MvContext mc) {
+        mh.getTargets().values()
+                .stream()
+                .flatMap(mt -> mt.getSources().stream())
+                .forEach(mjs -> linkHandlerJoinSource(mjs, mh, mc));
     }
 
     private static void linkColumn(MvColumn c, MvTarget t, MvContext mc) {
@@ -293,6 +301,13 @@ public class MvParser {
             if (ref==null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getSecondAlias(), c));
             }
+        }
+    }
+
+    private static void linkHandlerJoinSource(MvJoinSource mjs, MvHandler mh, MvContext mc) {
+        MvInput input = mh.getInput(mjs.getTableName());
+        if (input != null) {
+            mjs.setInput(input);
         }
     }
 

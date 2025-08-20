@@ -49,10 +49,14 @@ public class MvContext {
     public TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
         for (MvTarget t : targets.values()) {
+            // target table
+            ret.add(t.getName());
+            // source tables
             for (MvJoinSource r : t.getSources()) {
                 ret.add(r.getTableName());
             }
         }
+        // possible extra inputs (which may be missing in the targets)
         for (MvHandler h : handlers.values()) {
             for (MvInput i : h.getInputs().values()) {
                 ret.add(i.getTableName());

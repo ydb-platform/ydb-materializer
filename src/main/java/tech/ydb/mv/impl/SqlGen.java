@@ -67,7 +67,7 @@ public class SqlGen implements AutoCloseable {
         return sb.toString();
     }
 
-    public String makeUpsert() {
+    public String makeUpsertSelect() {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeys(sb);
         sb.append("UPSERT INTO ");

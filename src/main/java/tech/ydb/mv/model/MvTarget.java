@@ -16,6 +16,7 @@ public class MvTarget implements MvSqlPosHolder {
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
+    private MvTableInfo tableInfo;
     private final MvSqlPos sqlPos;
 
     public MvTarget(String name, MvSqlPos sqlPos) {
@@ -80,6 +81,14 @@ public class MvTarget implements MvSqlPosHolder {
 
     public Collection<MvLiteral> getLiterals() {
         return literals.values();
+    }
+
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
+    }
+
+    public void setTableInfo(MvTableInfo tableInfo) {
+        this.tableInfo = tableInfo;
     }
 
     @Override

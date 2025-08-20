@@ -17,7 +17,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  * Work context for YDB Materializer activities.
- * 
+ *
  * @author zinal
  */
 public class MvService implements AutoCloseable {
@@ -71,6 +71,7 @@ public class MvService implements AutoCloseable {
 
     private void linkTables(HashMap<String, MvTableInfo> info) {
         for (MvTarget t : context.getTargets().values()) {
+            t.setTableInfo(info.get(t.getName()));
             for (MvJoinSource r : t.getSources()) {
                 r.setTableInfo(info.get(r.getTableName()));
             }
