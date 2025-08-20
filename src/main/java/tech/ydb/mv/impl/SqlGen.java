@@ -2,6 +2,7 @@ package tech.ydb.mv.impl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import tech.ydb.table.values.StructType;
@@ -24,16 +25,17 @@ public class SqlGen implements AutoCloseable {
 
     public static final String SYS_CONST = "sys_const";
     public static final String SYS_KEYS = "sys_keys";
+    public static final String SYS_KEYS_VAR = "$sys_keys";
+    public static final String SYS_INPUT = "sys_input";
+    public static final String SYS_INPUT_VAR = "$sys_input";
 
     private static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
     private static final String EOL = System.getProperty("line.separator");
 
     private final MvTarget target;
-    private final StructType keyType;
 
     public SqlGen(MvTarget target) {
         this.target = target;
-        this.keyType = toKeyType(target);
     }
 
     @Override
@@ -41,8 +43,12 @@ public class SqlGen implements AutoCloseable {
         /* noop */
     }
 
-    public StructType getKeyType() {
-        return keyType;
+    public StructType toKeyType() {
+        return toKeyType(target);
+    }
+
+    public StructType toRowType() {
+        return toRowType(target);
     }
 
     public String getMainTable() {
@@ -61,7 +67,7 @@ public class SqlGen implements AutoCloseable {
 
     public String makeSelect() {
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeys(sb);
+        genDeclareMainKeyFields(sb);
         genFullSelect(sb, true);
         sb.append(";").append(EOL);
         return sb.toString();
@@ -69,7 +75,7 @@ public class SqlGen implements AutoCloseable {
 
     public String makeUpsertSelect() {
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeys(sb);
+        genDeclareMainKeyFields(sb);
         sb.append("UPSERT INTO ");
         safeId(sb, target.getName()).append(EOL);
         genFullSelect(sb, true);
@@ -77,13 +83,33 @@ public class SqlGen implements AutoCloseable {
         return sb.toString();
     }
 
-    private void genDeclareMainKeys(StringBuilder sb) {
+    public String makePlainUpsert() {
+        final StringBuilder sb = new StringBuilder();
+        genDeclareTargetFields(sb);
+        sb.append("UPSERT INTO ");
+        safeId(sb, target.getName()).append(EOL);
+        sb.append("SELECT * FROM AS_TABLE(").append(SYS_INPUT_VAR).append(")");
+        sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
+    private void genDeclareMainKeyFields(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
         }
-        sb.append("DECLARE $").append(SYS_KEYS).append(" AS ");
+        sb.append("DECLARE ").append(SYS_KEYS_VAR).append(" AS ");
         sb.append("List<");
-        typeToString(sb, keyType);
+        formatType(sb, toKeyType());
+        sb.append(">;").append(EOL);
+    }
+
+    private void genDeclareTargetFields(StringBuilder sb) {
+        if (target.getTableInfo()==null) {
+            throw new IllegalStateException("No table definition for target `" + target.getName() + "`");
+        }
+        sb.append("DECLARE ").append(SYS_INPUT_VAR).append(" AS ");
+        sb.append("List<");
+        structForTable(sb, target.getTableInfo());
         sb.append(">;").append(EOL);
     }
 
@@ -172,7 +198,7 @@ public class SqlGen implements AutoCloseable {
     }
 
     private void genInputKeys(StringBuilder sb) {
-        sb.append("AS_TABLE($").append(SYS_KEYS)
+        sb.append("AS_TABLE(").append(SYS_KEYS_VAR)
                 .append(") AS ").append(SYS_KEYS).append(EOL);
         sb.append("INNER JOIN ");
     }
@@ -297,14 +323,38 @@ public class SqlGen implements AutoCloseable {
         return StructType.of(m);
     }
 
-    public static StringBuilder typeToString(StringBuilder sb, StructType st) {
+    public static StructType toRowType(MvTarget target) {
+        if (target==null || target.getTableInfo()==null) {
+            throw new IllegalArgumentException();
+        }
+        return toRowType(target.getTableInfo());
+    }
+
+    public static StructType toRowType(MvTableInfo ti) {
+        return StructType.of(ti.getColumns());
+    }
+
+    public static String formatType(Type t) {
+        if (t==null) {
+            throw new NullPointerException();
+        }
+        if (t instanceof StructType st) {
+             return formatType(new StringBuilder(), st).toString();
+        }
+        return t.toString();
+    }
+
+    public static StringBuilder formatType(StringBuilder sb, StructType st) {
         if (st==null) {
             throw new NullPointerException();
+        }
+        if (sb==null) {
+            sb = new StringBuilder();
         }
         sb.append("Struct<");
         for (int i=0; i<st.getMembersCount(); ++i) {
             String name = st.getMemberName(i);
-            String type = typeToString(st.getMemberType(i));
+            String type = SqlGen.formatType(st.getMemberType(i));
             if (i>0) {
                 sb.append(",");
             }
@@ -314,14 +364,31 @@ public class SqlGen implements AutoCloseable {
         return sb;
     }
 
-    public static String typeToString(Type t) {
-        if (t==null) {
+    public static StringBuilder structForTable(StringBuilder sb, MvTableInfo ti) {
+        if (ti==null) {
             throw new NullPointerException();
         }
-        if (t instanceof StructType st) {
-             return typeToString(new StringBuilder(), st).toString();
+        if (sb==null) {
+            sb = new StringBuilder();
         }
-        return t.toString();
+        sb.append("Struct<");
+        boolean comma = false;
+        for (Map.Entry<String, Type> me : ti.getColumns().entrySet()) {
+            String name = me.getKey();
+            String type = SqlGen.formatType(me.getValue());
+            if (comma) {
+                sb.append(",");
+            } else {
+                comma = true;
+            }
+            safeId(sb, name).append(":").append(type);
+        }
+        sb.append(">");
+        return sb;
+    }
+
+    public static String structForTable(MvTableInfo ti) {
+        return structForTable(null, ti).toString();
     }
 
 }

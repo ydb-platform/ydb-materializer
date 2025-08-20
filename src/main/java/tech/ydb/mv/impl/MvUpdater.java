@@ -35,7 +35,7 @@ public class MvUpdater {
         this.nthreads = (threads > 0) ? threads : 1;
         try (SqlGen sg = new SqlGen(target)) {
             this.upsertSql = sg.makeUpsertSelect();
-            this.keyType = sg.getKeyType();
+            this.keyType = sg.toKeyType();
             this.tablePath = conn.fullTableName(sg.getMainTable());
         }
         this.queue = new ArrayBlockingQueue<>(nthreads * 10);

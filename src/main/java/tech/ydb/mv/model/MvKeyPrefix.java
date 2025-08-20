@@ -58,7 +58,7 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return values[pos];
     }
 
-    public StructValue toStructValue() {
+    public StructValue convertKeyToStructValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];
         for (int pos = 0; pos < count; ++pos) {
@@ -68,7 +68,7 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return info.getStructType().newValueUnsafe(members);
     }
 
-    public TupleValue toTupleValue() {
+    public TupleValue convertKeyToTupleValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];
         for (int pos = 0; pos < count; ++pos) {
@@ -77,7 +77,7 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return info.getTupleType().newValueOwn(members);
     }
 
-    public String toJson() {
+    public String convertKeyToJson() {
         int count = info.size();
         YdbStruct ys = new YdbStruct(count);
         for (int pos = 0; pos < count; ++pos) {

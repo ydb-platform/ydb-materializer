@@ -147,7 +147,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE $" + SqlGen.SYS_KEYS + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -159,7 +159,7 @@ public class SqlGenSelectUpsertTest {
                 "Type declaration should include id field");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE($" + SqlGen.SYS_KEYS + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -233,7 +233,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE $" + SqlGen.SYS_KEYS + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -249,7 +249,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain UPSERT INTO clause");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE($" + SqlGen.SYS_KEYS + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -323,7 +323,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE $" + SqlGen.SYS_KEYS + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -335,7 +335,7 @@ public class SqlGenSelectUpsertTest {
                 "Type declaration should include id field");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE($" + SqlGen.SYS_KEYS + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -412,7 +412,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE $" + SqlGen.SYS_KEYS + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -428,7 +428,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain UPSERT INTO clause");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE($" + SqlGen.SYS_KEYS + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table

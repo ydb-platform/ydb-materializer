@@ -1,6 +1,6 @@
 package tech.ydb.mv.apply;
 
-import java.util.Collection;
+import java.util.List;
 
 /**
  * The apply action performs the desired apply action on the particular input.
@@ -9,6 +9,6 @@ import java.util.Collection;
  */
 public interface MvApplyAction {
 
-    void apply(Collection<MvApplyItem> item);
+    void apply(List<MvApplyItem> item);
 
 }
