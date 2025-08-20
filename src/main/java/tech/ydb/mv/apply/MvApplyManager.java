@@ -52,13 +52,21 @@ public class MvApplyManager {
      * @return true, if all keys went to the queue, and false otherwise.
      */
     public boolean submit(Collection<MvKeyValue> keys, MvCommitHandler commitHandler) {
+        if (keys.isEmpty()) {
+            return true;
+        }
+        String tableName = keys.iterator().next().getTableInfo().getName();
+        MvApplyConfig apply = applyConfig.get(tableName);
+        if (apply==null) {
+            LOG.warn("Skipping records for unknown table {}", tableName);
+            commitHandler.apply(keys.size());
+            return true;
+        }
         ArrayList<MvApplyItem> curr = new ArrayList<>(keys.size());
         ArrayList<MvApplyItem> next = new ArrayList<>(keys.size());
         for (MvKeyValue mkv : keys) {
-            MvApplyConfig apply = applyConfig.get(mkv.getTableInfo().getName());
-            if (apply==null) {
-                LOG.warn("Skipping record for unknown table {}", mkv.getTableInfo().getName());
-                continue;
+            if (! tableName.equals(mkv.getTableInfo().getName())) {
+                throw new IllegalArgumentException("Mixed input tables on submission");
             }
             curr.add(new MvApplyItem(mkv, commitHandler, apply));
         }
