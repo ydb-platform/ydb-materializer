@@ -81,12 +81,13 @@ public class MvApplyManager {
             if (next.isEmpty()) {
                 return true;
             }
-            // Allow the queues to get released.
-            YdbMisc.randomSleep(10L, 50L);
             // Switch the working set.
+            curr.clear();
             ArrayList<MvApplyItem> temp = curr;
             curr = next;
             next = temp;
+            // Allow the queues to get released.
+            YdbMisc.randomSleep(10L, 50L);
         }
         return false;
     }
