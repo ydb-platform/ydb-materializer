@@ -13,6 +13,7 @@ public class MvJoinSource implements MvSqlPosHolder {
     private MvJoinMode mode;
     private final ArrayList<MvJoinCondition> conditions = new ArrayList<>();
     private MvTableInfo tableInfo;
+    private MvInput input;
     private final MvSqlPos sqlPos;
 
     public MvJoinSource(MvSqlPos sqlPos) {
@@ -58,6 +59,14 @@ public class MvJoinSource implements MvSqlPosHolder {
 
     public void setTableInfo(MvTableInfo tableInfo) {
         this.tableInfo = tableInfo;
+    }
+
+    public MvInput getInput() {
+        return input;
+    }
+
+    public void setInput(MvInput input) {
+        this.input = input;
     }
 
     @Override

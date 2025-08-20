@@ -14,7 +14,7 @@ import tech.ydb.table.values.StructType;
 import tech.ydb.table.query.ReadTablePart;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvKeyValue;
 
 /**
  *
@@ -30,12 +30,12 @@ public class MvTableKeyReader implements MvUpdater.FlowControl {
     private final String tablePath;
     private final List<String> keyColumns;
     private final StructType keyType;
-    private final MvKey startKey;
+    private final MvKeyValue startKey;
     private volatile GrpcReadStream<ReadTablePart> stream = null;
     private volatile CompletableFuture<Status> status = null;
     private volatile GrpcCall call = null;
 
-    public MvTableKeyReader(MvUpdater updater, MvKey startKey) {
+    public MvTableKeyReader(MvUpdater updater, MvKeyValue startKey) {
         this.conn = updater.getConn();
         this.updater = updater;
         this.startKey = startKey;

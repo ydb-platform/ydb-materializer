@@ -5,11 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.values.PrimitiveType;
 
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvKeyValue;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.table.TableClient;
 
 /**
  *
@@ -25,8 +26,8 @@ public class MvWorkerSelectorTest {
         return new MvKeyPrefix(ys, keyInfo);
     }
 
-    private static MvKey KV(YdbStruct ys, MvKeyInfo keyInfo) {
-        return new MvKey(ys, keyInfo);
+    private static MvKeyValue KV(YdbStruct ys, MvKeyInfo keyInfo) {
+        return new MvKeyValue(ys, keyInfo);
     }
 
     @Test
@@ -90,7 +91,7 @@ public class MvWorkerSelectorTest {
     @Test
     public void techSelectWorkerLoader() {
         MvWorkerSelector sw = new SW(10);
-        sw.refresh();
+        sw.refresh(null);
 
         MvWorkerSelector.Chooser chooser = sw.getChooser();
         Assertions.assertEquals(12, chooser.getItems().size());
@@ -108,11 +109,11 @@ public class MvWorkerSelectorTest {
 
     private static class SW extends MvWorkerSelector {
         public SW(int workerCount) {
-            super(null, makeTableInfo(), workerCount);
+            super(makeTableInfo(), workerCount);
         }
 
         @Override
-        protected MvKeyPrefix[] readPrefixes() {
+        protected MvKeyPrefix[] readPrefixes(TableClient tableClient) {
             MvKeyPrefix[] ret = new MvKeyPrefix[12];
             MvKeyInfo keyInfo = getKeyInfo();
             ret[0] = KP(YS().add("key1", 100), keyInfo);

@@ -1,48 +1,85 @@
 package tech.ydb.mv.apply;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import tech.ydb.mv.model.MvKey;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+
+import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvKeyValue;
+import tech.ydb.mv.util.YdbMisc;
 
 /**
- * The collection of workers, each having its own input queue to process
- * the updates to the MVs being supported by the current application.
+ * The apply manager processes the changes in the context of a single handler.
+ * Multiple apply managers can run in a single application, typically
+ * using a single shared pool of workers.
  *
  * @author zinal
  */
 public class MvApplyManager {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
-    private final AtomicBoolean shouldRun = new AtomicBoolean(false);
+    private final MvHandlerController controller;
+    private final MvApplyWorkerPool workers;
 
-    public boolean isRunning() {
-        return shouldRun.get();
+    // table name -> table apply configuration data
+    private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
+
+    public MvApplyManager(MvHandlerController controller, MvApplyWorkerPool workers) {
+        this.controller = controller;
+        this.workers = workers;
+        buildConfig();
+    }
+
+    private void buildConfig() {
+        for (MvInput mi : controller.getMetadata().getInputs().values()) {
+            MvApplyConfig mac = applyConfig.get(mi.getTableName());
+            if (mac==null) {
+                mac = new MvApplyConfig(mi.getTableInfo(), workers.getCount());
+                applyConfig.put(mi.getTableName(), mac);
+            }
+        }
     }
 
     /**
-     * Start the worker threads.
-     */
-    public void start() {
-
-    }
-
-    /**
-     * Stop the worker threads.
-     */
-    public void stop() {
-
-    }
-
-    /**
-     * Insert the key to the input queue of the proper worker.
-     * In case the queue is full, wait until the capacity becomes available,
-     * or until the update manager is stopped.
+     * Insert the input data to the queues of the proper workers.
      *
-     * In case there is no proper queue for the key, or in case the update
-     * manager has been stopped, false is returned.
+     * In case some of the queues are full, wait until the capacity
+     * becomes available, or until the update manager is stopped.
      *
-     * @param key The key to be put to the queue.
-     * @return true, if the key has got to the queue, and false otherwise.
+     * @param keys The keys to be put to the queues.
+     * @param commitHandler
+     * @return true, if all keys went to the queue, and false otherwise.
      */
-    public boolean submit(MvKey key) {
+    public boolean submit(Collection<MvKeyValue> keys, MvCommitHandler commitHandler) {
+        ArrayList<MvApplyItem> curr = new ArrayList<>(keys.size());
+        ArrayList<MvApplyItem> next = new ArrayList<>(keys.size());
+        for (MvKeyValue mkv : keys) {
+            MvApplyConfig apply = applyConfig.get(mkv.getTableInfo().getName());
+            if (apply==null) {
+                LOG.warn("Skipping record for unknown table {}", mkv.getTableInfo().getName());
+                continue;
+            }
+            curr.add(new MvApplyItem(mkv, commitHandler, apply));
+        }
+        while (controller.isRunning()) {
+            for (MvApplyItem item : curr) {
+                int workerId = item.getApply().getSelector().choose(item.getData());
+                if (! workers.get(workerId).submit(item)) {
+                    // add for re-processing
+                    next.add(item);
+                }
+            }
+            if (next.isEmpty()) {
+                return true;
+            }
+            // Allow the queues to get released.
+            YdbMisc.randomSleep(10L, 50L);
+            // Switch the working set.
+            ArrayList<MvApplyItem> temp = curr;
+            curr = next;
+            next = temp;
+        }
         return false;
     }
 

@@ -27,17 +27,17 @@ public class MvKeyCompareTest {
     }
 
     // Helper method to create MvKey from JSON
-    private static MvKey createKey(YdbStruct ys, MvKeyInfo keyInfo) {
-        return new MvKey(ys, keyInfo);
+    private static MvKeyValue createKey(YdbStruct ys, MvKeyInfo keyInfo) {
+        return new MvKeyValue(ys, keyInfo);
     }
 
     // Helper method to create MvKey with YdbBytes
-    private MvKey createKeyWithBytes(MvKeyInfo keyInfo, YdbBytes bytesValue) {
+    private MvKeyValue createKeyWithBytes(MvKeyInfo keyInfo, YdbBytes bytesValue) {
         if (keyInfo.size() != 1) {
             throw new IllegalArgumentException();
         }
         String json = new YdbStruct().add(keyInfo.getName(0), bytesValue).toJson();;
-        MvKey ret = new MvKey(json, keyInfo);
+        MvKeyValue ret = new MvKeyValue(json, keyInfo);
         Assertions.assertTrue(ret.size()==1);
         Assertions.assertTrue(ret.getValue(0) instanceof YdbBytes);
         return ret;
@@ -111,10 +111,10 @@ public class MvKeyCompareTest {
         MvKeyPrefix p1 = new MvKeyPrefix(new YdbStruct().add("a", 10), tableInfo);
         MvKeyPrefix p2 = new MvKeyPrefix(new YdbStruct().add("a", 20), tableInfo);
 
-        MvKey k1 = new MvKey(new YdbStruct().add("a", 10).add("b", 20), tableInfo);
-        MvKey k2 = new MvKey(new YdbStruct().add("a", 15).add("b", 20), tableInfo);
-        MvKey k3 = new MvKey(new YdbStruct().add("a", 20).add("b", 20), tableInfo);
-        MvKey k4 = new MvKey(new YdbStruct().add("a", 25).add("b", 20), tableInfo);
+        MvKeyValue k1 = new MvKeyValue(new YdbStruct().add("a", 10).add("b", 20), tableInfo);
+        MvKeyValue k2 = new MvKeyValue(new YdbStruct().add("a", 15).add("b", 20), tableInfo);
+        MvKeyValue k3 = new MvKeyValue(new YdbStruct().add("a", 20).add("b", 20), tableInfo);
+        MvKeyValue k4 = new MvKeyValue(new YdbStruct().add("a", 25).add("b", 20), tableInfo);
 
         int cmp;
 
@@ -149,9 +149,9 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createSingleIntKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", 10), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", 20), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", 10), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", 10), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", 20), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", 10), keyInfo);
 
         // Test less than
         Assertions.assertTrue(key1.compareTo(key2) < 0, "10 should be less than 20");
@@ -168,9 +168,9 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createSingleLongKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", 100L), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", 200L), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", 100L), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", 100L), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", 200L), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", 100L), keyInfo);
 
         // Test less than
         Assertions.assertTrue(key1.compareTo(key2) < 0, "100 should be less than 200");
@@ -187,9 +187,9 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createSingleStringKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", "apple"), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", "banana"), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", "apple"), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", "apple"), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", "banana"), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", "apple"), keyInfo);
 
         // Test less than
         Assertions.assertTrue(key1.compareTo(key2) < 0, "apple should be less than banana");
@@ -208,9 +208,9 @@ public class MvKeyCompareTest {
 
         // Create MvKey instances using reflection to set YdbBytes values
         // since JSON deserialization won't work for bytes
-        MvKey key1 = createKeyWithBytes(keyInfo, BYTES_SMALL);
-        MvKey key2 = createKeyWithBytes(keyInfo, BYTES_LARGE);
-        MvKey key3 = createKeyWithBytes(keyInfo, BYTES_SMALL);
+        MvKeyValue key1 = createKeyWithBytes(keyInfo, BYTES_SMALL);
+        MvKeyValue key2 = createKeyWithBytes(keyInfo, BYTES_LARGE);
+        MvKeyValue key3 = createKeyWithBytes(keyInfo, BYTES_SMALL);
 
         // Test less than
         Assertions.assertTrue(key1.compareTo(key2) < 0, "bytes [1,2,3] should be less than [1,2,4]");
@@ -227,9 +227,9 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createSingleDecimalKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", new BigDecimal("10.5")), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", new BigDecimal("20.5")), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", new BigDecimal("10.5")), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", new BigDecimal("10.5")), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", new BigDecimal("20.5")), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", new BigDecimal("10.5")), keyInfo);
 
         // Test less than
         Assertions.assertTrue(key1.compareTo(key2) < 0, "10.5 should be less than 20.5");
@@ -247,10 +247,10 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createDoubleKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", 10).add("key2", "banana"), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", 20).add("key2", "apple"), keyInfo);
-        MvKey key4 = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", 10).add("key2", "banana"), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", 20).add("key2", "apple"), keyInfo);
+        MvKeyValue key4 = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
 
         // Test lexicographic comparison - first key different
         Assertions.assertTrue(key1.compareTo(key3) < 0, "[10, apple] should be less than [20, apple]");
@@ -270,11 +270,11 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo = createTripleKeyTable("test_table");
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvKey key1 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 100L), keyInfo);
-        MvKey key2 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 200L), keyInfo);
-        MvKey key3 = createKey(YS().add("key1", 10).add("key2", "banana").add("key3", 100L), keyInfo);
-        MvKey key4 = createKey(YS().add("key1", 20).add("key2", "apple").add("key3", 100L), keyInfo);
-        MvKey key5 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 100L), keyInfo);
+        MvKeyValue key1 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 100L), keyInfo);
+        MvKeyValue key2 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 200L), keyInfo);
+        MvKeyValue key3 = createKey(YS().add("key1", 10).add("key2", "banana").add("key3", 100L), keyInfo);
+        MvKeyValue key4 = createKey(YS().add("key1", 20).add("key2", "apple").add("key3", 100L), keyInfo);
+        MvKeyValue key5 = createKey(YS().add("key1", 10).add("key2", "apple").add("key3", 100L), keyInfo);
 
         // Test lexicographic comparison - first key different
         Assertions.assertTrue(key1.compareTo(key4) < 0, "[10, apple, 100] should be less than [20, apple, 100]");
@@ -296,10 +296,10 @@ public class MvKeyCompareTest {
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
         // Create keys with null values
-        MvKey keyWithNulls = createKey(YS(), keyInfo);
-        MvKey keyWithFirstNull = createKey(YS().add("key2", "apple"), keyInfo);
-        MvKey keyWithSecondNull = createKey(YS().add("key1", 10), keyInfo);
-        MvKey keyWithoutNulls = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
+        MvKeyValue keyWithNulls = createKey(YS(), keyInfo);
+        MvKeyValue keyWithFirstNull = createKey(YS().add("key2", "apple"), keyInfo);
+        MvKeyValue keyWithSecondNull = createKey(YS().add("key1", 10), keyInfo);
+        MvKeyValue keyWithoutNulls = createKey(YS().add("key1", 10).add("key2", "apple"), keyInfo);
 
         // Test null < non-null for first element
         Assertions.assertTrue(keyWithFirstNull.compareTo(keyWithoutNulls) < 0,
@@ -318,7 +318,7 @@ public class MvKeyCompareTest {
                 "[null, null] should equal [null, null]");
 
         // Test when first element is null, second element comparison doesn't matter
-        MvKey anotherKeyWithFirstNull = createKey(YS().add("key2", "banana"), keyInfo);
+        MvKeyValue anotherKeyWithFirstNull = createKey(YS().add("key2", "banana"), keyInfo);
         Assertions.assertTrue(keyWithFirstNull.compareTo(keyWithoutNulls) < 0,
                 "[null, apple] should be less than [10, apple]");
         Assertions.assertTrue(anotherKeyWithFirstNull.compareTo(keyWithoutNulls) < 0,
@@ -331,8 +331,8 @@ public class MvKeyCompareTest {
         MvTableInfo tableInfo1 = createSingleIntKeyTable("table1");
         MvTableInfo tableInfo2 = createSingleStringKeyTable("table2");
 
-        MvKey key1 = createKey(YS().add("key1", 10), tableInfo1.getKeyInfo());
-        MvKey key2 = createKey(YS().add("key1", "apple"), tableInfo2.getKeyInfo());
+        MvKeyValue key1 = createKey(YS().add("key1", 10), tableInfo1.getKeyInfo());
+        MvKeyValue key2 = createKey(YS().add("key1", "apple"), tableInfo2.getKeyInfo());
 
         // Should throw IllegalArgumentException when comparing keys with different key info
         Assertions.assertThrows(IllegalArgumentException.class, () -> key1.compareTo(key2),
@@ -344,8 +344,8 @@ public class MvKeyCompareTest {
         MvTableInfo singleKeyTable = createSingleIntKeyTable("table1");
         MvTableInfo doubleKeyTable = createDoubleKeyTable("table2");
 
-        MvKey key1 = createKey(YS().add("key1", 10), singleKeyTable.getKeyInfo());
-        MvKey key2 = createKey(YS().add("key1", 10).add("key2", "apple"), doubleKeyTable.getKeyInfo());
+        MvKeyValue key1 = createKey(YS().add("key1", 10), singleKeyTable.getKeyInfo());
+        MvKeyValue key2 = createKey(YS().add("key1", 10).add("key2", "apple"), doubleKeyTable.getKeyInfo());
 
         // Should throw IllegalArgumentException when comparing keys with different lengths
         Assertions.assertThrows(IllegalArgumentException.class, () -> key1.compareTo(key2),

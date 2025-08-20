@@ -10,7 +10,7 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvKeyValue;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
@@ -22,13 +22,11 @@ import tech.ydb.mv.model.MvTableInfo;
  */
 public class MvWorkerSelector {
 
-    private final TableClient tableClient;
     private final MvTableInfo tableInfo;
     private final int workerCount;
     private final AtomicReference<Chooser> chooser;
 
-    public MvWorkerSelector(TableClient tableClient, MvTableInfo tableInfo, int workerCount) {
-        this.tableClient = tableClient;
+    public MvWorkerSelector(MvTableInfo tableInfo, int workerCount) {
         this.tableInfo = tableInfo;
         this.workerCount = (workerCount > 0) ? workerCount : 1;
         this.chooser = new AtomicReference<>(new Chooser(this.workerCount));
@@ -54,22 +52,22 @@ public class MvWorkerSelector {
         return chooser.get();
     }
 
-    public void refresh() {
+    public void refresh(TableClient tableClient) {
         if (workerCount < 2) {
             // No need to describe anything: we have a single worker.
             return;
         }
-        Chooser newChooser = load();
+        Chooser newChooser = load(tableClient);
         chooser.set(newChooser);
     }
 
-    public int choose(MvKey key) {
+    public int choose(MvKeyValue key) {
         return chooser.get().choose(key);
     }
 
-    private Chooser load() {
+    private Chooser load(TableClient tableClient) {
         // Grab the prefixes for the table partitions.
-        MvKeyPrefix[] prefixes = readPrefixes();
+        MvKeyPrefix[] prefixes = readPrefixes(tableClient);
         Chooser c = new Chooser(workerCount);
         int pcount = prefixes.length;
         if (pcount + 1 < workerCount) {
@@ -87,7 +85,7 @@ public class MvWorkerSelector {
         return c;
     }
 
-    protected MvKeyPrefix[] readPrefixes() {
+    protected MvKeyPrefix[] readPrefixes(TableClient tableClient) {
         TableDescription desc;
         DescribeTableSettings dts = new DescribeTableSettings();
         dts.setIncludeShardKeyBounds(true);
@@ -115,7 +113,7 @@ public class MvWorkerSelector {
             return items;
         }
 
-        public int choose(MvKey key) {
+        public int choose(MvKeyValue key) {
             Map.Entry<MvKeyPrefix, Integer> item = items.higherEntry(key);
             if (item==null) {
                 return workerCount - 1;

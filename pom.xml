@@ -4,6 +4,7 @@
     <groupId>tech.ydb.samples</groupId>
     <artifactId>ydb-materializer</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <name>YDB Materializer</name>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

@@ -5,7 +5,6 @@ package tech.ydb.mv;
  * @author zinal
  */
 public class App {
-
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(App.class);
 
     public static final String CONF_INPUT_MODE = "job.input.mode";
