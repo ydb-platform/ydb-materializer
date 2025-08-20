@@ -1,6 +1,7 @@
 package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -20,6 +21,7 @@ import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.impl.SqlGen;
+import tech.ydb.mv.model.MvKeyValue;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbConv;
 
@@ -49,6 +51,12 @@ public class MvActionMain implements MvApplyAction {
 
     @Override
     public void apply(List<MvApplyItem> input) {
+        if (input==null || input.isEmpty()) {
+            return;
+        }
+        // exclude duplicate keys before the db query
+        List<MvKeyValue> work = deduplicate(input);
+        // retrieve and adjust the batching options
         int readBatchSize = context.getSettings().getSelectBatchSize();
         int writeBatchSize = context.getSettings().getUpsertBatchSize();
         if (readBatchSize < 1) {
@@ -58,18 +66,31 @@ public class MvActionMain implements MvApplyAction {
             writeBatchSize = readBatchSize;
         }
         ArrayList<StructValue> output = new ArrayList<>(readBatchSize);
-        for (List<MvApplyItem> rd : Lists.partition(input, readBatchSize)) {
+        for (List<MvKeyValue> rd : Lists.partition(work, readBatchSize)) {
+            // read the portion of data
             output.clear();
             readRows(rd, output);
             for (List<StructValue> wr : Lists.partition(output, writeBatchSize)) {
+                // write the portion of data
                 writeRows(wr);
             }
         }
+        // wait for the last write to be completed
         finishWriteRows();
+        // mark the progress
         commitRows(input);
     }
 
-    private void readRows(List<MvApplyItem> items, ArrayList<StructValue> output) {
+    private List<MvKeyValue> deduplicate(List<MvApplyItem> input) {
+        HashSet<MvKeyValue> temp = new HashSet<>();
+        for (MvApplyItem item : input) {
+            temp.add(item.getData());
+        }
+        return new ArrayList<>(temp);
+    }
+
+    private void readRows(List<MvKeyValue> items, ArrayList<StructValue> output) {
+        // perform the db query
         Params params = Params.of(SqlGen.SYS_KEYS_VAR, makeKeys(items));
         ResultSetReader result = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(sqlSelect, TxMode.ONLINE_RO, params)
@@ -77,10 +98,12 @@ public class MvActionMain implements MvApplyAction {
         if (result.getRowCount()==0) {
             return;
         }
+        // map the positions of columns
         int[] positions = new int[rowType.getMembersCount()];
         for (int ix = 0; ix < positions.length; ++ix) {
             positions[ix] = result.getColumnIndex(rowType.getMemberName(ix));
         }
+        // convert the output to the desired structures
         while (result.next()) {
             Value<?>[] members = new Value<?>[positions.length];
             for (int ix = 0; ix < positions.length; ++ix) {
@@ -96,16 +119,18 @@ public class MvActionMain implements MvApplyAction {
         }
     }
 
-    private Value<?> makeKeys(List<MvApplyItem> items) {
+    private Value<?> makeKeys(List<MvKeyValue> items) {
         StructValue[] values = items.stream()
-                .map(item -> item.getData().convertKeyToStructValue())
+                .map(item -> item.convertKeyToStructValue())
                 .toArray(StructValue[]::new);
         return ListValue.of(values);
     }
 
     private void writeRows(List<StructValue> items) {
         Params params = Params.of(SqlGen.SYS_KEYS_VAR, makeRows(items));
+        // wait for the previous query to complete
         finishWriteRows();
+        // submit the new query
         var statement = context.getRetryCtx().supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params).execute());
         currentUpsert.set(statement);

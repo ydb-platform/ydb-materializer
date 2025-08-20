@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.util.Arrays;
+import java.util.Objects;
 import tech.ydb.table.description.KeyBound;
 import tech.ydb.table.values.TupleValue;
 import tech.ydb.table.values.Value;
@@ -115,6 +116,31 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
     @Override
     public String toString() {
         return Arrays.toString(values);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 79 * hash + Arrays.deepHashCode(this.values);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvKeyPrefix other = (MvKeyPrefix) obj;
+        if (!Objects.equals(this.info, other.info)) {
+            return false;
+        }
+        return Arrays.deepEquals(this.values, other.values);
     }
 
     public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
