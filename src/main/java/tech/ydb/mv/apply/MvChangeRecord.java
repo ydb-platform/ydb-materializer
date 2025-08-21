@@ -1,7 +1,5 @@
 package tech.ydb.mv.apply;
 
-import tech.ydb.mv.apply.MvApplyConfig;
-import tech.ydb.mv.apply.MvCommitHandler;
 import tech.ydb.mv.model.MvKey;
 
 /**

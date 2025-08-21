@@ -60,6 +60,22 @@ public class MvHandler implements MvSqlPosHolder {
         this.consumerName = consumerName;
     }
 
+    public String getConsumerNameAlways() {
+        if (consumerName!=null && consumerName.length() > 0) {
+            return consumerName;
+        }
+        if (! name.contains("/")) {
+            return name;
+        }
+        String[] parts = name.split("[/]");
+        for (int pos = parts.length; pos > 0; --pos) {
+            if (parts[pos-1].length() > 0) {
+                return parts[pos-1];
+            }
+        }
+        return "ydb$mv";
+    }
+
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
