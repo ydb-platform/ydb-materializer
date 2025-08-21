@@ -9,6 +9,6 @@ import java.util.List;
  */
 public interface MvApplyAction {
 
-    void apply(List<MvApplyItem> item);
+    void apply(List<MvChangeRecord> item);
 
 }

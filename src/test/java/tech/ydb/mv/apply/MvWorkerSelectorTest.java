@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.values.PrimitiveType;
 
-import tech.ydb.mv.model.MvKeyValue;
+import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
@@ -26,8 +26,8 @@ public class MvWorkerSelectorTest {
         return new MvKeyPrefix(ys, keyInfo);
     }
 
-    private static MvKeyValue KV(YdbStruct ys, MvKeyInfo keyInfo) {
-        return new MvKeyValue(ys, keyInfo);
+    private static MvKey KV(YdbStruct ys, MvKeyInfo keyInfo) {
+        return new MvKey(ys, keyInfo);
     }
 
     @Test

@@ -1,25 +1,27 @@
 package tech.ydb.mv.apply;
 
-import tech.ydb.mv.model.MvKeyValue;
+import tech.ydb.mv.apply.MvApplyConfig;
+import tech.ydb.mv.apply.MvCommitHandler;
+import tech.ydb.mv.model.MvKey;
 
 /**
  *
  * @author zinal
  */
-public class MvApplyItem {
+public class MvChangeRecord {
 
-    private final MvKeyValue data;
+    private final MvKey key;
     private final MvCommitHandler commit;
     private final MvApplyConfig apply;
 
-    public MvApplyItem(MvKeyValue data, MvCommitHandler commit, MvApplyConfig apply) {
-        this.data = data;
+    public MvChangeRecord(MvKey key, MvCommitHandler commit, MvApplyConfig apply) {
+        this.key = key;
         this.commit = commit;
         this.apply = apply;
     }
 
-    public MvKeyValue getData() {
-        return data;
+    public MvKey getKey() {
+        return key;
     }
 
     public MvCommitHandler getCommit() {

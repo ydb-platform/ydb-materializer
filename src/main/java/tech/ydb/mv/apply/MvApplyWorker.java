@@ -14,7 +14,7 @@ public class MvApplyWorker implements Runnable {
     private final MvApplyWorkerPool pool;
     private final int number;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
-    private final ArrayBlockingQueue<MvApplyItem> queue;
+    private final ArrayBlockingQueue<MvChangeRecord> queue;
 
     public MvApplyWorker(MvApplyWorkerPool pool, int number, int queueLimit) {
         this.pool = pool;
@@ -42,7 +42,7 @@ public class MvApplyWorker implements Runnable {
         return t.isAlive();
     }
 
-    public boolean submit(MvApplyItem item) {
+    public boolean submit(MvChangeRecord item) {
         return queue.offer(item);
     }
 

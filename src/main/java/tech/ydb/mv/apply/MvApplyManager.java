@@ -6,7 +6,7 @@ import java.util.HashMap;
 
 import tech.ydb.mv.MvHandlerController;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvKeyValue;
+import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
@@ -51,7 +51,7 @@ public class MvApplyManager {
      * @param commitHandler
      * @return true, if all keys went to the queue, and false otherwise.
      */
-    public boolean submit(Collection<MvKeyValue> keys, MvCommitHandler commitHandler) {
+    public boolean submit(Collection<MvKey> keys, MvCommitHandler commitHandler) {
         if (keys.isEmpty()) {
             return true;
         }
@@ -62,17 +62,17 @@ public class MvApplyManager {
             commitHandler.apply(keys.size());
             return true;
         }
-        ArrayList<MvApplyItem> curr = new ArrayList<>(keys.size());
-        ArrayList<MvApplyItem> next = new ArrayList<>(keys.size());
-        for (MvKeyValue mkv : keys) {
+        ArrayList<MvChangeRecord> curr = new ArrayList<>(keys.size());
+        ArrayList<MvChangeRecord> next = new ArrayList<>(keys.size());
+        for (MvKey mkv : keys) {
             if (! tableName.equals(mkv.getTableInfo().getName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
-            curr.add(new MvApplyItem(mkv, commitHandler, apply));
+            curr.add(new MvChangeRecord(mkv, commitHandler, apply));
         }
         while (controller.isRunning()) {
-            for (MvApplyItem item : curr) {
-                int workerId = item.getApply().getSelector().choose(item.getData());
+            for (MvChangeRecord item : curr) {
+                int workerId = item.getApply().getSelector().choose(item.getKey());
                 if (! workers.get(workerId).submit(item)) {
                     // add for re-processing
                     next.add(item);
@@ -83,7 +83,7 @@ public class MvApplyManager {
             }
             // Switch the working set.
             curr.clear();
-            ArrayList<MvApplyItem> temp = curr;
+            ArrayList<MvChangeRecord> temp = curr;
             curr = next;
             next = temp;
             // Allow the queues to get released.

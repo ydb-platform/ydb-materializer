@@ -21,7 +21,7 @@ import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.impl.SqlGen;
-import tech.ydb.mv.model.MvKeyValue;
+import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbConv;
 
@@ -50,12 +50,12 @@ public class MvActionMain implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvApplyItem> input) {
+    public void apply(List<MvChangeRecord> input) {
         if (input==null || input.isEmpty()) {
             return;
         }
         // exclude duplicate keys before the db query
-        List<MvKeyValue> work = deduplicate(input);
+        List<MvKey> work = deduplicate(input);
         // retrieve and adjust the batching options
         int readBatchSize = context.getSettings().getSelectBatchSize();
         int writeBatchSize = context.getSettings().getUpsertBatchSize();
@@ -66,7 +66,7 @@ public class MvActionMain implements MvApplyAction {
             writeBatchSize = readBatchSize;
         }
         ArrayList<StructValue> output = new ArrayList<>(readBatchSize);
-        for (List<MvKeyValue> rd : Lists.partition(work, readBatchSize)) {
+        for (List<MvKey> rd : Lists.partition(work, readBatchSize)) {
             // read the portion of data
             output.clear();
             readRows(rd, output);
@@ -81,15 +81,15 @@ public class MvActionMain implements MvApplyAction {
         commitRows(input);
     }
 
-    private List<MvKeyValue> deduplicate(List<MvApplyItem> input) {
-        HashSet<MvKeyValue> temp = new HashSet<>();
-        for (MvApplyItem item : input) {
-            temp.add(item.getData());
+    private List<MvKey> deduplicate(List<MvChangeRecord> input) {
+        HashSet<MvKey> temp = new HashSet<>();
+        for (MvChangeRecord item : input) {
+            temp.add(item.getKey());
         }
         return new ArrayList<>(temp);
     }
 
-    private void readRows(List<MvKeyValue> items, ArrayList<StructValue> output) {
+    private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
         // perform the db query
         Params params = Params.of(SqlGen.SYS_KEYS_VAR, makeKeys(items));
         ResultSetReader result = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
@@ -119,7 +119,7 @@ public class MvActionMain implements MvApplyAction {
         }
     }
 
-    private Value<?> makeKeys(List<MvKeyValue> items) {
+    private Value<?> makeKeys(List<MvKey> items) {
         StructValue[] values = items.stream()
                 .map(item -> item.convertKeyToStructValue())
                 .toArray(StructValue[]::new);
@@ -150,8 +150,8 @@ public class MvActionMain implements MvApplyAction {
         }
     }
 
-    private void commitRows(List<MvApplyItem> input) {
-        for (MvApplyItem item : input) {
+    private void commitRows(List<MvChangeRecord> input) {
+        for (MvChangeRecord item : input) {
             item.getCommit().apply(1);
         }
     }

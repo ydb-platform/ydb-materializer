@@ -11,29 +11,22 @@ import tech.ydb.mv.util.YdbStruct;
  * @author zinal
  */
 @SuppressWarnings("rawtypes")
-public class MvKeyValue extends MvKeyPrefix {
+public class MvKey extends MvKeyPrefix {
 
-    private final YdbStruct value;
-
-    public MvKeyValue(YdbStruct value, MvKeyInfo info) {
-        super(info, MvKeyValue.buildValue(value, info));
-        this.value = value;
+    public MvKey(YdbStruct value, MvKeyInfo info) {
+        super(info, MvKey.buildValue(value, info));
     }
 
-    public MvKeyValue(YdbStruct value, MvTableInfo tableInfo) {
+    public MvKey(YdbStruct value, MvTableInfo tableInfo) {
         this(value, tableInfo.getKeyInfo());
     }
 
-    public MvKeyValue(String json, MvKeyInfo info) {
+    public MvKey(String json, MvKeyInfo info) {
         this(YdbStruct.fromJson(json), info);
     }
 
-    public MvKeyValue(ResultSetReader rsr, MvKeyInfo info) {
+    public MvKey(ResultSetReader rsr, MvKeyInfo info) {
         this(toYdbStruct(rsr), info);
-    }
-
-    public YdbStruct getValue() {
-        return value;
     }
 
     public static Comparable[] buildValue(YdbStruct ys, MvKeyInfo info) {
