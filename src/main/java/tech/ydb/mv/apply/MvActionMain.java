@@ -50,7 +50,7 @@ public class MvActionMain implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvChangeRecord> input) {
+    public void apply(List<MvApplyTask> input) {
         if (input==null || input.isEmpty()) {
             return;
         }
@@ -77,14 +77,12 @@ public class MvActionMain implements MvApplyAction {
         }
         // wait for the last write to be completed
         finishWriteRows();
-        // mark the progress
-        commitRows(input);
     }
 
-    private List<MvKey> deduplicate(List<MvChangeRecord> input) {
+    private List<MvKey> deduplicate(List<MvApplyTask> input) {
         HashSet<MvKey> temp = new HashSet<>();
-        for (MvChangeRecord item : input) {
-            temp.add(item.getKey());
+        for (MvApplyTask item : input) {
+            temp.add(item.getData().getKey());
         }
         return new ArrayList<>(temp);
     }
@@ -147,12 +145,6 @@ public class MvActionMain implements MvApplyAction {
         if (statement!=null) {
             currentUpsert.remove();
             statement.join().getStatus().expectSuccess();
-        }
-    }
-
-    private void commitRows(List<MvChangeRecord> input) {
-        for (MvChangeRecord item : input) {
-            item.getCommit().apply(1);
         }
     }
 

@@ -26,6 +26,8 @@ import com.google.gson.JsonParser;
 public class YdbStruct implements Serializable {
     private static final long serialVersionUID = 20250817001L;
 
+    public static final YdbStruct EMPTY = new YdbStruct(0);
+
     public static Map<Class<?>, TypeInfo<?>> CLS2INFO;
     public static Map<String, TypeInfo<?>> CODE2INFO;
     static {
@@ -82,14 +84,18 @@ public class YdbStruct implements Serializable {
         CODE2INFO = Collections.unmodifiableMap(m1);
     }
 
-    private final HashMap<String, Comparable<?>> values;
+    private final Map<String, Comparable<?>> values;
 
     public YdbStruct() {
         this.values = new HashMap<>();
     }
 
     public YdbStruct(int capacity) {
-        this.values = new HashMap<>(capacity);
+        if (capacity > 0) {
+            this.values = new HashMap<>(capacity);
+        } else {
+            this.values = Collections.emptyMap();
+        }
     }
 
     public Set<String> keySet() {

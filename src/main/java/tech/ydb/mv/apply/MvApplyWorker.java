@@ -1,7 +1,9 @@
 package tech.ydb.mv.apply;
 
+import tech.ydb.mv.model.MvChangeRecord;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.util.YdbMisc;
 
 /**
  * The apply worker is an active object (thread) with the input queue to process.
@@ -14,7 +16,7 @@ public class MvApplyWorker implements Runnable {
     private final MvApplyWorkerPool pool;
     private final int number;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
-    private final ArrayBlockingQueue<MvChangeRecord> queue;
+    private final ArrayBlockingQueue<MvApplyTask> queue;
 
     public MvApplyWorker(MvApplyWorkerPool pool, int number, int queueLimit) {
         this.pool = pool;
@@ -42,19 +44,22 @@ public class MvApplyWorker implements Runnable {
         return t.isAlive();
     }
 
-    public boolean submit(MvChangeRecord item) {
-        return queue.offer(item);
+    public boolean submit(MvApplyTask task) {
+        return queue.offer(task);
     }
 
     @Override
     public void run() {
         while (pool.isRunning()) {
-            action();
+            if ( action() <= 0 ) {
+                YdbMisc.randomSleep(10L, 30L);
+            }
         }
     }
 
-    private void action() {
-
+    private int action() {
+        // TODO: invoking actions
+        return 0;
     }
 
 }

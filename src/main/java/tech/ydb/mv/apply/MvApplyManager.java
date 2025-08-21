@@ -5,8 +5,8 @@ import java.util.Collection;
 import java.util.HashMap;
 
 import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
@@ -47,48 +47,51 @@ public class MvApplyManager {
      * In case some of the queues are full, wait until the capacity
      * becomes available, or until the update manager is stopped.
      *
-     * @param keys The keys to be put to the queues.
+     * @param changes The change records to be submitted for processing.
      * @param commitHandler
      * @return true, if all keys went to the queue, and false otherwise.
      */
-    public boolean submit(Collection<MvKey> keys, MvCommitHandler commitHandler) {
-        if (keys.isEmpty()) {
+    public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler commitHandler) {
+        if (changes.isEmpty()) {
             return true;
         }
-        String tableName = keys.iterator().next().getTableInfo().getName();
+        int count = changes.size();
+        String tableName = changes.iterator().next().getKey().getTableInfo().getName();
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
-            LOG.warn("Skipping records for unknown table {}", tableName);
-            commitHandler.apply(keys.size());
+            commitHandler.apply(count);
+            LOG.warn("Skipping {} records for unknown table {}", count, tableName);
             return true;
         }
-        ArrayList<MvChangeRecord> curr = new ArrayList<>(keys.size());
-        ArrayList<MvChangeRecord> next = new ArrayList<>(keys.size());
-        for (MvKey mkv : keys) {
-            if (! tableName.equals(mkv.getTableInfo().getName())) {
+        ArrayList<MvApplyTask> curr = new ArrayList<>(count);
+        ArrayList<MvApplyTask> next = new ArrayList<>(count);
+        for (MvChangeRecord change : changes) {
+            if (! tableName.equals(change.getKey().getTableInfo().getName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
-            curr.add(new MvChangeRecord(mkv, commitHandler, apply));
+            curr.add(new MvApplyTask(change, apply, commitHandler));
         }
         while (controller.isRunning()) {
-            for (MvChangeRecord item : curr) {
-                int workerId = item.getApply().getSelector().choose(item.getKey());
-                if (! workers.get(workerId).submit(item)) {
+            for (MvApplyTask task : curr) {
+                int workerId = apply.getSelector().choose(task.getData().getKey());
+                if (! workers.get(workerId).submit(task)) {
                     // add for re-processing
-                    next.add(item);
+                    next.add(task);
                 }
             }
             if (next.isEmpty()) {
+                // Everything submitted
                 return true;
             }
             // Switch the working set.
             curr.clear();
-            ArrayList<MvChangeRecord> temp = curr;
+            ArrayList<MvApplyTask> temp = curr;
             curr = next;
             next = temp;
             // Allow the queues to get released.
             YdbMisc.randomSleep(10L, 50L);
         }
+        // Exit without processing all the inputs
         return false;
     }
 
