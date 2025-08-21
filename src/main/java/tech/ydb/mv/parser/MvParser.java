@@ -193,6 +193,9 @@ public class MvParser {
 
     private void fillHandler(MvContext mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
         var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
+        if (stmt.consumer_name()!=null) {
+            mh.setConsumerName(unquote(stmt.consumer_name().identifier()));
+        }
         for (var part : stmt.handler_part()) {
             if (part.handler_input_part()!=null) {
                 fillHandlerInput(mc, mh, part.handler_input_part());
@@ -216,9 +219,6 @@ public class MvParser {
             mi.setBatchMode(false);
         } else {
             mi.setBatchMode(true);
-        }
-        if (part.consumer_name()!=null) {
-            mi.setConsumerName(unquote(part.consumer_name().identifier()));
         }
         MvInput prev = mh.addInput(mi);
         if (prev!=null) {

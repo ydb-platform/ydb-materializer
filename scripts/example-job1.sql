@@ -14,8 +14,8 @@ CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
   WHERE COMPUTE ON main, sub2
   #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;
 
-CREATE ASYNC HANDLER h1 PROCESS `test1/mv1`,
+CREATE ASYNC HANDLER h1 PROCESS `test1/mv1` CONSUMER h1_consumer
   INPUT `test1/main_table` CHANGEFEED cf1 AS STREAM,
   INPUT `test1/sub_table1` CHANGEFEED cf2 AS STREAM,
-  INPUT `test1/sub_table2` CHANGEFEED cf3 CONSUMER consumer1 AS STREAM,
-  INPUT `test1/sub_table3` CHANGEFEED cf4 CONSUMER consumer2 AS BATCH;
+  INPUT `test1/sub_table2` CHANGEFEED cf3 AS STREAM,
+  INPUT `test1/sub_table3` CHANGEFEED cf4 AS BATCH;

@@ -16,6 +16,7 @@ import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
 import tech.ydb.scheme.SchemeClient;
 import tech.ydb.table.TableClient;
+import tech.ydb.topic.TopicClient;
 
 /**
  * The helper class which creates the YDB connection from the set of properties.
@@ -27,11 +28,12 @@ public class YdbConnector implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbConnector.class);
 
     private final GrpcTransport transport;
-    private final QueryClient queryClient;
     private final SchemeClient schemeClient;
     private final TableClient tableClient;
+    private final QueryClient queryClient;
     private final tech.ydb.table.SessionRetryContext tableRetryCtx;
     private final tech.ydb.query.tools.SessionRetryContext queryRetryCtx;
+    private final TopicClient topicClient;
     private final String database;
     private final Config config;
 
@@ -76,6 +78,9 @@ public class YdbConnector implements AutoCloseable {
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
+            this.topicClient = TopicClient.newClient(tempTransport)
+                    .setCompressionExecutor(Runnable::run) // Prevent OOM
+                    .build();
             this.tableClient = QueryClient.newTableClient(tempTransport).build();
             this.tableRetryCtx = tech.ydb.table.SessionRetryContext
                     .create(this.tableClient)
@@ -118,6 +123,10 @@ public class YdbConnector implements AutoCloseable {
 
     public Config getConfig() {
         return config;
+    }
+
+    public TopicClient getTopicClient() {
+        return topicClient;
     }
 
     public TableClient getTableClient() {

@@ -303,8 +303,12 @@ public class BasicParserTest {
         Assertions.assertEquals("main", target0.getFilter().getSources().get(0).getAlias());
         Assertions.assertEquals("sub2", target0.getFilter().getSources().get(1).getAlias());
 
-        // Test MvInput structure
+        // Test MvHandler structure
         var handler1 = mc.getHandlers().values().iterator().next();
+        Assertions.assertEquals("schema3/h1", handler1.getName());
+        Assertions.assertEquals("iddqd", handler1.getConsumerName());
+
+        // Test MvInput structure
         var input1 = handler1.getInputs().get("schema3/main_table");
         Assertions.assertEquals("schema3/main_table", input1.getTableName());
         Assertions.assertEquals("cf1", input1.getChangeFeed());

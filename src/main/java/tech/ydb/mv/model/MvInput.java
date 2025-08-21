@@ -10,7 +10,6 @@ public class MvInput implements MvSqlPosHolder {
     private final String changeFeed;
     private MvTableInfo tableInfo;
     private boolean batchMode;
-    private String consumerName;
     private final MvSqlPos sqlPos;
 
     public MvInput(String tableName, String changeFeed, MvSqlPos sqlPos) {
@@ -46,14 +45,6 @@ public class MvInput implements MvSqlPosHolder {
 
     public void setBatchMode(boolean batchMode) {
         this.batchMode = batchMode;
-    }
-
-    public String getConsumerName() {
-        return consumerName;
-    }
-
-    public void setConsumerName(String consumerName) {
-        this.consumerName = consumerName;
     }
 
     @Override

@@ -9,6 +9,7 @@ sql_stmt: create_mat_view_stmt | create_handler_stmt;
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier AS simple_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
+  (CONSUMER consumer_name)?
   handler_part (COMMA handler_part)* COMMA?;
 
 handler_part: (handler_input_part | handler_process_part);
@@ -16,9 +17,7 @@ handler_part: (handler_input_part | handler_process_part);
 handler_process_part: PROCESS mat_view_ref;
 
 handler_input_part: INPUT main_table_ref
-  CHANGEFEED changefeed_name
-  (CONSUMER consumer_name)?
-  AS (STREAM | BATCH);
+  CHANGEFEED changefeed_name AS (STREAM | BATCH);
 
 simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
   FROM main_table_ref AS table_alias

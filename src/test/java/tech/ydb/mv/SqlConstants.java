@@ -53,7 +53,7 @@ INNER JOIN `schema3/sub_table3` AS sub3
 WHERE COMPUTE ON main, sub2
 #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2') ]#;
 
-CREATE ASYNC HANDLER `schema3/h1`
+CREATE ASYNC HANDLER `schema3/h1` CONSUMER iddqd
   PROCESS `schema3/mv1`,
   INPUT `schema3/main_table` CHANGEFEED cf1 AS STREAM,
   INPUT `schema3/sub_table1` CHANGEFEED cf1 AS STREAM,

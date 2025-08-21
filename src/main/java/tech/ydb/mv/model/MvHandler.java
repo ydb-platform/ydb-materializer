@@ -15,6 +15,8 @@ public class MvHandler implements MvSqlPosHolder {
     private final HashMap<String, MvTarget> targets = new HashMap<>();
     // tableName -> MvInput
     private final HashMap<String, MvInput> inputs = new HashMap<>();
+    private String consumerName;
+
     private final MvSqlPos sqlPos;
 
     public MvHandler(String name, MvSqlPos sqlPos) {
@@ -48,6 +50,14 @@ public class MvHandler implements MvSqlPosHolder {
 
     public MvInput getInput(String tableName) {
         return inputs.get(tableName);
+    }
+
+    public String getConsumerName() {
+        return consumerName;
+    }
+
+    public void setConsumerName(String consumerName) {
+        this.consumerName = consumerName;
     }
 
     @Override
