@@ -13,4 +13,10 @@ public interface MvCommitHandler {
      */
     void apply(int count);
 
+    @Override
+    boolean equals(Object obj);
+
+    @Override
+    int hashCode();
+
 }

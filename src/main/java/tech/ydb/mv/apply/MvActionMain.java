@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.google.common.collect.Lists;
+import java.util.Objects;
+import java.util.UUID;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
@@ -32,6 +34,7 @@ import tech.ydb.mv.util.YdbConv;
  */
 public class MvActionMain implements MvApplyAction {
 
+    private final String id;
     private final MvActionContext context;
     private final String sqlSelect;
     private final String sqlUpsert;
@@ -41,12 +44,35 @@ public class MvActionMain implements MvApplyAction {
             = new ThreadLocal<>();
 
     public MvActionMain(MvTarget target, MvActionContext context) {
+        this.id = UUID.randomUUID().toString();
         this.context = context;
         try (SqlGen sg = new SqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.rowType = sg.toRowType();
         }
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 19 * hash + Objects.hashCode(this.id);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvActionMain other = (MvActionMain) obj;
+        return Objects.equals(this.id, other.id);
     }
 
     @Override
