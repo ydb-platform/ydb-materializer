@@ -18,21 +18,21 @@ public class MvApplyWorker implements Runnable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyWorker.class);
 
     private final MvApplyManager owner;
-    private final int number;
+    private final int workerNumber;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final ArrayBlockingQueue<MvApplyTask> queue;
     private final ArrayList<MvApplyTask> activeTasks;
 
     public MvApplyWorker(MvApplyManager owner, int number) {
         this.owner = owner;
-        this.number = number;
+        this.workerNumber = number;
         this.activeTasks = new ArrayList<>(10);
         this.queue = new ArrayBlockingQueue<>(owner.getSettings().getApplyQueueSize());
     }
 
     public void start() {
         Thread t = new Thread(this);
-        t.setName("ydb-mv-apply-worker-" + String.valueOf(number));
+        t.setName("ydb-mv-apply-worker-" + String.valueOf(workerNumber));
         t.setDaemon(true);
         Thread old = thread.getAndSet(t);
         if (old!=null && old.isAlive()) {
@@ -77,10 +77,28 @@ public class MvApplyWorker implements Runnable {
         if (activeTasks.isEmpty()) {
             return 0;
         }
-        new PerAction().apply();
+        PerAction retries = new PerAction().apply();
+        if (!retries.isEmpty()) {
+            processRetries(retries);
+        }
         new PerCommit().apply();
-        // TODO: errors!
         return activeTasks.size();
+    }
+
+    private void processRetries(PerAction retries) {
+        int retryNumber = 0;
+        while (! retries.isEmpty()) {
+            
+        }
+    }
+
+    private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
+        try {
+            action.apply(tasks);
+        } catch(Exception ex) {
+            retries.items.put(action, tasks);
+            LOG.warn("Action execution failed, scheduling for retry", ex);
+        }
     }
 
     private class PerAction {
@@ -100,8 +118,14 @@ public class MvApplyWorker implements Runnable {
             }
         }
 
-        void apply() {
-            items.forEach((handler, tasks) -> handler.apply(tasks));
+        boolean isEmpty() {
+            return items.isEmpty();
+        }
+
+        PerAction apply() {
+            PerAction retries = new PerAction();
+            items.forEach((action, tasks) -> applyAction(action, tasks, retries));
+            return retries;
         }
     }
 
