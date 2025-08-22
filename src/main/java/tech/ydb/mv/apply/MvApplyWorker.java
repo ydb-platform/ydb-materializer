@@ -1,6 +1,5 @@
 package tech.ydb.mv.apply;
 
-import tech.ydb.mv.model.MvChangeRecord;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.mv.util.YdbMisc;
@@ -13,15 +12,15 @@ import tech.ydb.mv.util.YdbMisc;
  */
 public class MvApplyWorker implements Runnable {
 
-    private final MvApplyWorkerPool pool;
+    private final MvApplyManager owner;
     private final int number;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final ArrayBlockingQueue<MvApplyTask> queue;
 
-    public MvApplyWorker(MvApplyWorkerPool pool, int number, int queueLimit) {
-        this.pool = pool;
+    public MvApplyWorker(MvApplyManager owner, int number) {
+        this.owner = owner;
         this.number = number;
-        this.queue = new ArrayBlockingQueue<>(queueLimit);
+        this.queue = new ArrayBlockingQueue<>(owner.getSettings().getApplyQueueSize());
     }
 
     public void start() {
@@ -50,7 +49,7 @@ public class MvApplyWorker implements Runnable {
 
     @Override
     public void run() {
-        while (pool.isRunning()) {
+        while (owner.isRunning()) {
             if ( action() <= 0 ) {
                 YdbMisc.randomSleep(10L, 30L);
             }

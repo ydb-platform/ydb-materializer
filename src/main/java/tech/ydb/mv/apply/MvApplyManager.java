@@ -3,16 +3,17 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.MvHandlerController;
 import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
  * The apply manager processes the changes in the context of a single handler.
- * Multiple apply managers can run in a single application, typically
- * using a single shared pool of workers.
+ * Multiple apply managers can run in a single application.
  *
  * @author zinal
  */
@@ -20,14 +21,21 @@ public class MvApplyManager {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
     private final MvHandlerController controller;
-    private final MvApplyWorkerPool workers;
+    private final MvApplyWorker[] workers;
 
     // table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
 
-    public MvApplyManager(MvHandlerController controller, MvApplyWorkerPool workers) {
+    // initially stopped
+    private final AtomicBoolean shouldRun = new AtomicBoolean(false);
+
+    public MvApplyManager(MvHandlerController controller) {
         this.controller = controller;
-        this.workers = workers;
+        int workerCount = controller.getSettings().getApplyThreads();
+        this.workers = new MvApplyWorker[workerCount];
+        for (int i=0; i<workerCount; ++i) {
+            workers[i] = new MvApplyWorker(this, i);
+        }
         buildConfig();
     }
 
@@ -35,10 +43,44 @@ public class MvApplyManager {
         for (MvInput mi : controller.getMetadata().getInputs().values()) {
             MvApplyConfig mac = applyConfig.get(mi.getTableName());
             if (mac==null) {
-                mac = new MvApplyConfig(mi.getTableInfo(), workers.getCount());
+                mac = new MvApplyConfig(mi.getTableInfo(), workers.length);
                 applyConfig.put(mi.getTableName(), mac);
             }
         }
+    }
+
+    public boolean isRunning() {
+        return shouldRun.get();
+    }
+
+    public int getWorkersCount() {
+        return workers.length;
+    }
+
+    public MvHandlerSettings getSettings() {
+        return controller.getSettings();
+    }
+
+    public MvApplyWorker getWorker(int index) {
+        if (index < 0) {
+            index = -1 * index;
+        }
+        index = index % workers.length;
+        return workers[index];
+    }
+
+    public void start() {
+        if (shouldRun.getAndSet(true)) {
+            // already running, no need to create the threads
+            return;
+        }
+        for (MvApplyWorker w : workers) {
+            w.start();
+        }
+    }
+
+    public void stop() {
+        shouldRun.set(false);
     }
 
     /**
@@ -74,7 +116,7 @@ public class MvApplyManager {
         while (controller.isRunning()) {
             for (MvApplyTask task : curr) {
                 int workerId = apply.getSelector().choose(task.getData().getKey());
-                if (! workers.get(workerId).submit(task)) {
+                if (! getWorker(workerId).submit(task)) {
                     // add for re-processing
                     next.add(task);
                 }
