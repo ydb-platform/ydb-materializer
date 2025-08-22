@@ -17,7 +17,6 @@ import tech.ydb.topic.settings.TopicReadSettings;
 
 import tech.ydb.mv.MvController;
 import tech.ydb.mv.apply.MvApplyManager;
-import tech.ydb.mv.apply.MvCommitHandler;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
@@ -71,7 +70,7 @@ public class MvCdcReader {
         for (Message m : event.getMessages()) {
             records.add(parser.parse(m.getData()));
         }
-        applyManager.submit(records, new CommitHandler(event));
+        applyManager.submit(records, new MvCdcCommitHandler(event));
     }
 
     private AsyncReader buildReader() {
@@ -93,30 +92,6 @@ public class MvCdcReader {
                 .setExecutor(executor)
                 .build();
         return owner.getConnector().getTopicClient().createAsyncReader(builder.build(), rehs);
-    }
-
-    private class CommitHandler implements MvCommitHandler {
-        private final DataReceivedEvent event;
-        private final AtomicInteger counter;
-
-        public CommitHandler(DataReceivedEvent event) {
-            this.event = event;
-            this.counter = new AtomicInteger(event.getMessages().size());
-        }
-
-        @Override
-        public void apply(int count) {
-            if (count <= 0) {
-                return;
-            }
-            if (counter.addAndGet(-1 * count) <= 0) {
-                try {
-                    event.commit().join();
-                } catch(Exception ex) {
-                    LOG.warn("Failed to commit the message pack", ex);
-                }
-            }
-        }
     }
 
     private static class ConfigureThreads implements ThreadFactory {

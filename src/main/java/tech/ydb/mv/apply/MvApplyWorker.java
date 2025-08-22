@@ -44,6 +44,14 @@ public class MvApplyWorker implements Runnable {
         return t.isAlive();
     }
 
+    /**
+     * Attempt to add the task to the input queue.
+     * The input queue may be full, in which case the tasks cannot be added
+     * until some space is released in the queue.
+     *
+     * @param task The task to be added
+     * @return true, if the task was added, and false otherwise.
+     */
     public boolean submit(MvApplyTask task) {
         return queue.offer(task);
     }
@@ -52,6 +60,7 @@ public class MvApplyWorker implements Runnable {
     public void run() {
         while (owner.isRunning()) {
             if ( action() <= 0 ) {
+                // nothing has been done, so make some sleep
                 YdbMisc.randomSleep(10L, 30L);
             }
         }

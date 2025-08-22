@@ -103,8 +103,7 @@ public class MvApplyManager {
         }
         while (isRunning()) {
             for (MvApplyTask task : curr) {
-                int workerId = apply.getSelector().choose(task.getData().getKey());
-                if (! getWorker(workerId).submit(task)) {
+                if (! getWorker(task.getWorkerId()).submit(task)) {
                     // add for re-processing
                     next.add(task);
                 }

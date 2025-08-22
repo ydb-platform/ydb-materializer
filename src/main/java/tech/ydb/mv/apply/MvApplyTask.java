@@ -11,12 +11,14 @@ public class MvApplyTask {
     private final MvChangeRecord data;
     private final MvApplyConfig actions;
     private final MvCommitHandler commit;
+    private final int workerId;
 
     public MvApplyTask(MvChangeRecord data, MvApplyConfig actions,
             MvCommitHandler commit) {
         this.data = data;
         this.actions = actions;
         this.commit = commit;
+        this.workerId = actions.getSelector().choose(data.getKey());
     }
 
     public MvChangeRecord getData() {
@@ -29,6 +31,10 @@ public class MvApplyTask {
 
     public MvCommitHandler getCommit() {
         return commit;
+    }
+
+    public int getWorkerId() {
+        return workerId;
     }
 
 }
