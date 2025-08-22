@@ -1,20 +1,24 @@
 package tech.ydb.mv.feeder;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.Message;
-import tech.ydb.topic.read.events.AbstractReadEventHandler;
 import tech.ydb.topic.read.events.DataReceivedEvent;
-import tech.ydb.topic.read.events.PartitionSessionClosedEvent;
-import tech.ydb.topic.read.events.StartPartitionSessionEvent;
-import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
-import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.MvController;
+import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.apply.MvCommitHandler;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 
@@ -26,21 +30,25 @@ import tech.ydb.mv.model.MvInput;
 public class MvCdcReader {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcReader.class);
 
-    private final MvHandlerController owner;
-    private final MvCdcThreadPool cdcPool;
+    private final MvController owner;
+    private final MvApplyManager applyManager;
+    private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
-    // topicPath -> input definition
-    private final HashMap<String, MvInput> inputs = new HashMap<>();
+    // topicPath -> parser definition
+    private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvCdcReader(MvHandlerController owner, MvCdcThreadPool cdcPool) {
+    public MvCdcReader(MvController owner) {
         this.owner = owner;
-        this.cdcPool = cdcPool;
+        this.applyManager = owner.getApplyManager();
+        this.executor = Executors.newFixedThreadPool(
+                owner.getSettings().getCdcReaderThreads(), new ConfigureThreads());
     }
 
     public synchronized void start() {
         if (reader.get() != null) {
             return;
         }
+        LOG.info("Starting the CDC reader for handler {}", owner.getMetadata().getName());
         AsyncReader theReader = buildReader();
         theReader.init();
         reader.set(theReader);
@@ -49,12 +57,21 @@ public class MvCdcReader {
     public synchronized void stop() {
         AsyncReader theReader = reader.getAndSet(null);
         if (theReader!=null) {
+            LOG.info("Stopping the CDC reader for handler {}", owner.getMetadata().getName());
             theReader.shutdown();
         }
     }
 
-    private void fire(MvInput input, Message m) {
+    public MvCdcParser getParser(String topicPath) {
+        return parsers.get(topicPath);
+    }
 
+    public void fire(MvCdcParser parser, DataReceivedEvent event) {
+        ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
+        for (Message m : event.getMessages()) {
+            records.add(parser.parse(m.getData()));
+        }
+        applyManager.submit(records, new CommitHandler(event));
     }
 
     private AsyncReader buildReader() {
@@ -66,53 +83,53 @@ public class MvCdcReader {
         for (MvInput mi : handler.getInputs().values()) {
             String topicPath = owner.getConnector()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangeFeed());
-            inputs.put(topicPath, mi);
+            parsers.put(topicPath, new MvCdcParser(mi));
             builder.addTopic(TopicReadSettings.newBuilder()
                     .setPath(topicPath)
                     .build());
         }
         ReadEventHandlersSettings rehs = ReadEventHandlersSettings.newBuilder()
-                .setEventHandler(new Handler())
-                .setExecutor(cdcPool.getExecutor())
+                .setEventHandler(new MvCdcEventReader(this))
+                .setExecutor(executor)
                 .build();
         return owner.getConnector().getTopicClient().createAsyncReader(builder.build(), rehs);
     }
 
-    private class Handler extends AbstractReadEventHandler {
-        @Override
-        public void onStartPartitionSession(StartPartitionSessionEvent ev) {
-            LOG.info("Topic[{}] session {} onStart with last committed offset {}",
-                    ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(), ev.getCommittedOffset());
-            ev.confirm();
+    private class CommitHandler implements MvCommitHandler {
+        private final DataReceivedEvent event;
+        private final AtomicInteger counter;
+
+        public CommitHandler(DataReceivedEvent event) {
+            this.event = event;
+            this.counter = new AtomicInteger(event.getMessages().size());
         }
 
         @Override
-        public void onStopPartitionSession(StopPartitionSessionEvent ev) {
-            LOG.info("Topic[{}] session {} onStop with last committed offset {}",
-                    ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(), ev.getCommittedOffset());
-            ev.confirm();
-        }
-
-        @Override
-        public void onPartitionSessionClosed(PartitionSessionClosedEvent ev) {
-            LOG.info("Topic[{}] session {} onClosed",
-                    ev.getPartitionSession().getPath(), ev.getPartitionSession().getId());
-        }
-
-        @Override
-        public void onMessages(DataReceivedEvent event) {
-            String topicPath = event.getPartitionSession().getPath();
-            MvInput input = inputs.get(topicPath);
-            if (input==null) {
-                LOG.warn("Received {} message(s) for unhandled topic {}",
-                        event.getMessages().size(), topicPath);
-                event.commit();
-            } else {
-                for (Message m : event.getMessages()) {
-                    fire(input, m);
+        public void apply(int count) {
+            if (count <= 0) {
+                return;
+            }
+            if (counter.addAndGet(-1 * count) <= 0) {
+                try {
+                    event.commit().join();
+                } catch(Exception ex) {
+                    LOG.warn("Failed to commit the message pack", ex);
                 }
             }
         }
     }
 
+    private static class ConfigureThreads implements ThreadFactory {
+        private final AtomicInteger threadNumber = new AtomicInteger(1);
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(Thread.currentThread().getThreadGroup(), r,
+                                  "ydb-cdc-worker-" + threadNumber.getAndIncrement(),
+                                  0);
+            t.setDaemon(true);
+            t.setPriority(Thread.NORM_PRIORITY);
+            return t;
+        }
+    }
 }

@@ -45,8 +45,7 @@ public class MvChangeRecord {
     }
 
     public static enum OperationType {
-        INSERT,
-        UPDATE,
+        UPSERT,
         DELETE
     }
 

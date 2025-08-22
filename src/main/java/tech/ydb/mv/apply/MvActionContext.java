@@ -2,7 +2,7 @@ package tech.ydb.mv.apply;
 
 import tech.ydb.query.QueryClient;
 
-import tech.ydb.mv.model.MvWorkSettings;
+import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.query.tools.SessionRetryContext;
 
 /**
@@ -12,18 +12,18 @@ import tech.ydb.query.tools.SessionRetryContext;
  */
 public class MvActionContext {
 
-    private final MvWorkSettings settings;
+    private final MvHandlerSettings settings;
     private final QueryClient queryClient;
     private final SessionRetryContext retryCtx;
 
-    public MvActionContext(MvWorkSettings settings, QueryClient queryClient) {
+    public MvActionContext(MvHandlerSettings settings, QueryClient queryClient) {
         this.settings = settings;
         this.queryClient = queryClient;
         this.retryCtx = SessionRetryContext.create(queryClient)
                 .idempotent(true).build();
     }
 
-    public MvWorkSettings getSettings() {
+    public MvHandlerSettings getSettings() {
         return settings;
     }
 

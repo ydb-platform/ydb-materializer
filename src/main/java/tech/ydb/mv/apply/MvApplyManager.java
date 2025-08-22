@@ -4,30 +4,34 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
-import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.MvController;
 import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
  * The apply manager processes the changes in the context of a single handler.
- * Multiple apply managers can run in a single application, typically
- * using a single shared pool of workers.
+ * Multiple apply managers can run in a single application.
  *
  * @author zinal
  */
 public class MvApplyManager {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
-    private final MvHandlerController controller;
-    private final MvApplyWorkerPool workers;
+    private final MvController controller;
+    private final MvApplyWorker[] workers;
 
     // table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
 
-    public MvApplyManager(MvHandlerController controller, MvApplyWorkerPool workers) {
+    public MvApplyManager(MvController controller) {
         this.controller = controller;
-        this.workers = workers;
+        int workerCount = controller.getSettings().getApplyThreads();
+        this.workers = new MvApplyWorker[workerCount];
+        for (int i=0; i<workerCount; ++i) {
+            workers[i] = new MvApplyWorker(this, i);
+        }
         buildConfig();
     }
 
@@ -35,9 +39,35 @@ public class MvApplyManager {
         for (MvInput mi : controller.getMetadata().getInputs().values()) {
             MvApplyConfig mac = applyConfig.get(mi.getTableName());
             if (mac==null) {
-                mac = new MvApplyConfig(mi.getTableInfo(), workers.getCount());
+                mac = new MvApplyConfig(mi.getTableInfo(), workers.length);
                 applyConfig.put(mi.getTableName(), mac);
             }
+        }
+    }
+
+    public boolean isRunning() {
+        return controller.isRunning();
+    }
+
+    public int getWorkersCount() {
+        return workers.length;
+    }
+
+    public MvHandlerSettings getSettings() {
+        return controller.getSettings();
+    }
+
+    public MvApplyWorker getWorker(int index) {
+        if (index < 0) {
+            index = -1 * index;
+        }
+        index = index % workers.length;
+        return workers[index];
+    }
+
+    public void start() {
+        for (MvApplyWorker w : workers) {
+            w.start();
         }
     }
 
@@ -71,10 +101,10 @@ public class MvApplyManager {
             }
             curr.add(new MvApplyTask(change, apply, commitHandler));
         }
-        while (controller.isRunning()) {
+        while (isRunning()) {
             for (MvApplyTask task : curr) {
                 int workerId = apply.getSelector().choose(task.getData().getKey());
-                if (! workers.get(workerId).submit(task)) {
+                if (! getWorker(workerId).submit(task)) {
                     // add for re-processing
                     next.add(task);
                 }

@@ -17,17 +17,17 @@ import tech.ydb.mv.util.YdbMisc;
 public class MvApplyWorker implements Runnable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyWorker.class);
 
-    private final MvApplyWorkerPool pool;
+    private final MvApplyManager owner;
     private final int number;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final ArrayBlockingQueue<MvApplyTask> queue;
     private final ArrayList<MvApplyTask> activeTasks;
 
-    public MvApplyWorker(MvApplyWorkerPool pool, int number, int queueLimit) {
-        this.pool = pool;
+    public MvApplyWorker(MvApplyManager owner, int number) {
+        this.owner = owner;
         this.number = number;
-        this.queue = new ArrayBlockingQueue<>(queueLimit);
-        this.activeTasks = new ArrayList<>(queueLimit);
+        this.activeTasks = new ArrayList<>(10);
+        this.queue = new ArrayBlockingQueue<>(owner.getSettings().getApplyQueueSize());
     }
 
     public void start() {
@@ -56,7 +56,7 @@ public class MvApplyWorker implements Runnable {
 
     @Override
     public void run() {
-        while (pool.isRunning()) {
+        while (owner.isRunning()) {
             if ( action() <= 0 ) {
                 YdbMisc.randomSleep(10L, 30L);
             }
