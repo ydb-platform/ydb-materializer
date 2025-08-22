@@ -45,15 +45,13 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     @Override
     public void onMessages(DataReceivedEvent event) {
         String topicPath = event.getPartitionSession().getPath();
-        MvInput input = owner.getInput(topicPath);
-        if (input == null) {
+        MvCdcParser parser = owner.getParser(topicPath);
+        if (parser == null) {
             LOG.warn("Skipping {} message(s) for unhandled topic {}",
                     event.getMessages().size(), topicPath);
             event.commit();
         } else {
-            for (Message m : event.getMessages()) {
-                owner.fire(input, m);
-            }
+            owner.fire(parser, event);
         }
     }
 

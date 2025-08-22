@@ -29,6 +29,10 @@ public class MvKey extends MvKeyPrefix {
         this(toYdbStruct(rsr), info);
     }
 
+    public MvKey(MvKeyInfo info, Comparable[] values) {
+        super(info, values);
+    }
+
     public static Comparable[] buildValue(YdbStruct ys, MvKeyInfo info) {
         Comparable[] output = new Comparable[info.size()];
         for (int pos = 0; pos < info.size(); ++pos) {

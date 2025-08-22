@@ -1,5 +1,6 @@
 package tech.ydb.mv.feeder;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -9,11 +10,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.topic.read.AsyncReader;
 import tech.ydb.topic.read.Message;
+import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
-import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.MvController;
+import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.apply.MvCommitHandler;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 
@@ -25,16 +30,18 @@ import tech.ydb.mv.model.MvInput;
 public class MvCdcReader {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcReader.class);
 
-    private final MvHandlerController owner;
+    private final MvController owner;
+    private final MvApplyManager applyManager;
     private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
-    // topicPath -> input definition
-    private final HashMap<String, MvInput> inputs = new HashMap<>();
+    // topicPath -> parser definition
+    private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvCdcReader(MvHandlerController owner) {
+    public MvCdcReader(MvController owner) {
         this.owner = owner;
+        this.applyManager = owner.getApplyManager();
         this.executor = Executors.newFixedThreadPool(
-                owner.getSettings().getCdcReaderThreads(), new Factory());
+                owner.getSettings().getCdcReaderThreads(), new ConfigureThreads());
     }
 
     public synchronized void start() {
@@ -55,12 +62,16 @@ public class MvCdcReader {
         }
     }
 
-    public MvInput getInput(String topicPath) {
-        return inputs.get(topicPath);
+    public MvCdcParser getParser(String topicPath) {
+        return parsers.get(topicPath);
     }
 
-    public void fire(MvInput input, Message m) {
-
+    public void fire(MvCdcParser parser, DataReceivedEvent event) {
+        ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
+        for (Message m : event.getMessages()) {
+            records.add(parser.parse(m.getData()));
+        }
+        applyManager.submit(records, new CommitHandler(event));
     }
 
     private AsyncReader buildReader() {
@@ -72,7 +83,7 @@ public class MvCdcReader {
         for (MvInput mi : handler.getInputs().values()) {
             String topicPath = owner.getConnector()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangeFeed());
-            inputs.put(topicPath, mi);
+            parsers.put(topicPath, new MvCdcParser(mi));
             builder.addTopic(TopicReadSettings.newBuilder()
                     .setPath(topicPath)
                     .build());
@@ -84,8 +95,31 @@ public class MvCdcReader {
         return owner.getConnector().getTopicClient().createAsyncReader(builder.build(), rehs);
     }
 
+    private class CommitHandler implements MvCommitHandler {
+        private final DataReceivedEvent event;
+        private final AtomicInteger counter;
 
-    private static class Factory implements ThreadFactory {
+        public CommitHandler(DataReceivedEvent event) {
+            this.event = event;
+            this.counter = new AtomicInteger(event.getMessages().size());
+        }
+
+        @Override
+        public void apply(int count) {
+            if (count <= 0) {
+                return;
+            }
+            if (counter.addAndGet(-1 * count) <= 0) {
+                try {
+                    event.commit().join();
+                } catch(Exception ex) {
+                    LOG.warn("Failed to commit the message pack", ex);
+                }
+            }
+        }
+    }
+
+    private static class ConfigureThreads implements ThreadFactory {
         private final AtomicInteger threadNumber = new AtomicInteger(1);
 
         @Override

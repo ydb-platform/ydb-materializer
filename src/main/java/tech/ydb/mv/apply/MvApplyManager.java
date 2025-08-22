@@ -3,9 +3,8 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import tech.ydb.mv.MvHandlerController;
+import tech.ydb.mv.MvController;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
@@ -20,16 +19,13 @@ import tech.ydb.mv.util.YdbMisc;
 public class MvApplyManager {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
-    private final MvHandlerController controller;
+    private final MvController controller;
     private final MvApplyWorker[] workers;
 
     // table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
 
-    // initially stopped
-    private final AtomicBoolean shouldRun = new AtomicBoolean(false);
-
-    public MvApplyManager(MvHandlerController controller) {
+    public MvApplyManager(MvController controller) {
         this.controller = controller;
         int workerCount = controller.getSettings().getApplyThreads();
         this.workers = new MvApplyWorker[workerCount];
@@ -50,7 +46,7 @@ public class MvApplyManager {
     }
 
     public boolean isRunning() {
-        return shouldRun.get();
+        return controller.isRunning();
     }
 
     public int getWorkersCount() {
@@ -70,17 +66,9 @@ public class MvApplyManager {
     }
 
     public void start() {
-        if (shouldRun.getAndSet(true)) {
-            // already running, no need to create the threads
-            return;
-        }
         for (MvApplyWorker w : workers) {
             w.start();
         }
-    }
-
-    public void stop() {
-        shouldRun.set(false);
     }
 
     /**
@@ -113,7 +101,7 @@ public class MvApplyManager {
             }
             curr.add(new MvApplyTask(change, apply, commitHandler));
         }
-        while (controller.isRunning()) {
+        while (isRunning()) {
             for (MvApplyTask task : curr) {
                 int workerId = apply.getSelector().choose(task.getData().getKey());
                 if (! getWorker(workerId).submit(task)) {

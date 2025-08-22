@@ -2,6 +2,7 @@ package tech.ydb.mv.apply;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
+
 import tech.ydb.mv.util.YdbMisc;
 
 /**

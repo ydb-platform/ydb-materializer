@@ -9,11 +9,11 @@ import tech.ydb.mv.model.MvHandlerSettings;
 
 /**
  * The controller logic for a single handler.
- * Combines the topic reader, apply manager, ...
+ * Combines the topic reader, apply manager and the required settings.
  *
  * @author zinal
  */
-public class MvHandlerController {
+public class MvController {
 
     private final YdbConnector connector;
     private final MvHandler metadata;
@@ -24,7 +24,7 @@ public class MvHandlerController {
     // initially stopped
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
 
-    public MvHandlerController(YdbConnector connector, MvHandler metadata,
+    public MvController(YdbConnector connector, MvHandler metadata,
             MvHandlerSettings settings) {
         this.connector = connector;
         this.metadata = metadata;
@@ -59,6 +59,7 @@ public class MvHandlerController {
 
     public void start() {
         shouldRun.set(true);
+        applyManager.start();
         cdcReader.start();
     }
 
