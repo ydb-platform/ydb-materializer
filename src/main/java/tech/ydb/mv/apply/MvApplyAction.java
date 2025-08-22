@@ -11,4 +11,10 @@ public interface MvApplyAction {
 
     void apply(List<MvApplyTask> item);
 
+    @Override
+    boolean equals(Object obj);
+
+    @Override
+    int hashCode();
+
 }

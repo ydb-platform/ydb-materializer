@@ -12,6 +12,7 @@ public class MvApplyTask {
     private final MvApplyConfig actions;
     private final MvCommitHandler commit;
     private final int workerId;
+    private int errorCount = 0;
 
     public MvApplyTask(MvChangeRecord data, MvApplyConfig actions,
             MvCommitHandler commit) {
@@ -37,4 +38,15 @@ public class MvApplyTask {
         return workerId;
     }
 
+    public int getErrorCount() {
+        return errorCount;
+    }
+
+    public void clearErrors() {
+        errorCount = 0;
+    }
+
+    public void markError() {
+        errorCount += 1;
+    }
 }
