@@ -110,6 +110,8 @@ public class MvActionSync implements MvApplyAction {
         deduplicate(input, workUpsert, workDelete);
         deleteRows(workDelete);
         upsertRows(workUpsert);
+        // wait for the last write to be completed
+        finishStatement();
     }
 
     private void deduplicate(List<MvApplyTask> input,
@@ -147,8 +149,6 @@ public class MvActionSync implements MvApplyAction {
                 writeRows(wr);
             }
         }
-        // wait for the last write to be completed
-        finishStatement();
     }
 
     private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
