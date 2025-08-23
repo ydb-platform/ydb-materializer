@@ -32,7 +32,7 @@ import tech.ydb.mv.util.YdbConv;
  *
  * @author zinal
  */
-public class MvActionUpsert implements MvApplyAction {
+public class MvActionSync implements MvApplyAction {
 
     private final String id;
     private final String targetTableName;
@@ -41,10 +41,10 @@ public class MvActionUpsert implements MvApplyAction {
     private final String sqlUpsert;
     private final StructType rowType;
 
-    private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentUpsert
+    private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
             = new ThreadLocal<>();
 
-    public MvActionUpsert(MvTarget target, MvActionContext context) {
+    public MvActionSync(MvTarget target, MvActionContext context) {
         this.id = UUID.randomUUID().toString();
         this.context = context;
         this.targetTableName = target.getName();
@@ -57,7 +57,7 @@ public class MvActionUpsert implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "Upsert{" + targetTableName + '}';
+        return "MvActionSync{" + targetTableName + '}';
     }
 
     @Override
@@ -78,8 +78,25 @@ public class MvActionUpsert implements MvApplyAction {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final MvActionUpsert other = (MvActionUpsert) obj;
+        final MvActionSync other = (MvActionSync) obj;
         return Objects.equals(this.id, other.id);
+    }
+
+    public int getReadBatchSize() {
+        int readBatchSize = context.getSettings().getSelectBatchSize();
+        if (readBatchSize < 1) {
+            readBatchSize = 1;
+        }
+        return readBatchSize;
+    }
+
+    public int getWriteBatchSize() {
+        int readBatchSize = getReadBatchSize();
+        int writeBatchSize = context.getSettings().getUpsertBatchSize();
+        if (writeBatchSize > readBatchSize) {
+            writeBatchSize = readBatchSize;
+        }
+        return writeBatchSize;
     }
 
     @Override
@@ -88,18 +105,40 @@ public class MvActionUpsert implements MvApplyAction {
             return;
         }
         // exclude duplicate keys before the db query
-        List<MvKey> work = deduplicate(input);
-        // retrieve and adjust the batching options
-        int readBatchSize = context.getSettings().getSelectBatchSize();
-        int writeBatchSize = context.getSettings().getUpsertBatchSize();
-        if (readBatchSize < 1) {
-            readBatchSize = 1;
+        ArrayList<MvKey> workUpsert = new ArrayList<>();
+        ArrayList<MvKey> workDelete = new ArrayList<>();
+        deduplicate(input, workUpsert, workDelete);
+        deleteRows(workDelete);
+        upsertRows(workUpsert);
+    }
+
+    private void deduplicate(List<MvApplyTask> input,
+            List<MvKey> upsert, List<MvKey> delete) {
+        HashSet<MvKey> tempUpsert = new HashSet<>();
+        HashSet<MvKey> tempDelete = new HashSet<>();
+        for (MvApplyTask item : input) {
+            switch (item.getData().getOperationType()) {
+                case UPSERT:
+                    tempUpsert.add(item.getData().getKey());
+                    break;
+                case DELETE:
+                    tempDelete.add(item.getData().getKey());
+                    break;
+            }
         }
-        if (writeBatchSize > readBatchSize) {
-            writeBatchSize = readBatchSize;
-        }
+        upsert.addAll(tempUpsert);
+        delete.addAll(tempDelete);
+    }
+
+    private void deleteRows(List<MvKey> workUpsert) {
+        // TODO
+    }
+
+    private void upsertRows(List<MvKey> workUpsert) {
+        int readBatchSize = getReadBatchSize();
+        int writeBatchSize = getWriteBatchSize();
         ArrayList<StructValue> output = new ArrayList<>(readBatchSize);
-        for (List<MvKey> rd : Lists.partition(work, readBatchSize)) {
+        for (List<MvKey> rd : Lists.partition(workUpsert, readBatchSize)) {
             // read the portion of data
             output.clear();
             readRows(rd, output);
@@ -109,15 +148,7 @@ public class MvActionUpsert implements MvApplyAction {
             }
         }
         // wait for the last write to be completed
-        finishWriteRows();
-    }
-
-    private List<MvKey> deduplicate(List<MvApplyTask> input) {
-        HashSet<MvKey> temp = new HashSet<>();
-        for (MvApplyTask item : input) {
-            temp.add(item.getData().getKey());
-        }
-        return new ArrayList<>(temp);
+        finishStatement();
     }
 
     private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
@@ -160,11 +191,11 @@ public class MvActionUpsert implements MvApplyAction {
     private void writeRows(List<StructValue> items) {
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, makeRows(items));
         // wait for the previous query to complete
-        finishWriteRows();
+        finishStatement();
         // submit the new query
         var statement = context.getRetryCtx().supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params).execute());
-        currentUpsert.set(statement);
+        currentStatement.set(statement);
     }
 
     private Value<?> makeRows(List<StructValue> items) {
@@ -173,10 +204,10 @@ public class MvActionUpsert implements MvApplyAction {
         return ListValue.of(values);
     }
 
-    private void finishWriteRows() {
-        var statement = currentUpsert.get();
+    private void finishStatement() {
+        var statement = currentStatement.get();
         if (statement!=null) {
-            currentUpsert.remove();
+            currentStatement.remove();
             statement.join().getStatus().expectSuccess();
         }
     }

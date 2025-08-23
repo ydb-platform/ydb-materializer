@@ -14,13 +14,16 @@ import tech.ydb.mv.model.MvTarget;
 public class MvActionGrabKeys implements MvApplyAction {
 
     private final String id;
+    private final MvApplyManager applyManager;
     private final MvTarget target;
     private final String sourceTableName;
     private final MvActionContext context;
     private final String sqlSelect;
 
-    public MvActionGrabKeys(MvTarget target, MvJoinSource js, MvActionContext context) {
+    public MvActionGrabKeys(MvApplyManager applyManager, MvTarget target,
+            MvJoinSource js, MvActionContext context) {
         this.id = UUID.randomUUID().toString();
+        this.applyManager = applyManager;
         this.target = target;
         this.context = context;
         this.sourceTableName = target.getName();
@@ -31,7 +34,7 @@ public class MvActionGrabKeys implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "GrabKeys{" + sourceTableName + " -> " + target.getName() + '}';
+        return "MvActionGrabKeys{" + sourceTableName + " -> " + target.getName() + '}';
     }
 
     @Override
