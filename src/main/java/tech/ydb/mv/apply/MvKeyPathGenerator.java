@@ -176,15 +176,15 @@ public class MvKeyPathGenerator {
         result.getSources().add(newSource);
 
         // Copy relevant join conditions from the input source that relate to the optimization
-        copyOptimizationJoinConditions(inputSource, newSource, topMostSource);
+        copyRelevantConditions(inputSource, newSource, topMostSource);
 
         // Add columns for the target primary key fields, mapping from join conditions
         if (topMostSource.getTableInfo() != null && inputSource.getTableInfo() != null) {
             List<String> targetKeys = topMostSource.getTableInfo().getKey();
 
             for (String targetKey : targetKeys) {
-                String sourceColumn = findSourceColumnForTargetKey(inputSource, topMostSource, targetKey);
-                MvLiteral literalValue = findLiteralValueForTargetKey(inputSource, topMostSource, targetKey);
+                String sourceColumn = findSourceColumnForKey(inputSource, topMostSource, targetKey);
+                MvLiteral literalValue = findLiteralForKey(inputSource, topMostSource, targetKey);
 
                 if (sourceColumn != null) {
                     MvColumn column = new MvColumn(targetKey, new MvSqlPos(0, 0));
@@ -214,13 +214,13 @@ public class MvKeyPathGenerator {
      * optimized direct targets, we need to preserve the join conditions that
      * define the relationship between the input source and the target source.
      */
-    private static void copyOptimizationJoinConditions(MvJoinSource originalInputSource,
+    private static void copyRelevantConditions(MvJoinSource originalInputSource,
             MvJoinSource newInputSource, MvJoinSource topMostSource) {
 
         // Copy join conditions from the original input source that relate to the topMostSource
         for (MvJoinCondition originalCondition : originalInputSource.getConditions()) {
-            if (isConditionRelevantForOptimization(originalCondition, originalInputSource, topMostSource)) {
-                MvJoinCondition newCondition = cloneJoinConditionForOptimization(
+            if (isConditionRelevant(originalCondition, originalInputSource, topMostSource)) {
+                MvJoinCondition newCondition = cloneJoinCondition(
                         originalCondition, originalInputSource, newInputSource, topMostSource);
                 if (newCondition != null) {
                     newInputSource.getConditions().add(newCondition);
@@ -233,7 +233,7 @@ public class MvKeyPathGenerator {
      * Checks if a join condition is relevant for the optimization (relates to
      * the target source).
      */
-    private static boolean isConditionRelevantForOptimization(MvJoinCondition condition,
+    private static boolean isConditionRelevant(MvJoinCondition condition,
             MvJoinSource inputSource, MvJoinSource topMostSource) {
 
         // Check if the condition connects inputSource to topMostSource
@@ -259,7 +259,7 @@ public class MvKeyPathGenerator {
      * Clones a join condition for use in the optimized target, updating
      * references as needed.
      */
-    private static MvJoinCondition cloneJoinConditionForOptimization(MvJoinCondition originalCondition,
+    private static MvJoinCondition cloneJoinCondition(MvJoinCondition originalCondition,
             MvJoinSource originalInputSource, MvJoinSource newInputSource, MvJoinSource topMostSource) {
 
         MvJoinCondition newCondition = new MvJoinCondition(new MvSqlPos(0, 0));
@@ -295,7 +295,7 @@ public class MvKeyPathGenerator {
      * Finds the source column in inputSource that maps to the target key
      * through join conditions.
      */
-    private static String findSourceColumnForTargetKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
+    private static String findSourceColumnForKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
         // Check join conditions for column mappings
         for (MvJoinCondition condition : inputSource.getConditions()) {
             String sourceColumn = getSourceColumnFromCondition(condition, inputSource, topMostSource, targetKey);
@@ -316,7 +316,7 @@ public class MvKeyPathGenerator {
      * Finds the literal value that maps to the target key through join
      * conditions.
      */
-    private static MvLiteral findLiteralValueForTargetKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
+    private static MvLiteral findLiteralForKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
         for (MvJoinCondition condition : inputSource.getConditions()) {
             MvLiteral literal = getLiteralFromCondition(condition, inputSource, topMostSource, targetKey);
             if (literal != null) {

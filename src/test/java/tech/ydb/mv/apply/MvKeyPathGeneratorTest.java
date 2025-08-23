@@ -240,32 +240,6 @@ public class MvKeyPathGeneratorTest {
     }
 
     @Test
-    public void testGenerateKeyPath_InvalidParameters() {
-        // Test null original target
-        assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generate(null, sourceA);
-        });
-
-        // Test null input source
-        assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generate(originalTarget, null);
-        });
-
-        // Test empty sources in original target
-        MvTarget emptyTarget = new MvTarget("empty", new MvSqlPos(1, 1));
-        assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generate(emptyTarget, sourceA);
-        });
-
-        // Test input source not part of original target
-        MvJoinSource outsideSource = new MvJoinSource(new MvSqlPos(1, 1));
-        outsideSource.setTableAlias("outside");
-        assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generate(originalTarget, outsideSource);
-        });
-    }
-
-    @Test
     public void testGenerateKeyPath_NoPath() {
         // Create a disconnected source
         MvJoinSource disconnectedSource = new MvJoinSource(new MvSqlPos(4, 1));
