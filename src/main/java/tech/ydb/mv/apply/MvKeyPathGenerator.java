@@ -475,6 +475,21 @@ public class MvKeyPathGenerator {
                 newSource.getConditions().add(newCondition);
             }
         }
+        
+        // Also check all conditions from the original target to find conditions 
+        // that might connect this source to the previous one in the path.
+        // This is needed because conditions might be stored on other sources.
+        for (MvJoinSource otherSource : originalTarget.getSources()) {
+            for (MvJoinCondition condition : otherSource.getConditions()) {
+                if (isConditionConnectingSources(condition, originalSource, previousInPath, originalTarget)) {
+                    // Don't add duplicate conditions
+                    if (!isDuplicateCondition(newSource.getConditions(), condition)) {
+                        MvJoinCondition newCondition = cloneJoinCondition(condition, newTarget);
+                        newSource.getConditions().add(newCondition);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -498,6 +513,67 @@ public class MvKeyPathGenerator {
 
         return (firstRef == previousSource && secondRef == currentSource)
                 || (firstRef == currentSource && secondRef == previousSource);
+    }
+
+    /**
+     * Checks if a join condition connects two specific sources.
+     */
+    private static boolean isConditionConnectingSources(MvJoinCondition condition,
+            MvJoinSource source1, MvJoinSource source2, MvTarget originalTarget) {
+
+        // Check if the condition references both sources
+        MvJoinSource firstRef = condition.getFirstRef();
+        MvJoinSource secondRef = condition.getSecondRef();
+
+        // Handle alias-based references
+        if (firstRef == null && condition.getFirstAlias() != null) {
+            firstRef = originalTarget.getSourceByAlias(condition.getFirstAlias());
+        }
+        if (secondRef == null && condition.getSecondAlias() != null) {
+            secondRef = originalTarget.getSourceByAlias(condition.getSecondAlias());
+        }
+
+        return (firstRef == source1 && secondRef == source2)
+                || (firstRef == source2 && secondRef == source1);
+    }
+
+    /**
+     * Checks if a condition is already present in the list to avoid duplicates.
+     */
+    private static boolean isDuplicateCondition(ArrayList<MvJoinCondition> conditions, MvJoinCondition newCondition) {
+        for (MvJoinCondition existing : conditions) {
+            if (areConditionsEqual(existing, newCondition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if two conditions are semantically equal.
+     */
+    private static boolean areConditionsEqual(MvJoinCondition cond1, MvJoinCondition cond2) {
+        // Check if aliases and columns match in either direction
+        boolean forward = equalStrings(cond1.getFirstAlias(), cond2.getFirstAlias()) &&
+                          equalStrings(cond1.getFirstColumn(), cond2.getFirstColumn()) &&
+                          equalStrings(cond1.getSecondAlias(), cond2.getSecondAlias()) &&
+                          equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn());
+
+        boolean reverse = equalStrings(cond1.getFirstAlias(), cond2.getSecondAlias()) &&
+                          equalStrings(cond1.getFirstColumn(), cond2.getSecondColumn()) &&
+                          equalStrings(cond1.getSecondAlias(), cond2.getFirstAlias()) &&
+                          equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn());
+
+        return forward || reverse;
+    }
+
+    /**
+     * Helper method to compare strings safely (handling nulls).
+     */
+    private static boolean equalStrings(String s1, String s2) {
+        if (s1 == null && s2 == null) return true;
+        if (s1 == null || s2 == null) return false;
+        return s1.equals(s2);
     }
 
     /**
