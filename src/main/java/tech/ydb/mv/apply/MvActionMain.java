@@ -22,7 +22,7 @@ import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.impl.SqlGen;
+import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbConv;
@@ -48,7 +48,7 @@ public class MvActionMain implements MvApplyAction {
         this.id = UUID.randomUUID().toString();
         this.context = context;
         this.targetTableName = target.getName();
-        try (SqlGen sg = new SqlGen(target)) {
+        try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.rowType = sg.toRowType();
@@ -122,7 +122,7 @@ public class MvActionMain implements MvApplyAction {
 
     private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
         // perform the db query
-        Params params = Params.of(SqlGen.SYS_KEYS_VAR, makeKeys(items));
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, makeKeys(items));
         ResultSetReader result = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(sqlSelect, TxMode.ONLINE_RO, params)
         )).join().getValue().getResultSet(0);
@@ -158,7 +158,7 @@ public class MvActionMain implements MvApplyAction {
     }
 
     private void writeRows(List<StructValue> items) {
-        Params params = Params.of(SqlGen.SYS_KEYS_VAR, makeRows(items));
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, makeRows(items));
         // wait for the previous query to complete
         finishWriteRows();
         // submit the new query

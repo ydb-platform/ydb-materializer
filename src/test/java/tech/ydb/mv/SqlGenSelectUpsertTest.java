@@ -1,13 +1,12 @@
 package tech.ydb.mv;
 
-import tech.ydb.mv.impl.SqlGen;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.parser.MvParser;
 
 /**
- * Test for SqlGen.makeSelect() and SqlGen.makeUpsert() methods
+ * Test for MvSqlGen.makeSelect() and MvSqlGen.makeUpsert() methods
  *
  * @author zinal
  */
@@ -27,7 +26,7 @@ public class SqlGenSelectUpsertTest {
         addTableInfoToTarget(target);
 
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
         // Print the generated SQL for debugging
@@ -52,7 +51,7 @@ public class SqlGenSelectUpsertTest {
         addTableInfoToTarget(target);
 
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeUpsertSelect();
 
         // Print the generated SQL for debugging
@@ -77,7 +76,7 @@ public class SqlGenSelectUpsertTest {
         addTableInfoToTarget2(target);
 
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
         // Print the generated SQL for debugging
@@ -102,7 +101,7 @@ public class SqlGenSelectUpsertTest {
         addTableInfoToTarget2(target);
 
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeUpsertSelect();
 
         // Print the generated SQL for debugging
@@ -147,7 +146,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + MvSqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -159,7 +158,7 @@ public class SqlGenSelectUpsertTest {
                 "Type declaration should include id field");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + MvSqlGen.SYS_KEYS_VAR + ") AS " + MvSqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -167,7 +166,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain INNER JOIN with main table");
 
         // Check for ON condition with primary key
-        Assertions.assertTrue(sql.contains("ON " + SqlGen.SYS_KEYS + ".id = main.id"),
+        Assertions.assertTrue(sql.contains("ON " + MvSqlGen.SYS_KEYS + ".id = main.id"),
                 "SQL should contain ON condition for primary key");
 
         // Check for SELECT clause
@@ -185,7 +184,7 @@ public class SqlGenSelectUpsertTest {
                 "Target should have literals");
         Assertions.assertTrue(sql.contains("FROM (SELECT"),
                 "SQL should contain constants subquery");
-        Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
+        Assertions.assertTrue(sql.contains(") AS " + MvSqlGen.SYS_CONST),
                 "SQL should have constants alias");
 
         // Check for CROSS JOIN with main table
@@ -233,7 +232,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + MvSqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -249,7 +248,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain UPSERT INTO clause");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + MvSqlGen.SYS_KEYS_VAR + ") AS " + MvSqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -257,7 +256,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain INNER JOIN with main table");
 
         // Check for ON condition with primary key
-        Assertions.assertTrue(sql.contains("ON " + SqlGen.SYS_KEYS + ".id = main.id"),
+        Assertions.assertTrue(sql.contains("ON " + MvSqlGen.SYS_KEYS + ".id = main.id"),
                 "SQL should contain ON condition for primary key");
 
         // Check for SELECT clause
@@ -275,7 +274,7 @@ public class SqlGenSelectUpsertTest {
                 "Target should have literals");
         Assertions.assertTrue(sql.contains("FROM (SELECT"),
                 "SQL should contain constants subquery");
-        Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
+        Assertions.assertTrue(sql.contains(") AS " + MvSqlGen.SYS_CONST),
                 "SQL should have constants alias");
 
         // Check for CROSS JOIN with main table
@@ -323,7 +322,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + MvSqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -335,7 +334,7 @@ public class SqlGenSelectUpsertTest {
                 "Type declaration should include id field");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + MvSqlGen.SYS_KEYS_VAR + ") AS " + MvSqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -343,7 +342,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain INNER JOIN with main table");
 
         // Check for ON condition with primary key
-        Assertions.assertTrue(sql.contains("ON " + SqlGen.SYS_KEYS + ".id = main.id"),
+        Assertions.assertTrue(sql.contains("ON " + MvSqlGen.SYS_KEYS + ".id = main.id"),
                 "SQL should contain ON condition for primary key");
 
         // Check for SELECT clause
@@ -361,7 +360,7 @@ public class SqlGenSelectUpsertTest {
         if (!target.getLiterals().isEmpty()) {
             Assertions.assertTrue(sql.contains("FROM (SELECT"),
                     "SQL should contain constants subquery");
-            Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
+            Assertions.assertTrue(sql.contains(") AS " + MvSqlGen.SYS_CONST),
                     "SQL should have constants alias");
         }
 
@@ -412,7 +411,7 @@ public class SqlGenSelectUpsertTest {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
-        Assertions.assertTrue(sql.contains("DECLARE " + SqlGen.SYS_KEYS_VAR + " AS "),
+        Assertions.assertTrue(sql.contains("DECLARE " + MvSqlGen.SYS_KEYS_VAR + " AS "),
                 "SQL should declare sys_keys parameter");
 
         // Check for List<Struct<...>> type declaration
@@ -428,7 +427,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain UPSERT INTO clause");
 
         // Check for AS_TABLE subquery
-        Assertions.assertTrue(sql.contains("AS_TABLE(" + SqlGen.SYS_KEYS_VAR + ") AS " + SqlGen.SYS_KEYS),
+        Assertions.assertTrue(sql.contains("AS_TABLE(" + MvSqlGen.SYS_KEYS_VAR + ") AS " + MvSqlGen.SYS_KEYS),
                 "SQL should contain AS_TABLE subquery for sys_keys");
 
         // Check for INNER JOIN with main table
@@ -436,7 +435,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain INNER JOIN with main table");
 
         // Check for ON condition with primary key
-        Assertions.assertTrue(sql.contains("ON " + SqlGen.SYS_KEYS + ".id = main.id"),
+        Assertions.assertTrue(sql.contains("ON " + MvSqlGen.SYS_KEYS + ".id = main.id"),
                 "SQL should contain ON condition for primary key");
 
         // Check for SELECT clause
@@ -454,7 +453,7 @@ public class SqlGenSelectUpsertTest {
         if (!target.getLiterals().isEmpty()) {
             Assertions.assertTrue(sql.contains("FROM (SELECT"),
                     "SQL should contain constants subquery");
-            Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
+            Assertions.assertTrue(sql.contains(") AS " + MvSqlGen.SYS_CONST),
                     "SQL should have constants alias");
         }
 
@@ -503,9 +502,9 @@ public class SqlGenSelectUpsertTest {
 
     private void validateJoinConditions(String sql) {
         // Check that join conditions reference constants properly
-        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c0"),
+        Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + ".c0"),
                 "SQL should reference constant c0");
-        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c1"),
+        Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + ".c1"),
                 "SQL should reference constant c1");
 
         // Check that regular column references are present
@@ -572,7 +571,7 @@ public class SqlGenSelectUpsertTest {
 
         // Check that constants are referenced with proper identity
         for (var literal : target.getLiterals()) {
-            Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + "." + literal.getIdentity()),
+            Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + "." + literal.getIdentity()),
                     "SQL should reference constant with identity: " + literal.getIdentity());
         }
     }

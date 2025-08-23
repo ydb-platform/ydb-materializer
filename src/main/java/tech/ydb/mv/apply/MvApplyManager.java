@@ -65,6 +65,9 @@ public class MvApplyManager {
         return workers[index];
     }
 
+    /**
+     * @return The number of workers locked in retry logic (so not progressing)
+     */
     public int getLockedWorkersCount() {
         int count = 0;
         for (MvApplyWorker w : workers) {
@@ -75,10 +78,18 @@ public class MvApplyManager {
         return count;
     }
 
+    /**
+     * @return true if any of the workers is locked by the error being retried, false otherwise
+     */
     public boolean isLocked() {
         return (getLockedWorkersCount() > 0);
     }
 
+    /**
+     * Used by the controller to start the apply worker threads.
+     * No need for explicit stop method here - the threads stop when
+     * the controller reports itself as stopped via isRunning() method.
+     */
     public void start() {
         for (MvApplyWorker w : workers) {
             w.start();

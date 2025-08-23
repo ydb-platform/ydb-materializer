@@ -1,13 +1,12 @@
 package tech.ydb.mv;
 
-import tech.ydb.mv.impl.SqlGen;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.parser.MvParser;
 
 /**
- * Test for SqlGen.makeCreateView() method
+ * Test for MvSqlGen.makeCreateView() method
  *
  * @author zinal
  */
@@ -38,7 +37,7 @@ public class SqlGenTest {
                 SqlConstants.tiSubTable3("sub_table3")
         );
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
         // Print the generated SQL for debugging
@@ -74,7 +73,7 @@ public class SqlGenTest {
                 SqlConstants.tiSubTable3("schema3/sub_table3")
         );
         // Generate SQL
-        SqlGen sqlGen = new SqlGen(target);
+        MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
         // Print the generated SQL for debugging
@@ -113,7 +112,7 @@ public class SqlGenTest {
                 "Target should have literals");
         Assertions.assertTrue(sql.contains("FROM (SELECT"),
                 "SQL should contain constants subquery");
-        Assertions.assertTrue(sql.contains(") AS " + SqlGen.SYS_CONST),
+        Assertions.assertTrue(sql.contains(") AS " + MvSqlGen.SYS_CONST),
                 "SQL should have constants alias");
 
         // Check for CROSS JOIN with main table
@@ -240,9 +239,9 @@ public class SqlGenTest {
 
     private void validateJoinConditions(String sql) {
         // Check that join conditions reference constants properly
-        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c0"),
+        Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + ".c0"),
                 "SQL should reference constant c0");
-        Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + ".c1"),
+        Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + ".c1"),
                 "SQL should reference constant c1");
 
         // Check that regular column references are present
@@ -309,7 +308,7 @@ public class SqlGenTest {
 
         // Check that constants are referenced with proper identity
         for (var literal : target.getLiterals()) {
-            Assertions.assertTrue(sql.contains(SqlGen.SYS_CONST + "." + literal.getIdentity()),
+            Assertions.assertTrue(sql.contains(MvSqlGen.SYS_CONST + "." + literal.getIdentity()),
                     "SQL should reference constant with identity: " + literal.getIdentity());
         }
     }

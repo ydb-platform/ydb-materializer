@@ -1,4 +1,4 @@
-package tech.ydb.mv.impl;
+package tech.ydb.mv;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +21,7 @@ import tech.ydb.mv.model.MvTableInfo;
  *
  * @author zinal
  */
-public class SqlGen implements AutoCloseable {
+public class MvSqlGen implements AutoCloseable {
 
     public static final String SYS_CONST = "sys_const";
     public static final String SYS_KEYS = "sys_keys";
@@ -34,7 +34,7 @@ public class SqlGen implements AutoCloseable {
 
     private final MvTarget target;
 
-    public SqlGen(MvTarget target) {
+    public MvSqlGen(MvTarget target) {
         this.target = target;
     }
 
@@ -354,7 +354,7 @@ public class SqlGen implements AutoCloseable {
         sb.append("Struct<");
         for (int i=0; i<st.getMembersCount(); ++i) {
             String name = st.getMemberName(i);
-            String type = SqlGen.formatType(st.getMemberType(i));
+            String type = MvSqlGen.formatType(st.getMemberType(i));
             if (i>0) {
                 sb.append(",");
             }
@@ -375,7 +375,7 @@ public class SqlGen implements AutoCloseable {
         boolean comma = false;
         for (Map.Entry<String, Type> me : ti.getColumns().entrySet()) {
             String name = me.getKey();
-            String type = SqlGen.formatType(me.getValue());
+            String type = MvSqlGen.formatType(me.getValue());
             if (comma) {
                 sb.append(",");
             } else {

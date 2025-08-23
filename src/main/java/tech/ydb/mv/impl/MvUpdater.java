@@ -1,5 +1,6 @@
 package tech.ydb.mv.impl;
 
+import tech.ydb.mv.MvSqlGen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -33,7 +34,7 @@ public class MvUpdater {
         this.conn = conn;
         this.target = target;
         this.nthreads = (threads > 0) ? threads : 1;
-        try (SqlGen sg = new SqlGen(target)) {
+        try (MvSqlGen sg = new MvSqlGen(target)) {
             this.upsertSql = sg.makeUpsertSelect();
             this.keyType = sg.toKeyType();
             this.tablePath = conn.fullTableName(sg.getMainTable());
