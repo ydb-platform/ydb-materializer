@@ -35,6 +35,7 @@ import tech.ydb.mv.util.YdbConv;
 public class MvActionMain implements MvApplyAction {
 
     private final String id;
+    private final String targetTableName;
     private final MvActionContext context;
     private final String sqlSelect;
     private final String sqlUpsert;
@@ -46,11 +47,17 @@ public class MvActionMain implements MvApplyAction {
     public MvActionMain(MvTarget target, MvActionContext context) {
         this.id = UUID.randomUUID().toString();
         this.context = context;
+        this.targetTableName = target.getName();
         try (SqlGen sg = new SqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.rowType = sg.toRowType();
         }
+    }
+
+    @Override
+    public String toString() {
+        return "MvActionMain{" + targetTableName + '}';
     }
 
     @Override

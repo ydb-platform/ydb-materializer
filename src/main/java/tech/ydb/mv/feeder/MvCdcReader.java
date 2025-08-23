@@ -1,6 +1,5 @@
 package tech.ydb.mv.feeder;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -9,15 +8,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.topic.read.AsyncReader;
-import tech.ydb.topic.read.Message;
-import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.settings.ReadEventHandlersSettings;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
 import tech.ydb.mv.MvController;
 import tech.ydb.mv.apply.MvApplyManager;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 
@@ -30,7 +26,6 @@ public class MvCdcReader {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcReader.class);
 
     private final MvController owner;
-    private final MvApplyManager applyManager;
     private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
@@ -38,7 +33,6 @@ public class MvCdcReader {
 
     public MvCdcReader(MvController owner) {
         this.owner = owner;
-        this.applyManager = owner.getApplyManager();
         this.executor = Executors.newFixedThreadPool(
                 owner.getSettings().getCdcReaderThreads(), new ConfigureThreads());
     }
@@ -61,16 +55,12 @@ public class MvCdcReader {
         }
     }
 
-    public MvCdcParser getParser(String topicPath) {
-        return parsers.get(topicPath);
+    public MvApplyManager getApplyManager() {
+        return owner.getApplyManager();
     }
 
-    public void fire(MvCdcParser parser, DataReceivedEvent event) {
-        ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
-        for (Message m : event.getMessages()) {
-            records.add(parser.parse(m.getData()));
-        }
-        applyManager.submit(records, new MvCdcCommitHandler(event));
+    public MvCdcParser findParser(String topicPath) {
+        return parsers.get(topicPath);
     }
 
     private AsyncReader buildReader() {

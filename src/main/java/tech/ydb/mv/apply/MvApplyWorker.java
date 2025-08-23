@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.util.YdbMisc;
@@ -22,6 +23,7 @@ public class MvApplyWorker implements Runnable {
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final ArrayBlockingQueue<MvApplyTask> queue;
     private final ArrayList<MvApplyTask> activeTasks;
+    private final AtomicBoolean locked = new AtomicBoolean(false);
 
     public MvApplyWorker(MvApplyManager owner, int number) {
         this.owner = owner;
@@ -38,6 +40,7 @@ public class MvApplyWorker implements Runnable {
         if (old!=null && old.isAlive()) {
             thread.set(old);
         } else {
+            locked.set(false);
             t.start();
         }
     }
@@ -48,6 +51,10 @@ public class MvApplyWorker implements Runnable {
             return false;
         }
         return t.isAlive();
+    }
+
+    public boolean isLocked() {
+        return locked.get();
     }
 
     /**
@@ -65,7 +72,7 @@ public class MvApplyWorker implements Runnable {
     @Override
     public void run() {
         while (owner.isRunning()) {
-            if ( action() <= 0 ) {
+            if ( action() == 0 ) {
                 // nothing has been done, so make some sleep
                 YdbMisc.randomSleep(10L, 30L);
             }
@@ -78,18 +85,43 @@ public class MvApplyWorker implements Runnable {
             return 0;
         }
         PerAction retries = new PerAction().apply();
-        if (!retries.isEmpty()) {
-            processRetries(retries);
+        if (! processRetries(retries)) {
+            // no commit unless no retries needed, or retries succeeded
+            return -1;
         }
         new PerCommit().apply();
         return activeTasks.size();
     }
 
-    private void processRetries(PerAction retries) {
+    private boolean processRetries(PerAction retries) {
+        if (retries.isEmpty()) {
+            return true;
+        }
+        // we have retries pending, so switch to locked mode
+        locked.set(true);
         int retryNumber = 0;
         while (! retries.isEmpty()) {
-            
+            if (! makeDelay(retryNumber)) {
+                return false;
+            }
+            retries = retries.apply();
+            retryNumber += 1;
         }
+        // retries succeeded, we unlock and move forward
+        locked.set(false);
+        return true;
+    }
+
+    private boolean makeDelay(int retryNumber) {
+        long sleepTime = 250 << Math.min(retryNumber, 8);
+        long tvFinish = System.currentTimeMillis() + sleepTime;
+        do {
+            if (! owner.isRunning()) {
+                return false;
+            }
+            YdbMisc.sleep(50L);
+        } while (tvFinish > System.currentTimeMillis());
+        return true;
     }
 
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
@@ -97,7 +129,8 @@ public class MvApplyWorker implements Runnable {
             action.apply(tasks);
         } catch(Exception ex) {
             retries.items.put(action, tasks);
-            LOG.warn("Action execution failed, scheduling for retry", ex);
+            LOG.error("Execution failed for action {}, scheduling for retry",
+                    action, ex);
         }
     }
 

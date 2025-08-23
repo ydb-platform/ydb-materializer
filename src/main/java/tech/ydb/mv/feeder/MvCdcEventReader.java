@@ -1,10 +1,16 @@
 package tech.ydb.mv.feeder;
 
+import java.util.ArrayList;
+
+import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.events.AbstractReadEventHandler;
 import tech.ydb.topic.read.events.DataReceivedEvent;
 import tech.ydb.topic.read.events.PartitionSessionClosedEvent;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
+
+import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.model.MvChangeRecord;
 
 /**
  *
@@ -14,9 +20,11 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcEventReader.class);
 
     private final MvCdcReader owner;
+    private final MvApplyManager applyManager;
 
     MvCdcEventReader(MvCdcReader owner) {
         this.owner = owner;
+        this.applyManager = owner.getApplyManager();
     }
 
     @Override
@@ -42,14 +50,18 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     @Override
     public void onMessages(DataReceivedEvent event) {
         String topicPath = event.getPartitionSession().getPath();
-        MvCdcParser parser = owner.getParser(topicPath);
+        MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
             LOG.warn("Skipping {} message(s) for unhandled topic {}",
                     event.getMessages().size(), topicPath);
             event.commit();
-        } else {
-            owner.fire(parser, event);
+            return;
         }
+        ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
+        for (Message m : event.getMessages()) {
+            records.add(parser.parse(m.getData()));
+        }
+        applyManager.submit(records, new MvCdcCommitHandler(event));
     }
 
 }

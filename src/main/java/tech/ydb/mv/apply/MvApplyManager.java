@@ -65,6 +65,20 @@ public class MvApplyManager {
         return workers[index];
     }
 
+    public int getLockedWorkersCount() {
+        int count = 0;
+        for (MvApplyWorker w : workers) {
+            if (w.isLocked()) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    public boolean isLocked() {
+        return (getLockedWorkersCount() > 0);
+    }
+
     public void start() {
         for (MvApplyWorker w : workers) {
             w.start();
