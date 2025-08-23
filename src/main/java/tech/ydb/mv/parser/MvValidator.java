@@ -93,11 +93,12 @@ public class MvValidator {
 
     private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
         for (MvJoinCondition cond : src.getConditions()) {
-            if ((cond.getFirstRef() == null && cond.getFirstLiteral() == null)
-                    || (cond.getSecondRef() == null && cond.getSecondLiteral() == null)
-                    || (cond.getFirstRef() == null && cond.getSecondRef() == null)) {
+            if ((cond.getFirstAlias()== null && cond.getFirstLiteral() == null)
+                    || (cond.getSecondAlias()== null && cond.getSecondLiteral() == null)
+                    || (cond.getFirstAlias()== null && cond.getSecondAlias()== null)) {
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (cond.getFirstRef() != src || cond.getSecondRef() != src) {
+            } else if (!src.getTableAlias().equals(cond.getFirstAlias())
+                    && !src.getTableAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
             }

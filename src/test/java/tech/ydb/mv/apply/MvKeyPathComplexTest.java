@@ -269,10 +269,6 @@ public class MvKeyPathComplexTest {
 
         assertTrue(hasStatusLiteralCondition, "Should have status literal condition");
         assertTrue(hasTypeCodeLiteralCondition, "Should have type_code literal condition");
-
-        // The literal conditions are now properly copied because G is referenced in the
-        // original target's output columns, and these conditions are essential for ensuring
-        // the correct rows participate in the join relationships.
     }
 
     @Test
