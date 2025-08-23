@@ -34,48 +34,38 @@ public class MvKeyPathGenerator {
      * Generates a minimal transformation target from the input join source to
      * the top-most join source.
      *
-     * @param originalTarget The original MvTarget containing all join sources
-     * @param inputSource The input MvJoinSource to transform from
+     * @param original The original MvTarget containing all join sources
+     * @param point The input MvJoinSource to transform from
      * @return A new MvTarget defining the minimal transformation, or null if no
      * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public static MvTarget generateKeyPath(MvTarget originalTarget, MvJoinSource inputSource) {
-        if (originalTarget == null) {
-            throw new IllegalArgumentException("Original target cannot be null");
-        }
-        if (inputSource == null) {
-            throw new IllegalArgumentException("Input source cannot be null");
-        }
-        if (originalTarget.getSources().isEmpty()) {
-            throw new IllegalArgumentException("Original target must have at least one source");
-        }
-
+    public static MvTarget generate(MvTarget original, MvJoinSource point) {
         // Validate that inputSource is part of the originalTarget
-        if (!originalTarget.getSources().contains(inputSource)) {
+        if (!original.getSources().contains(point)) {
             throw new IllegalArgumentException("Input source must be part of the original target");
         }
 
-        MvJoinSource topMostSource = originalTarget.getSources().get(0);
+        MvJoinSource topMostSource = original.getSources().get(0);
 
         // If input source is already the top-most source, create a simple target
-        if (inputSource == topMostSource) {
-            return createDirectTarget(inputSource);
+        if (point == topMostSource) {
+            return MvKeyPathGenerator.createDirectTarget(point);
         }
 
         // Check if the input source already contains all primary key fields of the top-most source
-        if (canDirectlyMapKeys(inputSource, topMostSource)) {
-            return createOptimizedDirectTarget(inputSource, topMostSource);
+        if (canDirectlyMapKeys(point, topMostSource)) {
+            return createDirectTarget(point, topMostSource);
         }
 
-        PathFinder pathFinder = new PathFinder(originalTarget);
-        List<MvJoinSource> path = pathFinder.findPath(inputSource, topMostSource);
+        PathFinder pathFinder = new PathFinder(original);
+        List<MvJoinSource> path = pathFinder.findPath(point, topMostSource);
 
         if (path == null || path.isEmpty()) {
             return null; // No path found
         }
 
-        return createTransformationTarget(path, originalTarget, topMostSource);
+        return createTarget(path, original, topMostSource);
     }
 
     /**
@@ -84,10 +74,6 @@ public class MvKeyPathGenerator {
      * between columns or literal values.
      */
     private static boolean canDirectlyMapKeys(MvJoinSource inputSource, MvJoinSource topMostSource) {
-        if (inputSource.getTableInfo() == null || topMostSource.getTableInfo() == null) {
-            return false;
-        }
-
         List<String> targetKeys = topMostSource.getTableInfo().getKey();
 
         // Check if we can find a direct mapping for each target key through join conditions
@@ -181,7 +167,7 @@ public class MvKeyPathGenerator {
      * Creates an optimized direct target that maps keys without unnecessary
      * joins.
      */
-    private static MvTarget createOptimizedDirectTarget(MvJoinSource inputSource, MvJoinSource topMostSource) {
+    private static MvTarget createDirectTarget(MvJoinSource inputSource, MvJoinSource topMostSource) {
         MvTarget result = new MvTarget("key_path_direct", new MvSqlPos(0, 0));
 
         // Add the input source as the main source
@@ -436,7 +422,7 @@ public class MvKeyPathGenerator {
     /**
      * Creates a transformation target based on the found path.
      */
-    private static MvTarget createTransformationTarget(List<MvJoinSource> path,
+    private static MvTarget createTarget(List<MvJoinSource> path,
             MvTarget originalTarget, MvJoinSource topMostSource) {
         MvTarget result = new MvTarget("key_path_transform", new MvSqlPos(0, 0));
 
@@ -660,6 +646,14 @@ public class MvKeyPathGenerator {
             }
 
             Collections.reverse(path);
+
+            // Validation: ensure the path actually starts from the expected 'from' node
+            if (path.isEmpty() || !path.get(0).equals(from)) {
+                throw new IllegalStateException("Reconstructed path does not start from expected source: "
+                        + "expected=" + (from != null ? from.getTableAlias() : "null")
+                        + ", actual=" + (path.isEmpty() ? "empty" : path.get(0).getTableAlias()));
+            }
+
             return path;
         }
     }

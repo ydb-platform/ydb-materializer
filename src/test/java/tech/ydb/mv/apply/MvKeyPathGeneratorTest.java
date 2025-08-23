@@ -154,7 +154,7 @@ public class MvKeyPathGeneratorTest {
         }
 
         // Test case where input source is the top-most source
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceA);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceA);
         try (MvSqlGen sg = new MvSqlGen(result)) {
             System.out.println("*** A-A SQL: " + sg.makeCreateView());
         }
@@ -173,7 +173,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_OneStep() {
         // Test transformation from B to A (optimized - B has a_id foreign key)
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceB);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceB);
         try (MvSqlGen sg = new MvSqlGen(result)) {
             System.out.println("*** B-A SQL: " + sg.makeCreateView());
         }
@@ -199,7 +199,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_TwoSteps() {
         // Test transformation from C to A (two steps: C -> B -> A)
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceC);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceC);
         try (MvSqlGen sg = new MvSqlGen(result)) {
             System.out.println("*** C-B-A SQL: " + sg.makeCreateView());
         }
@@ -222,7 +222,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_Optimize() {
         // Test transformation from D to A (one step: D)
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceD);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceD);
         try (MvSqlGen sg = new MvSqlGen(result)) {
             System.out.println("*** D-A SQL: " + sg.makeCreateView());
         }
@@ -243,25 +243,25 @@ public class MvKeyPathGeneratorTest {
     public void testGenerateKeyPath_InvalidParameters() {
         // Test null original target
         assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generateKeyPath(null, sourceA);
+            MvKeyPathGenerator.generate(null, sourceA);
         });
 
         // Test null input source
         assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generateKeyPath(originalTarget, null);
+            MvKeyPathGenerator.generate(originalTarget, null);
         });
 
         // Test empty sources in original target
         MvTarget emptyTarget = new MvTarget("empty", new MvSqlPos(1, 1));
         assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generateKeyPath(emptyTarget, sourceA);
+            MvKeyPathGenerator.generate(emptyTarget, sourceA);
         });
 
         // Test input source not part of original target
         MvJoinSource outsideSource = new MvJoinSource(new MvSqlPos(1, 1));
         outsideSource.setTableAlias("outside");
         assertThrows(IllegalArgumentException.class, () -> {
-            MvKeyPathGenerator.generateKeyPath(originalTarget, outsideSource);
+            MvKeyPathGenerator.generate(originalTarget, outsideSource);
         });
     }
 
@@ -282,7 +282,7 @@ public class MvKeyPathGeneratorTest {
         originalTarget.getSources().add(disconnectedSource);
 
         // Should return null when no path exists
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, disconnectedSource);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, disconnectedSource);
         assertNull(result);
     }
 
@@ -299,7 +299,7 @@ public class MvKeyPathGeneratorTest {
         sourceA.getConditions().add(circularCondition);
 
         // Should still optimize (D has a_id foreign key to A)
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceD);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceD);
         assertNotNull(result);
         assertEquals(1, result.getSources().size()); // Optimized: only D needed
     }
@@ -317,7 +317,7 @@ public class MvKeyPathGeneratorTest {
 
         sourceA.setTableInfo(tableInfoMultiKey);
 
-        MvTarget result = MvKeyPathGenerator.generateKeyPath(originalTarget, sourceA);
+        MvTarget result = MvKeyPathGenerator.generate(originalTarget, sourceA);
 
         assertNotNull(result);
         assertEquals(2, result.getColumns().size());
