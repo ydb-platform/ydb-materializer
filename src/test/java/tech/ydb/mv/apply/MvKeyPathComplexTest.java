@@ -41,20 +41,20 @@ public class MvKeyPathComplexTest {
                 .build();
 
         // Create join sources
-        MvJoinSource sourceE = new MvJoinSource(new MvSqlPos(1, 1));
+        MvJoinSource sourceE = new MvJoinSource();
         sourceE.setTableName("tableE");
         sourceE.setTableAlias("e");
         sourceE.setMode(MvJoinMode.MAIN);
         sourceE.setTableInfo(tableE);
 
-        MvJoinSource sourceF = new MvJoinSource(new MvSqlPos(2, 1));
+        MvJoinSource sourceF = new MvJoinSource();
         sourceF.setTableName("tableF");
         sourceF.setTableAlias("f");
         sourceF.setMode(MvJoinMode.LEFT);
         sourceF.setTableInfo(tableF);
 
         // Create multi-column join condition: E(tenant_id, user_id) = F(e_tenant_id, e_user_id)
-        MvJoinCondition conditionEF1 = new MvJoinCondition(new MvSqlPos(2, 1));
+        MvJoinCondition conditionEF1 = new MvJoinCondition();
         conditionEF1.setFirstRef(sourceE);
         conditionEF1.setFirstAlias("e");
         conditionEF1.setFirstColumn("tenant_id");
@@ -63,7 +63,7 @@ public class MvKeyPathComplexTest {
         conditionEF1.setSecondColumn("e_tenant_id");
         sourceF.getConditions().add(conditionEF1);
 
-        MvJoinCondition conditionEF2 = new MvJoinCondition(new MvSqlPos(2, 2));
+        MvJoinCondition conditionEF2 = new MvJoinCondition();
         conditionEF2.setFirstRef(sourceE);
         conditionEF2.setFirstAlias("e");
         conditionEF2.setFirstColumn("user_id");
@@ -73,19 +73,19 @@ public class MvKeyPathComplexTest {
         sourceF.getConditions().add(conditionEF2);
 
         // Create target with multi-column join
-        MvTarget multiColTarget = new MvTarget("multi_col_target", new MvSqlPos(1, 1));
+        MvTarget multiColTarget = new MvTarget("multi_col_target");
         multiColTarget.getSources().add(sourceE);
         multiColTarget.getSources().add(sourceF);
 
         // Add output columns
-        MvColumn columnE = new MvColumn("e_name", new MvSqlPos(1, 1));
+        MvColumn columnE = new MvColumn("e_name");
         columnE.setSourceAlias("e");
         columnE.setSourceColumn("name");
         columnE.setSourceRef(sourceE);
         columnE.setType(PrimitiveType.Text);
         multiColTarget.getColumns().add(columnE);
 
-        MvColumn columnF = new MvColumn("f_value", new MvSqlPos(2, 1));
+        MvColumn columnF = new MvColumn("f_value");
         columnF.setSourceAlias("f");
         columnF.setSourceColumn("value");
         columnF.setSourceRef(sourceF);
@@ -94,11 +94,10 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from F to E
         MvTarget result = new MvKeyPathGenerator(multiColTarget).generate(sourceF);
-        try (MvSqlGen sg = new MvSqlGen(result)) {
-            System.out.println("*** Multi-column F-E SQL: " + sg.makeCreateView());
-        }
 
         assertNotNull(result);
+        System.out.println("*** Multi-column F-E SQL: " + new MvSqlGen(result).makeSelect());
+
         assertEquals(2, result.getSources().size());
         assertEquals("f", result.getSources().get(0).getTableAlias());
         assertEquals("e", result.getSources().get(1).getTableAlias());
@@ -149,32 +148,32 @@ public class MvKeyPathComplexTest {
                 .build();
 
         // Create join sources: G -> I -> H
-        MvJoinSource sourceG = new MvJoinSource(new MvSqlPos(1, 1));
+        MvJoinSource sourceG = new MvJoinSource();
         sourceG.setTableName("tableG");
         sourceG.setTableAlias("g");
         sourceG.setMode(MvJoinMode.MAIN);
         sourceG.setTableInfo(tableG);
 
-        MvJoinSource sourceI = new MvJoinSource(new MvSqlPos(2, 1));
+        MvJoinSource sourceI = new MvJoinSource();
         sourceI.setTableName("tableI");
         sourceI.setTableAlias("i");
         sourceI.setMode(MvJoinMode.INNER);
         sourceI.setTableInfo(tableI);
 
-        MvJoinSource sourceH = new MvJoinSource(new MvSqlPos(3, 1));
+        MvJoinSource sourceH = new MvJoinSource();
         sourceH.setTableName("tableH");
         sourceH.setTableAlias("h");
         sourceH.setMode(MvJoinMode.LEFT);
         sourceH.setTableInfo(tableH);
 
         // Create target with literal conditions
-        MvTarget literalTarget = new MvTarget("literal_target", new MvSqlPos(1, 1));
+        MvTarget literalTarget = new MvTarget("literal_target");
         literalTarget.getSources().add(sourceG);
         literalTarget.getSources().add(sourceI);
         literalTarget.getSources().add(sourceH);
 
         // Create join conditions: G.id = I.g_id AND G.status = 'ACTIVE' AND G.type_code = 100
-        MvJoinCondition conditionGI1 = new MvJoinCondition(new MvSqlPos(2, 1));
+        MvJoinCondition conditionGI1 = new MvJoinCondition();
         conditionGI1.setFirstRef(sourceG);
         conditionGI1.setFirstAlias("g");
         conditionGI1.setFirstColumn("id");
@@ -183,14 +182,14 @@ public class MvKeyPathComplexTest {
         conditionGI1.setSecondColumn("g_id");
         sourceI.getConditions().add(conditionGI1);
 
-        MvJoinCondition conditionGI2 = new MvJoinCondition(new MvSqlPos(2, 2));
+        MvJoinCondition conditionGI2 = new MvJoinCondition();
         conditionGI2.setFirstRef(sourceG);
         conditionGI2.setFirstAlias("g");
         conditionGI2.setFirstColumn("status");
         conditionGI2.setSecondLiteral(literalTarget.addLiteral("'ACTIVE'"));
         sourceI.getConditions().add(conditionGI2);
 
-        MvJoinCondition conditionGI3 = new MvJoinCondition(new MvSqlPos(2, 3));
+        MvJoinCondition conditionGI3 = new MvJoinCondition();
         conditionGI3.setFirstRef(sourceG);
         conditionGI3.setFirstAlias("g");
         conditionGI3.setFirstColumn("type_code");
@@ -198,7 +197,7 @@ public class MvKeyPathComplexTest {
         sourceI.getConditions().add(conditionGI3);
 
         // Create join condition: I.id = H.i_id
-        MvJoinCondition conditionIH = new MvJoinCondition(new MvSqlPos(3, 1));
+        MvJoinCondition conditionIH = new MvJoinCondition();
         conditionIH.setFirstRef(sourceI);
         conditionIH.setFirstAlias("i");
         conditionIH.setFirstColumn("id");
@@ -208,21 +207,21 @@ public class MvKeyPathComplexTest {
         sourceH.getConditions().add(conditionIH);
 
         // Add output columns
-        MvColumn columnG = new MvColumn("g_data", new MvSqlPos(1, 1));
+        MvColumn columnG = new MvColumn("g_data");
         columnG.setSourceAlias("g");
         columnG.setSourceColumn("data");
         columnG.setSourceRef(sourceG);
         columnG.setType(PrimitiveType.Text);
         literalTarget.getColumns().add(columnG);
 
-        MvColumn columnI = new MvColumn("i_category", new MvSqlPos(2, 1));
+        MvColumn columnI = new MvColumn("i_category");
         columnI.setSourceAlias("i");
         columnI.setSourceColumn("category");
         columnI.setSourceRef(sourceI);
         columnI.setType(PrimitiveType.Text);
         literalTarget.getColumns().add(columnI);
 
-        MvColumn columnH = new MvColumn("h_value", new MvSqlPos(3, 1));
+        MvColumn columnH = new MvColumn("h_value");
         columnH.setSourceAlias("h");
         columnH.setSourceColumn("value");
         columnH.setSourceRef(sourceH);
@@ -232,8 +231,8 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from H to G (should go H -> I -> G)
         MvTarget result = new MvKeyPathGenerator(literalTarget).generate(sourceH);
-        System.out.println("*** Input H-I-G SQL: " + new MvSqlGen(literalTarget).makeCreateView());
-        System.out.println("*** Result H-I-G SQL: " + new MvSqlGen(result).makeCreateView());
+        System.out.println("*** Input H-I-G SQL: " + new MvSqlGen(literalTarget).makeSelect());
+        System.out.println("*** Result H-I-G SQL: " + new MvSqlGen(result).makeSelect());
 
         assertNotNull(result);
         assertEquals(3, result.getSources().size());
@@ -301,25 +300,25 @@ public class MvKeyPathComplexTest {
                 .build();
 
         // Create join sources: J -> K
-        MvJoinSource sourceJ = new MvJoinSource(new MvSqlPos(1, 1));
+        MvJoinSource sourceJ = new MvJoinSource();
         sourceJ.setTableName("tableJ");
         sourceJ.setTableAlias("j");
         sourceJ.setMode(MvJoinMode.MAIN);
         sourceJ.setTableInfo(tableJ);
 
-        MvJoinSource sourceK = new MvJoinSource(new MvSqlPos(2, 1));
+        MvJoinSource sourceK = new MvJoinSource();
         sourceK.setTableName("tableK");
         sourceK.setTableAlias("k");
         sourceK.setMode(MvJoinMode.INNER);
         sourceK.setTableInfo(tableK);
 
         // Create target
-        MvTarget notReferencedTarget = new MvTarget("not_referenced_target", new MvSqlPos(1, 1));
+        MvTarget notReferencedTarget = new MvTarget("not_referenced_target");
         notReferencedTarget.getSources().add(sourceJ);
         notReferencedTarget.getSources().add(sourceK);
 
         // Create join conditions: J.id = K.j_id AND J.status = 'ACTIVE'
-        MvJoinCondition conditionJK1 = new MvJoinCondition(new MvSqlPos(2, 1));
+        MvJoinCondition conditionJK1 = new MvJoinCondition();
         conditionJK1.setFirstRef(sourceJ);
         conditionJK1.setFirstAlias("j");
         conditionJK1.setFirstColumn("id");
@@ -328,7 +327,7 @@ public class MvKeyPathComplexTest {
         conditionJK1.setSecondColumn("j_id");
         sourceK.getConditions().add(conditionJK1);
 
-        MvJoinCondition conditionJK2 = new MvJoinCondition(new MvSqlPos(2, 2));
+        MvJoinCondition conditionJK2 = new MvJoinCondition();
         conditionJK2.setFirstRef(sourceJ);
         conditionJK2.setFirstAlias("j");
         conditionJK2.setFirstColumn("status");
@@ -336,7 +335,7 @@ public class MvKeyPathComplexTest {
         sourceK.getConditions().add(conditionJK2);
 
         // Add output column that only references K (NOT J)
-        MvColumn columnK = new MvColumn("k_category", new MvSqlPos(2, 1));
+        MvColumn columnK = new MvColumn("k_category");
         columnK.setSourceAlias("k");
         columnK.setSourceColumn("category");
         columnK.setSourceRef(sourceK);
@@ -395,19 +394,19 @@ public class MvKeyPathComplexTest {
                 .build();
 
         // Create join sources: X -> Y -> Z
-        MvJoinSource sourceX = new MvJoinSource(new MvSqlPos(1, 1));
+        MvJoinSource sourceX = new MvJoinSource();
         sourceX.setTableName("tableX");
         sourceX.setTableAlias("x");
         sourceX.setMode(MvJoinMode.MAIN);
         sourceX.setTableInfo(tableX);
 
-        MvJoinSource sourceY = new MvJoinSource(new MvSqlPos(2, 1));
+        MvJoinSource sourceY = new MvJoinSource();
         sourceY.setTableName("tableY");
         sourceY.setTableAlias("y");
         sourceY.setMode(MvJoinMode.INNER);
         sourceY.setTableInfo(tableY);
 
-        MvJoinSource sourceZ = new MvJoinSource(new MvSqlPos(3, 1));
+        MvJoinSource sourceZ = new MvJoinSource();
         sourceZ.setTableName("tableZ");
         sourceZ.setTableAlias("z");
         sourceZ.setMode(MvJoinMode.LEFT);
@@ -415,7 +414,7 @@ public class MvKeyPathComplexTest {
 
         // Create join conditions
         // Y joins to X: X.id = Y.x_id
-        MvJoinCondition conditionXY = new MvJoinCondition(new MvSqlPos(2, 1));
+        MvJoinCondition conditionXY = new MvJoinCondition();
         conditionXY.setFirstRef(sourceX);
         conditionXY.setFirstAlias("x");
         conditionXY.setFirstColumn("id");
@@ -425,7 +424,7 @@ public class MvKeyPathComplexTest {
         sourceY.getConditions().add(conditionXY);
 
         // Z joins to Y: Y.id = Z.y_id
-        MvJoinCondition conditionYZ1 = new MvJoinCondition(new MvSqlPos(3, 1));
+        MvJoinCondition conditionYZ1 = new MvJoinCondition();
         conditionYZ1.setFirstRef(sourceY);
         conditionYZ1.setFirstAlias("y");
         conditionYZ1.setFirstColumn("id");
@@ -435,7 +434,7 @@ public class MvKeyPathComplexTest {
         sourceZ.getConditions().add(conditionYZ1);
 
         // Z also joins directly to X: X.org_id = Z.x_org_id (cross-table condition)
-        MvJoinCondition conditionXZ = new MvJoinCondition(new MvSqlPos(3, 2));
+        MvJoinCondition conditionXZ = new MvJoinCondition();
         conditionXZ.setFirstRef(sourceX);
         conditionXZ.setFirstAlias("x");
         conditionXZ.setFirstColumn("org_id");
@@ -445,27 +444,27 @@ public class MvKeyPathComplexTest {
         sourceZ.getConditions().add(conditionXZ);
 
         // Create target
-        MvTarget crossTarget = new MvTarget("cross_target", new MvSqlPos(1, 1));
+        MvTarget crossTarget = new MvTarget("cross_target");
         crossTarget.getSources().add(sourceX);
         crossTarget.getSources().add(sourceY);
         crossTarget.getSources().add(sourceZ);
 
         // Add output columns
-        MvColumn columnX = new MvColumn("x_name", new MvSqlPos(1, 1));
+        MvColumn columnX = new MvColumn("x_name");
         columnX.setSourceAlias("x");
         columnX.setSourceColumn("name");
         columnX.setSourceRef(sourceX);
         columnX.setType(PrimitiveType.Text);
         crossTarget.getColumns().add(columnX);
 
-        MvColumn columnY = new MvColumn("y_category", new MvSqlPos(2, 1));
+        MvColumn columnY = new MvColumn("y_category");
         columnY.setSourceAlias("y");
         columnY.setSourceColumn("category");
         columnY.setSourceRef(sourceY);
         columnY.setType(PrimitiveType.Text);
         crossTarget.getColumns().add(columnY);
 
-        MvColumn columnZ = new MvColumn("z_value", new MvSqlPos(3, 1));
+        MvColumn columnZ = new MvColumn("z_value");
         columnZ.setSourceAlias("z");
         columnZ.setSourceColumn("value");
         columnZ.setSourceRef(sourceZ);
@@ -474,11 +473,9 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from Z to X (should go Z -> Y -> X)
         MvTarget result = new MvKeyPathGenerator(crossTarget).generate(sourceZ);
-        try (MvSqlGen sg = new MvSqlGen(result)) {
-            System.out.println("*** Cross-table Z-Y-X SQL: " + sg.makeCreateView());
-        }
 
         assertNotNull(result);
+        System.out.println("*** Cross-table Z-Y-X SQL: " + new MvSqlGen(result).makeSelect());
 
         // The generator optimizes this case! Instead of Z -> Y -> X, it uses the direct
         // cross-table relationship Z -> X through the condition X.org_id = Z.x_org_id
