@@ -8,12 +8,25 @@ import java.util.ArrayList;
  */
 public class MvComputation implements MvSqlPosHolder {
 
-    private final ArrayList<Source> sources = new ArrayList<>();
     private String expression;
+    private final ArrayList<Source> sources = new ArrayList<>();
     private final MvSqlPos sqlPos;
 
-    public MvComputation(MvSqlPos sqlPos) {
+    public MvComputation(String expression, MvSqlPos sqlPos) {
+        this.expression = expression;
         this.sqlPos = sqlPos;
+    }
+
+    public MvComputation(MvSqlPos sqlPos) {
+        this(null, sqlPos);
+    }
+
+    public MvComputation(String expression) {
+        this(expression, MvSqlPos.EMPTY);
+    }
+
+    public MvComputation() {
+        this(null, MvSqlPos.EMPTY);
     }
 
     public String getExpression() {

@@ -6,6 +6,8 @@ package tech.ydb.mv.model;
  */
 public class MvSqlPos {
 
+    public static final MvSqlPos EMPTY = new MvSqlPos(0, 0);
+
     private final int line;
     private final int column;
 

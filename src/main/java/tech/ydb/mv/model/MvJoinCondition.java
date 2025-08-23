@@ -20,6 +20,10 @@ public class MvJoinCondition implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
+    public MvJoinCondition() {
+        this(MvSqlPos.EMPTY);
+    }
+
     public MvLiteral getFirstLiteral() {
         return firstLiteral;
     }

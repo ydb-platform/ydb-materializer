@@ -24,6 +24,10 @@ public class MvTarget implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
+    public MvTarget(String name) {
+        this(name, MvSqlPos.EMPTY);
+    }
+
     public MvJoinSource getSourceByAlias(String name) {
         if (name==null) {
             return null;

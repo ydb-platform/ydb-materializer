@@ -11,11 +11,12 @@ import java.util.Map;
 import java.util.Set;
 
 import tech.ydb.mv.model.MvColumn;
+import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvLiteral;
-import tech.ydb.mv.model.MvSqlPos;
+import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -30,42 +31,48 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvKeyPathGenerator {
 
+    private final MvTarget originalTarget;
+    private final MvJoinSource topMostSource;
+    private final MvTableInfo topMostTable;
+    private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
+
+    public MvKeyPathGenerator(MvTarget target) {
+        this.originalTarget = target;
+        this.topMostSource = target.getSources().get(0);
+        this.topMostTable = this.topMostSource.getTableInfo();
+        this.adjacencyMap = buildAdjacencyMap(target);
+    }
+
     /**
      * Generates a minimal transformation target from the input join source to
      * the top-most join source.
      *
-     * @param original The original MvTarget containing all join sources
      * @param point The input MvJoinSource to transform from
      * @return A new MvTarget defining the minimal transformation, or null if no
      * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public static MvTarget generate(MvTarget original, MvJoinSource point) {
+    public MvTarget generate(MvJoinSource point) {
         // Validate that inputSource is part of the originalTarget
-        if (!original.getSources().contains(point)) {
+        if (!originalTarget.getSources().contains(point)) {
             throw new IllegalArgumentException("Input source must be part of the original target");
         }
 
-        MvJoinSource topMostSource = original.getSources().get(0);
-
         // If input source is already the top-most source, create a simple target
         if (point == topMostSource) {
-            return MvKeyPathGenerator.createDirectTarget(point);
+            return createSimpleTarget(point);
         }
 
         // Check if the input source already contains all primary key fields of the top-most source
-        if (canDirectlyMapKeys(point, topMostSource)) {
-            return createDirectTarget(point, topMostSource);
+        if (canDirectlyMapKeys(point)) {
+            return createDirectTarget(point);
         }
 
-        PathFinder pathFinder = new PathFinder(original);
-        List<MvJoinSource> path = pathFinder.findPath(point, topMostSource);
-
+        List<MvJoinSource> path = findPath(point, topMostSource);
         if (path == null || path.isEmpty()) {
             return null; // No path found
         }
-
-        return createTarget(path, original, topMostSource);
+        return createTarget(path);
     }
 
     /**
@@ -73,16 +80,13 @@ public class MvKeyPathGenerator {
      * without joins. This analyzes join conditions to find direct mappings
      * between columns or literal values.
      */
-    private static boolean canDirectlyMapKeys(MvJoinSource inputSource, MvJoinSource topMostSource) {
-        List<String> targetKeys = topMostSource.getTableInfo().getKey();
-
-        // Check if we can find a direct mapping for each target key through join conditions
+    private boolean canDirectlyMapKeys(MvJoinSource inputSource) {
+        List<String> targetKeys = topMostTable.getKey();
         for (String targetKey : targetKeys) {
-            if (!canMapTargetKey(inputSource, topMostSource, targetKey)) {
+            if (!canMapTargetKey(inputSource, targetKey)) {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -90,17 +94,17 @@ public class MvKeyPathGenerator {
      * Checks if a specific target key can be mapped directly from the input
      * source by analyzing join conditions.
      */
-    private static boolean canMapTargetKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
-        // Look through all join conditions in the input source
-        for (MvJoinCondition condition : inputSource.getConditions()) {
-            if (isConditionMappingKey(condition, inputSource, topMostSource, targetKey)) {
-                return true;
-            }
+    private boolean canMapTargetKey(MvJoinSource inputSource, String targetKey) {
+        if (inputSource == topMostSource
+                && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
+            return true;
         }
 
-        // Only allow direct column mapping if inputSource IS the topMostSource
-        if (inputSource == topMostSource && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
-            return true;
+        // Look through all join conditions in the input source
+        for (MvJoinCondition condition : inputSource.getConditions()) {
+            if (isConditionMappingKey(condition, inputSource, targetKey)) {
+                return true;
+            }
         }
 
         return false;
@@ -109,53 +113,26 @@ public class MvKeyPathGenerator {
     /**
      * Checks if a join condition provides a mapping for the target key.
      */
-    private static boolean isConditionMappingKey(MvJoinCondition condition, MvJoinSource inputSource,
-            MvJoinSource topMostSource, String targetKey) {
+    private boolean isConditionMappingKey(MvJoinCondition condition,
+            MvJoinSource inputSource, String targetKey) {
+        if (condition.getFirstLiteral() != null || condition.getSecondLiteral() != null) {
+            // Literal conditions never match
+            return false;
+        }
 
         // Check if condition connects inputSource column to topMostSource key
-        if (condition.getFirstRef() == inputSource && condition.getSecondRef() == topMostSource) {
+        if (condition.getFirstRef() == inputSource
+                && condition.getSecondRef() == topMostSource) {
             if (targetKey.equals(condition.getSecondColumn())) {
                 // inputSource.firstColumn = topMostSource.targetKey
                 return true;
             }
         }
 
-        if (condition.getFirstRef() == topMostSource && condition.getSecondRef() == inputSource) {
+        if (condition.getFirstRef() == topMostSource
+                && condition.getSecondRef() == inputSource) {
             if (targetKey.equals(condition.getFirstColumn())) {
                 // topMostSource.targetKey = inputSource.secondColumn
-                return true;
-            }
-        }
-
-        // Handle alias-based references
-        String inputAlias = inputSource.getTableAlias();
-        String topMostAlias = topMostSource.getTableAlias();
-
-        if (inputAlias.equals(condition.getFirstAlias()) && topMostAlias.equals(condition.getSecondAlias())) {
-            if (targetKey.equals(condition.getSecondColumn())) {
-                return true;
-            }
-        }
-
-        if (topMostAlias.equals(condition.getFirstAlias()) && inputAlias.equals(condition.getSecondAlias())) {
-            if (targetKey.equals(condition.getFirstColumn())) {
-                return true;
-            }
-        }
-
-        // Check for literal values (constant mappings)
-        if (condition.getSecondLiteral() != null) {
-            if ((condition.getFirstRef() == inputSource || inputAlias.equals(condition.getFirstAlias()))
-                    && (condition.getSecondRef() == topMostSource || topMostAlias.equals(condition.getSecondAlias()))
-                    && targetKey.equals(condition.getSecondColumn())) {
-                return true;
-            }
-        }
-
-        if (condition.getFirstLiteral() != null) {
-            if ((condition.getSecondRef() == inputSource || inputAlias.equals(condition.getSecondAlias()))
-                    && (condition.getFirstRef() == topMostSource || topMostAlias.equals(condition.getFirstAlias()))
-                    && targetKey.equals(condition.getFirstColumn())) {
                 return true;
             }
         }
@@ -164,44 +141,66 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Creates an optimized direct target that maps keys without unnecessary
-     * joins.
+     * Creates a simple direct target for the case where input source
+     * is the top-most source.
      */
-    private static MvTarget createDirectTarget(MvJoinSource inputSource, MvJoinSource topMostSource) {
-        MvTarget result = new MvTarget("key_path_direct", new MvSqlPos(0, 0));
+    private MvTarget createSimpleTarget(MvJoinSource source) {
+        MvTarget result = new MvTarget(source.getTableName() + "_keys_simple");
 
-        // Add the input source as the main source
-        MvJoinSource newSource = cloneJoinSource(inputSource);
+        // Add the source as the main source
+        MvJoinSource newSource = cloneJoinSource(source);
         newSource.setMode(MvJoinMode.MAIN);
         result.getSources().add(newSource);
 
-        // Copy relevant join conditions from the input source that relate to the optimization
-        copyRelevantConditions(inputSource, newSource, topMostSource);
+        // Add columns for all primary key fields
+        for (String keyColumn : source.getTableInfo().getKey()) {
+            MvColumn column = new MvColumn(keyColumn);
+            column.setSourceAlias(newSource.getTableAlias());
+            column.setSourceColumn(keyColumn);
+            column.setSourceRef(newSource);
+            column.setType(source.getTableInfo().getColumns().get(keyColumn));
+            result.getColumns().add(column);
+        }
+
+        return result;
+    }
+
+    /**
+     * Creates a direct target that maps keys without any joins.
+     */
+    private MvTarget createDirectTarget(MvJoinSource source) {
+        MvTarget result = new MvTarget(source.getTableName() + "_keys_direct");
+
+        // Add the input source as the main source
+        MvJoinSource newSource = cloneJoinSource(source);
+        newSource.setMode(MvJoinMode.MAIN);
+        result.getSources().add(newSource);
 
         // Add columns for the target primary key fields, mapping from join conditions
-        if (topMostSource.getTableInfo() != null && inputSource.getTableInfo() != null) {
-            List<String> targetKeys = topMostSource.getTableInfo().getKey();
+        List<String> targetKeys = topMostTable.getKey();
 
-            for (String targetKey : targetKeys) {
-                String sourceColumn = findSourceColumnForKey(inputSource, topMostSource, targetKey);
-                MvLiteral literalValue = findLiteralForKey(inputSource, topMostSource, targetKey);
-
-                if (sourceColumn != null) {
-                    MvColumn column = new MvColumn(targetKey, new MvSqlPos(0, 0));
-                    column.setSourceAlias(newSource.getTableAlias());
-                    column.setSourceColumn(sourceColumn);
-                    column.setSourceRef(newSource);
-                    column.setType(inputSource.getTableInfo().getColumns().get(sourceColumn));
-                    result.getColumns().add(column);
-                } else if (literalValue != null) {
+        for (String targetKey : targetKeys) {
+            String sourceColumn = findSourceColumnForKey(source, targetKey);
+            if (sourceColumn != null) {
+                MvColumn column = new MvColumn(targetKey);
+                column.setSourceAlias(newSource.getTableAlias());
+                column.setSourceColumn(sourceColumn);
+                column.setSourceRef(newSource);
+                column.setType(source.getTableInfo().getColumns().get(sourceColumn));
+                result.getColumns().add(column);
+            } else {
+                MvLiteral literalValue = findLiteralForKey(source, targetKey);
+                if (literalValue != null) {
                     // Handle literal/constant values
-                    MvColumn column = new MvColumn(targetKey, new MvSqlPos(0, 0));
-                    column.setSourceAlias(newSource.getTableAlias());
-                    column.setSourceColumn(literalValue.getValue()); // Use literal value as source
-                    column.setSourceRef(newSource);
+                    MvColumn column = new MvColumn(targetKey);
+                    column.setComputation(new MvComputation(literalValue.getValue()));
                     // Type will be determined from the target key
-                    column.setType(topMostSource.getTableInfo().getColumns().get(targetKey));
+                    column.setType(topMostTable.getColumns().get(targetKey));
                     result.getColumns().add(column);
+                } else {
+                    throw new IllegalStateException("Cannot map column for " + targetKey
+                            + " at source " + source.getTableName() + ", target "
+                            + topMostSource.getTableName());
                 }
             }
         }
@@ -210,103 +209,21 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Copies join conditions that are relevant for the optimization case. For
-     * optimized direct targets, we need to preserve the join conditions that
-     * define the relationship between the input source and the target source.
-     */
-    private static void copyRelevantConditions(MvJoinSource originalInputSource,
-            MvJoinSource newInputSource, MvJoinSource topMostSource) {
-
-        // Copy join conditions from the original input source that relate to the topMostSource
-        for (MvJoinCondition originalCondition : originalInputSource.getConditions()) {
-            if (isConditionRelevant(originalCondition, originalInputSource, topMostSource)) {
-                MvJoinCondition newCondition = cloneJoinCondition(
-                        originalCondition, originalInputSource, newInputSource, topMostSource);
-                if (newCondition != null) {
-                    newInputSource.getConditions().add(newCondition);
-                }
-            }
-        }
-    }
-
-    /**
-     * Checks if a join condition is relevant for the optimization (relates to
-     * the target source).
-     */
-    private static boolean isConditionRelevant(MvJoinCondition condition,
-            MvJoinSource inputSource, MvJoinSource topMostSource) {
-
-        // Check if the condition connects inputSource to topMostSource
-        String inputAlias = inputSource.getTableAlias();
-        String topMostAlias = topMostSource.getTableAlias();
-
-        // Direct reference check
-        if ((condition.getFirstRef() == inputSource && condition.getSecondRef() == topMostSource)
-                || (condition.getFirstRef() == topMostSource && condition.getSecondRef() == inputSource)) {
-            return true;
-        }
-
-        // Alias-based reference check
-        if ((inputAlias.equals(condition.getFirstAlias()) && topMostAlias.equals(condition.getSecondAlias()))
-                || (topMostAlias.equals(condition.getFirstAlias()) && inputAlias.equals(condition.getSecondAlias()))) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Clones a join condition for use in the optimized target, updating
-     * references as needed.
-     */
-    private static MvJoinCondition cloneJoinCondition(MvJoinCondition originalCondition,
-            MvJoinSource originalInputSource, MvJoinSource newInputSource, MvJoinSource topMostSource) {
-
-        MvJoinCondition newCondition = new MvJoinCondition(new MvSqlPos(0, 0));
-
-        // Copy the condition, but don't include references to the topMostSource since we're not including it
-        // Instead, document the condition for reference but don't actually use it for joins
-        // For optimized targets, we typically don't need the actual join conditions in the generated SQL
-        // since we're using the foreign key values directly. However, we preserve them for documentation.
-        newCondition.setFirstLiteral(originalCondition.getFirstLiteral());
-        newCondition.setFirstAlias(originalCondition.getFirstAlias());
-        newCondition.setFirstColumn(originalCondition.getFirstColumn());
-        newCondition.setSecondLiteral(originalCondition.getSecondLiteral());
-        newCondition.setSecondAlias(originalCondition.getSecondAlias());
-        newCondition.setSecondColumn(originalCondition.getSecondColumn());
-
-        // Update source references: replace originalInputSource with newInputSource
-        if (originalCondition.getFirstRef() == originalInputSource) {
-            newCondition.setFirstRef(newInputSource);
-        } else {
-            newCondition.setFirstRef(originalCondition.getFirstRef());
-        }
-
-        if (originalCondition.getSecondRef() == originalInputSource) {
-            newCondition.setSecondRef(newInputSource);
-        } else {
-            newCondition.setSecondRef(originalCondition.getSecondRef());
-        }
-
-        return newCondition;
-    }
-
-    /**
      * Finds the source column in inputSource that maps to the target key
      * through join conditions.
      */
-    private static String findSourceColumnForKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
+    private String findSourceColumnForKey(MvJoinSource inputSource, String targetKey) {
+        if (inputSource == topMostSource
+                && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
+            return targetKey;
+        }
+
         // Check join conditions for column mappings
         for (MvJoinCondition condition : inputSource.getConditions()) {
-            String sourceColumn = getSourceColumnFromCondition(condition, inputSource, topMostSource, targetKey);
+            String sourceColumn = getSourceColumnFromCondition(condition, inputSource, targetKey);
             if (sourceColumn != null) {
                 return sourceColumn;
             }
-        }
-
-        // Only allow direct column mapping if inputSource IS the topMostSource
-        if (inputSource == topMostSource && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
-            return targetKey;
         }
 
         return null;
@@ -316,9 +233,9 @@ public class MvKeyPathGenerator {
      * Finds the literal value that maps to the target key through join
      * conditions.
      */
-    private static MvLiteral findLiteralForKey(MvJoinSource inputSource, MvJoinSource topMostSource, String targetKey) {
+    private MvLiteral findLiteralForKey(MvJoinSource inputSource, String targetKey) {
         for (MvJoinCondition condition : inputSource.getConditions()) {
-            MvLiteral literal = getLiteralFromCondition(condition, inputSource, topMostSource, targetKey);
+            MvLiteral literal = getLiteralFromCondition(condition, targetKey);
             if (literal != null) {
                 return literal;
             }
@@ -327,41 +244,20 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Extracts the source column from a join condition if it maps to the target
-     * key.
+     * Extracts the source column from a join condition if it maps to the target key.
      */
-    private static String getSourceColumnFromCondition(MvJoinCondition condition, MvJoinSource inputSource,
-            MvJoinSource topMostSource, String targetKey) {
-
-        String inputAlias = inputSource.getTableAlias();
-        String topMostAlias = topMostSource.getTableAlias();
-
-        // Check direct references: inputSource.column = topMostSource.targetKey
+    private String getSourceColumnFromCondition(MvJoinCondition condition,
+            MvJoinSource inputSource, String targetKey) {
         if (condition.getFirstRef() == inputSource && condition.getSecondRef() == topMostSource) {
             if (targetKey.equals(condition.getSecondColumn())) {
                 return condition.getFirstColumn();
             }
         }
-
         if (condition.getFirstRef() == topMostSource && condition.getSecondRef() == inputSource) {
             if (targetKey.equals(condition.getFirstColumn())) {
                 return condition.getSecondColumn();
             }
         }
-
-        // Check alias-based references
-        if (inputAlias.equals(condition.getFirstAlias()) && topMostAlias.equals(condition.getSecondAlias())) {
-            if (targetKey.equals(condition.getSecondColumn())) {
-                return condition.getFirstColumn();
-            }
-        }
-
-        if (topMostAlias.equals(condition.getFirstAlias()) && inputAlias.equals(condition.getSecondAlias())) {
-            if (targetKey.equals(condition.getFirstColumn())) {
-                return condition.getSecondColumn();
-            }
-        }
-
         return null;
     }
 
@@ -369,178 +265,130 @@ public class MvKeyPathGenerator {
      * Extracts the literal value from a join condition if it maps to the target
      * key.
      */
-    private static MvLiteral getLiteralFromCondition(MvJoinCondition condition, MvJoinSource inputSource,
-            MvJoinSource topMostSource, String targetKey) {
-
-        String topMostAlias = topMostSource.getTableAlias();
-
-        // Check for literal mappings: topMostSource.targetKey = literal
+    private MvLiteral getLiteralFromCondition(MvJoinCondition condition, String targetKey) {
         if (condition.getSecondLiteral() != null) {
-            if ((condition.getFirstRef() == topMostSource || topMostAlias.equals(condition.getFirstAlias()))
+            if (condition.getFirstRef() == topMostSource
                     && targetKey.equals(condition.getFirstColumn())) {
                 return condition.getSecondLiteral();
             }
         }
-
         if (condition.getFirstLiteral() != null) {
-            if ((condition.getSecondRef() == topMostSource || topMostAlias.equals(condition.getSecondAlias()))
+            if (condition.getSecondRef() == topMostSource
                     && targetKey.equals(condition.getSecondColumn())) {
                 return condition.getFirstLiteral();
             }
         }
-
         return null;
-    }
-
-    /**
-     * Creates a direct target for the case where input source is the top-most
-     * source.
-     */
-    private static MvTarget createDirectTarget(MvJoinSource source) {
-        MvTarget result = new MvTarget("key_path_direct", new MvSqlPos(0, 0));
-
-        // Add the source as the main source
-        MvJoinSource newSource = cloneJoinSource(source);
-        newSource.setMode(MvJoinMode.MAIN);
-        result.getSources().add(newSource);
-
-        // Add columns for all primary key fields
-        if (source.getTableInfo() != null) {
-            for (String keyColumn : source.getTableInfo().getKey()) {
-                MvColumn column = new MvColumn(keyColumn, new MvSqlPos(0, 0));
-                column.setSourceAlias(newSource.getTableAlias());
-                column.setSourceColumn(keyColumn);
-                column.setSourceRef(newSource);
-                column.setType(source.getTableInfo().getColumns().get(keyColumn));
-                result.getColumns().add(column);
-            }
-        }
-
-        return result;
     }
 
     /**
      * Creates a transformation target based on the found path.
      */
-    private static MvTarget createTarget(List<MvJoinSource> path,
-            MvTarget originalTarget, MvJoinSource topMostSource) {
-        MvTarget result = new MvTarget("key_path_transform", new MvSqlPos(0, 0));
+    private MvTarget createTarget(List<MvJoinSource> path) {
+        MvTarget result = new MvTarget(path.get(0).getTableName() + "_keys_full");
 
         // Add sources in the path
         for (int i = 0; i < path.size(); i++) {
-            MvJoinSource originalSource = path.get(i);
-            MvJoinSource newSource = cloneJoinSource(originalSource);
-
+            MvJoinSource src = path.get(i);
+            MvJoinSource dst = cloneJoinSource(src);
             if (i == 0) {
-                newSource.setMode(MvJoinMode.MAIN);
+                dst.setMode(MvJoinMode.MAIN);
             } else {
                 // Inner join, because we assume that the path exists
-                newSource.setMode(MvJoinMode.INNER);
-                // Copy relevant join conditions
-                copyRelevantConditions(originalSource, newSource, path, i, originalTarget, result);
+                dst.setMode(MvJoinMode.INNER);
+                // Copy the literal conditions for filtering.
+                copyLiteralConditions(result, src, dst);
             }
+            result.getSources().add(dst);
+        }
 
-            result.getSources().add(newSource);
+        // Add the relevant conditions to each source
+        for (int i = 0; i < path.size(); i++) {
+            MvJoinSource src = path.get(i);
+            MvJoinSource dst = result.getSources().get(i);
+            if (i > 0) {
+                for (int j = i - 1; j >= 0; --j) {
+                    MvJoinSource cur = path.get(j);
+                    copyRelationalConditions(cur, src, dst, result);
+                }
+            }
         }
 
         // Add columns for the target primary key (top-most source key)
-        if (topMostSource.getTableInfo() != null) {
-            MvJoinSource targetSourceInResult = result.getSources().get(result.getSources().size() - 1);
-            for (String keyColumn : topMostSource.getTableInfo().getKey()) {
-                MvColumn column = new MvColumn(keyColumn, new MvSqlPos(0, 0));
-                column.setSourceAlias(targetSourceInResult.getTableAlias());
-                column.setSourceColumn(keyColumn);
-                column.setSourceRef(targetSourceInResult);
-                column.setType(topMostSource.getTableInfo().getColumns().get(keyColumn));
-                result.getColumns().add(column);
-            }
+        MvJoinSource topmost = result.getSources().get(result.getSources().size() - 1);
+        for (String keyColumn : topMostTable.getKey()) {
+            MvColumn column = new MvColumn(keyColumn);
+            column.setSourceAlias(topmost.getTableAlias());
+            column.setSourceColumn(keyColumn);
+            column.setSourceRef(topmost);
+            column.setType(topMostTable.getColumns().get(keyColumn));
+            result.getColumns().add(column);
         }
 
         return result;
     }
 
     /**
-     * Copies join conditions that are relevant for the current step in the
-     * path.
+     * Copy all literal conditions from the current level.
+     * These are the filtering conditions we need.
      */
-    private static void copyRelevantConditions(MvJoinSource originalSource, MvJoinSource newSource,
-            List<MvJoinSource> path, int currentIndex, MvTarget originalTarget, MvTarget newTarget) {
-
-        MvJoinSource previousInPath = path.get(currentIndex - 1);
-
-        for (MvJoinCondition condition : originalSource.getConditions()) {
-            // Check if this condition connects to the previous source in our path
-            if (isConditionRelevantForPath(condition, originalSource, previousInPath, originalTarget)) {
-                MvJoinCondition newCondition = cloneJoinCondition(condition, newTarget);
-                newSource.getConditions().add(newCondition);
+    private void copyLiteralConditions(MvTarget result, MvJoinSource src, MvJoinSource dst) {
+        for (MvJoinCondition cond : src.getConditions()) {
+            MvLiteral literal = null;
+            String column = null;
+            if (cond.getFirstRef()==src) {
+                literal = cond.getSecondLiteral();
+                column = cond.getFirstColumn();
+            } else if (cond.getSecondRef()==src) {
+                literal = cond.getFirstLiteral();
+                column = cond.getSecondColumn();
             }
-        }
-        
-        // Also check all conditions from the original target to find conditions 
-        // that might connect this source to the previous one in the path.
-        // This is needed because conditions might be stored on other sources.
-        for (MvJoinSource otherSource : originalTarget.getSources()) {
-            for (MvJoinCondition condition : otherSource.getConditions()) {
-                if (isConditionConnectingSources(condition, originalSource, previousInPath, originalTarget)) {
-                    // Don't add duplicate conditions
-                    if (!isDuplicateCondition(newSource.getConditions(), condition)) {
-                        MvJoinCondition newCondition = cloneJoinCondition(condition, newTarget);
-                        newSource.getConditions().add(newCondition);
-                    }
-                }
+            if (literal!=null && column!=null) {
+                MvJoinCondition copy = new MvJoinCondition();
+                copy.setFirstRef(dst);
+                copy.setFirstAlias(dst.getTableAlias());
+                copy.setFirstColumn(column);
+                copy.setSecondLiteral(result.addLiteral(literal.getValue()));
+                dst.getConditions().add(copy);
             }
         }
     }
 
     /**
-     * Checks if a join condition is relevant for connecting two sources in the
-     * path.
+     * Copy the relevant relational conditions from orig to dst.
      */
-    private static boolean isConditionRelevantForPath(MvJoinCondition condition,
-            MvJoinSource currentSource, MvJoinSource previousSource, MvTarget originalTarget) {
-
-        // Check if the condition references the previous source in the path
-        MvJoinSource firstRef = condition.getFirstRef();
-        MvJoinSource secondRef = condition.getSecondRef();
-
-        // Handle alias-based references
-        if (firstRef == null && condition.getFirstAlias() != null) {
-            firstRef = originalTarget.getSourceByAlias(condition.getFirstAlias());
+    private void copyRelationalConditions(MvJoinSource cur,
+            MvJoinSource src, MvJoinSource dst, MvTarget result) {
+        for (MvJoinCondition cond : cur.getConditions()) {
+            MvJoinCondition copy = null;
+            if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
+                copy = new MvJoinCondition();
+                copy.setFirstRef(dst);
+                copy.setFirstAlias(dst.getTableAlias());
+                copy.setFirstColumn(cond.getFirstColumn());
+                copy.setSecondRef(result.getSourceByAlias(cond.getSecondAlias()));
+                copy.setSecondAlias(cond.getSecondAlias());
+                copy.setSecondColumn(cond.getSecondColumn());
+            } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
+                copy = new MvJoinCondition();
+                copy.setFirstRef(dst);
+                copy.setFirstAlias(dst.getTableAlias());
+                copy.setFirstColumn(cond.getSecondColumn());
+                copy.setSecondRef(result.getSourceByAlias(cond.getFirstAlias()));
+                copy.setSecondAlias(cond.getFirstAlias());
+                copy.setSecondColumn(cond.getFirstColumn());
+            }
+            if (copy!=null && !isDuplicateCondition(dst.getConditions(), copy)) {
+                dst.getConditions().add(copy);
+            }
         }
-        if (secondRef == null && condition.getSecondAlias() != null) {
-            secondRef = originalTarget.getSourceByAlias(condition.getSecondAlias());
-        }
-
-        return (firstRef == previousSource && secondRef == currentSource)
-                || (firstRef == currentSource && secondRef == previousSource);
-    }
-
-    /**
-     * Checks if a join condition connects two specific sources.
-     */
-    private static boolean isConditionConnectingSources(MvJoinCondition condition,
-            MvJoinSource source1, MvJoinSource source2, MvTarget originalTarget) {
-
-        // Check if the condition references both sources
-        MvJoinSource firstRef = condition.getFirstRef();
-        MvJoinSource secondRef = condition.getSecondRef();
-
-        // Handle alias-based references
-        if (firstRef == null && condition.getFirstAlias() != null) {
-            firstRef = originalTarget.getSourceByAlias(condition.getFirstAlias());
-        }
-        if (secondRef == null && condition.getSecondAlias() != null) {
-            secondRef = originalTarget.getSourceByAlias(condition.getSecondAlias());
-        }
-
-        return (firstRef == source1 && secondRef == source2)
-                || (firstRef == source2 && secondRef == source1);
     }
 
     /**
      * Checks if a condition is already present in the list to avoid duplicates.
      */
-    private static boolean isDuplicateCondition(ArrayList<MvJoinCondition> conditions, MvJoinCondition newCondition) {
+    private static boolean isDuplicateCondition(ArrayList<MvJoinCondition> conditions,
+            MvJoinCondition newCondition) {
         for (MvJoinCondition existing : conditions) {
             if (areConditionsEqual(existing, newCondition)) {
                 return true;
@@ -554,15 +402,15 @@ public class MvKeyPathGenerator {
      */
     private static boolean areConditionsEqual(MvJoinCondition cond1, MvJoinCondition cond2) {
         // Check if aliases and columns match in either direction
-        boolean forward = equalStrings(cond1.getFirstAlias(), cond2.getFirstAlias()) &&
-                          equalStrings(cond1.getFirstColumn(), cond2.getFirstColumn()) &&
-                          equalStrings(cond1.getSecondAlias(), cond2.getSecondAlias()) &&
-                          equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn());
+        boolean forward = equalStrings(cond1.getFirstAlias(), cond2.getFirstAlias())
+                && equalStrings(cond1.getFirstColumn(), cond2.getFirstColumn())
+                && equalStrings(cond1.getSecondAlias(), cond2.getSecondAlias())
+                && equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn());
 
-        boolean reverse = equalStrings(cond1.getFirstAlias(), cond2.getSecondAlias()) &&
-                          equalStrings(cond1.getFirstColumn(), cond2.getSecondColumn()) &&
-                          equalStrings(cond1.getSecondAlias(), cond2.getFirstAlias()) &&
-                          equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn());
+        boolean reverse = equalStrings(cond1.getFirstAlias(), cond2.getSecondAlias())
+                && equalStrings(cond1.getFirstColumn(), cond2.getSecondColumn())
+                && equalStrings(cond1.getSecondAlias(), cond2.getFirstAlias())
+                && equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn());
 
         return forward || reverse;
     }
@@ -571,8 +419,12 @@ public class MvKeyPathGenerator {
      * Helper method to compare strings safely (handling nulls).
      */
     private static boolean equalStrings(String s1, String s2) {
-        if (s1 == null && s2 == null) return true;
-        if (s1 == null || s2 == null) return false;
+        if (s1 == null && s2 == null) {
+            return true;
+        }
+        if (s1 == null || s2 == null) {
+            return false;
+        }
         return s1.equals(s2);
     }
 
@@ -580,7 +432,7 @@ public class MvKeyPathGenerator {
      * Clones a MvJoinSource with a new SQL position.
      */
     private static MvJoinSource cloneJoinSource(MvJoinSource original) {
-        MvJoinSource clone = new MvJoinSource(new MvSqlPos(0, 0));
+        MvJoinSource clone = new MvJoinSource();
         clone.setTableName(original.getTableName());
         clone.setTableAlias(original.getTableAlias());
         clone.setMode(original.getMode());
@@ -594,11 +446,20 @@ public class MvKeyPathGenerator {
      * in the new target.
      */
     private static MvJoinCondition cloneJoinCondition(MvJoinCondition original, MvTarget newTarget) {
-        MvJoinCondition clone = new MvJoinCondition(new MvSqlPos(0, 0));
-        clone.setFirstLiteral(original.getFirstLiteral());
+        MvJoinCondition clone = new MvJoinCondition();
+
+        // Copy literals, ensuring they are added to the new target
+        if (original.getFirstLiteral() != null) {
+            MvLiteral newFirstLiteral = newTarget.addLiteral(original.getFirstLiteral().getValue());
+            clone.setFirstLiteral(newFirstLiteral);
+        }
+        if (original.getSecondLiteral() != null) {
+            MvLiteral newSecondLiteral = newTarget.addLiteral(original.getSecondLiteral().getValue());
+            clone.setSecondLiteral(newSecondLiteral);
+        }
+
         clone.setFirstAlias(original.getFirstAlias());
         clone.setFirstColumn(original.getFirstColumn());
-        clone.setSecondLiteral(original.getSecondLiteral());
         clone.setSecondAlias(original.getSecondAlias());
         clone.setSecondColumn(original.getSecondColumn());
 
@@ -625,112 +486,98 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Inner class to find the path between two join sources.
+     * Builds an adjacency map representing the join relationships.
      */
-    private static class PathFinder {
+    private static Map<MvJoinSource, List<MvJoinSource>> buildAdjacencyMap(MvTarget target) {
+        Map<MvJoinSource, List<MvJoinSource>> map = new HashMap<>();
 
-        private final MvTarget target;
-        private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
-
-        public PathFinder(MvTarget target) {
-            this.target = target;
-            this.adjacencyMap = buildAdjacencyMap();
+        // Initialize map with all sources
+        for (MvJoinSource source : target.getSources()) {
+            map.put(source, new ArrayList<>());
         }
 
-        /**
-         * Builds an adjacency map representing the join relationships.
-         */
-        private Map<MvJoinSource, List<MvJoinSource>> buildAdjacencyMap() {
-            Map<MvJoinSource, List<MvJoinSource>> map = new HashMap<>();
+        // Add connections based on join conditions
+        for (MvJoinSource source : target.getSources()) {
+            for (MvJoinCondition condition : source.getConditions()) {
+                MvJoinSource firstRef = condition.getFirstRef();
+                MvJoinSource secondRef = condition.getSecondRef();
 
-            // Initialize map with all sources
-            for (MvJoinSource source : target.getSources()) {
-                map.put(source, new ArrayList<>());
+                // Handle alias-based references
+                if (firstRef == null && condition.getFirstAlias() != null) {
+                    firstRef = target.getSourceByAlias(condition.getFirstAlias());
+                }
+                if (secondRef == null && condition.getSecondAlias() != null) {
+                    secondRef = target.getSourceByAlias(condition.getSecondAlias());
+                }
+
+                // Add bidirectional connections
+                if (firstRef != null && secondRef != null) {
+                    map.get(firstRef).add(secondRef);
+                    map.get(secondRef).add(firstRef);
+                }
             }
+        }
 
-            // Add connections based on join conditions
-            for (MvJoinSource source : target.getSources()) {
-                for (MvJoinCondition condition : source.getConditions()) {
-                    MvJoinSource firstRef = condition.getFirstRef();
-                    MvJoinSource secondRef = condition.getSecondRef();
+        return map;
+    }
 
-                    // Handle alias-based references
-                    if (firstRef == null && condition.getFirstAlias() != null) {
-                        firstRef = target.getSourceByAlias(condition.getFirstAlias());
-                    }
-                    if (secondRef == null && condition.getSecondAlias() != null) {
-                        secondRef = target.getSourceByAlias(condition.getSecondAlias());
-                    }
+    /**
+     * Finds a path from source to target using BFS.
+     */
+    private List<MvJoinSource> findPath(MvJoinSource from, MvJoinSource to) {
+        if (from == to) {
+            return Arrays.asList(from);
+        }
 
-                    // Add bidirectional connections
-                    if (firstRef != null && secondRef != null) {
-                        map.get(firstRef).add(secondRef);
-                        map.get(secondRef).add(firstRef);
+        LinkedList<MvJoinSource> queue = new LinkedList<>();
+        Map<MvJoinSource, MvJoinSource> parent = new HashMap<>();
+        Set<MvJoinSource> visited = new HashSet<>();
+
+        queue.offer(from);
+        visited.add(from);
+        parent.put(from, null);
+
+        while (!queue.isEmpty()) {
+            MvJoinSource current = queue.poll();
+
+            for (MvJoinSource neighbor : adjacencyMap.getOrDefault(current, Collections.emptyList())) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    parent.put(neighbor, current);
+                    queue.offer(neighbor);
+
+                    if (neighbor == to) {
+                        return reconstructPath(parent, from, to);
                     }
                 }
             }
-
-            return map;
         }
 
-        /**
-         * Finds a path from source to target using BFS.
-         */
-        public List<MvJoinSource> findPath(MvJoinSource from, MvJoinSource to) {
-            if (from == to) {
-                return Arrays.asList(from);
-            }
+        return null; // No path found
+    }
 
-            LinkedList<MvJoinSource> queue = new LinkedList<>();
-            Map<MvJoinSource, MvJoinSource> parent = new HashMap<>();
-            Set<MvJoinSource> visited = new HashSet<>();
+    /**
+     * Reconstructs the path from parent mapping.
+     */
+    private List<MvJoinSource> reconstructPath(Map<MvJoinSource, MvJoinSource> parent,
+            MvJoinSource from, MvJoinSource to) {
+        List<MvJoinSource> path = new ArrayList<>();
+        MvJoinSource current = to;
 
-            queue.offer(from);
-            visited.add(from);
-            parent.put(from, null);
-
-            while (!queue.isEmpty()) {
-                MvJoinSource current = queue.poll();
-
-                for (MvJoinSource neighbor : adjacencyMap.getOrDefault(current, Collections.emptyList())) {
-                    if (!visited.contains(neighbor)) {
-                        visited.add(neighbor);
-                        parent.put(neighbor, current);
-                        queue.offer(neighbor);
-
-                        if (neighbor == to) {
-                            return reconstructPath(parent, from, to);
-                        }
-                    }
-                }
-            }
-
-            return null; // No path found
+        while (current != null) {
+            path.add(current);
+            current = parent.get(current);
         }
 
-        /**
-         * Reconstructs the path from parent mapping.
-         */
-        private List<MvJoinSource> reconstructPath(Map<MvJoinSource, MvJoinSource> parent,
-                MvJoinSource from, MvJoinSource to) {
-            List<MvJoinSource> path = new ArrayList<>();
-            MvJoinSource current = to;
+        Collections.reverse(path);
 
-            while (current != null) {
-                path.add(current);
-                current = parent.get(current);
-            }
-
-            Collections.reverse(path);
-
-            // Validation: ensure the path actually starts from the expected 'from' node
-            if (path.isEmpty() || !path.get(0).equals(from)) {
-                throw new IllegalStateException("Reconstructed path does not start from expected source: "
-                        + "expected=" + (from != null ? from.getTableAlias() : "null")
-                        + ", actual=" + (path.isEmpty() ? "empty" : path.get(0).getTableAlias()));
-            }
-
-            return path;
+        // Validation: ensure the path actually starts from the expected 'from' node
+        if (path.isEmpty() || !path.get(0).equals(from)) {
+            throw new IllegalStateException("Reconstructed path does not start from expected source: "
+                    + "expected=" + (from != null ? from.getTableAlias() : "null")
+                    + ", actual=" + (path.isEmpty() ? "empty" : path.get(0).getTableAlias()));
         }
+
+        return path;
     }
 }

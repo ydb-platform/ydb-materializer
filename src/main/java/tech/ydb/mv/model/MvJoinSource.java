@@ -20,6 +20,10 @@ public class MvJoinSource implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
+    public MvJoinSource() {
+        this(MvSqlPos.EMPTY);
+    }
+
     public boolean isTableKnown() {
         return (tableInfo!=null) && (tableName!=null)
                 && tableName.equals(tableInfo.getName());

@@ -21,6 +21,10 @@ public class MvColumn implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
+    public MvColumn(String name) {
+        this(name, MvSqlPos.EMPTY);
+    }
+
     public boolean isComputation() {
         return (computation != null);
     }
