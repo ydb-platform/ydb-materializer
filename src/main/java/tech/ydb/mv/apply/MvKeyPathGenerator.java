@@ -355,7 +355,8 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Copy the relevant relational conditions from orig to dst.
+     * Copy the relevant relational conditions from cur to dst.
+     * The relevant ones are linked to the src reference.
      */
     private void copyRelationalConditions(MvJoinSource cur,
             MvJoinSource src, MvJoinSource dst, MvTarget result) {
@@ -401,16 +402,19 @@ public class MvKeyPathGenerator {
      * Checks if two conditions are semantically equal.
      */
     private static boolean areConditionsEqual(MvJoinCondition cond1, MvJoinCondition cond2) {
-        // Check if aliases and columns match in either direction
         boolean forward = equalStrings(cond1.getFirstAlias(), cond2.getFirstAlias())
                 && equalStrings(cond1.getFirstColumn(), cond2.getFirstColumn())
                 && equalStrings(cond1.getSecondAlias(), cond2.getSecondAlias())
-                && equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn());
+                && equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn())
+                && equalLiterals(cond1.getFirstLiteral(), cond2.getFirstLiteral())
+                && equalLiterals(cond1.getSecondLiteral(), cond2.getSecondLiteral());
 
         boolean reverse = equalStrings(cond1.getFirstAlias(), cond2.getSecondAlias())
                 && equalStrings(cond1.getFirstColumn(), cond2.getSecondColumn())
                 && equalStrings(cond1.getSecondAlias(), cond2.getFirstAlias())
-                && equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn());
+                && equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn())
+                && equalLiterals(cond1.getFirstLiteral(), cond2.getSecondLiteral())
+                && equalLiterals(cond1.getSecondLiteral(), cond2.getFirstLiteral());
 
         return forward || reverse;
     }
@@ -426,6 +430,16 @@ public class MvKeyPathGenerator {
             return false;
         }
         return s1.equals(s2);
+    }
+
+    private static boolean equalLiterals(MvLiteral lit1, MvLiteral lit2) {
+        if (lit1==null && lit2==null) {
+            return true;
+        }
+        if (lit1==null || lit2==null) {
+            return false;
+        }
+        return lit1.equals(lit2);
     }
 
     /**

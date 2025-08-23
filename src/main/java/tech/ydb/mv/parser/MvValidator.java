@@ -4,6 +4,8 @@ import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvIssue;
+import tech.ydb.mv.model.MvJoinCondition;
+import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -85,6 +87,20 @@ public class MvValidator {
         if (firstHandler==null) {
             // Unused/unreferenced target, so issue a warning
             context.addIssue(new MvIssue.UselessTarget(mt));
+        }
+        mt.getSources().forEach(src -> checkJoinConditions(mt, src));
+    }
+
+    private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
+        for (MvJoinCondition cond : src.getConditions()) {
+            if ((cond.getFirstRef() == null && cond.getFirstLiteral() == null)
+                    || (cond.getSecondRef() == null && cond.getSecondLiteral() == null)
+                    || (cond.getFirstRef() == null && cond.getSecondRef() == null)) {
+                context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
+            } else if (cond.getFirstRef() != src || cond.getSecondRef() != src) {
+                // TODO: maybe a different issue with better explanation
+                context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
+            }
         }
     }
 

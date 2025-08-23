@@ -127,8 +127,6 @@ public class MvKeyPathComplexTest {
         // This will force a join scenario and test literal conditions properly
         MvTableInfo tableG = MvTableInfo.newBuilder("tableG")
                 .addColumn("id", PrimitiveType.Uint64)
-                .addColumn("status", PrimitiveType.Text)
-                .addColumn("type_code", PrimitiveType.Uint64)
                 .addColumn("data", PrimitiveType.Text)
                 .addKey("id")
                 .build();
@@ -137,6 +135,8 @@ public class MvKeyPathComplexTest {
                 .addColumn("id", PrimitiveType.Uint64)
                 .addColumn("g_id", PrimitiveType.Uint64)
                 .addColumn("category", PrimitiveType.Text)
+                .addColumn("status", PrimitiveType.Text)
+                .addColumn("type_code", PrimitiveType.Uint64)
                 .addKey("id")
                 .build();
 
@@ -172,7 +172,7 @@ public class MvKeyPathComplexTest {
         literalTarget.getSources().add(sourceI);
         literalTarget.getSources().add(sourceH);
 
-        // Create join conditions: G.id = I.g_id AND G.status = 'ACTIVE' AND G.type_code = 100
+        // Create join conditions: G.id = I.g_id AND I.status = 'ACTIVE' AND I.type_code = 100
         MvJoinCondition conditionGI1 = new MvJoinCondition();
         conditionGI1.setFirstRef(sourceG);
         conditionGI1.setFirstAlias("g");
@@ -183,15 +183,15 @@ public class MvKeyPathComplexTest {
         sourceI.getConditions().add(conditionGI1);
 
         MvJoinCondition conditionGI2 = new MvJoinCondition();
-        conditionGI2.setFirstRef(sourceG);
-        conditionGI2.setFirstAlias("g");
+        conditionGI2.setFirstRef(sourceI);
+        conditionGI2.setFirstAlias("i");
         conditionGI2.setFirstColumn("status");
         conditionGI2.setSecondLiteral(literalTarget.addLiteral("'ACTIVE'"));
         sourceI.getConditions().add(conditionGI2);
 
         MvJoinCondition conditionGI3 = new MvJoinCondition();
-        conditionGI3.setFirstRef(sourceG);
-        conditionGI3.setFirstAlias("g");
+        conditionGI3.setFirstRef(sourceI);
+        conditionGI3.setFirstAlias("i");
         conditionGI3.setFirstColumn("type_code");
         conditionGI3.setSecondLiteral(literalTarget.addLiteral("100"));
         sourceI.getConditions().add(conditionGI3);
@@ -242,38 +242,31 @@ public class MvKeyPathComplexTest {
 
         // Verify I source has the correct join condition to H
         MvJoinSource iSourceInResult = result.getSources().get(1);
-        assertEquals(1, iSourceInResult.getConditions().size());
-        MvJoinCondition iCondition = iSourceInResult.getConditions().get(0);
+        assertEquals(3, iSourceInResult.getConditions().size());
+        MvJoinCondition iCondition = iSourceInResult.getConditions().get(2);
         assertEquals("i", iCondition.getFirstAlias());
         assertEquals("id", iCondition.getFirstColumn());
         assertEquals("h", iCondition.getSecondAlias());
         assertEquals("i_id", iCondition.getSecondColumn());
 
-        // Verify G source has the correct join conditions to I
-        // This should include the structural join condition plus literal conditions for G
-        // since G is referenced in the original target's output
+        // Verify I source has the correct join conditions to G
         MvJoinSource gSourceInResult = result.getSources().get(2);
-        assertEquals(3, gSourceInResult.getConditions().size());
+        assertEquals(1, gSourceInResult.getConditions().size());
 
         // Check that the structural join condition is present
-        boolean hasStructuralCondition = false;
         boolean hasStatusLiteralCondition = false;
         boolean hasTypeCodeLiteralCondition = false;
 
-        for (MvJoinCondition condition : gSourceInResult.getConditions()) {
-            if ("g".equals(condition.getFirstAlias()) && "id".equals(condition.getFirstColumn()) &&
-                "i".equals(condition.getSecondAlias()) && "g_id".equals(condition.getSecondColumn())) {
-                hasStructuralCondition = true;
-            } else if ("g".equals(condition.getFirstAlias()) && "status".equals(condition.getFirstColumn()) &&
+        for (MvJoinCondition condition : iSourceInResult.getConditions()) {
+            if ("i".equals(condition.getFirstAlias()) && "status".equals(condition.getFirstColumn()) &&
                       condition.getSecondLiteral() != null && "'ACTIVE'".equals(condition.getSecondLiteral().getValue())) {
                 hasStatusLiteralCondition = true;
-            } else if ("g".equals(condition.getFirstAlias()) && "type_code".equals(condition.getFirstColumn()) &&
+            } else if ("i".equals(condition.getFirstAlias()) && "type_code".equals(condition.getFirstColumn()) &&
                       condition.getSecondLiteral() != null && "100".equals(condition.getSecondLiteral().getValue())) {
                 hasTypeCodeLiteralCondition = true;
             }
         }
 
-        assertTrue(hasStructuralCondition, "Should have structural join condition");
         assertTrue(hasStatusLiteralCondition, "Should have status literal condition");
         assertTrue(hasTypeCodeLiteralCondition, "Should have type_code literal condition");
 

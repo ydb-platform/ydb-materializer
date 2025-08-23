@@ -96,6 +96,26 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class IllegalJoinCondition extends Error {
+        private final MvTarget target;
+        private final MvJoinSource src;
+        private final MvJoinCondition cond;
+
+        public IllegalJoinCondition(MvTarget target, MvJoinSource src, MvJoinCondition cond) {
+            super(cond.getSqlPos());
+            this.target = target;
+            this.src = src;
+            this.cond = cond;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Illegal join condition on source alias " + src.getTableAlias()
+                    + " in target " + target
+                    + " at " + sqlPos;
+        }
+    }
+
     public static class UnknownSourceTable extends Error {
         private final MvTarget target;
         private final String tableName;
