@@ -32,7 +32,7 @@ import tech.ydb.mv.util.YdbConv;
  *
  * @author zinal
  */
-public class MvActionMain implements MvApplyAction {
+public class MvActionUpsert implements MvApplyAction {
 
     private final String id;
     private final String targetTableName;
@@ -44,7 +44,7 @@ public class MvActionMain implements MvApplyAction {
     private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentUpsert
             = new ThreadLocal<>();
 
-    public MvActionMain(MvTarget target, MvActionContext context) {
+    public MvActionUpsert(MvTarget target, MvActionContext context) {
         this.id = UUID.randomUUID().toString();
         this.context = context;
         this.targetTableName = target.getName();
@@ -57,7 +57,7 @@ public class MvActionMain implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "MvActionMain{" + targetTableName + '}';
+        return "Upsert{" + targetTableName + '}';
     }
 
     @Override
@@ -78,7 +78,7 @@ public class MvActionMain implements MvApplyAction {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final MvActionMain other = (MvActionMain) obj;
+        final MvActionUpsert other = (MvActionUpsert) obj;
         return Objects.equals(this.id, other.id);
     }
 

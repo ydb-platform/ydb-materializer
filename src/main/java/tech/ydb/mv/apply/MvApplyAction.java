@@ -9,7 +9,7 @@ import java.util.List;
  */
 public interface MvApplyAction {
 
-    void apply(List<MvApplyTask> item);
+    void apply(List<MvApplyTask> input);
 
     @Override
     boolean equals(Object obj);
