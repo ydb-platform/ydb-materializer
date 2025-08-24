@@ -93,6 +93,16 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    public String makePlainDelete() {
+        final StringBuilder sb = new StringBuilder();
+        genDeclareTargetFields(sb);
+        sb.append("DELETE FROM ");
+        safeId(sb, target.getName()).append(EOL);
+        sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
+        sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
     private void genDeclareMainKeyFields(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");

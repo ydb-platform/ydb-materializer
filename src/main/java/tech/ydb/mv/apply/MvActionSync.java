@@ -39,6 +39,7 @@ public class MvActionSync implements MvApplyAction {
     private final MvActionContext context;
     private final String sqlSelect;
     private final String sqlUpsert;
+    private final String sqlDelete;
     private final StructType rowType;
 
     private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
@@ -51,6 +52,7 @@ public class MvActionSync implements MvApplyAction {
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
+            this.sqlDelete = sg.makePlainDelete();
             this.rowType = sg.toRowType();
         }
     }
@@ -133,7 +135,11 @@ public class MvActionSync implements MvApplyAction {
     }
 
     private void deleteRows(List<MvKey> workUpsert) {
-        // TODO
+        int writeBatchSize = getWriteBatchSize();
+        for (List<MvKey> dr : Lists.partition(workUpsert, writeBatchSize)) {
+            // delete some records by keys
+            deleteRows(dr);
+        }
     }
 
     private void upsertRows(List<MvKey> workUpsert) {
@@ -146,14 +152,14 @@ public class MvActionSync implements MvApplyAction {
             readRows(rd, output);
             for (List<StructValue> wr : Lists.partition(output, writeBatchSize)) {
                 // write the portion of data
-                writeRows(wr);
+                runUpsert(wr);
             }
         }
     }
 
     private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
         // perform the db query
-        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, makeKeys(items));
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
         ResultSetReader result = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(sqlSelect, TxMode.ONLINE_RO, params)
         )).join().getValue().getResultSet(0);
@@ -181,15 +187,21 @@ public class MvActionSync implements MvApplyAction {
         }
     }
 
-    private Value<?> makeKeys(List<MvKey> items) {
+    private Value<?> keysToParam(List<MvKey> items) {
         StructValue[] values = items.stream()
                 .map(item -> item.convertKeyToStructValue())
                 .toArray(StructValue[]::new);
         return ListValue.of(values);
     }
 
-    private void writeRows(List<StructValue> items) {
-        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, makeRows(items));
+    private Value<?> structsToParam(List<StructValue> items) {
+        StructValue[] values = items.stream()
+                .toArray(StructValue[]::new);
+        return ListValue.of(values);
+    }
+
+    private void runUpsert(List<StructValue> items) {
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, structsToParam(items));
         // wait for the previous query to complete
         finishStatement();
         // submit the new query
@@ -198,10 +210,14 @@ public class MvActionSync implements MvApplyAction {
         currentStatement.set(statement);
     }
 
-    private Value<?> makeRows(List<StructValue> items) {
-        StructValue[] values = items.stream()
-                .toArray(StructValue[]::new);
-        return ListValue.of(values);
+    private void runDelete(List<MvKey> items) {
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
+        // wait for the previous query to complete
+        finishStatement();
+        // submit the new query
+        var statement = context.getRetryCtx().supplyResult(
+                qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params).execute());
+        currentStatement.set(statement);
     }
 
     private void finishStatement() {
