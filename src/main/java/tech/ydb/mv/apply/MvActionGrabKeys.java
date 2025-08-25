@@ -2,7 +2,9 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
+
+import tech.ydb.table.values.StructType;
+
 import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
@@ -11,30 +13,45 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvActionGrabKeys implements MvApplyAction {
+public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
 
-    private final String id;
     private final MvApplyManager applyManager;
     private final MvTarget target;
-    private final String sourceTableName;
-    private final MvActionContext context;
+    private final MvTarget transformation;
+    private final String inputTableName;
+    private final String inputTableAlias;
     private final String sqlSelect;
+    private final StructType rowType;
 
     public MvActionGrabKeys(MvApplyManager applyManager, MvTarget target,
             MvJoinSource js, MvActionContext context) {
-        this.id = UUID.randomUUID().toString();
+        super(context);
         this.applyManager = applyManager;
         this.target = target;
-        this.context = context;
-        this.sourceTableName = target.getName();
-        try (MvSqlGen sg = new MvSqlGen(new MvKeyPathGenerator(target).generate(js))) {
+        this.transformation = new MvKeyPathGenerator(target).generate(js);
+        this.inputTableName = js.getTableName();
+        this.inputTableAlias = js.getTableAlias();
+        try (MvSqlGen sg = new MvSqlGen(this.transformation)) {
             this.sqlSelect = sg.makeSelect();
+            this.rowType = sg.toRowType();
         }
     }
 
     @Override
+    public String getSqlSelect() {
+        return sqlSelect;
+    }
+
+    @Override
+    public StructType getRowType() {
+        return rowType;
+    }
+
+    @Override
     public String toString() {
-        return "MvActionGrabKeys{" + sourceTableName + " -> " + target.getName() + '}';
+        return "MvActionGrabKeys{" + inputTableName
+                + " AS " + inputTableAlias + " -> "
+                + target.getName() + '}';
     }
 
     @Override
