@@ -111,9 +111,11 @@ public class MvParser {
     }
 
     private void fillCondition(MvTarget mt, YdbMatViewV1Parser.Opaque_expressionContext cond) {
-        MvComputation filter = new MvComputation(toSqlPos(cond));
+        MvComputation filter = new MvComputation(
+                getExpressionText(cond.opaque_expression_body()),
+                toSqlPos(cond)
+        );
         mt.setFilter(filter);
-        filter.setExpression(getExpressionText(cond.opaque_expression_body()));
         for (var tabref : cond.table_alias()) {
             filter.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
         }
@@ -178,9 +180,11 @@ public class MvParser {
                 toSqlPos(cc));
         mt.getColumns().add(column);
         if (cc.opaque_expression()!=null) {
-            MvComputation expr = new MvComputation(toSqlPos(cc.opaque_expression()));
+            MvComputation expr = new MvComputation(
+                    getExpressionText(cc.opaque_expression().opaque_expression_body()),
+                    toSqlPos(cc.opaque_expression())
+            );
             column.setComputation(expr);
-            expr.setExpression(getExpressionText(cc.opaque_expression().opaque_expression_body()));
             for (var tabref : cc.opaque_expression().table_alias()) {
                 expr.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
             }

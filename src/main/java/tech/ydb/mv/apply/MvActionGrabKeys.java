@@ -1,12 +1,16 @@
 package tech.ydb.mv.apply;
 
+import com.google.common.collect.Lists;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import tech.ydb.table.values.StructType;
+import tech.ydb.table.values.StructValue;
 
 import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 
 /**

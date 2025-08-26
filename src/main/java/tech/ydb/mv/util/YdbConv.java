@@ -19,8 +19,6 @@ import tech.ydb.table.values.Value;
  */
 public abstract class YdbConv {
 
-    private YdbConv() {}
-
     public static OptionalValue makeEmpty(Type t) {
         switch (t.getKind()) {
             case OPTIONAL:

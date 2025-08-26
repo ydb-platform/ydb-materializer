@@ -315,7 +315,11 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     private void genExpression(StringBuilder sb, MvComputation c) {
-        sb.append(c.getExpression());
+        if (c.isLiteral()) {
+            sb.append(c.getLiteral().getValue());
+        } else {
+            sb.append(c.getExpression());
+        }
     }
 
     public static StructType toKeyType(MvTarget target) {

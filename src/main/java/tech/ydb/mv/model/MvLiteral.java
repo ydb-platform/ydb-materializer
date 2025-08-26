@@ -1,6 +1,10 @@
 package tech.ydb.mv.model;
 
 import java.util.Objects;
+import tech.ydb.mv.util.YdbConv;
+import tech.ydb.table.values.PrimitiveValue;
+import tech.ydb.table.values.Type;
+import tech.ydb.table.values.Value;
 
 /**
  *
@@ -26,6 +30,25 @@ public class MvLiteral {
 
     public String getIdentity() {
         return identity;
+    }
+
+    public Value<?> toValue() {
+        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
+            return PrimitiveValue.newText(value.substring(1, value.length()-1));
+        }
+        if (value.matches("[+-]?[1-9][0-9]*")) {
+            return PrimitiveValue.newInt64(Long.parseLong(value));
+        }
+        // Ugly fallback
+        return PrimitiveValue.newText(value);
+    }
+
+    public Value<?> toValue(Type type) {
+        Object o = value;
+        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
+            o = value.substring(1, value.length()-1);
+        }
+        return YdbConv.fromPojo(o, type);
     }
 
     @Override

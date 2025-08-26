@@ -8,33 +8,46 @@ import java.util.ArrayList;
  */
 public class MvComputation implements MvSqlPosHolder {
 
-    private String expression;
+    private final String expression;
+    private final MvLiteral literal;
     private final ArrayList<Source> sources = new ArrayList<>();
     private final MvSqlPos sqlPos;
 
     public MvComputation(String expression, MvSqlPos sqlPos) {
         this.expression = expression;
+        this.literal = null;
         this.sqlPos = sqlPos;
     }
 
-    public MvComputation(MvSqlPos sqlPos) {
-        this(null, sqlPos);
+    public MvComputation(MvLiteral literal, MvSqlPos sqlPos) {
+        this.expression = null;
+        this.literal = literal;
+        this.sqlPos = sqlPos;
     }
 
     public MvComputation(String expression) {
         this(expression, MvSqlPos.EMPTY);
     }
 
-    public MvComputation() {
-        this(null, MvSqlPos.EMPTY);
+    public MvComputation(MvLiteral literal) {
+        this(literal, MvSqlPos.EMPTY);
+    }
+
+    public boolean isEmpty() {
+        return (literal==null) &&
+                ((expression==null) || (expression.trim().length()==0));
+    }
+
+    public boolean isLiteral() {
+        return (literal!=null);
     }
 
     public String getExpression() {
         return expression;
     }
 
-    public void setExpression(String expression) {
-        this.expression = expression;
+    public MvLiteral getLiteral() {
+        return literal;
     }
 
     public ArrayList<Source> getSources() {

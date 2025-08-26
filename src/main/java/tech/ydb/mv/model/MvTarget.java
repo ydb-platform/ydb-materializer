@@ -28,6 +28,25 @@ public class MvTarget implements MvSqlPosHolder {
         this(name, MvSqlPos.EMPTY);
     }
 
+    /**
+     * @return true, if the target uses non-literal computational output columns, and false otherwise
+     */
+    public boolean hasComputationColumns() {
+        for (MvColumn mc : columns) {
+            if (mc.isComputation() &&
+                    ! mc.getComputation().isLiteral()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isSingleStepTransformation() {
+        return (sources.size() == 1)
+                && (filter==null || filter.isEmpty())
+                && !hasComputationColumns();
+    }
+
     public MvJoinSource getSourceByAlias(String name) {
         if (name==null) {
             return null;

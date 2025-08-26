@@ -193,7 +193,8 @@ public class MvKeyPathGenerator {
                 if (literalValue != null) {
                     // Handle literal/constant values
                     MvColumn column = new MvColumn(targetKey);
-                    column.setComputation(new MvComputation(literalValue.getValue()));
+                    MvLiteral targetValue = result.addLiteral(literalValue.getValue());
+                    column.setComputation(new MvComputation(targetValue));
                     // Type will be determined from the target key
                     column.setType(topMostTable.getColumns().get(targetKey));
                     result.getColumns().add(column);
