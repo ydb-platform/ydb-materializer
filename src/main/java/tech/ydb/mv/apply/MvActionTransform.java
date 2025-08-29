@@ -1,5 +1,7 @@
 package tech.ydb.mv.apply;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import tech.ydb.mv.model.MvChangeRecord;
@@ -59,15 +61,35 @@ public class MvActionTransform extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvChangeRecord> input) {
-        for (MvChangeRecord cr : input) {
-            MvKey k1 = null, k2 = null;
+    public void apply(List<MvApplyTask> input) {
+        new PerCommit(input).apply();
+    }
+
+    private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
+        ArrayList<MvChangeRecord> output = new ArrayList<>(2 * tasks.size());
+        for (MvApplyTask task : tasks) {
+            MvChangeRecord cr = task.getData();
             if (keysTransform) {
-                k1 = buildKey((name) -> cr.getKey().getValue(name));
+                MvKey k = buildKey((name) -> cr.getKey().getValue(name));
+                if (k!=null) {
+                    output.add(new MvChangeRecord(k, cr.getOperationType()));
+                }
             } else {
-                k1 = buildKey((name) -> cr.getImageBefore().get(name));
-                k2 = buildKey((name) -> cr.getImageAfter().get(name));
+                if (cr.getImageBefore()!=null) {
+                    MvKey k = buildKey((name) -> cr.getImageBefore().get(name));
+                    output.add(new MvChangeRecord(k, cr.getOperationType()));
+                }
+                if (cr.getImageAfter()!=null) {
+                    MvKey k = buildKey((name) -> cr.getImageAfter().get(name));
+                    output.add(new MvChangeRecord(k, cr.getOperationType()));
+                }
             }
+        }
+        if (! output.isEmpty()) {
+            // extra records to be committed
+            handler.apply(-1 * output.size());
+            // submit the extracted keys for processing
+            context.getApplyManager().submit(output, handler);
         }
     }
 
@@ -88,4 +110,26 @@ public class MvActionTransform extends MvActionBase implements MvApplyAction {
         Comparable<?> getValue(String name);
     }
 
+    /**
+     * Group the input records by commit handlers.
+     * This enables more efficient per-commit-handler behavior.
+     */
+    private class PerCommit {
+        final HashMap<MvCommitHandler, ArrayList<MvApplyTask>> items = new HashMap<>();
+
+        PerCommit(List<MvApplyTask> tasks) {
+            for (MvApplyTask task : tasks) {
+                ArrayList<MvApplyTask> cur = items.get(task.getCommit());
+                if (cur==null) {
+                    cur = new ArrayList<>();
+                    items.put(task.getCommit(), cur);
+                }
+                cur.add(task);
+            }
+        }
+
+        void apply() {
+            items.forEach((handler, tasks) -> process(handler, tasks));
+        }
+    }
 }

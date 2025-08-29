@@ -74,7 +74,7 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvChangeRecord> input) {
+    public void apply(List<MvApplyTask> input) {
         if (input==null || input.isEmpty()) {
             return;
         }
@@ -88,17 +88,18 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
         finishStatement();
     }
 
-    private void deduplicate(List<MvChangeRecord> input,
+    private void deduplicate(List<MvApplyTask> input,
             List<MvKey> upsert, List<MvKey> delete) {
         HashSet<MvKey> tempUpsert = new HashSet<>();
         HashSet<MvKey> tempDelete = new HashSet<>();
-        for (MvChangeRecord item : input) {
-            switch (item.getOperationType()) {
+        for (MvApplyTask task : input) {
+            MvChangeRecord cr = task.getData();
+            switch (cr.getOperationType()) {
                 case UPSERT:
-                    tempUpsert.add(item.getKey());
+                    tempUpsert.add(cr.getKey());
                     break;
                 case DELETE:
-                    tempDelete.add(item.getKey());
+                    tempDelete.add(cr.getKey());
                     break;
             }
         }

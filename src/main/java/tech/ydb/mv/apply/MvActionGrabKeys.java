@@ -62,7 +62,7 @@ public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvChangeRecord> input) {
+    public void apply(List<MvApplyTask> input) {
         if (input==null || input.isEmpty()) {
             return;
         }

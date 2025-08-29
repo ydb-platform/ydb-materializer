@@ -125,7 +125,7 @@ public class MvApplyWorker implements Runnable {
         return true;
     }
 
-    private void applyAction(MvApplyAction action, List<MvChangeRecord> tasks, PerAction retries) {
+    private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
         try {
             action.apply(tasks);
         } catch(Exception ex) {
@@ -136,17 +136,17 @@ public class MvApplyWorker implements Runnable {
     }
 
     private class PerAction {
-        final HashMap<MvApplyAction, List<MvChangeRecord>> items = new HashMap<>();
+        final HashMap<MvApplyAction, List<MvApplyTask>> items = new HashMap<>();
 
         PerAction() {
             for (MvApplyTask task : activeTasks) {
                 for (MvApplyAction action : task.getActions().getActions()) {
-                    List<MvChangeRecord> tasks = items.get(action);
+                    List<MvApplyTask> tasks = items.get(action);
                     if (tasks==null) {
                         tasks = new ArrayList<>();
                         items.put(action, tasks);
                     }
-                    tasks.add(task.getData());
+                    tasks.add(task);
                 }
             }
         }
