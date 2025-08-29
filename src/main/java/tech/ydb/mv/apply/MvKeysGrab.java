@@ -5,7 +5,6 @@ import java.util.List;
 import tech.ydb.table.values.StructType;
 
 import tech.ydb.mv.MvSqlGen;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
@@ -13,26 +12,15 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvActionGrabKeys.class);
+public class MvKeysGrab extends MvKeysAbstract implements MvApplyAction {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysGrab.class);
 
-    private final MvTarget target;
-    private final MvTarget transformation;
-    private final String inputTableName;
-    private final String inputTableAlias;
     private final String sqlSelect;
     private final StructType rowType;
 
-    public MvActionGrabKeys(MvTarget target, MvJoinSource src,
+    public MvKeysGrab(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
-        super(context);
-        if (target==null || src==null || transformation==null) {
-            throw new IllegalArgumentException("Missing input");
-        }
-        this.target = target;
-        this.transformation = transformation;
-        this.inputTableName = src.getTableName();
-        this.inputTableAlias = src.getTableAlias();
+        super(target, src, transformation, context);
         try (MvSqlGen sg = new MvSqlGen(this.transformation)) {
             this.sqlSelect = sg.makeSelect();
             this.rowType = sg.toRowType();
@@ -56,16 +44,14 @@ public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "MvActionGrabKeys{" + inputTableName
+        return "MvKeysGrab{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
                 + target.getName() + '}';
     }
 
     @Override
-    public void apply(List<MvApplyTask> input) {
-        if (input==null || input.isEmpty()) {
-            return;
-        }
+    protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
+
     }
 
 }

@@ -1,14 +1,12 @@
 package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -16,36 +14,22 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvActionTransform extends MvActionBase implements MvApplyAction {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvActionTransform.class);
+public class MvKeysTransform extends MvKeysAbstract implements MvApplyAction {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysTransform.class);
 
-    private final MvTarget target;
-    private final MvTarget transformation;
-    private final String inputTableName;
-    private final String inputTableAlias;
-    private final MvKeyInfo keyInfo;
     private final boolean keysTransform;
 
-    public MvActionTransform(MvTarget target, MvJoinSource src,
+    public MvKeysTransform(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
-        super(context);
-        if (target==null || src==null || src.getChangefeedInfo()==null
-                || transformation==null) {
-            throw new IllegalArgumentException("Missing input");
-        }
-        this.target = target;
-        this.transformation = transformation;
-        this.inputTableName = src.getTableName();
-        this.inputTableAlias = src.getTableAlias();
+        super(target, src, transformation, context);
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");
         }
-        this.keyInfo = target.getSources().get(0).getTableInfo().getKeyInfo();
-        this.keysTransform = transformation.isKeyOnlyTransformation();
         if (this.keyInfo.size() != this.transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }
+        this.keysTransform = transformation.isKeyOnlyTransformation();
         LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
                 context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
@@ -55,17 +39,13 @@ public class MvActionTransform extends MvActionBase implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "MvActionTransform{" + inputTableName
+        return "MvKeysTransform{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
                 + target.getName() + '}';
     }
 
     @Override
-    public void apply(List<MvApplyTask> input) {
-        new PerCommit(input).apply();
-    }
-
-    private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
+    protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
         ArrayList<MvChangeRecord> output = new ArrayList<>(2 * tasks.size());
         for (MvApplyTask task : tasks) {
             MvChangeRecord cr = task.getData();
@@ -108,28 +88,5 @@ public class MvActionTransform extends MvActionBase implements MvApplyAction {
 
     private static interface Grabber {
         Comparable<?> getValue(String name);
-    }
-
-    /**
-     * Group the input records by commit handlers.
-     * This enables more efficient per-commit-handler behavior.
-     */
-    private class PerCommit {
-        final HashMap<MvCommitHandler, ArrayList<MvApplyTask>> items = new HashMap<>();
-
-        PerCommit(List<MvApplyTask> tasks) {
-            for (MvApplyTask task : tasks) {
-                ArrayList<MvApplyTask> cur = items.get(task.getCommit());
-                if (cur==null) {
-                    cur = new ArrayList<>();
-                    items.put(task.getCommit(), cur);
-                }
-                cur.add(task);
-            }
-        }
-
-        void apply() {
-            items.forEach((handler, tasks) -> process(handler, tasks));
-        }
     }
 }

@@ -65,7 +65,7 @@ public class MvApplyManager {
             }
             LOG.info("Configuring handler {}, target {} ...", handler.getName(), target.getName());
             makeTableConfig(src.getTableInfo())
-                    .addAction(new MvActionSync(target, context));
+                    .addAction(new MvSynchronize(target, context));
             if (sourceCount < 2) {
                 // single-source target, no joins
                 continue;
@@ -83,16 +83,16 @@ public class MvApplyManager {
                 if (transformation.isKeyOnlyTransformation()) {
                     // Can directly transform the input keys to topmost-left key
                     makeTableConfig(src.getTableInfo())
-                            .addAction(new MvActionTransform(target, src, transformation, context));
+                            .addAction(new MvKeysTransform(target, src, transformation, context));
                 } else if (transformation.isSingleStepTransformation()
                         && MvTableInfo.ChangefeedMode.BOTH_IMAGES.equals(cf.getMode())) {
                     // Can be directly transformed on the changefeed data
                     makeTableConfig(src.getTableInfo())
-                            .addAction(new MvActionTransform(target, src, transformation, context));
+                            .addAction(new MvKeysTransform(target, src, transformation, context));
                 } else {
                     // The key information has to be grabbed from the database
                     makeTableConfig(src.getTableInfo())
-                            .addAction(new MvActionGrabKeys(target, src, transformation, context));
+                            .addAction(new MvKeysGrab(target, src, transformation, context));
                 }
             }
         }
