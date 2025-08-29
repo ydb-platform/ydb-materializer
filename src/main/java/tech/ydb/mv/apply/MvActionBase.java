@@ -2,8 +2,7 @@ package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.query.tools.QueryReader;
@@ -27,18 +26,20 @@ import tech.ydb.mv.util.YdbConv;
  */
 public abstract class MvActionBase {
 
-    protected final String id;
+    private static final AtomicLong COUNTER = new AtomicLong(0L);
+
+    protected final long instance;
     protected final MvActionContext context;
 
     protected MvActionBase(MvActionContext context) {
-        this.id = UUID.randomUUID().toString();
+        this.instance = COUNTER.incrementAndGet();
         this.context = context;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 19 * hash + Objects.hashCode(this.id);
+        int hash = 5;
+        hash = 89 * hash + (int) (this.instance ^ (this.instance >>> 32));
         return hash;
     }
 
@@ -54,7 +55,7 @@ public abstract class MvActionBase {
             return false;
         }
         final MvActionBase other = (MvActionBase) obj;
-        return Objects.equals(this.id, other.id);
+        return this.instance == other.instance;
     }
 
     protected String getSqlSelect() {

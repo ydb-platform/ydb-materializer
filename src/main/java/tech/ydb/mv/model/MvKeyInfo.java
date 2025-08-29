@@ -19,6 +19,7 @@ public class MvKeyInfo {
     private final TupleType tupleType;
     private final StructType structType;
     private final int[] structIndex;
+    private final HashMap<String, Integer> name2index = new HashMap<>();
 
     public MvKeyInfo(MvTableInfo ti) {
         this.owner = ti;
@@ -34,6 +35,7 @@ public class MvKeyInfo {
             }
             this.names[i] = name;
             this.types[i] = type;
+            this.name2index.put(name, i);
         }
         this.structType = makeStructType();
         this.tupleType = makeTupleType();
@@ -46,6 +48,14 @@ public class MvKeyInfo {
 
     public int size() {
         return names.length;
+    }
+
+    public int getPosition(String name) {
+        Integer pos = name2index.get(name);
+        if (pos==null) {
+            return -1;
+        }
+        return pos;
     }
 
     public String getName(int pos) {

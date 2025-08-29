@@ -9,7 +9,8 @@ public interface MvCommitHandler {
 
     /**
      * Apply the commit for the specified number of records.
-     * @param count Number of records processed.
+     *
+     * @param count Number of records processed (positive), or number of extra operations pending on the records (negative).
      */
     void apply(int count);
 

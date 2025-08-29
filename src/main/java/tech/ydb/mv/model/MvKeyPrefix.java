@@ -59,6 +59,14 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return values[pos];
     }
 
+    public Comparable<?> getValue(String name) {
+        int pos = info.getPosition(name);
+        if (pos < 0) {
+            return null;
+        }
+        return values[pos];
+    }
+
     public StructValue convertKeyToStructValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];

@@ -1,10 +1,6 @@
 package tech.ydb.mv.model;
 
 import java.util.Objects;
-import tech.ydb.mv.util.YdbConv;
-import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.Type;
-import tech.ydb.table.values.Value;
 
 /**
  *
@@ -14,10 +10,18 @@ public class MvLiteral {
 
     private final String value;
     private final String identity;
+    private final Comparable<?> pojo;
 
     public MvLiteral(String value, String identity) {
         this.value = value;
         this.identity = identity;
+        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
+            this.pojo = value.substring(1, value.length()-1);
+        } else if (value.matches("[+-]?[1-9][0-9]*")) {
+            this.pojo = (long) Long.parseLong(value);
+        } else {
+            this.pojo = value;
+        }
     }
 
     public MvLiteral(String value, int identity) {
@@ -32,23 +36,8 @@ public class MvLiteral {
         return identity;
     }
 
-    public Value<?> toValue() {
-        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
-            return PrimitiveValue.newText(value.substring(1, value.length()-1));
-        }
-        if (value.matches("[+-]?[1-9][0-9]*")) {
-            return PrimitiveValue.newInt64(Long.parseLong(value));
-        }
-        // Ugly fallback
-        return PrimitiveValue.newText(value);
-    }
-
-    public Value<?> toValue(Type type) {
-        Object o = value;
-        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
-            o = value.substring(1, value.length()-1);
-        }
-        return YdbConv.fromPojo(o, type);
+    public Comparable<?> getPojo() {
+        return pojo;
     }
 
     @Override
