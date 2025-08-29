@@ -2,51 +2,37 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 
-import tech.ydb.table.values.StructType;
-
-import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
 /**
+ * Single-step input key transformation to the keys of the main table for a specific MV.
  *
  * @author zinal
  */
-public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
+public class MvActionTransform extends MvActionBase implements MvApplyAction {
 
     private final MvTarget target;
     private final MvTarget transformation;
     private final String inputTableName;
     private final String inputTableAlias;
-    private final String sqlSelect;
-    private final StructType rowType;
 
-    public MvActionGrabKeys(MvTarget target, MvJoinSource js,
+    public MvActionTransform(MvTarget target, MvJoinSource js,
             MvTarget transformation, MvActionContext context) {
         super(context);
         this.target = target;
         this.transformation = transformation;
         this.inputTableName = js.getTableName();
         this.inputTableAlias = js.getTableAlias();
-        try (MvSqlGen sg = new MvSqlGen(this.transformation)) {
-            this.sqlSelect = sg.makeSelect();
-            this.rowType = sg.toRowType();
+        if (!transformation.isSingleStepTransformation()) {
+            throw new IllegalArgumentException();
         }
-    }
 
-    @Override
-    public String getSqlSelect() {
-        return sqlSelect;
-    }
-
-    @Override
-    public StructType getRowType() {
-        return rowType;
     }
 
     @Override
     public String toString() {
-        return "MvActionGrabKeys{" + inputTableName
+        return "MvActionTransform{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
                 + target.getName() + '}';
     }

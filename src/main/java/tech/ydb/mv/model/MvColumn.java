@@ -25,6 +25,10 @@ public class MvColumn implements MvSqlPosHolder {
         this(name, MvSqlPos.EMPTY);
     }
 
+    public boolean isReference() {
+        return (sourceAlias!=null) && (sourceColumn!=null);
+    }
+
     public boolean isComputation() {
         return (computation != null);
     }

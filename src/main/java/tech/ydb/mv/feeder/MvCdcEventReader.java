@@ -19,10 +19,10 @@ import tech.ydb.mv.model.MvChangeRecord;
 class MvCdcEventReader extends AbstractReadEventHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcEventReader.class);
 
-    private final MvCdcReader owner;
+    private final MvFeeder owner;
     private final MvApplyManager applyManager;
 
-    MvCdcEventReader(MvCdcReader owner) {
+    MvCdcEventReader(MvFeeder owner) {
         this.owner = owner;
         this.applyManager = owner.getApplyManager();
     }

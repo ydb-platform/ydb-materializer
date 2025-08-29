@@ -4,10 +4,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
-import tech.ydb.mv.MvController;
+import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvTableInfo;
+import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
@@ -19,15 +23,15 @@ import tech.ydb.mv.util.YdbMisc;
 public class MvApplyManager {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
-    private final MvController controller;
+    private final MvActionContext context;
     private final MvApplyWorker[] workers;
 
     // table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
 
-    public MvApplyManager(MvController controller) {
-        this.controller = controller;
-        int workerCount = controller.getSettings().getApplyThreads();
+    public MvApplyManager(MvJobContext context) {
+        this.context = new MvActionContext(context, this);
+        int workerCount = context.getSettings().getApplyThreads();
         this.workers = new MvApplyWorker[workerCount];
         for (int i=0; i<workerCount; ++i) {
             workers[i] = new MvApplyWorker(this, i);
@@ -35,18 +39,67 @@ public class MvApplyManager {
         buildConfig();
     }
 
+    private MvApplyConfig makeTableConfig(MvTableInfo ti) {
+        MvApplyConfig mac = applyConfig.get(ti.getName());
+        if (mac==null) {
+            mac = new MvApplyConfig(ti, workers.length);
+            applyConfig.put(ti.getName(), mac);
+        }
+        return mac;
+    }
+
     private void buildConfig() {
-        for (MvInput mi : controller.getMetadata().getInputs().values()) {
-            MvApplyConfig mac = applyConfig.get(mi.getTableName());
-            if (mac==null) {
-                mac = new MvApplyConfig(mi.getTableInfo(), workers.length);
-                applyConfig.put(mi.getTableName(), mac);
+        MvHandler handler = context.getMetadata();
+        for (MvTarget target : handler.getTargets().values()) {
+            int sourceCount = target.getSources().size();
+            if (sourceCount < 1) {
+                // constant or expression-based target - nothing to do
+                continue;
+            }
+            // Add sync action for the current target
+            MvJoinSource src = target.getSources().get(0);
+            MvTableInfo.Changefeed cf = src.getChangefeedInfo();
+            if (cf==null) {
+                LOG.warn("Missing changefeed for main input table {}, skipping for target {}.",
+                        src.getTableName(), target.getName());
+                continue;
+            }
+            makeTableConfig(src.getTableInfo())
+                    .addAction(new MvActionSync(target, context));
+            if (sourceCount < 2) {
+                // single-source target, no joins
+                continue;
+            }
+            MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(target);
+            for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
+                src = target.getSources().get(sourceIndex);
+                cf = src.getChangefeedInfo();
+                if (cf==null) {
+                    LOG.info("Missing changefeed for secondary input table {}, skipping for target {}.",
+                            src.getTableName(), target.getName());
+                    continue;
+                }
+                MvTarget transformation = pathGenerator.generate(src);
+                if (transformation.isKeyOnlyTransformation()) {
+                    // Can directly transform the input keys to topmost-left key
+                    makeTableConfig(src.getTableInfo())
+                            .addAction(new MvActionTransform(target, src, transformation, context));
+                } else if (transformation.isSingleStepTransformation()
+                        && MvTableInfo.ChangefeedMode.BOTH_IMAGES.equals(cf.getMode())) {
+                    // Can be directly transformed on the changefeed data
+                    makeTableConfig(src.getTableInfo())
+                            .addAction(new MvActionTransform(target, src, transformation, context));
+                } else {
+                    // The key information has to be grabbed from the database
+                    makeTableConfig(src.getTableInfo())
+                            .addAction(new MvActionTransform(target, src, transformation, context));
+                }
             }
         }
     }
 
     public boolean isRunning() {
-        return controller.isRunning();
+        return context.isRunning();
     }
 
     public int getWorkersCount() {
@@ -54,7 +107,7 @@ public class MvApplyManager {
     }
 
     public MvHandlerSettings getSettings() {
-        return controller.getSettings();
+        return context.getSettings();
     }
 
     public MvApplyWorker getWorker(int index) {

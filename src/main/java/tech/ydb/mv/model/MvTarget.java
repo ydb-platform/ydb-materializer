@@ -41,10 +41,36 @@ public class MvTarget implements MvSqlPosHolder {
         return false;
     }
 
+    /**
+     * @return true, if the transformation is a single-step operation
+     * without joins and complex computations, and false otherwise
+     */
     public boolean isSingleStepTransformation() {
         return (sources.size() == 1)
                 && (filter==null || filter.isEmpty())
                 && !hasComputationColumns();
+    }
+
+    /**
+     * @return true, if a single-step transformation is based on just the primary key
+     */
+    public boolean isKeyOnlyTransformation() {
+        if (! isSingleStepTransformation()) {
+            return false;
+        }
+        if (sources.isEmpty()) {
+            return true; // constant output - works for our case
+        }
+        List<String> key = sources.get(0).getTableInfo().getKey();
+        for (MvColumn mc : columns) {
+            if (! mc.isReference()) {
+                continue;
+            }
+            if (! key.contains(mc.getSourceColumn())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public MvJoinSource getSourceByAlias(String name) {

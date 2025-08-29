@@ -151,22 +151,22 @@ public class BasicParserTest {
         var handler1 = mc.getHandlers().values().iterator().next();
         var input1 = handler1.getInputs().get("main_table");
         Assertions.assertEquals("main_table", input1.getTableName());
-        Assertions.assertEquals("cf1", input1.getChangeFeed());
+        Assertions.assertEquals("cf1", input1.getChangefeed());
         Assertions.assertFalse(input1.isBatchMode());
 
         var input2 = handler1.getInputs().get("sub_table1");
         Assertions.assertEquals("sub_table1", input2.getTableName());
-        Assertions.assertEquals("cf1", input2.getChangeFeed());
+        Assertions.assertEquals("cf1", input2.getChangefeed());
         Assertions.assertFalse(input2.isBatchMode());
 
         var input3 = handler1.getInputs().get("sub_table2");
         Assertions.assertEquals("sub_table2", input3.getTableName());
-        Assertions.assertEquals("cf1", input3.getChangeFeed());
+        Assertions.assertEquals("cf1", input3.getChangefeed());
         Assertions.assertFalse(input3.isBatchMode());
 
         var input4 = handler1.getInputs().get("sub_table3");
         Assertions.assertEquals("sub_table3", input4.getTableName());
-        Assertions.assertEquals("cf1", input4.getChangeFeed());
+        Assertions.assertEquals("cf1", input4.getChangefeed());
         Assertions.assertTrue(input4.isBatchMode());
     }
 
@@ -311,22 +311,22 @@ public class BasicParserTest {
         // Test MvInput structure
         var input1 = handler1.getInputs().get("schema3/main_table");
         Assertions.assertEquals("schema3/main_table", input1.getTableName());
-        Assertions.assertEquals("cf1", input1.getChangeFeed());
+        Assertions.assertEquals("cf1", input1.getChangefeed());
         Assertions.assertFalse(input1.isBatchMode());
 
         var input2 = handler1.getInputs().get("schema3/sub_table1");
         Assertions.assertEquals("schema3/sub_table1", input2.getTableName());
-        Assertions.assertEquals("cf1", input2.getChangeFeed());
+        Assertions.assertEquals("cf1", input2.getChangefeed());
         Assertions.assertFalse(input2.isBatchMode());
 
         var input3 = handler1.getInputs().get("schema3/sub_table2");
         Assertions.assertEquals("schema3/sub_table2", input3.getTableName());
-        Assertions.assertEquals("cf1", input3.getChangeFeed());
+        Assertions.assertEquals("cf1", input3.getChangefeed());
         Assertions.assertFalse(input3.isBatchMode());
 
         var input4 = handler1.getInputs().get("schema3/sub_table3");
         Assertions.assertEquals("schema3/sub_table3", input4.getTableName());
-        Assertions.assertEquals("cf1", input4.getChangeFeed());
+        Assertions.assertEquals("cf1", input4.getChangefeed());
         Assertions.assertTrue(input4.isBatchMode());
     }
 

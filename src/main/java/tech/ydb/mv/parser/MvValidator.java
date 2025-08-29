@@ -115,8 +115,8 @@ public class MvValidator {
         if (i.getTableInfo()==null) {
             context.addIssue(new MvIssue.UnknownInputTable(i));
         } else {
-            if (i.getChangeFeed()==null
-                    || i.getTableInfo().getChangefeeds().get(i.getChangeFeed()) == null) {
+            if (i.getChangefeed()==null
+                    || i.getTableInfo().getChangefeeds().get(i.getChangefeed()) == null) {
                 context.addIssue(new MvIssue.UnknownChangefeed(i));
             }
         }

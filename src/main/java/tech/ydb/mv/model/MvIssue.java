@@ -184,7 +184,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Unknown or illegal changefeed `" + input.getChangeFeed()
+            return "Unknown or illegal changefeed `" + input.getChangefeed()
                     + "` for table `" + input.getTableName()
                     + "` at " + sqlPos;
         }

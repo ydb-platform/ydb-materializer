@@ -23,7 +23,7 @@ import tech.ydb.query.QuerySession;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
- * colima start --arch amd64
+ * (or) colima start --arch amd64
  *
  * @author zinal
  */

@@ -457,50 +457,6 @@ public class MvKeyPathGenerator {
     }
 
     /**
-     * Clones a MvJoinCondition, updating source references to point to sources
-     * in the new target.
-     */
-    private static MvJoinCondition cloneJoinCondition(MvJoinCondition original, MvTarget newTarget) {
-        MvJoinCondition clone = new MvJoinCondition();
-
-        // Copy literals, ensuring they are added to the new target
-        if (original.getFirstLiteral() != null) {
-            MvLiteral newFirstLiteral = newTarget.addLiteral(original.getFirstLiteral().getValue());
-            clone.setFirstLiteral(newFirstLiteral);
-        }
-        if (original.getSecondLiteral() != null) {
-            MvLiteral newSecondLiteral = newTarget.addLiteral(original.getSecondLiteral().getValue());
-            clone.setSecondLiteral(newSecondLiteral);
-        }
-
-        clone.setFirstAlias(original.getFirstAlias());
-        clone.setFirstColumn(original.getFirstColumn());
-        clone.setSecondAlias(original.getSecondAlias());
-        clone.setSecondColumn(original.getSecondColumn());
-
-        // Update source references to point to sources in the new target
-        if (original.getFirstRef() != null) {
-            String firstAlias = original.getFirstAlias();
-            if (firstAlias == null && original.getFirstRef() != null) {
-                firstAlias = original.getFirstRef().getTableAlias();
-            }
-            MvJoinSource newFirstRef = newTarget.getSourceByAlias(firstAlias);
-            clone.setFirstRef(newFirstRef);
-        }
-
-        if (original.getSecondRef() != null) {
-            String secondAlias = original.getSecondAlias();
-            if (secondAlias == null && original.getSecondRef() != null) {
-                secondAlias = original.getSecondRef().getTableAlias();
-            }
-            MvJoinSource newSecondRef = newTarget.getSourceByAlias(secondAlias);
-            clone.setSecondRef(newSecondRef);
-        }
-
-        return clone;
-    }
-
-    /**
      * Builds an adjacency map representing the join relationships.
      */
     private static Map<MvJoinSource, List<MvJoinSource>> buildAdjacencyMap(MvTarget target) {

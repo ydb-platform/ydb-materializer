@@ -57,9 +57,13 @@ public abstract class MvActionBase {
         return Objects.equals(this.id, other.id);
     }
 
-    protected abstract String getSqlSelect();
+    protected String getSqlSelect() {
+        throw new UnsupportedOperationException();
+    }
 
-    protected abstract StructType getRowType();
+    protected StructType getRowType() {
+        throw new UnsupportedOperationException();
+    }
 
     protected final void readRows(List<MvKey> items, ArrayList<StructValue> output) {
         // perform the db query

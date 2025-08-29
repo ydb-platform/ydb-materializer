@@ -31,4 +31,8 @@ public class MvApplyConfig {
         return actions;
     }
 
+    public void addAction(MvApplyAction action) {
+        actions.add(action);
+    }
+
 }

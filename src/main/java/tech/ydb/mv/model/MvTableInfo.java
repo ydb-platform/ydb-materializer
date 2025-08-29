@@ -45,7 +45,21 @@ public class MvTableInfo {
                 // skipping changefeeds having unsupported format
                 continue;
             }
-            var cf = new MvTableInfo.Changefeed(c.getName());
+            final ChangefeedMode mode;
+            switch (c.getMode()) {
+                case NEW_AND_OLD_IMAGES:
+                    mode = ChangefeedMode.BOTH_IMAGES;
+                    break;
+                case NEW_IMAGE:
+                    mode = ChangefeedMode.NEW_IMAGE;
+                    break;
+                case OLD_IMAGE:
+                    mode = ChangefeedMode.OLD_IMAGE;
+                    break;
+                default:
+                    mode = ChangefeedMode.KEYS_ONLY;
+            }
+            var cf = new MvTableInfo.Changefeed(c.getName(), mode);
             theFeeds.put(cf.getName(), cf);
         }
         this.name = name;
@@ -130,14 +144,27 @@ public class MvTableInfo {
 
     public static final class Changefeed {
         private final String name;
+        private final ChangefeedMode mode;
 
-        public Changefeed(String name) {
+        public Changefeed(String name, ChangefeedMode mode) {
             this.name = name;
+            this.mode = mode;
         }
 
         public String getName() {
             return name;
         }
+
+        public ChangefeedMode getMode() {
+            return mode;
+        }
+    }
+
+    public static enum ChangefeedMode {
+        KEYS_ONLY,
+        NEW_IMAGE,
+        OLD_IMAGE,
+        BOTH_IMAGES
     }
 
     public static final class Builder {
@@ -169,10 +196,14 @@ public class MvTableInfo {
             return this;
         }
 
-        public Builder addChangefeed(String name) {
-            Changefeed cf = new Changefeed(name);
+        public Builder addChangefeed(String name, ChangefeedMode mode) {
+            Changefeed cf = new Changefeed(name, mode);
             changefeeds.put(cf.getName(), cf);
             return this;
+        }
+
+        public Builder addChangefeed(String name) {
+            return addChangefeed(name, ChangefeedMode.KEYS_ONLY);
         }
 
         public MvTableInfo build() {

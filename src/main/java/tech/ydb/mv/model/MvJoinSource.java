@@ -29,6 +29,13 @@ public class MvJoinSource implements MvSqlPosHolder {
                 && tableName.equals(tableInfo.getName());
     }
 
+    public MvTableInfo.Changefeed getChangefeedInfo() {
+        if (input==null) {
+            return null;
+        }
+        return input.getChangefeedInfo();
+    }
+
     public String getTableName() {
         return tableName;
     }
