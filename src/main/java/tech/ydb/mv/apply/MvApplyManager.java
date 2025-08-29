@@ -60,10 +60,11 @@ public class MvApplyManager {
             MvJoinSource src = target.getSources().get(0);
             MvTableInfo.Changefeed cf = src.getChangefeedInfo();
             if (cf==null) {
-                LOG.warn("Missing changefeed for main input table {}, skipping for target {}.",
-                        src.getTableName(), target.getName());
+                LOG.warn("Missing changefeed for main input table {}, skipping for target {} in handler {}.",
+                        src.getTableName(), target.getName(), handler.getName());
                 continue;
             }
+            LOG.info("Configuring handler {}, target {} ...", handler.getName(), target.getName());
             makeTableConfig(src.getTableInfo())
                     .addAction(new MvActionSync(target, context));
             if (sourceCount < 2) {
@@ -92,7 +93,7 @@ public class MvApplyManager {
                 } else {
                     // The key information has to be grabbed from the database
                     makeTableConfig(src.getTableInfo())
-                            .addAction(new MvActionTransform(target, src, transformation, context));
+                            .addAction(new MvActionGrabKeys(target, src, transformation, context));
                 }
             }
         }

@@ -15,6 +15,7 @@ import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
 
 import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 
@@ -24,6 +25,7 @@ import tech.ydb.mv.model.MvTarget;
  * @author zinal
  */
 public class MvActionSync extends MvActionBase implements MvApplyAction {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvActionSync.class);
 
     private final String targetTableName;
     private final String sqlSelect;
@@ -36,6 +38,10 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
 
     public MvActionSync(MvTarget target, MvActionContext context) {
         super(context);
+        if (target==null || target.getSources().isEmpty()
+                || target.getSources().get(0).getChangefeedInfo()==null) {
+            throw new IllegalArgumentException("Missing input");
+        }
         this.targetTableName = target.getName();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
@@ -43,6 +49,12 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
             this.sqlDelete = sg.makePlainDelete();
             this.rowType = sg.toRowType();
         }
+        MvJoinSource src = target.getSources().get(0);
+        LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
+                context.getMetadata().getName(), target.getName(),
+                src.getTableName(), src.getTableAlias(),
+                src.getChangefeedInfo().getName(),
+                src.getChangefeedInfo().getMode());
     }
 
     @Override

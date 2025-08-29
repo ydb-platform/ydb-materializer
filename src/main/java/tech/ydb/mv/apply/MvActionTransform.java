@@ -11,23 +11,32 @@ import tech.ydb.mv.model.MvTarget;
  * @author zinal
  */
 public class MvActionTransform extends MvActionBase implements MvApplyAction {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvActionTransform.class);
 
     private final MvTarget target;
     private final MvTarget transformation;
     private final String inputTableName;
     private final String inputTableAlias;
 
-    public MvActionTransform(MvTarget target, MvJoinSource js,
+    public MvActionTransform(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(context);
+        if (target==null || src==null || src.getChangefeedInfo()==null
+                || transformation==null) {
+            throw new IllegalArgumentException("Missing input");
+        }
         this.target = target;
         this.transformation = transformation;
-        this.inputTableName = js.getTableName();
-        this.inputTableAlias = js.getTableAlias();
+        this.inputTableName = src.getTableName();
+        this.inputTableAlias = src.getTableAlias();
         if (!transformation.isSingleStepTransformation()) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Single step transformation should be passed");
         }
-
+        LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
+                context.getMetadata().getName(), target.getName(),
+                src.getTableName(), src.getTableAlias(),
+                src.getChangefeedInfo().getName(),
+                src.getChangefeedInfo().getMode());
     }
 
     @Override
