@@ -2,6 +2,7 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
@@ -47,7 +48,7 @@ public class MvActionTransform extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvApplyTask> input) {
+    public void apply(List<MvChangeRecord> input) {
         if (input==null || input.isEmpty()) {
             return;
         }

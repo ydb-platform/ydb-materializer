@@ -5,6 +5,7 @@ import java.util.List;
 import tech.ydb.table.values.StructType;
 
 import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
@@ -61,7 +62,7 @@ public class MvActionGrabKeys extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvApplyTask> input) {
+    public void apply(List<MvChangeRecord> input) {
         if (input==null || input.isEmpty()) {
             return;
         }

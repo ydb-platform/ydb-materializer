@@ -169,7 +169,7 @@ public class MvApplyManager {
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
             commitHandler.apply(count);
-            LOG.warn("Skipping {} records for unknown table {}", count, tableName);
+            LOG.warn("Skipping {} change records for unexpected table {}", count, tableName);
             return true;
         }
         ArrayList<MvApplyTask> curr = new ArrayList<>(count);

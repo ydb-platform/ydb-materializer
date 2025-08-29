@@ -15,6 +15,7 @@ import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
 
 import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
@@ -73,7 +74,7 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
     }
 
     @Override
-    public void apply(List<MvApplyTask> input) {
+    public void apply(List<MvChangeRecord> input) {
         if (input==null || input.isEmpty()) {
             return;
         }
@@ -87,17 +88,17 @@ public class MvActionSync extends MvActionBase implements MvApplyAction {
         finishStatement();
     }
 
-    private void deduplicate(List<MvApplyTask> input,
+    private void deduplicate(List<MvChangeRecord> input,
             List<MvKey> upsert, List<MvKey> delete) {
         HashSet<MvKey> tempUpsert = new HashSet<>();
         HashSet<MvKey> tempDelete = new HashSet<>();
-        for (MvApplyTask item : input) {
-            switch (item.getData().getOperationType()) {
+        for (MvChangeRecord item : input) {
+            switch (item.getOperationType()) {
                 case UPSERT:
-                    tempUpsert.add(item.getData().getKey());
+                    tempUpsert.add(item.getKey());
                     break;
                 case DELETE:
-                    tempDelete.add(item.getData().getKey());
+                    tempDelete.add(item.getKey());
                     break;
             }
         }

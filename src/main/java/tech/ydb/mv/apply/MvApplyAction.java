@@ -2,6 +2,8 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 
+import tech.ydb.mv.model.MvChangeRecord;
+
 /**
  * The apply action performs the desired apply action on the particular input.
  *
@@ -9,7 +11,7 @@ import java.util.List;
  */
 public interface MvApplyAction {
 
-    void apply(List<MvApplyTask> input);
+    void apply(List<MvChangeRecord> input);
 
     @Override
     boolean equals(Object obj);

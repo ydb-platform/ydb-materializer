@@ -7,6 +7,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
@@ -124,7 +125,7 @@ public class MvApplyWorker implements Runnable {
         return true;
     }
 
-    private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
+    private void applyAction(MvApplyAction action, List<MvChangeRecord> tasks, PerAction retries) {
         try {
             action.apply(tasks);
         } catch(Exception ex) {
@@ -135,18 +136,17 @@ public class MvApplyWorker implements Runnable {
     }
 
     private class PerAction {
-        final HashMap<MvApplyAction, List<MvApplyTask>> items = new HashMap<>();
+        final HashMap<MvApplyAction, List<MvChangeRecord>> items = new HashMap<>();
 
         PerAction() {
             for (MvApplyTask task : activeTasks) {
-                task.clearErrors();
                 for (MvApplyAction action : task.getActions().getActions()) {
-                    List<MvApplyTask> tasks = items.get(action);
+                    List<MvChangeRecord> tasks = items.get(action);
                     if (tasks==null) {
                         tasks = new ArrayList<>();
                         items.put(action, tasks);
                     }
-                    tasks.add(task);
+                    tasks.add(task.getData());
                 }
             }
         }
@@ -167,10 +167,6 @@ public class MvApplyWorker implements Runnable {
 
         PerCommit() {
             for (MvApplyTask task : activeTasks) {
-                if (task.getErrorCount() > 0) {
-                    // Skip commits for error records.
-                    continue;
-                }
                 Integer numTasks = items.get(task.getCommit());
                 if (numTasks==null) {
                     items.put(task.getCommit(), 1);
