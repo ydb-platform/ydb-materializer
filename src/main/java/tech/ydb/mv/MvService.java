@@ -65,19 +65,35 @@ public class MvService {
         this.defaultSettings.set(defaultSettings);
     }
 
+    /**
+     * @return true, if at least one handler is active, and false otherwise.
+     */
     public synchronized boolean isRunning() {
         return !handlers.isEmpty();
     }
 
+    /**
+     * Stop all the handlers which are running.
+     */
     public synchronized void shutdown() {
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
     }
 
+    /**
+     * Start the handler with the specified name, using the current default settings.
+     * @param name Name of the handler to be started
+     */
     public void startHandler(String name) {
         startHandler(name, getDefaultSettings());
     }
 
+    /**
+     * Start the handler with the specified settings.
+     *
+     * @param name Name of the handler to be started
+     * @param settings The settings to be used by the handler
+     */
     public synchronized void startHandler(String name, MvHandlerSettings settings) {
         MvController c = handlers.get(name);
         if (c==null) {
@@ -97,6 +113,11 @@ public class MvService {
         }
     }
 
+    /**
+     * Stop the handler with the specified name.
+     * @param name The name of the handler to be stopped
+     * @return true, if the handler was actually stopped, and false otherwise
+     */
     public synchronized boolean stopHandler(String name) {
         MvController c = handlers.remove(name);
         if (c == null) {
@@ -104,6 +125,27 @@ public class MvService {
         }
         c.stop();
         return true;
+    }
+
+    /**
+     * Print the list of issues in the current context to stdout.
+     */
+    public void printIssues() {
+        // TODO
+    }
+
+    /**
+     * Generate the set of SQL statements and print to stdout.
+     */
+    public void printSql() {
+        // TODO
+    }
+
+    /**
+     * Start and run the set of default handlers.
+     */
+    public void runHandlers() {
+        // TODO
     }
 
     private synchronized ArrayList<MvController> grabControllers() {

@@ -10,6 +10,7 @@ public class App {
     public static final String CONF_INPUT_MODE = "job.input.mode";
     public static final String CONF_INPUT_FILE = "job.input.file";
     public static final String CONF_INPUT_TABLE = "job.input.table";
+    public static final String CONF_HANDLERS = "job.handlers";
 
     public static final String DEF_FILE = "mv.sql";
     public static final String DEF_TABLE = "mv/statements";
@@ -26,10 +27,13 @@ public class App {
                 try {
                     switch (parseMode(args[1])) {
                         case CHECK:
+                            wc.printIssues();
                             break;
                         case SQL:
+                            wc.printSql();
                             break;
                         case RUN:
+                            wc.runHandlers();
                             break;
                     }
                 } finally {
