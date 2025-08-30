@@ -54,28 +54,31 @@ public class MvController {
         return applyManager.isLocked();
     }
 
-    public synchronized void start() {
+    public synchronized boolean start() {
         if (context.isRunning()) {
             LOG.warn("Ignored start call for an already running controller {}", getName());
-            return;
+            return false;
         }
         LOG.info("Starting the controller {}", getName());
         // TODO: acquire the global lock
         context.start();
+        applyManager.refreshSelectors(context.getConnector().getTableClient());
         applyManager.start();
         feeder.start();
+        return true;
     }
 
-    public synchronized void stop() {
-        if (context.isRunning()) {
+    public synchronized boolean stop() {
+        if (! context.isRunning()) {
             LOG.warn("Ignored stop call for an already stopped controller {}", getName());
-            return;
+            return false;
         }
         LOG.info("Stopping the controller {}", getName());
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
         feeder.stop();
         // TODO: release the global lock
+        return true;
     }
 
 }

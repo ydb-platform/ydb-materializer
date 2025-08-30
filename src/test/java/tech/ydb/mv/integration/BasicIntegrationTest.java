@@ -147,8 +147,11 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
             System.err.println("Preparation: completed.");
-            try (MvService wc = new MvService(conn)) {
+            MvService wc = new MvService(conn);
+            try {
                 validateContext(wc);
+            } finally {
+                wc.shutdown();
             }
         }
     }

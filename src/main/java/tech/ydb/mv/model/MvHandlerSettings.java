@@ -16,6 +16,17 @@ public class MvHandlerSettings implements Serializable {
     private int selectBatchSize = 1000;
     private int upsertBatchSize = 500;
 
+    public MvHandlerSettings() {
+    }
+
+    public MvHandlerSettings(MvHandlerSettings src) {
+        this.cdcReaderThreads = src.cdcReaderThreads;
+        this.applyThreads = src.applyThreads;
+        this.applyQueueSize = src.applyQueueSize;
+        this.selectBatchSize = src.selectBatchSize;
+        this.upsertBatchSize = src.upsertBatchSize;
+    }
+
     public int getCdcReaderThreads() {
         return cdcReaderThreads;
     }

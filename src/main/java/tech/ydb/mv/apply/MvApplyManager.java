@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import tech.ydb.table.TableClient;
+
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
@@ -136,6 +138,15 @@ public class MvApplyManager {
      */
     public boolean isLocked() {
         return (getLockedWorkersCount() > 0);
+    }
+
+    /**
+     * Refresh the worker selector setup by reading the fresh partitioning data.
+     *
+     * @param tableClient Table client is needed to describe the source tables.
+     */
+    public void refreshSelectors(TableClient tableClient) {
+        applyConfig.values().forEach(ac -> ac.getSelector().refresh(tableClient));
     }
 
     /**

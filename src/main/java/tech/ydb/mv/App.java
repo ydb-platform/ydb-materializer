@@ -21,14 +21,19 @@ public class App {
         }
         try {
             YdbConnector.Config ycc = YdbConnector.Config.fromFile(args[0]);
-            try (MvService wc = new MvService(ycc)) {
-                switch (parseMode(args[1])) {
-                    case CHECK:
-                        break;
-                    case SQL:
-                        break;
-                    case RUN:
-                        break;
+            try (YdbConnector conn = new YdbConnector(ycc)) {
+                MvService wc = new MvService(conn);
+                try {
+                    switch (parseMode(args[1])) {
+                        case CHECK:
+                            break;
+                        case SQL:
+                            break;
+                        case RUN:
+                            break;
+                    }
+                } finally {
+                    wc.shutdown();
                 }
             }
         } catch(Exception ex) {

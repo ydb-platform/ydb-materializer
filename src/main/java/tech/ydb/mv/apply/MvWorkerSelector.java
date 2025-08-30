@@ -21,6 +21,7 @@ import tech.ydb.mv.model.MvTableInfo;
  * @author zinal
  */
 public class MvWorkerSelector {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvWorkerSelector.class);
 
     private final MvTableInfo tableInfo;
     private final int workerCount;
@@ -57,7 +58,14 @@ public class MvWorkerSelector {
             // No need to describe anything: we have a single worker.
             return;
         }
-        Chooser newChooser = load(tableClient);
+        Chooser newChooser;
+        try {
+            newChooser = load(tableClient);
+        } catch(Exception ex) {
+            LOG.error("Failed to refresh the partitioning setup for table {}",
+                    tableInfo.getPath(), ex);
+            return;
+        }
         chooser.set(newChooser);
     }
 
