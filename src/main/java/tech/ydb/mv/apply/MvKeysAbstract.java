@@ -4,10 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import tech.ydb.mv.model.MvChangeRecord;
-import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTarget;
 

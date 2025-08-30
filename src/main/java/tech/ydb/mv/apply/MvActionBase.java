@@ -66,12 +66,16 @@ public abstract class MvActionBase {
         throw new UnsupportedOperationException();
     }
 
-    protected final void readRows(List<MvKey> items, ArrayList<StructValue> output) {
-        // perform the db query
+    protected final ResultSetReader readRows(List<MvKey> items) {
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
-        ResultSetReader result = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
+        return context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(getSqlSelect(), TxMode.ONLINE_RO, params)
         )).join().getValue().getResultSet(0);
+    }
+
+    protected final void readRows(List<MvKey> items, ArrayList<StructValue> output) {
+        // perform the db query
+        ResultSetReader result = readRows(items);
         if (result.getRowCount()==0) {
             return;
         }

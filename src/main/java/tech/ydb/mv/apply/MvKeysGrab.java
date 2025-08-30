@@ -4,13 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tech.ydb.table.values.StructType;
+import tech.ydb.table.result.ResultSetReader;
 
 import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbConv;
-import tech.ydb.table.values.StructValue;
 
 /**
  *
@@ -55,19 +56,30 @@ public class MvKeysGrab extends MvKeysAbstract implements MvApplyAction {
 
     @Override
     protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
-        List<MvKey> inputKeys = tasks.stream()
+        ResultSetReader rows = readRows(tasks.stream()
                 .map(task -> task.getData().getKey())
-                .toList();
-        ArrayList<StructValue> outputRows = new ArrayList<>();
-        readRows(inputKeys, outputRows);
-        ArrayList<MvKey> outputKeys = new ArrayList<>(outputRows.size());
-        for (StructValue sv : outputRows) {
+                .toList());
+        if (rows.getRowCount()==0) {
+            return;
+        }
+        if (rows.getColumnCount() < keyInfo.size()) {
+            throw new IllegalStateException("Actual output coluumns: "
+                    + rows.getColumnCount() + ", expected: " + keyInfo.size());
+        }
+        // Convert the keys to change records.
+        ArrayList<MvChangeRecord> output = new ArrayList<>(rows.getRowCount());
+        while (rows.next()) {
             Comparable<?>[] values = new Comparable<?>[keyInfo.size()];
             for (int pos = 0; pos < keyInfo.size(); ++pos) {
-                // TODO
+                values[pos] = YdbConv.toPojo(rows.getColumn(pos).getValue());
             }
-            outputKeys.add(new MvKey(keyInfo, values));
+            MvKey key = new MvKey(keyInfo, values);
+            output.add(new MvChangeRecord(key, MvChangeRecord.OperationType.UPSERT));
         }
+        // Allow for extra operations before the actual commit.
+        handler.apply(-1 * output.size());
+        // Send the keys for processing.
+        context.getApplyManager().submit(output, handler);
     }
 
 }
