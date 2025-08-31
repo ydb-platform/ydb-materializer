@@ -164,6 +164,7 @@ public class MvApplyManager {
         for (MvApplyWorker w : workers) {
             w.start();
         }
+        LOG.info("Started {} apply workers.", workers.length);
     }
 
     /**

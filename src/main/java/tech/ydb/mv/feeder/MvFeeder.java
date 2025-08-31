@@ -37,6 +37,9 @@ public class MvFeeder {
         this.applyManager = applyManager;
         this.executor = Executors.newFixedThreadPool(
                 context.getSettings().getCdcReaderThreads(), new ConfigureThreads());
+        LOG.info("Started {} CDC reader threads for handler {}",
+                context.getSettings().getCdcReaderThreads(),
+                context.getMetadata().getName());
     }
 
     public synchronized void start() {
@@ -46,7 +49,7 @@ public class MvFeeder {
         if (! context.isRunning()) {
             return;
         }
-        LOG.info("Starting the CDC reader for handler {}", context.getMetadata().getName());
+        LOG.info("Activating the CDC reader for handler {}", context.getMetadata().getName());
         AsyncReader theReader = buildReader();
         theReader.init();
         reader.set(theReader);
