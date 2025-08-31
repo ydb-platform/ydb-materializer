@@ -82,6 +82,12 @@ public class MvApplyManager {
                     continue;
                 }
                 MvTarget transformation = pathGenerator.generate(src);
+                if (transformation==null) {
+                    LOG.info("Keys from input table {} cannot be transformed "
+                            + "to keys for table {}, skipping for target {}",
+                            src.getTableName(), pathGenerator.getTopMostSource().getTableName(), target.getName());
+                    continue;
+                }
                 if (transformation.isKeyOnlyTransformation()) {
                     // Can directly transform the input keys to topmost-left key
                     makeTableConfig(src.getTableInfo())

@@ -37,10 +37,25 @@ public class MvKeyPathGenerator {
     private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
 
     public MvKeyPathGenerator(MvTarget target) {
+        if (target==null || target.getSources().isEmpty()) {
+            throw new IllegalArgumentException("Target is not valid for path generator");
+        }
         this.originalTarget = target;
         this.topMostSource = target.getSources().get(0);
         this.topMostTable = this.topMostSource.getTableInfo();
         this.adjacencyMap = buildAdjacencyMap(target);
+    }
+
+    public MvTarget getOriginalTarget() {
+        return originalTarget;
+    }
+
+    public MvJoinSource getTopMostSource() {
+        return topMostSource;
+    }
+
+    public MvTableInfo getTopMostTable() {
+        return topMostTable;
     }
 
     /**

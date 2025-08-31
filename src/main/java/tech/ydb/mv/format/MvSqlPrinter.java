@@ -55,10 +55,14 @@ public class MvSqlPrinter {
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
             MvTarget temp = pathGenerator.generate(js);
-            MvSqlGen sgTemp = new MvSqlGen(temp);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
-            pw.println(sgTemp.makeSelect());
+            if (temp!=null) {
+                pw.println(new MvSqlGen(temp).makeSelect());
+            } else {
+                pw.println("<mapping is not possible>");
+                pw.println();
+            }
         }
     }
 

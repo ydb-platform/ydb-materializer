@@ -35,6 +35,9 @@ public class MvSqlGen implements AutoCloseable {
     private final MvTarget target;
 
     public MvSqlGen(MvTarget target) {
+        if (target==null) {
+            throw new NullPointerException("target argument cannot be null");
+        }
         this.target = target;
     }
 
