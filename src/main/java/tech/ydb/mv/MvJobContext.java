@@ -1,6 +1,7 @@
 package tech.ydb.mv;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 
@@ -11,15 +12,15 @@ import tech.ydb.mv.model.MvHandlerSettings;
  */
 public class MvJobContext {
 
+    private final MvService service;
     private final MvHandler metadata;
-    private final YdbConnector connector;
     private final MvHandlerSettings settings;
     // initially stopped
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
 
-    public MvJobContext(MvHandler metadata, YdbConnector connector, MvHandlerSettings settings) {
+    public MvJobContext(MvService service, MvHandler metadata, MvHandlerSettings settings) {
+        this.service = service;
         this.metadata = metadata;
-        this.connector = connector;
         this.settings = settings;
     }
 
@@ -28,12 +29,16 @@ public class MvJobContext {
         return "MvJobContext{" + metadata.getName() + '}';
     }
 
+    public MvService getService() {
+        return service;
+    }
+
     public MvHandler getMetadata() {
         return metadata;
     }
 
     public YdbConnector getConnector() {
-        return connector;
+        return service.getYdb();
     }
 
     public MvHandlerSettings getSettings() {

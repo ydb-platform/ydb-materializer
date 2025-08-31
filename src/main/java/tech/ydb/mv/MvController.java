@@ -18,9 +18,8 @@ public class MvController {
     private final MvApplyManager applyManager;
     private final MvFeeder feeder;
 
-    public MvController(YdbConnector connector, MvHandler metadata,
-            MvHandlerSettings settings) {
-        this.context = new MvJobContext(metadata, connector, settings);
+    public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
+        this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
         this.feeder = new MvFeeder(this.context, this.applyManager);
     }
@@ -60,7 +59,10 @@ public class MvController {
             return false;
         }
         LOG.info("Starting the controller {}", getName());
-        // TODO: acquire the global lock
+        if (!context.getService().getCoordinator().lock(getName())) {
+            LOG.warn("Failed to obtain the lock for {}, refusing to start", getName());
+            return false;
+        }
         context.start();
         applyManager.refreshSelectors(context.getConnector().getTableClient());
         applyManager.start();
@@ -77,7 +79,7 @@ public class MvController {
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
         feeder.stop();
-        // TODO: release the global lock
+        context.getService().getCoordinator().release(context.getMetadata().getName());
         return true;
     }
 

@@ -35,25 +35,32 @@ import tech.ydb.mv.util.YdbMisc;
 public class MvService {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
-    private final YdbConnector connector;
+    private final YdbConnector ydb;
     private final MvContext context;
-    private final AtomicReference<MvHandlerSettings> defaultSettings = new AtomicReference<>(new MvHandlerSettings());
+    private final MvCoordinator coordinator;
+    private final AtomicReference<MvHandlerSettings> defaultSettings;
     private final HashMap<String, MvController> handlers = new HashMap<>();
     private final RefreshTask refreshTask = new RefreshTask();
     private Thread refreshThread = null;
 
-    public MvService(YdbConnector connector) {
-        this.connector = connector;
-        this.context = MvConfigReader.readContext(connector, connector.getConfig().getProperties());
+    public MvService(YdbConnector ydb) {
+        this.ydb = ydb;
+        this.context = MvConfigReader.readContext(ydb, ydb.getConfig().getProperties());
+        this.coordinator = new MvCoordinator(ydb);
+        this.defaultSettings = new AtomicReference<>(new MvHandlerSettings());
         refreshMetadata();
     }
 
-    public YdbConnector getConnector() {
-        return connector;
+    public YdbConnector getYdb() {
+        return ydb;
     }
 
     public MvContext getContext() {
         return context;
+    }
+
+    public MvCoordinator getCoordinator() {
+        return coordinator;
     }
 
     public MvHandlerSettings getDefaultSettings() {
@@ -82,6 +89,7 @@ public class MvService {
     public synchronized void shutdown() {
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
+        coordinator.releaseAll();
     }
 
     /**
@@ -105,7 +113,7 @@ public class MvService {
             if (handler==null) {
                 throw new IllegalArgumentException("Unknown handler name: " + name);
             }
-            c = new MvController(connector, handler, settings);
+            c = new MvController(this, handler, settings);
             handlers.put(name, c);
         }
         c.start();
@@ -170,7 +178,7 @@ public class MvService {
 
     private void parseHandlerSettings() {
         MvHandlerSettings settings  = new MvHandlerSettings();
-        Properties props = connector.getConfig().getProperties();
+        Properties props = ydb.getConfig().getProperties();
         String v;
 
         v = props.getProperty(App.CONF_DEF_CDC_THREADS, String.valueOf(settings.getCdcReaderThreads()));
@@ -192,7 +200,7 @@ public class MvService {
     }
 
     private List<String> parseActiveHandlerNames() {
-        String v = connector.getConfig().getProperties().getProperty(App.CONF_HANDLERS);
+        String v = ydb.getConfig().getProperties().getProperty(App.CONF_HANDLERS);
         if (v==null) {
             return Collections.emptyList();
         }
@@ -242,14 +250,14 @@ public class MvService {
         if (tabname.startsWith("/")) {
             path = tabname;
         } else {
-            path = connector.getDatabase() + "/" + tabname;
+            path = ydb.getDatabase() + "/" + tabname;
         }
         LOG.info("Describing table {} ...", path);
         TableDescription desc;
         try {
             DescribeTableSettings dts = new DescribeTableSettings();
             dts.setIncludeShardKeyBounds(true);
-            desc = connector.getTableRetryCtx()
+            desc = ydb.getTableRetryCtx()
                     .supplyResult(sess -> sess.describeTable(path, dts))
                     .join().getValue();
         } catch(Exception ex) {
@@ -286,7 +294,7 @@ public class MvService {
 
     private void refreshSelectors() {
         for (MvController c : grabControllers()) {
-            c.getApplyManager().refreshSelectors(connector.getTableClient());
+            c.getApplyManager().refreshSelectors(ydb.getTableClient());
         }
     }
 

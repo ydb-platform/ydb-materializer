@@ -35,6 +35,8 @@
 <entry key="job.input.table">mv/statements</entry>
 -->
 
+<!-- Path to coordination service node -->
+<entry key="job.coordination.path">mv/coordination</entry>
 <!-- Comma-separated list of handler names to be activated on RUN action -->
 <entry key="job.handlers">h1</entry>
 

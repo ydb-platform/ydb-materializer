@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Properties;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.core.auth.StaticCredentials;
 import tech.ydb.core.grpc.BalancingSettings;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -34,6 +35,7 @@ public class YdbConnector implements AutoCloseable {
     private final tech.ydb.table.SessionRetryContext tableRetryCtx;
     private final tech.ydb.query.tools.SessionRetryContext queryRetryCtx;
     private final TopicClient topicClient;
+    private final CoordinationClient coordinationClient;
     private final String database;
     private final Config config;
 
@@ -78,6 +80,7 @@ public class YdbConnector implements AutoCloseable {
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
+            this.coordinationClient = CoordinationClient.newClient(tempTransport);
             this.topicClient = TopicClient.newClient(tempTransport)
                     .setCompressionExecutor(Runnable::run) // Prevent OOM
                     .build();
@@ -123,6 +126,10 @@ public class YdbConnector implements AutoCloseable {
 
     public Config getConfig() {
         return config;
+    }
+
+    public CoordinationClient getCoordinationClient() {
+        return coordinationClient;
     }
 
     public TopicClient getTopicClient() {
