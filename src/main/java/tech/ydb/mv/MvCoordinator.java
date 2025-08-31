@@ -3,6 +3,7 @@ package tech.ydb.mv;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
@@ -44,10 +45,12 @@ public class MvCoordinator {
         synchronized(leases) {
             names.addAll(leases.keySet());
         }
-        for (String name : new ArrayList<String>()) {
-            release(name);
+        names.forEach(name -> release(name));
+        try {
+            session.close();
+        } catch(Exception ex) {
+            LOG.warn("Failed to close the coordination session", ex);
         }
-        session.close();
     }
 
     public boolean lock(String name) {

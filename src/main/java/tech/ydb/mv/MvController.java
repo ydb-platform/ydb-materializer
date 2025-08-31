@@ -79,7 +79,7 @@ public class MvController {
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
         feeder.stop();
-        context.getService().getCoordinator().release(context.getMetadata().getName());
+        context.getService().getCoordinator().release(getName());
         return true;
     }
 

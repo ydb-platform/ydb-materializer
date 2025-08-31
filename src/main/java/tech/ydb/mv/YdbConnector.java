@@ -8,11 +8,11 @@ import java.time.Duration;
 import java.util.Properties;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
-import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.core.auth.StaticCredentials;
 import tech.ydb.core.grpc.BalancingSettings;
 import tech.ydb.core.grpc.GrpcTransport;
 import tech.ydb.core.grpc.GrpcTransportBuilder;
+import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
 import tech.ydb.scheme.SchemeClient;
