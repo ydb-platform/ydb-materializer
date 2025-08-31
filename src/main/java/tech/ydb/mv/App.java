@@ -11,6 +11,11 @@ public class App {
     public static final String CONF_INPUT_FILE = "job.input.file";
     public static final String CONF_INPUT_TABLE = "job.input.table";
     public static final String CONF_HANDLERS = "job.handlers";
+    public static final String CONF_DEF_CDC_THREADS = "job.default.cdc.threads";
+    public static final String CONF_DEF_APPLY_THREADS = "job.default.apply.threads";
+    public static final String CONF_DEF_APPLY_QUEUE = "job.default.apply.queue";
+    public static final String CONF_DEF_BATCH_SELECT = "job.default.batch.select";
+    public static final String CONF_DEF_BATCH_UPSERT = "job.default.batch.upsert";
 
     public static final String DEF_FILE = "mv.sql";
     public static final String DEF_TABLE = "mv/statements";

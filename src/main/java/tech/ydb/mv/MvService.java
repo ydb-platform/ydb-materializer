@@ -1,7 +1,10 @@
 package tech.ydb.mv;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.mv.format.MvIssuePrinter;
@@ -36,14 +39,10 @@ public class MvService {
     private final RefreshTask refreshTask = new RefreshTask();
     private Thread refreshThread = null;
 
-    public MvService(YdbConnector connector, Properties props) {
-        this.connector = connector;
-        this.context = MvConfigReader.readContext(this.connector, props);
-        refreshMetadata();
-    }
-
     public MvService(YdbConnector connector) {
-        this(connector, connector.getConfig().getProperties());
+        this.connector = connector;
+        this.context = MvConfigReader.readContext(connector, connector.getConfig().getProperties());
+        refreshMetadata();
     }
 
     public YdbConnector getConnector() {
@@ -153,7 +152,52 @@ public class MvService {
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }
-        // TODO
+        parseHandlerSettings();
+        for (String handlerName : parseActiveHandlerNames()) {
+            try {
+                startHandler(handlerName);
+            } catch(Exception ex) {
+                LOG.error("Failed to activate the handler {}", handlerName, ex);
+            }
+        }
+        while (isRunning()) {
+            YdbMisc.sleep(100L);
+        }
+    }
+
+    private void parseHandlerSettings() {
+        MvHandlerSettings settings  = new MvHandlerSettings();
+        Properties props = connector.getConfig().getProperties();
+        String v;
+
+        v = props.getProperty(App.CONF_DEF_CDC_THREADS, String.valueOf(settings.getCdcReaderThreads()));
+        settings.setCdcReaderThreads(Integer.parseInt(v));
+
+        v = props.getProperty(App.CONF_DEF_APPLY_THREADS, String.valueOf(settings.getApplyThreads()));
+        settings.setApplyThreads(Integer.parseInt(v));
+
+        v = props.getProperty(App.CONF_DEF_APPLY_QUEUE, String.valueOf(settings.getApplyQueueSize()));
+        settings.setApplyQueueSize(Integer.parseInt(v));
+
+        v = props.getProperty(App.CONF_DEF_BATCH_SELECT, String.valueOf(settings.getSelectBatchSize()));
+        settings.setSelectBatchSize(Integer.parseInt(v));
+
+        v = props.getProperty(App.CONF_DEF_BATCH_UPSERT, String.valueOf(settings.getUpsertBatchSize()));
+        settings.setUpsertBatchSize(Integer.parseInt(v));
+
+        setDefaultSettings(settings);
+    }
+
+    private List<String> parseActiveHandlerNames() {
+        String v = connector.getConfig().getProperties().getProperty(App.CONF_HANDLERS);
+        if (v==null) {
+            return Collections.emptyList();
+        }
+        v = v.trim();
+        if (v.length()==0) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(v.split("[,]"));
     }
 
     private synchronized ArrayList<MvController> grabControllers() {
