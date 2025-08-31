@@ -7,12 +7,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
-import tech.ydb.mv.format.MvIssuePrinter;
-import tech.ydb.mv.format.MvSqlPrinter;
 
+import tech.ydb.core.Status;
+import tech.ydb.core.StatusCode;
+import tech.ydb.core.UnexpectedResultException;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
+import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.format.MvSqlPrinter;
 import tech.ydb.mv.parser.MvConfigReader;
 import tech.ydb.mv.parser.MvValidator;
 import tech.ydb.mv.model.MvContext;
@@ -250,6 +253,13 @@ public class MvService {
                     .supplyResult(sess -> sess.describeTable(path, dts))
                     .join().getValue();
         } catch(Exception ex) {
+            if (ex instanceof UnexpectedResultException) {
+                Status status = ((UnexpectedResultException)ex).getStatus();
+                if (StatusCode.SCHEME_ERROR.equals(status.getCode())) {
+                    LOG.warn("Failed to obtain description for table {} - table is missing or no access", path);
+                    return null;
+                }
+            }
             LOG.warn("Failed to obtain description for table {}", path, ex);
             return null;
         }
