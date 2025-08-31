@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.SqlConstants;
+import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
@@ -16,6 +17,7 @@ public class BasicParserTest {
     @Test
     public void parserTest1() {
         MvContext mc = new MvParser(SqlConstants.SQL_GOOD1).fill();
+        new MvIssuePrinter(mc).write(System.out);
 
         // Test MvContext structure
         Assertions.assertTrue(mc.isValid());
@@ -173,6 +175,7 @@ public class BasicParserTest {
     @Test
     public void parserTest2() {
         MvContext mc = new MvParser(SqlConstants.SQL_GOOD2).fill();
+        new MvIssuePrinter(mc).write(System.out);
 
         // Test MvContext structure
         Assertions.assertTrue(mc.isValid());
@@ -328,6 +331,17 @@ public class BasicParserTest {
         Assertions.assertEquals("schema3/sub_table3", input4.getTableName());
         Assertions.assertEquals("cf1", input4.getChangefeed());
         Assertions.assertTrue(input4.isBatchMode());
+    }
+
+    @Test
+    public void parserErrorTest1() {
+        MvContext mc = new MvParser(SqlConstants.SQL_BAD1).fill();
+        new MvIssuePrinter(mc).write(System.out);
+
+        // Test MvContext structure
+        Assertions.assertFalse(mc.isValid());
+        Assertions.assertEquals(3, mc.getErrors().size());
+        Assertions.assertEquals(0, mc.getWarnings().size());
     }
 
     private void checkJoinCondition(MvJoinCondition cond,

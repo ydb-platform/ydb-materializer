@@ -4,7 +4,7 @@ package tech.ydb.mv.model;
  *
  * @author zinal
  */
-public class MvSqlPos {
+public class MvSqlPos implements Comparable<MvSqlPos> {
 
     public static final MvSqlPos EMPTY = new MvSqlPos(0, 0);
 
@@ -27,6 +27,26 @@ public class MvSqlPos {
     @Override
     public String toString() {
         return "position [" + line + ":" + column + ']';
+    }
+
+    @Override
+    public int compareTo(MvSqlPos o) {
+        if (o==null) {
+            return -1;
+        }
+        if (this.line < o.line) {
+            return -1;
+        }
+        if (this.line > o.line) {
+            return 1;
+        }
+        if (this.column < o.column) {
+            return -1;
+        }
+        if (this.column > o.column) {
+            return -1;
+        }
+        return 0;
     }
 
 }
