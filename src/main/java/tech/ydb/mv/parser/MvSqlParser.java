@@ -34,14 +34,14 @@ import tech.ydb.mv.model.MvTarget;
  * Parsing, linking and minimal logical checks for input SQL script.
  * @author zinal
  */
-public class MvParser {
+public class MvSqlParser {
 
     private final Lexer lexer;
     private final YdbMatViewV1Parser parser;
     private final YdbMatViewV1Parser.Sql_scriptContext root;
     private final ArrayList<MvIssue> parseTimeIssues = new ArrayList<>();
 
-    public MvParser(CharStream cs) {
+    public MvSqlParser(CharStream cs) {
         this.lexer = new YdbMatViewV1Lexer(cs);
         this.lexer.addErrorListener(new LexerListener());
         this.parser = new YdbMatViewV1Parser(new CommonTokenStream(lexer));
@@ -49,11 +49,11 @@ public class MvParser {
         this.root = parser.sql_script();
     }
 
-    public MvParser(InputStream is, Charset charset) throws IOException {
+    public MvSqlParser(InputStream is, Charset charset) throws IOException {
         this(CharStreams.fromStream(is, charset));
     }
 
-    public MvParser(String input) {
+    public MvSqlParser(String input) {
         this(CharStreams.fromString(input));
     }
 
@@ -141,8 +141,12 @@ public class MvParser {
     private void fillJoinSource(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvJoinSource src = new MvJoinSource(toSqlPos(part));
         mt.getSources().add(src);
-        src.setTableName(unquote(part.join_table_ref().identifier()));
-        src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
+        if (part.join_table_ref()!=null) {
+            src.setTableName(unquote(part.join_table_ref().identifier()));
+        }
+        if (part.table_alias()!=null) {
+            src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
+        }
         if (part.LEFT()!=null) {
             src.setMode(MvJoinMode.LEFT);
         } else {

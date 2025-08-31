@@ -16,7 +16,7 @@ public class BasicParserTest {
 
     @Test
     public void parserTest1() {
-        MvContext mc = new MvParser(SqlConstants.SQL_GOOD1).fill();
+        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
         new MvIssuePrinter(mc).write(System.out);
 
         // Test MvContext structure
@@ -174,7 +174,7 @@ public class BasicParserTest {
 
     @Test
     public void parserTest2() {
-        MvContext mc = new MvParser(SqlConstants.SQL_GOOD2).fill();
+        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
         new MvIssuePrinter(mc).write(System.out);
 
         // Test MvContext structure
@@ -335,7 +335,7 @@ public class BasicParserTest {
 
     @Test
     public void parserErrorTest1() {
-        MvContext mc = new MvParser(SqlConstants.SQL_BAD1).fill();
+        MvContext mc = new MvSqlParser(SqlConstants.SQL_BAD1).fill();
         new MvIssuePrinter(mc).write(System.out);
 
         // Test MvContext structure

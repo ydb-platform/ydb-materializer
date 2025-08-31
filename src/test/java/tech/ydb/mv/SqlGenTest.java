@@ -3,7 +3,7 @@ package tech.ydb.mv;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.model.MvContext;
-import tech.ydb.mv.parser.MvParser;
+import tech.ydb.mv.parser.MvSqlParser;
 
 /**
  * Test for MvSqlGen.makeCreateView() method
@@ -15,7 +15,7 @@ public class SqlGenTest {
     @Test
     public void testMakeCreateView1() {
         // Parse the input SQL
-        MvContext mc = new MvParser(SqlConstants.SQL_GOOD1).fill();
+        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
@@ -51,7 +51,7 @@ public class SqlGenTest {
     @Test
     public void testMakeCreateView2() {
         // Parse the input SQL
-        MvContext mc = new MvParser(SqlConstants.SQL_GOOD2).fill();
+        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
