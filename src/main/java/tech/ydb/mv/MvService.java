@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.format.MvSqlPrinter;
 
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
@@ -131,20 +133,26 @@ public class MvService {
      * Print the list of issues in the current context to stdout.
      */
     public void printIssues() {
-        // TODO
+        new MvIssuePrinter(context).write(System.out);
     }
 
     /**
      * Generate the set of SQL statements and print to stdout.
      */
     public void printSql() {
-        // TODO
+        new MvSqlPrinter(context).write(System.out);
     }
 
     /**
      * Start and run the set of default handlers.
      */
     public void runHandlers() {
+        if (LOG.isInfoEnabled()) {
+            String msg = new MvIssuePrinter(context).write();
+            LOG.info("---- BEGIN CONTEXT INFO ----\n"
+                    + "{}\n"
+                    + "----- END CONTEXT INFO -----", msg);
+        }
         // TODO
     }
 

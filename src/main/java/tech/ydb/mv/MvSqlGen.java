@@ -73,6 +73,7 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    @Deprecated
     public String makeUpsertSelect() {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeyFields(sb);

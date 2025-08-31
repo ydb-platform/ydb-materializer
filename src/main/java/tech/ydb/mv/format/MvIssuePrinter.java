@@ -1,6 +1,8 @@
 package tech.ydb.mv.format;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -34,6 +36,14 @@ public class MvIssuePrinter {
             pw.println(x.getMessage());
         }
         pw.println("End context status");
+    }
+
+    public String write() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintStream ps = new PrintStream(baos, true, StandardCharsets.UTF_8)) {
+            write(ps);
+        }
+        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private ArrayList<MvIssue> sort(Collection<MvIssue> issues) {

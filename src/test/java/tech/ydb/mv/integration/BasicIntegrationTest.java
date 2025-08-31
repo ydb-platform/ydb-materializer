@@ -18,6 +18,8 @@ import tech.ydb.test.junit5.YdbHelperExtension;
 import tech.ydb.mv.App;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.format.MvSqlPrinter;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.query.QuerySession;
 
@@ -150,6 +152,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
             MvService wc = new MvService(conn);
             try {
                 validateContext(wc);
+                new MvSqlPrinter(wc.getContext()).write(System.out);
             } finally {
                 wc.shutdown();
             }
@@ -157,20 +160,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     }
 
     private void validateContext(MvService wc) {
-        printIssues("warnings", wc.getContext().getWarnings());
-        printIssues("errors", wc.getContext().getErrors());
+        new MvIssuePrinter(wc.getContext()).write(System.out);
         Assertions.assertTrue(wc.getContext().isValid());
-    }
-
-    private void printIssues(String type, List<MvIssue> issues) {
-        if (issues==null || issues.isEmpty()) {
-            System.out.println("\tno " + type);
-            return;
-        }
-        System.out.println("\tCurrent " + type + ":");
-        for (MvIssue mi : issues) {
-            System.out.println("\t\t" + mi.getMessage());
-        }
     }
 
     private void fillDatabase(YdbConnector conn) {
