@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.core.Status;
@@ -163,7 +162,7 @@ public class MvService {
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }
-        parseHandlerSettings();
+        setDefaultSettings(MvConfig.parseHandlerSettings(ydb.getConfig().getProperties()));
         for (String handlerName : parseActiveHandlerNames()) {
             try {
                 startHandler(handlerName);
@@ -176,31 +175,8 @@ public class MvService {
         }
     }
 
-    private void parseHandlerSettings() {
-        MvHandlerSettings settings  = new MvHandlerSettings();
-        Properties props = ydb.getConfig().getProperties();
-        String v;
-
-        v = props.getProperty(App.CONF_DEF_CDC_THREADS, String.valueOf(settings.getCdcReaderThreads()));
-        settings.setCdcReaderThreads(Integer.parseInt(v));
-
-        v = props.getProperty(App.CONF_DEF_APPLY_THREADS, String.valueOf(settings.getApplyThreads()));
-        settings.setApplyThreads(Integer.parseInt(v));
-
-        v = props.getProperty(App.CONF_DEF_APPLY_QUEUE, String.valueOf(settings.getApplyQueueSize()));
-        settings.setApplyQueueSize(Integer.parseInt(v));
-
-        v = props.getProperty(App.CONF_DEF_BATCH_SELECT, String.valueOf(settings.getSelectBatchSize()));
-        settings.setSelectBatchSize(Integer.parseInt(v));
-
-        v = props.getProperty(App.CONF_DEF_BATCH_UPSERT, String.valueOf(settings.getUpsertBatchSize()));
-        settings.setUpsertBatchSize(Integer.parseInt(v));
-
-        setDefaultSettings(settings);
-    }
-
     private List<String> parseActiveHandlerNames() {
-        String v = ydb.getConfig().getProperties().getProperty(App.CONF_HANDLERS);
+        String v = ydb.getConfig().getProperties().getProperty(MvConfig.CONF_HANDLERS);
         if (v==null) {
             return Collections.emptyList();
         }

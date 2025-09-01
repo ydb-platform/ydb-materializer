@@ -3,7 +3,6 @@ package tech.ydb.mv.integration;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -15,12 +14,11 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
-import tech.ydb.mv.App;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.format.MvSqlPrinter;
-import tech.ydb.mv.model.MvIssue;
 import tech.ydb.query.QuerySession;
 
 /**
@@ -128,8 +126,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
-        props.setProperty(App.CONF_INPUT_MODE, App.Input.TABLE.name());
-        props.setProperty(App.CONF_INPUT_TABLE, "test1/statements");
+        props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
+        props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);

@@ -7,7 +7,7 @@ import java.util.Properties;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
-import tech.ydb.mv.App;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvContext;
 
@@ -16,20 +16,20 @@ import tech.ydb.mv.model.MvContext;
  *
  * @author zinal
  */
-public class MvConfigReader {
+public class MvConfigReader extends MvConfig {
 
     public static MvContext readContext(YdbConnector ydb, Properties props) {
-        String mode = props.getProperty(App.CONF_INPUT_MODE, App.Input.FILE.name());
-        switch (App.parseInput(mode)) {
+        String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
+        switch (MvConfig.parseInput(mode)) {
             case FILE -> { return readFile(ydb, props); }
             case TABLE -> { return readTable(ydb, props); }
         }
         throw new IllegalArgumentException("Illegal value [" + mode + "] for "
-                + "property " + App.CONF_INPUT_MODE);
+                + "property " + MvConfig.CONF_INPUT_MODE);
     }
 
     private static MvContext readFile(YdbConnector ydb, Properties props) {
-        String fname = props.getProperty(App.CONF_INPUT_FILE, App.DEF_STMT_FILE);
+        String fname = props.getProperty(CONF_INPUT_FILE, DEF_STMT_FILE);
         try (FileInputStream fis = new FileInputStream(fname)) {
             return new MvSqlParser(fis, StandardCharsets.UTF_8).fill();
         } catch(IOException ix) {
@@ -38,7 +38,7 @@ public class MvConfigReader {
     }
 
     private static MvContext readTable(YdbConnector ydb, Properties props) {
-        String tabname = props.getProperty(App.CONF_INPUT_TABLE, App.DEF_STMT_TABLE);
+        String tabname = props.getProperty(CONF_INPUT_TABLE, DEF_STMT_TABLE);
         String sql = readStatements(ydb, tabname);
         return new MvSqlParser(sql).fill();
     }

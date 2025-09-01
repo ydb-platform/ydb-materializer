@@ -12,7 +12,7 @@ import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.App;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvCommitHandler;
 import tech.ydb.mv.model.MvHandler;
@@ -47,7 +47,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         this.previous = new AtomicReference<>(predecessor);
         this.next = new AtomicReference<>();
         this.retryCtx = ydb.getQueryRetryCtx();
-        this.upsertSql = buildSql(ydb.getProperty(App.CONF_SCAN_TABLE, App.DEF_SCAN_TABLE));
+        this.upsertSql = buildSql(ydb.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE));
         initPredecessor(predecessor);
     }
 

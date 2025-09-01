@@ -30,11 +30,14 @@
     TABLE       read input statements from database table
 -->
 <entry key="job.input.mode">FILE</entry>
+<!-- Path to file, in case FILE mode is chosen -->
 <entry key="job.input.file">example-job1.sql</entry>
 <!-- TABLE
 <entry key="job.input.table">mv/statements</entry>
 -->
 
+<!-- Path to scan feeder position table -->
+<entry key="job.scan.table">mv/scans_state</entry>
 <!-- Path to coordination service node -->
 <entry key="job.coordination.path">mv/coordination</entry>
 <!-- Comma-separated list of handler names to be activated on RUN action -->
