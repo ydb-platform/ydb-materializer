@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -34,6 +35,28 @@ public class MvJoinSource implements MvSqlPosHolder {
             return null;
         }
         return input.getChangefeedInfo();
+    }
+
+    /**
+     * Collect all columns used in join conditions for this source.
+     *
+     * @return List of right-part columns used in join conditions.
+     */
+    public List<String> collectRightJoinColumns() {
+        List<String> joinColumns = new ArrayList<>();
+        for (MvJoinCondition cond : conditions) {
+            // Check if this condition references the current source and collect the column
+            if (tableAlias.equals(cond.getFirstAlias()) && cond.getFirstColumn() != null) {
+                if (!joinColumns.contains(cond.getFirstColumn())) {
+                    joinColumns.add(cond.getFirstColumn());
+                }
+            } else if (tableAlias.equals(cond.getSecondAlias()) && cond.getSecondColumn() != null) {
+                if (!joinColumns.contains(cond.getSecondColumn())) {
+                    joinColumns.add(cond.getSecondColumn());
+                }
+            }
+        }
+        return joinColumns;
     }
 
     public String getTableName() {

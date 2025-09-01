@@ -119,75 +119,22 @@ public class MvValidator {
             if (src.getMode() == null || src.getMode() == MvJoinMode.MAIN) {
                 continue;
             }
-
             // Skip if table info is not available
             if (!src.isTableKnown() || src.getTableInfo() == null) {
                 continue;
             }
-
             // Collect all columns used in join conditions for this source
-            List<String> joinColumns = new java.util.ArrayList<>();
-            for (MvJoinCondition cond : src.getConditions()) {
-                // Check if this condition references the current source and collect the column
-                if (src.getTableAlias().equals(cond.getFirstAlias()) && cond.getFirstColumn() != null) {
-                    if (!joinColumns.contains(cond.getFirstColumn())) {
-                        joinColumns.add(cond.getFirstColumn());
-                    }
-                } else if (src.getTableAlias().equals(cond.getSecondAlias()) && cond.getSecondColumn() != null) {
-                    if (!joinColumns.contains(cond.getSecondColumn())) {
-                        joinColumns.add(cond.getSecondColumn());
-                    }
-                }
-            }
-
-            // If no join columns found, skip
+            List<String> joinColumns = src.collectRightJoinColumns();
             if (joinColumns.isEmpty()) {
                 continue;
             }
-
-            // Check if there's an index covering all join columns
-            boolean indexFound = false;
-            MvTableInfo tableInfo = src.getTableInfo();
-
-            // Check primary key first
-            if (indexCoversColumns(tableInfo.getKey(), joinColumns)) {
-                indexFound = true;
-            }
-
-            // Check secondary indexes
-            if (!indexFound) {
-                for (MvTableInfo.Index index : tableInfo.getIndexes().values()) {
-                    if (indexCoversColumns(index.getColumns(), joinColumns)) {
-                        indexFound = true;
-                        break;
-                    }
-                }
-            }
-
+            // Find the proper index
+            String indexName = src.getTableInfo().findProperIndex(joinColumns);
             // If no covering index found, add warning
-            if (!indexFound) {
+            if (indexName==null) {
                 context.addIssue(new MvIssue.MissingJoinIndex(mt, src, joinColumns));
             }
         }
-    }
-
-    /**
-     * Check if an index covers all required columns. An index covers the
-     * columns if all required columns appear as a prefix of the index columns.
-     */
-    private boolean indexCoversColumns(List<String> indexColumns, List<String> requiredColumns) {
-        if (indexColumns.size() < requiredColumns.size()) {
-            return false;
-        }
-
-        // Check if all required columns appear as a prefix in the index
-        for (int i = 0; i < requiredColumns.size(); i++) {
-            if (i >= indexColumns.size() || !requiredColumns.get(i).equals(indexColumns.get(i))) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private void checkChangefeeds() {

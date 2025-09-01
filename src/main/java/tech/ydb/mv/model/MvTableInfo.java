@@ -17,6 +17,8 @@ import tech.ydb.table.values.Type;
  */
 public class MvTableInfo {
 
+    public static final String PK_INDEX = "PRIMARY KEY";
+
     private final String name;
     private final String path;
     private final Map<String, Type> columns;
@@ -109,6 +111,42 @@ public class MvTableInfo {
 
     public Map<String, Changefeed> getChangefeeds() {
         return changefeeds;
+    }
+
+    /**
+     * Find the index which covers the specified columns as a key prefix.
+     * @param columns The columns to be handled
+     * @return index name, if one exists, or null otherwise
+     */
+    public String findProperIndex(List<String> columns) {
+        if (indexCoversColumns(key, columns)) {
+            return PK_INDEX;
+        }
+        for (Map.Entry<String, Index> me : indexes.entrySet()) {
+            if (indexCoversColumns(me.getValue().getColumns(), columns)) {
+                return me.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if an index covers all required columns. An index covers the
+     * columns if all required columns appear as a prefix of the index columns.
+     */
+    private static boolean indexCoversColumns(List<String> indexColumns, List<String> requiredColumns) {
+        if (indexColumns.size() < requiredColumns.size()) {
+            return false;
+        }
+
+        // Check if all required columns appear as a prefix in the index
+        for (int i = 0; i < requiredColumns.size(); i++) {
+            if (i >= indexColumns.size() || !requiredColumns.get(i).equals(indexColumns.get(i))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static Builder newBuilder(String name) {
