@@ -1,12 +1,16 @@
 package tech.ydb.mv.parser;
 
+import java.util.List;
+
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
+import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvTableInfo;
 
 /**
  * MV configuration validation logic.
@@ -22,7 +26,7 @@ public class MvValidator {
     }
 
     public boolean validate() {
-        if (! context.isValid()) {
+        if (!context.isValid()) {
             return false;
         }
         doValidate();
@@ -58,7 +62,10 @@ public class MvValidator {
     }
 
     private void checkTargets() {
-        context.getTargets().values().forEach(t -> checkTarget(t));
+        for (MvTarget mt : context.getTargets().values()) {
+            checkTarget(mt);
+            checkJoinIndexes(mt);
+        }
     }
 
     private void checkTarget(MvTarget mt) {
@@ -76,15 +83,15 @@ public class MvValidator {
         // Validate that the target is used in no more than one handler.
         MvHandler firstHandler = null;
         for (MvHandler mh : context.getHandlers().values()) {
-            if (mh.getTarget(mt.getName())!=null) {
-                if (firstHandler==null) {
+            if (mh.getTarget(mt.getName()) != null) {
+                if (firstHandler == null) {
                     firstHandler = mh;
                 } else {
                     context.addIssue(new MvIssue.TargetMultipleHandlers(mt, firstHandler, mh));
                 }
             }
         }
-        if (firstHandler==null) {
+        if (firstHandler == null) {
             // Unused/unreferenced target, so issue a warning
             context.addIssue(new MvIssue.UselessTarget(mt));
         }
@@ -93,9 +100,9 @@ public class MvValidator {
 
     private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
         for (MvJoinCondition cond : src.getConditions()) {
-            if ((cond.getFirstAlias()== null && cond.getFirstLiteral() == null)
-                    || (cond.getSecondAlias()== null && cond.getSecondLiteral() == null)
-                    || (cond.getFirstAlias()== null && cond.getSecondAlias()== null)) {
+            if ((cond.getFirstAlias() == null && cond.getFirstLiteral() == null)
+                    || (cond.getSecondAlias() == null && cond.getSecondLiteral() == null)
+                    || (cond.getFirstAlias() == null && cond.getSecondAlias() == null)) {
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
             } else if (!src.getTableAlias().equals(cond.getFirstAlias())
                     && !src.getTableAlias().equals(cond.getSecondAlias())) {
@@ -105,6 +112,84 @@ public class MvValidator {
         }
     }
 
+    private void checkJoinIndexes(MvTarget mt) {
+        // Check each join source for missing indexes on join columns
+        for (MvJoinSource src : mt.getSources()) {
+            // Skip MAIN source - we only check right parts of joins (INNER, LEFT)
+            if (src.getMode() == null || src.getMode() == MvJoinMode.MAIN) {
+                continue;
+            }
+
+            // Skip if table info is not available
+            if (!src.isTableKnown() || src.getTableInfo() == null) {
+                continue;
+            }
+
+            // Collect all columns used in join conditions for this source
+            List<String> joinColumns = new java.util.ArrayList<>();
+            for (MvJoinCondition cond : src.getConditions()) {
+                // Check if this condition references the current source and collect the column
+                if (src.getTableAlias().equals(cond.getFirstAlias()) && cond.getFirstColumn() != null) {
+                    if (!joinColumns.contains(cond.getFirstColumn())) {
+                        joinColumns.add(cond.getFirstColumn());
+                    }
+                } else if (src.getTableAlias().equals(cond.getSecondAlias()) && cond.getSecondColumn() != null) {
+                    if (!joinColumns.contains(cond.getSecondColumn())) {
+                        joinColumns.add(cond.getSecondColumn());
+                    }
+                }
+            }
+
+            // If no join columns found, skip
+            if (joinColumns.isEmpty()) {
+                continue;
+            }
+
+            // Check if there's an index covering all join columns
+            boolean indexFound = false;
+            MvTableInfo tableInfo = src.getTableInfo();
+
+            // Check primary key first
+            if (indexCoversColumns(tableInfo.getKey(), joinColumns)) {
+                indexFound = true;
+            }
+
+            // Check secondary indexes
+            if (!indexFound) {
+                for (MvTableInfo.Index index : tableInfo.getIndexes().values()) {
+                    if (indexCoversColumns(index.getColumns(), joinColumns)) {
+                        indexFound = true;
+                        break;
+                    }
+                }
+            }
+
+            // If no covering index found, add warning
+            if (!indexFound) {
+                context.addIssue(new MvIssue.MissingJoinIndex(mt, src, joinColumns));
+            }
+        }
+    }
+
+    /**
+     * Check if an index covers all required columns. An index covers the
+     * columns if all required columns appear as a prefix of the index columns.
+     */
+    private boolean indexCoversColumns(List<String> indexColumns, List<String> requiredColumns) {
+        if (indexColumns.size() < requiredColumns.size()) {
+            return false;
+        }
+
+        // Check if all required columns appear as a prefix in the index
+        for (int i = 0; i < requiredColumns.size(); i++) {
+            if (i >= indexColumns.size() || !requiredColumns.get(i).equals(indexColumns.get(i))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void checkChangefeeds() {
         context.getHandlers().values().stream()
                 .flatMap(h -> h.getInputs().values().stream())
@@ -112,10 +197,10 @@ public class MvValidator {
     }
 
     private void checkChangefeed(MvInput i) {
-        if (i.getTableInfo()==null) {
+        if (i.getTableInfo() == null) {
             context.addIssue(new MvIssue.UnknownInputTable(i));
         } else {
-            if (i.getChangefeed()==null
+            if (i.getChangefeed() == null
                     || i.getTableInfo().getChangefeeds().get(i.getChangefeed()) == null) {
                 context.addIssue(new MvIssue.UnknownChangefeed(i));
             }
@@ -135,7 +220,7 @@ public class MvValidator {
 
     private void checkTargetVsInputs(MvHandler mh, MvTarget mt) {
         for (var joinSource : mt.getSources()) {
-            if (mh.getInput(joinSource.getTableName())==null) {
+            if (mh.getInput(joinSource.getTableName()) == null) {
                 context.addIssue(new MvIssue.MissingInput(mt, joinSource));
             }
         }
@@ -145,7 +230,7 @@ public class MvValidator {
         boolean found = false;
         for (var mt : mh.getTargets().values()) {
             for (var s : mt.getSources()) {
-                if ( i.getTableName().equals(s.getTableName()) ) {
+                if (i.getTableName().equals(s.getTableName())) {
                     found = true;
                     break;
                 }

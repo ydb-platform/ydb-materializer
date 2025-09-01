@@ -14,7 +14,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvKeysTransform extends MvKeysAbstract implements MvApplyAction {
+public class MvKeysTransform extends MvKeysAbstract {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysTransform.class);
 
     private final boolean keysTransform;

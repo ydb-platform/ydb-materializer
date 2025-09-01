@@ -1,5 +1,8 @@
 package tech.ydb.mv.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Logical check issues.
  * @author zinal
@@ -361,6 +364,28 @@ public interface MvIssue extends MvSqlPosHolder {
             return "Target `" + target.getName()
                     + "` at " + sqlPos
                     + "` is not used in any handler.";
+        }
+    }
+
+    public static class MissingJoinIndex extends Warning {
+        private final MvTarget target;
+        private final MvJoinSource source;
+        private final List<String> columns;
+
+        public MissingJoinIndex(MvTarget target, MvJoinSource source, List<String> columns) {
+            super(source.getSqlPos());
+            this.target = target;
+            this.source = source;
+            this.columns = new java.util.ArrayList<>(columns);
+        }
+
+        @Override
+        public String getMessage() {
+            return "Missing index on columns " + columns
+                    + " for table `" + source.getTableName()
+                    + "` used as alias `" + source.getTableAlias()
+                    + "` in target `" + target.getName()
+                    + "` at " + sqlPos;
         }
     }
 

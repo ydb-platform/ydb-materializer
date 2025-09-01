@@ -17,7 +17,7 @@ import tech.ydb.mv.util.YdbConv;
  *
  * @author zinal
  */
-public class MvKeysGrab extends MvKeysAbstract implements MvApplyAction {
+public class MvKeysGrab extends MvKeysAbstract {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysGrab.class);
 
     private final String sqlSelect;
