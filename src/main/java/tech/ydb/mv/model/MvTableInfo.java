@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,18 +136,16 @@ public class MvTableInfo {
      * columns if all required columns appear as a prefix of the index columns.
      */
     private static boolean indexCoversColumns(List<String> indexColumns, List<String> requiredColumns) {
-        if (indexColumns.size() < requiredColumns.size()) {
+        HashSet<String> required = new HashSet<>(requiredColumns);
+        if (indexColumns.size() < required.size()) {
             return false;
         }
-
-        // Check if all required columns appear as a prefix in the index
-        for (int i = 0; i < requiredColumns.size(); i++) {
-            if (i >= indexColumns.size() || !requiredColumns.get(i).equals(indexColumns.get(i))) {
-                return false;
+        for (String indexColumn : indexColumns) {
+            if (! required.remove(indexColumn)) {
+                break;
             }
         }
-
-        return true;
+        return required.isEmpty();
     }
 
     public static Builder newBuilder(String name) {

@@ -109,6 +109,7 @@ WHERE COMPUTE ON main, sub2
                 .addColumn("c7", PrimitiveType.Text)
                 .addColumn("c9", PrimitiveType.Text)
                 .addKey("c3")
+                .addIndex("ix_c4_c3", "c4", "c3")
                 .build();
     }
 

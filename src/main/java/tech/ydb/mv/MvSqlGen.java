@@ -178,8 +178,7 @@ public class MvSqlGen implements AutoCloseable {
                     genInputKeys(sb);
                 }
             } else {
-                // Add join type
-                genJoinSource(sb, source);
+                genJoinType(sb, source);
             }
             // tableName AS tableAlias
             genJoinTable(sb, source);
@@ -235,7 +234,7 @@ public class MvSqlGen implements AutoCloseable {
         sb.append(EOL);
     }
 
-    private void genJoinSource(StringBuilder sb, MvJoinSource source) {
+    private void genJoinType(StringBuilder sb, MvJoinSource source) {
         // Add join type
         switch (source.getMode()) {
             case INNER ->
@@ -247,9 +246,31 @@ public class MvSqlGen implements AutoCloseable {
         }
     }
 
+    /**
+     * Add table name and alias.
+     */
     private void genJoinTable(StringBuilder sb, MvJoinSource source) {
-        // Add table name and alias
         safeId(sb, source.getTableName());
+        switch (source.getMode()) {
+            case INNER:
+            case LEFT: {
+                String ixName = source.getTableInfo().findProperIndex(
+                        source.collectRightJoinColumns());
+                if (ixName != null) {
+                    if (ixName.equals(MvTableInfo.PK_INDEX)) {
+                        sb.append(" VIEW PRIMARY KEY");
+                    } else {
+                        sb.append(" VIEW ");
+                        safeId(sb, ixName);
+                    }
+                }
+                break;
+            }
+            case MAIN: {
+                sb.append(" VIEW PRIMARY KEY");
+                break;
+            }
+        }
         sb.append(" AS ");
         safeId(sb, source.getTableAlias());
         sb.append(EOL);

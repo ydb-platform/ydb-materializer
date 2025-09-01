@@ -44,7 +44,8 @@ CREATE TABLE `test1/main_table` (
     c3 Decimal(22,9),
     c20 Text,
     PRIMARY KEY(id),
-    INDEX ix_c1 GLOBAL ON (c1)
+    INDEX ix_c1_c2 GLOBAL ON (c1,c2),
+    INDEX ix_c3 GLOBAL ON (c3)
 );
 
 CREATE TABLE `test1/sub_table1` (
