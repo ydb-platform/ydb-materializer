@@ -58,7 +58,7 @@ public class MvApplyManager {
                 continue;
             }
             // Add sync action for the current target
-            MvJoinSource src = target.getSources().get(0);
+            MvJoinSource src = target.getTopMostSource();
             MvTableInfo.Changefeed cf = src.getChangefeedInfo();
             if (cf==null) {
                 LOG.warn("Missing changefeed for main input table {}, skipping for target {} in handler {}.",

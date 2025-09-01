@@ -35,10 +35,11 @@ class MvScanCommitHandler implements MvCommitHandler {
     private final AtomicReference<MvScanCommitHandler> previous;
     private final AtomicReference<MvScanCommitHandler> next;
     private final SessionRetryContext retryCtx;
-    private final String upsertSql;
+    private final String sqlText;
+    private final boolean terminal;
 
     public MvScanCommitHandler(YdbConnector ydb, MvHandler handler, MvKey key,
-            int initialCount, MvScanCommitHandler predecessor) {
+            int initialCount, MvScanCommitHandler predecessor, boolean terminal) {
         this.instance = COUNTER.incrementAndGet();
         this.handler = handler;
         this.key = key;
@@ -47,7 +48,9 @@ class MvScanCommitHandler implements MvCommitHandler {
         this.previous = new AtomicReference<>(predecessor);
         this.next = new AtomicReference<>();
         this.retryCtx = ydb.getQueryRetryCtx();
-        this.upsertSql = buildSql(ydb.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE));
+        this.sqlText = buildSql(terminal,
+                ydb.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE));
+        this.terminal = terminal;
         initPredecessor(predecessor);
     }
 
@@ -82,7 +85,13 @@ class MvScanCommitHandler implements MvCommitHandler {
         }
     }
 
-    private static String buildSql(String workTableName) {
+    private static String buildSql(boolean terminal, String workTableName) {
+        if (terminal) {
+            return "DECLARE $handler_name AS Text; "
+                    + "DECLARE $table_name AS Text; "
+                    + "DELETE FROM `" + workTableName + "` "
+                    + "WHERE handler_name=$handler_name AND table_name=$table_name;";
+        }
         return "DECLARE $handler_name AS Text; "
                 + "DECLARE $table_name AS Text; "
                 + "DECLARE $key_position AS JsonDocument; "
@@ -92,12 +101,20 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     private CompletableFuture<Status> doApply(QuerySession qs) {
-        Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(handler.getName()),
-                "$table_name", PrimitiveValue.newText(key.getTableInfo().getName()),
-                "$key_position", PrimitiveValue.newText(jsonKey)
-        );
-        return qs.createQuery(upsertSql, TxMode.SERIALIZABLE_RW, params)
+        Params params;
+        if (terminal) {
+            params = Params.of(
+                    "$handler_name", PrimitiveValue.newText(handler.getName()),
+                    "$table_name", PrimitiveValue.newText(key.getTableInfo().getName())
+            );
+        } else {
+            params = Params.of(
+                    "$handler_name", PrimitiveValue.newText(handler.getName()),
+                    "$table_name", PrimitiveValue.newText(key.getTableInfo().getName()),
+                    "$key_position", PrimitiveValue.newText(jsonKey)
+            );
+        }
+        return qs.createQuery(sqlText, TxMode.SERIALIZABLE_RW, params)
                 .execute()
                 .thenApply(qi -> qi.getStatus());
     }

@@ -41,7 +41,7 @@ public class MvKeyPathGenerator {
             throw new IllegalArgumentException("Target is not valid for path generator");
         }
         this.originalTarget = target;
-        this.topMostSource = target.getSources().get(0);
+        this.topMostSource = target.getTopMostSource();
         this.topMostTable = this.topMostSource.getTableInfo();
         this.adjacencyMap = buildAdjacencyMap(target);
     }
@@ -330,13 +330,13 @@ public class MvKeyPathGenerator {
             }
         }
 
-        // Add columns for the target primary key (top-most source key)
-        MvJoinSource topmost = result.getSources().get(result.getSources().size() - 1);
+        // Add columns for the source primary key (target bottom-most table)
+        MvJoinSource targetBottom = result.getSources().get(result.getSources().size() - 1);
         for (String keyColumn : topMostTable.getKey()) {
             MvColumn column = new MvColumn(keyColumn);
-            column.setSourceAlias(topmost.getTableAlias());
+            column.setSourceAlias(targetBottom.getTableAlias());
             column.setSourceColumn(keyColumn);
-            column.setSourceRef(topmost);
+            column.setSourceRef(targetBottom);
             column.setType(topMostTable.getColumns().get(keyColumn));
             result.getColumns().add(column);
         }

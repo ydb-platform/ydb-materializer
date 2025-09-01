@@ -55,7 +55,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String getMainTable() {
-        return target.getSources().get(0).getTableInfo().getName();
+        return target.getTopMostSource().getTableInfo().getName();
     }
 
     public String makeCreateView() {
@@ -221,7 +221,7 @@ public class MvSqlGen implements AutoCloseable {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
         }
-        var mainTable = target.getSources().get(0);
+        var mainTable = target.getTopMostSource();
         var primaryKey = mainTable.getTableInfo().getKey();
         String statement = "    ON ";
         for (String pk : primaryKey) {
@@ -330,7 +330,7 @@ public class MvSqlGen implements AutoCloseable {
         if (target==null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException();
         }
-        return toKeyType(target.getSources().get(0).getTableInfo());
+        return toKeyType(target.getTopMostSource().getTableInfo());
     }
 
     public static StructType toKeyType(MvTableInfo ti) {

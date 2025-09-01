@@ -22,7 +22,7 @@ public class MvActionContext {
     public MvActionContext(MvJobContext base, MvApplyManager applyManager) {
         this.base = base;
         this.applyManager = applyManager;
-        this.queryClient = base.getConnector().getQueryClient();
+        this.queryClient = base.getYdb().getQueryClient();
         this.retryCtx = SessionRetryContext.create(this.queryClient)
                 .idempotent(true).build();
     }

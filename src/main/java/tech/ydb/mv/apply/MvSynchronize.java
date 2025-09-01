@@ -40,7 +40,7 @@ public class MvSynchronize extends MvActionBase implements MvApplyAction {
     public MvSynchronize(MvTarget target, MvActionContext context) {
         super(context);
         if (target==null || target.getSources().isEmpty()
-                || target.getSources().get(0).getChangefeedInfo()==null) {
+                || target.getTopMostSource().getChangefeedInfo()==null) {
             throw new IllegalArgumentException("Missing input");
         }
         this.targetTableName = target.getName();
@@ -50,7 +50,7 @@ public class MvSynchronize extends MvActionBase implements MvApplyAction {
             this.sqlDelete = sg.makePlainDelete();
             this.rowType = sg.toRowType();
         }
-        MvJoinSource src = target.getSources().get(0);
+        MvJoinSource src = target.getTopMostSource();
         LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
                 context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),

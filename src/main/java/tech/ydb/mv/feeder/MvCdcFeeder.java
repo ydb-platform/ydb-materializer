@@ -83,7 +83,7 @@ public class MvCdcFeeder {
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(handler.getConsumerNameAlways());
         for (MvInput mi : handler.getInputs().values()) {
-            String topicPath = context.getConnector()
+            String topicPath = context.getYdb()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             parsers.put(topicPath, new MvCdcParser(mi));
             builder.addTopic(TopicReadSettings.newBuilder()
@@ -94,7 +94,7 @@ public class MvCdcFeeder {
                 .setEventHandler(new MvCdcEventReader(this))
                 .setExecutor(executor)
                 .build();
-        return context.getConnector().getTopicClient().createAsyncReader(builder.build(), rehs);
+        return context.getYdb().getTopicClient().createAsyncReader(builder.build(), rehs);
     }
 
     private static class ConfigureThreads implements ThreadFactory {

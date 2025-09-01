@@ -32,7 +32,7 @@ public abstract class MvKeysAbstract extends MvActionBase implements MvApplyActi
         this.transformation = transformation;
         this.inputTableName = src.getTableName();
         this.inputTableAlias = src.getTableAlias();
-        this.keyInfo = target.getSources().get(0).getTableInfo().getKeyInfo();
+        this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         if (this.keyInfo.size() != this.transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());

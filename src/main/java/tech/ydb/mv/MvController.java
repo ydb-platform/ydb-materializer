@@ -64,7 +64,7 @@ public class MvController {
             return false;
         }
         context.start();
-        applyManager.refreshSelectors(context.getConnector().getTableClient());
+        applyManager.refreshSelectors(context.getYdb().getTableClient());
         applyManager.start();
         feeder.start();
         return true;

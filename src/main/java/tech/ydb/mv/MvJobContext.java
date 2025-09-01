@@ -37,7 +37,7 @@ public class MvJobContext {
         return metadata;
     }
 
-    public YdbConnector getConnector() {
+    public YdbConnector getYdb() {
         return service.getYdb();
     }
 

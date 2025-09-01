@@ -84,11 +84,11 @@ public class MvTarget implements MvSqlPosHolder {
         return null;
     }
 
-    public List<String> getInputKeyColumns() {
-        if (sources.isEmpty() || sources.get(0).getTableInfo()==null) {
-            throw new IllegalStateException();
+    public MvJoinSource getTopMostSource() {
+        if (sources.isEmpty()) {
+            throw new IllegalStateException("No join sources defined in target " + name);
         }
-        return sources.get(0).getTableInfo().getKey();
+        return sources.get(0);
     }
 
     public String getName() {
