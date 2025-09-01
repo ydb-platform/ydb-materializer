@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Properties;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.auth.StaticCredentials;
 import tech.ydb.core.grpc.BalancingSettings;
 import tech.ydb.core.grpc.GrpcTransport;
@@ -15,8 +16,10 @@ import tech.ydb.core.grpc.GrpcTransportBuilder;
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
+import tech.ydb.query.tools.QueryReader;
 import tech.ydb.scheme.SchemeClient;
 import tech.ydb.table.TableClient;
+import tech.ydb.table.query.Params;
 import tech.ydb.topic.TopicClient;
 
 /**
@@ -177,6 +180,26 @@ public class YdbConnector implements AutoCloseable {
     public QuerySession createQuerySession() {
         return queryClient.createSession(Duration.ofSeconds(60))
                 .join().getValue();
+    }
+
+    public QueryReader sqlReadWrite(String query, Params params) {
+        return queryRetryCtx.supplyResult(
+                qs -> QueryReader.readFrom(
+                        qs.createQuery(query, TxMode.SERIALIZABLE_RW, params)
+                )).join().getValue();
+    }
+
+    public QueryReader sqlRead(String query, Params params) {
+        return queryRetryCtx.supplyResult(
+                qs -> QueryReader.readFrom(
+                        qs.createQuery(query, TxMode.SNAPSHOT_RO, params)
+                )).join().getValue();
+    }
+
+    public void sqlWrite(String query, Params params) {
+        queryRetryCtx.supplyResult(
+                qs -> qs.createQuery(query, TxMode.SERIALIZABLE_RW, params).execute()
+        ).join().getStatus().expectSuccess();
     }
 
     @Override

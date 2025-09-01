@@ -38,6 +38,11 @@ public class MvConfig {
     public static final String CONF_SCAN_TABLE = "job.scan.table";
 
     /**
+     * Scan rate limiter, rows per second.
+     */
+    public static final String CONF_SCAN_RATE = "job.scan.rate";
+
+    /**
      * Path to coordination service node.
      */
     public static final String CONF_COORD_PATH = "job.coordination.path";

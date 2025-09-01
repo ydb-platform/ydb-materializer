@@ -33,6 +33,15 @@ public class MvKey extends MvKeyPrefix {
         super(info, values);
     }
 
+    public boolean isEmpty() {
+        for (Comparable c : values) {
+            if (c!=null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static Comparable[] buildValue(YdbStruct ys, MvKeyInfo info) {
         Comparable[] output = new Comparable[info.size()];
         for (int pos = 0; pos < info.size(); ++pos) {

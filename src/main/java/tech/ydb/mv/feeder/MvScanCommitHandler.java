@@ -49,7 +49,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         }
     }
 
-    private void resetNext() {
+    private MvScanCommitHandler resetNext() {
         MvScanCommitHandler n = next.getAndSet(null);
         if (n!=null) {
             MvScanCommitHandler p = n.previous.getAndSet(null);
@@ -58,10 +58,23 @@ class MvScanCommitHandler implements MvCommitHandler {
                         instance, p.instance);
             }
         }
+        return n;
+    }
+
+    private void resetNextChain() {
+        MvScanCommitHandler n = this;
+        while (n!=null) {
+            n = n.resetNext();
+        }
     }
 
     @Override
     public void apply(int count) {
+        if (! context.isRunning()) {
+            // no commits for an already stopped scan feeder
+            resetNextChain();
+            return;
+        }
         counter.addAndGet(-1 * count);
         if (isReady()) {
             try {

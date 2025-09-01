@@ -1,6 +1,9 @@
 package tech.ydb.mv.feeder;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import tech.ydb.query.tools.SessionRetryContext;
+import tech.ydb.table.values.PrimitiveValue;
+import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvSqlGen;
@@ -8,8 +11,6 @@ import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.Value;
 
 /**
  *
@@ -20,6 +21,8 @@ public class MvScanContext {
     private final MvHandler handler;
     private final MvTarget target;
     private final SessionRetryContext retryCtx;
+    private final AtomicBoolean shouldRun;
+    private final Thread thread;
 
     private final String sqlPosUpsert;
     private final String sqlPosDelete;
@@ -30,11 +33,13 @@ public class MvScanContext {
     private final Value<?> handlerName;
     private final Value<?> targetName;
 
-    public MvScanContext(MvHandler handler, MvTarget target, YdbConnector ydb) {
+    public MvScanContext(MvHandler handler, MvTarget target,
+            YdbConnector ydb, Thread thread, String controlTable) {
         this.handler = handler;
         this.target = target;
         this.retryCtx = ydb.getQueryRetryCtx();
-        String controlTable = ydb.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+        this.shouldRun = new AtomicBoolean(true);
+        this.thread = thread;
         this.sqlPosUpsert = makePosUpsert(controlTable);
         this.sqlPosDelete = makePosDelete(controlTable);
         this.sqlPosSelect = makePosSelect(controlTable);
@@ -42,6 +47,14 @@ public class MvScanContext {
         this.sqlSelectNext = makeSelectNext(target);
         this.handlerName = PrimitiveValue.newText(handler.getName());
         this.targetName = PrimitiveValue.newText(target.getName());
+    }
+
+    public boolean isRunning() {
+        return shouldRun.get();
+    }
+
+    public void stop() {
+        shouldRun.set(false);
     }
 
     public MvHandler getHandler() {
