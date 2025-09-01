@@ -8,14 +8,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.query.QuerySession;
-import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvCommitHandler;
-import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvKey;
 
 /**
@@ -28,28 +24,21 @@ class MvScanCommitHandler implements MvCommitHandler {
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
     private final long instance;
-    private final MvHandler handler;
-    private final MvKey key;
+    private final MvScanContext context;
     private final String jsonKey;
     private final AtomicInteger counter;
     private final AtomicReference<MvScanCommitHandler> previous;
     private final AtomicReference<MvScanCommitHandler> next;
-    private final SessionRetryContext retryCtx;
-    private final String sqlText;
     private final boolean terminal;
 
-    public MvScanCommitHandler(YdbConnector ydb, MvHandler handler, MvKey key,
+    public MvScanCommitHandler(MvScanContext context, MvKey key,
             int initialCount, MvScanCommitHandler predecessor, boolean terminal) {
         this.instance = COUNTER.incrementAndGet();
-        this.handler = handler;
-        this.key = key;
-        this.jsonKey = key.convertKeyToJson();
+        this.context = context;
+        this.jsonKey = (key==null) ? "" : key.convertKeyToJson();
         this.counter = new AtomicInteger(initialCount);
         this.previous = new AtomicReference<>(predecessor);
         this.next = new AtomicReference<>();
-        this.retryCtx = ydb.getQueryRetryCtx();
-        this.sqlText = buildSql(terminal,
-                ydb.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE));
         this.terminal = terminal;
         initPredecessor(predecessor);
     }
@@ -76,7 +65,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         counter.addAndGet(-1 * count);
         if (isReady()) {
             try {
-                retryCtx.supplyStatus(qs -> doApply(qs))
+                context.getRetryCtx().supplyStatus(qs -> doApply(qs))
                         .join().expectSuccess();
             } catch(Exception ex) {
                 LOG.warn("Failed to commit the offset", ex);
@@ -85,32 +74,20 @@ class MvScanCommitHandler implements MvCommitHandler {
         }
     }
 
-    private static String buildSql(boolean terminal, String workTableName) {
-        if (terminal) {
-            return "DECLARE $handler_name AS Text; "
-                    + "DECLARE $table_name AS Text; "
-                    + "DELETE FROM `" + workTableName + "` "
-                    + "WHERE handler_name=$handler_name AND table_name=$table_name;";
-        }
-        return "DECLARE $handler_name AS Text; "
-                + "DECLARE $table_name AS Text; "
-                + "DECLARE $key_position AS JsonDocument; "
-                + "UPSERT INTO `" + workTableName + "` "
-                + "(handler_name, table_name, updated_at, key_position) "
-                + "VALUES ($handler_name, $table_name, CurrentUtcTimestamp(), $key_position);";
-    }
-
     private CompletableFuture<Status> doApply(QuerySession qs) {
         Params params;
+        String sqlText;
         if (terminal) {
+            sqlText = context.getSqlPosDelete();
             params = Params.of(
-                    "$handler_name", PrimitiveValue.newText(handler.getName()),
-                    "$table_name", PrimitiveValue.newText(key.getTableInfo().getName())
+                    "$handler_name", context.getHandlerName(),
+                    "$table_name", context.getTargetName()
             );
         } else {
+            sqlText = context.getSqlPosUpsert();
             params = Params.of(
-                    "$handler_name", PrimitiveValue.newText(handler.getName()),
-                    "$table_name", PrimitiveValue.newText(key.getTableInfo().getName()),
+                    "$handler_name", context.getHandlerName(),
+                    "$table_name", context.getTargetName(),
                     "$key_position", PrimitiveValue.newText(jsonKey)
             );
         }

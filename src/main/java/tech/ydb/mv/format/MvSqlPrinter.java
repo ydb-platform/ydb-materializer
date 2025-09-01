@@ -4,6 +4,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.apply.MvKeyPathGenerator;
+import tech.ydb.mv.feeder.MvScanContext;
 
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvJoinSource;
@@ -51,6 +52,12 @@ public class MvSqlPrinter {
         pw.println("  ** Delete statement:");
         pw.println();
         pw.println(sg.makePlainDelete());
+        pw.println("  ** Topmost scan start:");
+        pw.println();
+        pw.println(MvScanContext.makeSelectStart(mt));
+        pw.println("  ** Topmost scan next:");
+        pw.println();
+        pw.println(MvScanContext.makeSelectNext(mt));
         MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);

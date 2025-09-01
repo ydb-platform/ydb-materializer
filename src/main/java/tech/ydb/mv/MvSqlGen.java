@@ -29,8 +29,8 @@ public class MvSqlGen implements AutoCloseable {
     public static final String SYS_INPUT = "sys_input";
     public static final String SYS_INPUT_VAR = "$sys_input";
 
-    private static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
-    private static final String EOL = System.getProperty("line.separator");
+    public static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
+    public static final String EOL = System.getProperty("line.separator");
 
     private final MvTarget target;
 
