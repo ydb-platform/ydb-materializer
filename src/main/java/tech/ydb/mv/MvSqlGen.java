@@ -76,17 +76,6 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
-    @Deprecated
-    public String makeUpsertSelect() {
-        final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyFields(sb);
-        sb.append("UPSERT INTO ");
-        safeId(sb, target.getName()).append(EOL);
-        genFullSelect(sb, true);
-        sb.append(";").append(EOL);
-        return sb.toString();
-    }
-
     public String makePlainUpsert() {
         final StringBuilder sb = new StringBuilder();
         genDeclareTargetFields(sb);
