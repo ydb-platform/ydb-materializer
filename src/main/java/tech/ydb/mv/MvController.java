@@ -1,7 +1,10 @@
 package tech.ydb.mv;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
+import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 
@@ -16,12 +19,14 @@ public class MvController {
 
     private final MvJobContext context;
     private final MvApplyManager applyManager;
-    private final MvCdcFeeder feeder;
+    private final MvCdcFeeder cdcFeeder;
+    private final AtomicReference<MvScanFeeder> scanFeeder;
 
     public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
-        this.feeder = new MvCdcFeeder(this.context, this.applyManager);
+        this.cdcFeeder = new MvCdcFeeder(this.context, this.applyManager);
+        this.scanFeeder = new AtomicReference<>();
     }
 
     @Override
@@ -41,8 +46,12 @@ public class MvController {
         return applyManager;
     }
 
-    public MvCdcFeeder getFeeder() {
-        return feeder;
+    public MvCdcFeeder getCdcFeeder() {
+        return cdcFeeder;
+    }
+
+    public MvScanFeeder getScanFeeder() {
+        return scanFeeder.get();
     }
 
     public boolean isRunning() {
@@ -66,7 +75,7 @@ public class MvController {
         context.start();
         applyManager.refreshSelectors(context.getYdb().getTableClient());
         applyManager.start();
-        feeder.start();
+        cdcFeeder.start();
         return true;
     }
 
@@ -78,7 +87,7 @@ public class MvController {
         LOG.info("Stopping the controller {}", getName());
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
-        feeder.stop();
+        cdcFeeder.stop();
         context.getService().getCoordinator().release(getName());
         return true;
     }

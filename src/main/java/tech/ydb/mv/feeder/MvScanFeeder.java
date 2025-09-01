@@ -131,22 +131,36 @@ public class MvScanFeeder {
     }
 
     private int stepScan(MvScanContext ctx) {
-        if (ctx==null) {
-            return 0;
+        ResultSetReader rsr = null;
+        MvKey key = null;
+        if (ctx != null) {
+            String sql;
+            Params params;
+            key = ctx.getCurrentKey();
+            if (key==null || key.isEmpty()) {
+                sql = ctx.getSqlSelectStart();
+                params = Params.of("$limit", PrimitiveValue.newUint64(1000L));
+            } else {
+                sql = ctx.getSqlSelectNext();
+                params = Params.create();
+                params.put("$limit", PrimitiveValue.newUint64(1000L));
+                int index = 0;
+                for (String name : key.getTableInfo().getKey()) {
+                    params.put("$c" + String.valueOf(index + 1), key.convertValue(index));
+                    ++index;
+                }
+            }
+            rsr = job.getYdb().sqlRead(sql, params).getResultSet(0);
         }
-        String sql;
-        Params params;
-        MvKey key = ctx.getCurrentKey();
-        if (key==null || key.isEmpty()) {
-            sql = ctx.getSqlSelectStart();
-            params = Params.of("$limit", PrimitiveValue.newUint64(1000L));
-        } else {
-            sql = ctx.getSqlSelectNext();
-            params = Params.create();
-            params.put("$limit", PrimitiveValue.newUint64(1000L));
+        if (rsr != null) {
+            processScanResult(ctx, key, rsr);
+            return rsr.getRowCount();
         }
+        return 0;
+    }
+
+    private void processScanResult(MvScanContext ctx, MvKey key, ResultSetReader rsr) {
         MvScanCommitHandler handler;
-        ResultSetReader rsr = job.getYdb().sqlRead(sql, params).getResultSet(0);
         if (rsr.getRowCount() > 0) {
             ArrayList<MvChangeRecord> output = new ArrayList<>();
             while (rsr.next()) {
@@ -164,7 +178,6 @@ public class MvScanFeeder {
         ctx.setCurrentHandler(handler);
         // apply check for the case when the final commit is already performed
         handler.apply(0);
-        return rsr.getRowCount();
     }
 
     private void rateLimiter(int count) {

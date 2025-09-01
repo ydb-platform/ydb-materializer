@@ -67,6 +67,10 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return values[pos];
     }
 
+    public Value<?> convertValue(int pos) {
+        return YdbConv.fromPojo(values[pos], info.getType(pos));
+    }
+
     public StructValue convertKeyToStructValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];
