@@ -19,7 +19,7 @@ import tech.ydb.mv.model.MvKey;
  *
  * @author zinal
  */
-class MvScanCommitHandler implements MvCommitHandler {
+public class MvScanCommitHandler implements MvCommitHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
@@ -57,6 +57,7 @@ class MvScanCommitHandler implements MvCommitHandler {
                 LOG.warn("Commit handler chain mismatched: expected {}, got {}",
                         instance, p.instance);
             }
+            n.apply(0);
         }
         return n;
     }
@@ -75,13 +76,16 @@ class MvScanCommitHandler implements MvCommitHandler {
             resetNextChain();
             return;
         }
-        counter.addAndGet(-1 * count);
+        if (count != 0) {
+            counter.addAndGet(-1 * count);
+        }
         if (isReady()) {
             try {
                 context.getRetryCtx().supplyStatus(qs -> doApply(qs))
                         .join().expectSuccess();
             } catch(Exception ex) {
-                LOG.warn("Failed to commit the offset", ex);
+                LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
+                        context.getTarget().getName(), context.getHandler().getName(), ex);
             }
             resetNext();
         }
@@ -91,6 +95,8 @@ class MvScanCommitHandler implements MvCommitHandler {
         Params params;
         String sqlText;
         if (terminal) {
+            LOG.info("Performing final commit in scan feeder for target {}, handler {}",
+                    context.getTarget().getName(), context.getHandler().getName());
             sqlText = context.getSqlPosDelete();
             params = Params.of(
                     "$handler_name", context.getHandlerName(),

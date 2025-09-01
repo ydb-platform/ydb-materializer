@@ -74,7 +74,7 @@ public class MvKeysGrab extends MvKeysAbstract implements MvApplyAction {
                 values[pos] = YdbConv.toPojo(rows.getColumn(pos).getValue());
             }
             MvKey key = new MvKey(keyInfo, values);
-            output.add(new MvChangeRecord(key, MvChangeRecord.OperationType.UPSERT));
+            output.add(new MvChangeRecord(key));
         }
         // Allow for extra operations before the actual commit.
         handler.apply(-1 * output.size());

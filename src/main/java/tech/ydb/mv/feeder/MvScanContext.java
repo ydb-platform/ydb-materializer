@@ -1,14 +1,16 @@
 package tech.ydb.mv.feeder;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvSqlGen;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
+import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
@@ -22,7 +24,8 @@ public class MvScanContext {
     private final MvTarget target;
     private final SessionRetryContext retryCtx;
     private final AtomicBoolean shouldRun;
-    private final Thread thread;
+    private final AtomicReference<MvKey> currentKey;
+    private final AtomicReference<MvScanCommitHandler> currentHandler;
 
     private final String sqlPosUpsert;
     private final String sqlPosDelete;
@@ -34,12 +37,13 @@ public class MvScanContext {
     private final Value<?> targetName;
 
     public MvScanContext(MvHandler handler, MvTarget target,
-            YdbConnector ydb, Thread thread, String controlTable) {
+            YdbConnector ydb, String controlTable) {
         this.handler = handler;
         this.target = target;
         this.retryCtx = ydb.getQueryRetryCtx();
         this.shouldRun = new AtomicBoolean(true);
-        this.thread = thread;
+        this.currentKey = new AtomicReference<>();
+        this.currentHandler = new AtomicReference<>();
         this.sqlPosUpsert = makePosUpsert(controlTable);
         this.sqlPosDelete = makePosDelete(controlTable);
         this.sqlPosSelect = makePosSelect(controlTable);
@@ -95,6 +99,22 @@ public class MvScanContext {
 
     public Value<?> getTargetName() {
         return targetName;
+    }
+
+    public MvKey getCurrentKey() {
+        return currentKey.get();
+    }
+
+    public void setCurrentKey(MvKey key) {
+        currentKey.set(key);
+    }
+
+    public MvScanCommitHandler getCurrentHandler() {
+        return currentHandler.get();
+    }
+
+    public void setCurrentHandler(MvScanCommitHandler handler) {
+        currentHandler.set(handler);
     }
 
     private static String makePosUpsert(String controlTable) {

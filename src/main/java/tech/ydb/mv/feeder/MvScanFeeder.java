@@ -1,17 +1,18 @@
 package tech.ydb.mv.feeder;
 
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.mv.MvConfig;
-import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbMisc;
 import tech.ydb.mv.util.YdbStruct;
@@ -27,9 +28,9 @@ public class MvScanFeeder {
 
     private final MvJobContext job;
     private final MvTarget target;
+    private final MvKeyInfo keyInfo;
     private final AtomicReference<MvScanContext> context;
     private final MvApplyManager applyManager;
-    private final AtomicReference<MvKey> currentKey;
     private final String controlTable;
     private final int rateLimiterLimit;
     private int rateLimiterCounter;
@@ -38,9 +39,9 @@ public class MvScanFeeder {
     public MvScanFeeder(MvJobContext job, MvApplyManager applyManager, MvTarget target) {
         this.job = job;
         this.target = target;
+        this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.context = new AtomicReference<>();
         this.applyManager = applyManager;
-        this.currentKey = new AtomicReference<>();
         this.controlTable = job.getYdb()
                 .getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         this.rateLimiterLimit = job.getYdb().getProperty(MvConfig.CONF_SCAN_RATE, 10000);
@@ -50,8 +51,7 @@ public class MvScanFeeder {
      * @return true if scan task is already registered, false otherwise
      */
     public boolean checkRegistered() {
-        initScan();
-        return (currentKey.get() != null);
+        return ( initScan() != null );
     }
 
     public boolean isRunning() {
@@ -61,10 +61,13 @@ public class MvScanFeeder {
 
     public synchronized void start() {
         if (!job.isRunning()) {
-            return;
+            throw new IllegalStateException("Refusing to start scan feeder "
+                    + "for a stopped handler job " + job.getMetadata().getName());
         }
-        MvScanContext ctx = context.get();
+        MvScanContext ctx = context.getAndSet(
+                new MvScanContext(job.getMetadata(), target, job.getYdb(), controlTable));
         if (ctx != null) {
+            context.set(ctx);
             return;
         }
         Thread thread = new Thread(() -> safeRun());
@@ -72,9 +75,6 @@ public class MvScanFeeder {
         thread.setName("ydb-scan-feeder-"
                 + job.getMetadata().getName()
                 + "-" + target.getName());
-        ctx = new MvScanContext(job.getMetadata(), target,
-                job.getYdb(), thread, controlTable);
-        context.set(ctx);
         thread.start();
     }
 
@@ -104,16 +104,23 @@ public class MvScanFeeder {
     }
 
     private void run() {
-        LOG.info("Started scan feeder for target {} in handler {}",
-                target.getName(), job.getMetadata().getName());
-        initScan();
-        if (currentKey.get() == null) {
-            registerStartScan();
+        MvScanContext ctx = context.get();
+        if (ctx==null) {
+            LOG.error("Exiting the scanner due to missing context - PROGRAM DEFECT!");
+            return;
+        } else {
+            MvKey key = initScan();
+            ctx.setCurrentKey(key);
+            if (key == null) {
+                registerStartScan();
+            }
+            LOG.info("Started scan feeder for target {} in handler {}, position {}",
+                    target.getName(), job.getMetadata().getName(), key);
         }
         rateLimiterCounter = 0;
         rateLimiterStamp = System.currentTimeMillis();
         while (isRunning()) {
-            int count = stepScan();
+            int count = stepScan(ctx);
             if (count <= 0) {
                 break;
             }
@@ -123,8 +130,41 @@ public class MvScanFeeder {
                 target.getName(), job.getMetadata().getName());
     }
 
-    private int stepScan() {
-        return 0;
+    private int stepScan(MvScanContext ctx) {
+        if (ctx==null) {
+            return 0;
+        }
+        String sql;
+        Params params;
+        MvKey key = ctx.getCurrentKey();
+        if (key==null || key.isEmpty()) {
+            sql = ctx.getSqlSelectStart();
+            params = Params.of("$limit", PrimitiveValue.newUint64(1000L));
+        } else {
+            sql = ctx.getSqlSelectNext();
+            params = Params.create();
+            params.put("$limit", PrimitiveValue.newUint64(1000L));
+        }
+        MvScanCommitHandler handler;
+        ResultSetReader rsr = job.getYdb().sqlRead(sql, params).getResultSet(0);
+        if (rsr.getRowCount() > 0) {
+            ArrayList<MvChangeRecord> output = new ArrayList<>();
+            while (rsr.next()) {
+                key = new MvKey(rsr, keyInfo);
+                output.add(new MvChangeRecord(key));
+            }
+            ctx.setCurrentKey(key);
+            handler = new MvScanCommitHandler(ctx,
+                    key, output.size(), ctx.getCurrentHandler(), false);
+            applyManager.submit(output, handler);
+        } else {
+            handler = new MvScanCommitHandler(ctx,
+                    key, 0, ctx.getCurrentHandler(), true);
+        }
+        ctx.setCurrentHandler(handler);
+        // apply check for the case when the final commit is already performed
+        handler.apply(0);
+        return rsr.getRowCount();
     }
 
     private void rateLimiter(int count) {
@@ -147,7 +187,7 @@ public class MvScanFeeder {
         }
     }
 
-    private void initScan() {
+    private MvKey initScan() {
         MvScanContext ctx = context.get();
         String sql = ctx.getSqlPosSelect();
         Params params = Params.of(
@@ -160,7 +200,7 @@ public class MvScanFeeder {
             YdbStruct ys = YdbStruct.fromJson(rsr.getColumn(0).getText());
             key = new MvKey(ys, target.getTableInfo());
         }
-        currentKey.set(key);
+        return key;
     }
 
     private void registerStartScan() {

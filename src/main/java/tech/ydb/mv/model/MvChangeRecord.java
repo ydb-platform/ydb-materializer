@@ -13,6 +13,10 @@ public class MvChangeRecord {
     private final YdbStruct imageBefore;
     private final YdbStruct imageAfter;
 
+    public MvChangeRecord(MvKey key) {
+        this(key, OperationType.UPSERT);
+    }
+
     public MvChangeRecord(MvKey key, OperationType operationType) {
         this.key = key;
         this.operationType = operationType;
