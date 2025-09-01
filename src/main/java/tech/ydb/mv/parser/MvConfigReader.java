@@ -29,7 +29,7 @@ public class MvConfigReader {
     }
 
     private static MvContext readFile(YdbConnector ydb, Properties props) {
-        String fname = props.getProperty(App.CONF_INPUT_FILE, App.DEF_FILE);
+        String fname = props.getProperty(App.CONF_INPUT_FILE, App.DEF_STMT_FILE);
         try (FileInputStream fis = new FileInputStream(fname)) {
             return new MvSqlParser(fis, StandardCharsets.UTF_8).fill();
         } catch(IOException ix) {
@@ -38,7 +38,7 @@ public class MvConfigReader {
     }
 
     private static MvContext readTable(YdbConnector ydb, Properties props) {
-        String tabname = props.getProperty(App.CONF_INPUT_TABLE, App.DEF_TABLE);
+        String tabname = props.getProperty(App.CONF_INPUT_TABLE, App.DEF_STMT_TABLE);
         String sql = readStatements(ydb, tabname);
         return new MvSqlParser(sql).fill();
     }

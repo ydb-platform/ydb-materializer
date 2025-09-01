@@ -22,8 +22,8 @@ import tech.ydb.mv.model.MvInput;
  *
  * @author zinal
  */
-public class MvFeeder {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvFeeder.class);
+public class MvCdcFeeder {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
     private final MvJobContext context;
     private final MvApplyManager applyManager;
@@ -32,7 +32,7 @@ public class MvFeeder {
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvFeeder(MvJobContext context, MvApplyManager applyManager) {
+    public MvCdcFeeder(MvJobContext context, MvApplyManager applyManager) {
         this.context = context;
         this.applyManager = applyManager;
         this.executor = Executors.newFixedThreadPool(

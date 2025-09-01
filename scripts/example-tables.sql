@@ -5,31 +5,14 @@ CREATE TABLE `mv/statements` (
    PRIMARY KEY(statement_no);
 );
 
--- db-scheduler table, in case the scheduler is used
-CREATE TABLE `mv/scheduled_tasks` (
-    task_name Text NOT NULL,
-    task_instance Text NOT NULL,
-    task_data String,
-    execution_time Timestamp,
-    picked Bool,
-    picked_by Text,
-    last_success Timestamp,
-    last_failure Timestamp,
-    consecutive_failures Int32,
-    last_heartbeat Timestamp,
-    version Int64,
-    priority Int32,
-    PRIMARY KEY (task_name, task_instance)
+-- Scans state table
+CREATE TABLE `mv/scans_state` (
+   handler_name Text NOT NULL,
+   table_name Text NOT NULL,
+   updated_at Timestamp,
+   key_position JsonDocument,
+   PRIMARY KEY(handler_name, table_name);
 );
-
--- Tasks state table
-CREATE TABLE `mv/tasks_state` (
-   task_name Text NOT NULL,
-   task_instance Text NOT NULL,
-   task_state String,
-   PRIMARY KEY(task_name, task_instance);
-);
-
 
 -- ************
 

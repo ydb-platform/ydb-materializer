@@ -30,7 +30,7 @@ import tech.ydb.mv.util.YdbUnsigned;
  *
  * @author zinal
  */
-public class MvCdcParser {
+class MvCdcParser {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcParser.class);
 
     private final MvTableInfo tableInfo;

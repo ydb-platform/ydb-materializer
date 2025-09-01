@@ -1,7 +1,7 @@
 package tech.ydb.mv;
 
 import tech.ydb.mv.apply.MvApplyManager;
-import tech.ydb.mv.feeder.MvFeeder;
+import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 
@@ -16,12 +16,12 @@ public class MvController {
 
     private final MvJobContext context;
     private final MvApplyManager applyManager;
-    private final MvFeeder feeder;
+    private final MvCdcFeeder feeder;
 
     public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
-        this.feeder = new MvFeeder(this.context, this.applyManager);
+        this.feeder = new MvCdcFeeder(this.context, this.applyManager);
     }
 
     @Override
@@ -41,7 +41,7 @@ public class MvController {
         return applyManager;
     }
 
-    public MvFeeder getFeeder() {
+    public MvCdcFeeder getFeeder() {
         return feeder;
     }
 
