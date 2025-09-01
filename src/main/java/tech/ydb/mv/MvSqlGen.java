@@ -99,7 +99,7 @@ public class MvSqlGen implements AutoCloseable {
 
     public String makePlainDelete() {
         final StringBuilder sb = new StringBuilder();
-        genDeclareTargetFields(sb);
+        genDeclareMainKeyFields(sb);
         sb.append("DELETE FROM ");
         safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
