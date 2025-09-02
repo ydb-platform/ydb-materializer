@@ -25,6 +25,7 @@ public class MvCoordinator {
     public MvCoordinator(YdbConnector connector) {
         this.client = connector.getCoordinationClient();
         this.nodePath = connector.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
+        connector.getCoordinationClient().createNode(this.nodePath).join().expectSuccess();
         this.session = connector.getCoordinationClient().createSession(this.nodePath);
         this.session.connect().join();
     }
