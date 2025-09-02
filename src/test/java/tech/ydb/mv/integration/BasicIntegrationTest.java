@@ -86,11 +86,14 @@ ALTER TABLE `test1/main_table` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table1` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+""";
 
+    private static final String CDC_CONSUMERS =
+"""
 ALTER TOPIC `test1/main_table/cf1` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table1/cf2` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table2/cf3` ADD CONSUMER `consumer1`;
-ALTER TOPIC `test1/sub_table1/cf4` ADD CONSUMER `consumer1`;
+ALTER TOPIC `test1/sub_table3/cf4` ADD CONSUMER `consumer1`;
 """;
 
     private static final String UPSERT_DATA =
@@ -131,9 +134,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     private static byte[] getConfig() {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
-        props.setProperty("ydb.auth.mode", "STATIC");
-        props.setProperty("ydb.auth.username", "root");
-        props.setProperty("ydb.auth.password", "");
+        props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
 
@@ -173,6 +174,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     private void fillDatabase(YdbConnector conn) {
         System.err.println("Preparation: creating tables...");
         runScript(conn, CREATE_TABLES);
+        System.err.println("Preparation: adding consumers...");
+        runScript(conn, CDC_CONSUMERS);
         System.err.println("Preparation: adding data...");
         runScript(conn, UPSERT_DATA);
     }
