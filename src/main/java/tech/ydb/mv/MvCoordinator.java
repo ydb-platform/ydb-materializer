@@ -56,12 +56,12 @@ public class MvCoordinator {
     }
 
     public boolean lock(String name) {
-        LOG.info("Ensuring the single {} job instance through lock...", name);
+        LOG.info("Ensuring the single `{}` job instance through lock...", name);
         boolean locked = lock(name, DEFAULT_TIMEOUT);
         if (locked) {
-            LOG.warn("Lock obtained, proceeding with the {} job.", name);
+            LOG.warn("Lock obtained, proceeding with the `{}` job.", name);
         } else {
-            LOG.warn("Lock failed, concurrent {} job instance seems to be running.", name);
+            LOG.warn("Lock failed, concurrent `{}` job instance seems to be running.", name);
         }
         return locked;
     }

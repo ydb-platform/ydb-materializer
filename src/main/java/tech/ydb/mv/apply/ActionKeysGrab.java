@@ -31,7 +31,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
             this.sqlSelect = sg.makeSelect();
             this.rowType = sg.toRowType();
         }
-        LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
+        LOG.info(" * Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
                 context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
