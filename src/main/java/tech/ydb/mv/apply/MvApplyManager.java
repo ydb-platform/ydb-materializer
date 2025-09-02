@@ -65,11 +65,11 @@ public class MvApplyManager implements MvCdcSink {
             MvJoinSource src = target.getTopMostSource();
             MvTableInfo.Changefeed cf = src.getChangefeedInfo();
             if (cf==null) {
-                LOG.warn("Missing changefeed for main input table {}, skipping for target {} in handler {}.",
+                LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
                         src.getTableName(), target.getName(), handler.getName());
                 continue;
             }
-            LOG.info("Configuring handler {}, target {} ...", handler.getName(), target.getName());
+            LOG.info("Configuring handler `{}`, target `{}` ...", handler.getName(), target.getName());
             makeTableConfig(src.getTableInfo())
                     .addAction(new ActionSync(target, context));
             if (sourceCount < 2) {
@@ -84,14 +84,14 @@ public class MvApplyManager implements MvCdcSink {
                 }
                 cf = src.getChangefeedInfo();
                 if (cf==null) {
-                    LOG.info("Missing changefeed for secondary input table {}, skipping for target {}.",
+                    LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
                             src.getTableName(), target.getName());
                     continue;
                 }
                 MvTarget transformation = pathGenerator.generate(src);
                 if (transformation==null) {
-                    LOG.info("Keys from input table {} cannot be transformed "
-                            + "to keys for table {}, skipping for target {}",
+                    LOG.info("Keys from input table `{}` cannot be transformed "
+                            + "to keys for table `{}`, skipping for target `{}`",
                             src.getTableName(), pathGenerator.getTopMostSource().getTableName(), target.getName());
                     continue;
                 }
@@ -171,7 +171,8 @@ public class MvApplyManager implements MvCdcSink {
         for (MvApplyWorker w : workers) {
             w.start();
         }
-        LOG.info("Started {} apply workers.", workers.length);
+        LOG.info("Started {} apply workers for handler `{}`.",
+                workers.length, context.getMetadata().getName());
     }
 
     @Override
@@ -201,7 +202,8 @@ public class MvApplyManager implements MvCdcSink {
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
             commitHandler.apply(count);
-            LOG.warn("Skipping {} change records for unexpected table {}", count, tableName);
+            LOG.warn("Skipping {} change records for unexpected table `{}` in handler `{}`",
+                    count, tableName, context.getMetadata().getName());
             return true;
         }
         ArrayList<MvApplyTask> curr = new ArrayList<>(count);

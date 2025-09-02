@@ -36,7 +36,7 @@ public class MvCdcFeeder {
         this.sink = sink;
         this.executor = Executors.newFixedThreadPool(
                 context.getSettings().getCdcReaderThreads(), new ConfigureThreads());
-        LOG.info("Started {} CDC reader threads for handler {}",
+        LOG.info("Started {} CDC reader threads for handler `{}`",
                 context.getSettings().getCdcReaderThreads(),
                 context.getMetadata().getName());
     }
@@ -48,7 +48,7 @@ public class MvCdcFeeder {
         if (! context.isRunning()) {
             return;
         }
-        LOG.info("Activating the CDC reader for handler {}", context.getMetadata().getName());
+        LOG.info("Activating the CDC reader for handler `{}`", context.getMetadata().getName());
         AsyncReader theReader = buildReader();
         theReader.init();
         reader.set(theReader);
@@ -56,13 +56,13 @@ public class MvCdcFeeder {
 
     public synchronized void stop() {
         if (context.isRunning()) {
-            LOG.error("Ignoring an attempt to stop the CDC reader for handler {} "
+            LOG.error("Ignoring an attempt to stop the CDC reader for handler `{}` "
                     + "while controller is still running", context.getMetadata().getName());
             return;
         }
         AsyncReader theReader = reader.getAndSet(null);
         if (theReader!=null) {
-            LOG.info("Stopping the CDC reader for handler {}", context.getMetadata().getName());
+            LOG.info("Stopping the CDC reader for handler `{}`", context.getMetadata().getName());
             theReader.shutdown();
         }
     }
