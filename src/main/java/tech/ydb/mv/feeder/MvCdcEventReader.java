@@ -29,21 +29,22 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onStartPartitionSession(StartPartitionSessionEvent ev) {
-        LOG.info("Topic[{}] session {} onStart with last committed offset {}",
-                ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(), ev.getCommittedOffset());
+        LOG.info("Topic `{}` session {} for partition {} onStart with last committed offset {}",
+                ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(),
+                ev.getPartitionSession().getPartitionId(), ev.getCommittedOffset());
         ev.confirm();
     }
 
     @Override
     public void onStopPartitionSession(StopPartitionSessionEvent ev) {
-        LOG.info("Topic[{}] session {} onStop with last committed offset {}",
+        LOG.info("Topic `{}` session {} onStop with last committed offset {}",
                 ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(), ev.getCommittedOffset());
         ev.confirm();
     }
 
     @Override
     public void onPartitionSessionClosed(PartitionSessionClosedEvent ev) {
-        LOG.info("Topic[{}] session {} onClosed",
+        LOG.info("Topic `{}` session {} onClosed",
                 ev.getPartitionSession().getPath(), ev.getPartitionSession().getId());
     }
 
