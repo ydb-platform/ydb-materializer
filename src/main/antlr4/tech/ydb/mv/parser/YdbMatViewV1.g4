@@ -66,7 +66,10 @@ VIEW: V I E W;
 WHERE: W H E R E;
 
 integer_constant: MINUS? DIGITS;
-string_constant: (QUOTE_SINGLE (~('\'' | '\\') | ('\\' .))+? QUOTE_SINGLE);
+string_constant: STRING_SINGLE;
+
+fragment STRING_CORE_SINGLE: ~('\'' | '\\') | ('\\' .);
+STRING_SINGLE: (QUOTE_SINGLE STRING_CORE_SINGLE* QUOTE_SINGLE);
 
 column_reference: table_alias DOT column_name;
 

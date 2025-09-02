@@ -52,6 +52,7 @@ public class MvSqlPrinter {
         pw.println();
         if (mt.getTableInfo()==null) {
             pw.println("  ** Skipped - no target table information.");
+            pw.println();
         } else {
             pw.println(sg.makePlainUpsert());
         }
