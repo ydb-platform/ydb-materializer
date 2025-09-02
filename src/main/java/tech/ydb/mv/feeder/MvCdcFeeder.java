@@ -72,7 +72,7 @@ public class MvCdcFeeder {
         return applyManager;
     }
 
-    public MvCdcParser findParser(String topicPath) {
+    MvCdcParser findParser(String topicPath) {
         return parsers.get(topicPath);
     }
 
@@ -83,6 +83,9 @@ public class MvCdcFeeder {
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(handler.getConsumerNameAlways());
         for (MvInput mi : handler.getInputs().values()) {
+            if (mi.isBatchMode()) {
+                continue;
+            }
             String topicPath = context.getYdb()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             parsers.put(topicPath, new MvCdcParser(mi));
