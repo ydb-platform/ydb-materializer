@@ -50,7 +50,11 @@ public class MvSqlPrinter {
         pw.println(sg.makeSelect());
         pw.println("  ** Upsert statement:");
         pw.println();
-        pw.println(sg.makePlainUpsert());
+        if (mt.getTableInfo()==null) {
+            pw.println("  ** Skipped - no target table information.");
+        } else {
+            pw.println(sg.makePlainUpsert());
+        }
         pw.println("  ** Delete statement:");
         pw.println();
         pw.println(sg.makePlainDelete());

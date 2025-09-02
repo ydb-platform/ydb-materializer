@@ -69,7 +69,7 @@ public class MvSqlGen implements AutoCloseable {
         final StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE ");
         safeId(sb, target.getName());
-        sb.append("(").append(EOL);
+        sb.append(" (").append(EOL);
         int index = 0;
         for (MvColumn column : target.getColumns()) {
             if (index++ > 0) {
