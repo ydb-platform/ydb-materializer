@@ -1,4 +1,4 @@
-package tech.ydb.mv.apply;
+package tech.ydb.mv.parser;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import tech.ydb.table.values.PrimitiveType;
 
-import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;

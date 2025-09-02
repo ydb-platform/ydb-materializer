@@ -1,5 +1,6 @@
 package tech.ydb.mv.apply;
 
+import tech.ydb.mv.parser.MvKeyPathGenerator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;

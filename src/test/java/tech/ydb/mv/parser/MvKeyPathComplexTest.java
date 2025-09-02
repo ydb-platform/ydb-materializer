@@ -1,16 +1,14 @@
-package tech.ydb.mv.apply;
+package tech.ydb.mv.parser;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 import tech.ydb.table.values.PrimitiveType;
 
-import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 

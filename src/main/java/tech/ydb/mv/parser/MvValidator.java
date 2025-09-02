@@ -2,7 +2,6 @@ package tech.ydb.mv.parser;
 
 import java.util.List;
 
-import tech.ydb.mv.apply.MvKeyPathGenerator;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;

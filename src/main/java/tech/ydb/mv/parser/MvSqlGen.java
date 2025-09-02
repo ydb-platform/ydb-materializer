@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import tech.ydb.table.values.DecimalType;
+import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.Type;
 
@@ -58,6 +60,55 @@ public class MvSqlGen implements AutoCloseable {
         return target.getTopMostSource().getTableInfo().getName();
     }
 
+    /**
+     * The create table variant grabs data types from the input tables,
+     * and combines them into the definition of the output MV table.
+     * @return CREATE TABLE statement
+     */
+    public String makeCreateTable() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("CREATE TABLE ");
+        safeId(sb, target.getName());
+        sb.append("(").append(EOL);
+        int index = 0;
+        for (MvColumn column : target.getColumns()) {
+            if (index++ > 0) {
+                sb.append(",").append(EOL);
+            }
+            sb.append("  ");
+            safeId(sb, column.getName());
+            sb.append(" ");
+            Type type;
+            if (column.isComputation()) {
+                type = detectComputationType(column.getComputation()).makeOptional();
+            } else {
+                type = obtainReferenceType(column);
+            }
+            if (type.getKind()==Type.Kind.OPTIONAL) {
+                sb.append(type.unwrapOptional().toString());
+            } else {
+                sb.append(type.toString()).append(" NOT NULL");
+            }
+        }
+        ArrayList<String> primaryKey = findMappedKeyColumns();
+        if (primaryKey!=null && !primaryKey.isEmpty()) {
+            if (index++ > 0) {
+                sb.append(",").append(EOL);
+            }
+            sb.append("  PRIMARY KEY (");
+            int index2 = 0;
+            for (String name : primaryKey) {
+                if (index2++ > 0) {
+                    sb.append(", ");
+                }
+                safeId(sb, name);
+            }
+            sb.append(")").append(EOL);
+        }
+        sb.append(");").append(EOL);
+        return sb.toString();
+    }
+
     public String makeCreateView() {
         final StringBuilder sb = new StringBuilder();
         sb.append("CREATE VIEW ");
@@ -94,16 +145,6 @@ public class MvSqlGen implements AutoCloseable {
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
         sb.append(";").append(EOL);
         return sb.toString();
-    }
-
-    private static void keyNamesByComma(StringBuilder sb, MvTableInfo topmost) {
-        int index = 0;
-        for (String name : topmost.getKey()) {
-            if (index++ > 0) {
-                sb.append(", ");
-            }
-            sb.append("`").append(name).append("`");
-        }
     }
 
     public String makeScanNext() {
@@ -155,6 +196,16 @@ public class MvSqlGen implements AutoCloseable {
         sb.append("LIMIT $limit;");
         sb.append(MvSqlGen.EOL);
         return sb.toString();
+    }
+
+    private static void keyNamesByComma(StringBuilder sb, MvTableInfo topmost) {
+        int index = 0;
+        for (String name : topmost.getKey()) {
+            if (index++ > 0) {
+                sb.append(", ");
+            }
+            safeId(sb, name);
+        }
     }
 
     private void genDeclareMainKeyFields(StringBuilder sb) {
@@ -395,6 +446,58 @@ public class MvSqlGen implements AutoCloseable {
         } else {
             sb.append(c.getExpression());
         }
+    }
+
+    private Type detectComputationType(MvComputation comp) {
+        if (comp==null || comp.isEmpty()) {
+            return PrimitiveType.Text;
+        }
+        if (comp.isLiteral()) {
+            if (comp.getLiteral().isInteger()) {
+                return PrimitiveType.Int64;
+            }
+            return PrimitiveType.Text;
+        }
+        String expr = comp.getExpression().toLowerCase();
+        if (expr.lastIndexOf("decimal") >= 0) {
+            return DecimalType.getDefault();
+        }
+        for (PrimitiveType t : PrimitiveType.values()) {
+            if (expr.lastIndexOf(t.name().toLowerCase()) >= 0) {
+                return t;
+            }
+        }
+        return PrimitiveType.Text;
+    }
+
+    private Type obtainReferenceType(MvColumn column) {
+        if (column==null || column.getSourceAlias()==null) {
+            return PrimitiveType.Text;
+        }
+        MvJoinSource src = target.getSourceByAlias(column.getSourceAlias());
+        if (src==null || src.getTableInfo()==null) {
+            return PrimitiveType.Text;
+        }
+        return src.getTableInfo().getColumns().get(column.getSourceColumn());
+    }
+
+    private ArrayList<String> findMappedKeyColumns() {
+        MvJoinSource topmost = target.getTopMostSource();
+        if (topmost==null || topmost.getTableInfo()==null) {
+            return null;
+        }
+        ArrayList<String> output = new ArrayList<>(topmost.getTableInfo().getKey().size());
+        for (String name : topmost.getTableInfo().getKey()) {
+            for (MvColumn column : target.getColumns()) {
+                if (column.isReference()
+                        && column.getSourceAlias().equals(topmost.getTableAlias())
+                        && column.getSourceColumn().equals(name)) {
+                    output.add(column.getName());
+                    break;
+                }
+            }
+        }
+        return output;
     }
 
     public static StructType toKeyType(MvTarget target) {

@@ -36,6 +36,10 @@ public class MvLiteral {
         return identity;
     }
 
+    public boolean isInteger() {
+        return (pojo instanceof Long);
+    }
+
     public Comparable<?> getPojo() {
         return pojo;
     }

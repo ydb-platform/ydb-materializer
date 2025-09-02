@@ -1,4 +1,4 @@
-package tech.ydb.mv.apply;
+package tech.ydb.mv.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -2,10 +2,9 @@ package tech.ydb.mv.format;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.apply.MvKeyPathGenerator;
-import tech.ydb.mv.feeder.MvScanContext;
 
+import tech.ydb.mv.parser.MvSqlGen;
+import tech.ydb.mv.parser.MvKeyPathGenerator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
@@ -40,9 +39,12 @@ public class MvSqlPrinter {
         pw.println("*** Target: " + mt.getName());
         pw.println("-------------------------------------------------------");
         pw.println();
-        pw.println("  ** Equivalent view:");
+        pw.println("  ** Equivalent view DDL:");
         pw.println();
         pw.println(sg.makeCreateView());
+        pw.println("  ** Destination table DDL:");
+        pw.println();
+        pw.println(sg.makeCreateTable());
         pw.println("  ** Refresh statement:");
         pw.println();
         pw.println(sg.makeSelect());
