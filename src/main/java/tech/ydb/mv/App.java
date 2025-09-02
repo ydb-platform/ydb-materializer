@@ -38,7 +38,7 @@ public class App {
                     wc.shutdown();
                 }
             }
-            LOG.info("Database connection closed.");
+            LOG.info("Completed successfully.");
         } catch(Exception ex) {
             LOG.error("Execution failed", ex);
             System.exit(1);
