@@ -9,7 +9,7 @@ sql_stmt: create_mat_view_stmt | create_handler_stmt;
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier AS simple_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
-  (CONSUMER consumer_name)?
+  (CONSUMER consumer_name)? COMMA?
   handler_part (COMMA handler_part)* COMMA?;
 
 handler_part: (handler_input_part | handler_process_part);
