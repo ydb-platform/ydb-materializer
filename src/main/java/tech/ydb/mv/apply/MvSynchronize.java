@@ -141,7 +141,7 @@ public class MvSynchronize extends MvActionBase implements MvApplyAction {
     }
 
     private void runUpsert(List<StructValue> items) {
-        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, structsToParam(items));
+        Params params = Params.of(MvSqlGen.SYS_INPUT_VAR, structsToParam(items));
         // wait for the previous query to complete
         finishStatement();
         // submit the new query
