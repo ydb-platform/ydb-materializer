@@ -248,7 +248,19 @@ public class MvService {
             return null;
         }
 
-        return new MvTableInfo(tabname, path, desc);
+        MvTableInfo output = new MvTableInfo(tabname, path, desc);
+        grabChangefeedInfo(output);
+        return output;
+    }
+
+    private void grabChangefeedInfo(MvTableInfo ti) {
+        for (MvTableInfo.Changefeed cf : ti.getChangefeeds().values()) {
+            String topicPath = ydb.fullCdcTopicName(ti.getName(), cf.getName());
+            var topicDesc = ydb.getTopicClient().describeTopic(topicPath).join().getValue();
+            for ( var consumer : topicDesc.getConsumers() ) {
+                cf.getConsumers().add(consumer.getName());
+            }
+        }
     }
 
     private boolean validate() {

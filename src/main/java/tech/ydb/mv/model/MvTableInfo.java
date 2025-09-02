@@ -8,9 +8,11 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.values.Type;
+import tech.ydb.topic.description.TopicDescription;
 
 /**
  *
@@ -182,6 +184,7 @@ public class MvTableInfo {
     public static final class Changefeed {
         private final String name;
         private final ChangefeedMode mode;
+        private final HashSet<String> consumers = new HashSet<>();
 
         public Changefeed(String name, ChangefeedMode mode) {
             this.name = name;
@@ -194,6 +197,10 @@ public class MvTableInfo {
 
         public ChangefeedMode getMode() {
             return mode;
+        }
+
+        public Set<String> getConsumers() {
+            return consumers;
         }
     }
 
@@ -233,10 +240,17 @@ public class MvTableInfo {
             return this;
         }
 
-        public Builder addChangefeed(String name, ChangefeedMode mode) {
+        public Builder addChangefeed(String name, ChangefeedMode mode, String consumer) {
             Changefeed cf = new Changefeed(name, mode);
+            if (consumer!=null) {
+                cf.getConsumers().add(consumer);
+            }
             changefeeds.put(cf.getName(), cf);
             return this;
+        }
+
+        public Builder addChangefeed(String name, ChangefeedMode mode) {
+            return addChangefeed(name, mode, null);
         }
 
         public Builder addChangefeed(String name) {

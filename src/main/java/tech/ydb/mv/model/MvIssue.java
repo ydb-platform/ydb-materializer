@@ -269,6 +269,25 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class MissingConsumer extends Error {
+        private final MvInput input;
+        private final String consumerName;
+
+        public MissingConsumer(MvInput input, String consumerName) {
+            super(input.getSqlPos());
+            this.input = input;
+            this.consumerName = consumerName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Missing the expected consumer `" + consumerName
+                    + "` in changefeed `" + input.getChangefeed()
+                    + "` for table `" + input.getTableName()
+                    + "` at " + sqlPos;
+        }
+    }
+
     public static class DuplicateTarget extends Error {
         private final MvTarget cur;
         private final MvTarget prev;

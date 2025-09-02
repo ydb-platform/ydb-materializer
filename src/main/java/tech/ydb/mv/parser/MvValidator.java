@@ -206,18 +206,25 @@ public class MvValidator {
     }
 
     private void checkChangefeeds() {
-        context.getHandlers().values().stream()
-                .flatMap(h -> h.getInputs().values().stream())
-                .forEach(i -> checkChangefeed(i));
+        for (MvHandler mh : context.getHandlers().values()) {
+            for (MvInput mi : mh.getInputs().values()) {
+                checkChangefeed(mh, mi);
+            }
+        }
     }
 
-    private void checkChangefeed(MvInput i) {
-        if (i.getTableInfo() == null) {
-            context.addIssue(new MvIssue.UnknownInputTable(i));
+    private void checkChangefeed(MvHandler mh, MvInput mi) {
+        if (mi.getTableInfo() == null) {
+            context.addIssue(new MvIssue.UnknownInputTable(mi));
         } else {
-            if (i.getChangefeed() == null
-                    || i.getTableInfo().getChangefeeds().get(i.getChangefeed()) == null) {
-                context.addIssue(new MvIssue.UnknownChangefeed(i));
+            if (mi.getChangefeed() == null
+                    || mi.getTableInfo().getChangefeeds().get(mi.getChangefeed()) == null) {
+                context.addIssue(new MvIssue.UnknownChangefeed(mi));
+            } else if (mi.getChangefeedInfo() != null) {
+                String desiredConsumer = mh.getConsumerNameAlways();
+                if (! mi.getChangefeedInfo().getConsumers().contains(desiredConsumer)) {
+                    context.addIssue(new MvIssue.MissingConsumer(mi, desiredConsumer));
+                }
             }
         }
     }
