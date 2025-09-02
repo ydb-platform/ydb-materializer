@@ -104,7 +104,7 @@ public class MvCdcFeeder {
             Thread t = new Thread(Thread.currentThread().getThreadGroup(), r,
                                   "ydb-cdc-worker-" + threadNumber.getAndIncrement(),
                                   0);
-            t.setDaemon(true);
+            t.setDaemon(false);
             t.setPriority(Thread.NORM_PRIORITY);
             return t;
         }
