@@ -158,7 +158,8 @@ public class MvService {
     public void runHandlers() {
         if (LOG.isInfoEnabled()) {
             String msg = new MvIssuePrinter(context).write();
-            LOG.info("---- BEGIN CONTEXT INFO ----\n"
+            LOG.info("\n"
+                    + "---- BEGIN CONTEXT INFO ----\n"
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }

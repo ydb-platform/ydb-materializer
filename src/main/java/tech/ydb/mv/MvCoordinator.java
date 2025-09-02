@@ -26,6 +26,7 @@ public class MvCoordinator {
         this.client = connector.getCoordinationClient();
         this.nodePath = connector.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
         this.session = connector.getCoordinationClient().createSession(this.nodePath);
+        this.session.connect().join();
     }
 
     public CoordinationClient getClient() {
