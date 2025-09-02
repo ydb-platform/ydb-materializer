@@ -161,6 +161,7 @@ public class MvKeyPathGenerator {
      */
     private MvTarget createSimpleTarget(MvJoinSource source) {
         MvTarget result = new MvTarget(source.getTableName() + "_keys_simple", source.getSqlPos());
+        result.setTableInfo(source.getTableInfo());
 
         // Add the source as the main source
         MvJoinSource newSource = cloneJoinSource(source);
@@ -185,6 +186,7 @@ public class MvKeyPathGenerator {
      */
     private MvTarget createDirectTarget(MvJoinSource source) {
         MvTarget result = new MvTarget(source.getTableName() + "_keys_direct");
+        result.setTableInfo(source.getTableInfo());
 
         // Add the input source as the main source
         MvJoinSource newSource = cloneJoinSource(source);
@@ -302,6 +304,7 @@ public class MvKeyPathGenerator {
      */
     private MvTarget createTarget(List<MvJoinSource> path) {
         MvTarget result = new MvTarget(path.get(0).getTableName() + "_keys_full");
+        result.setTableInfo(path.get(0).getTableInfo());
 
         // Add sources in the path
         for (int i = 0; i < path.size(); i++) {

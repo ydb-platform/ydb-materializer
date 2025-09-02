@@ -516,8 +516,11 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public static StructType toRowType(MvTarget target) {
-        if (target==null || target.getTableInfo()==null) {
-            throw new IllegalArgumentException();
+        if (target==null) {
+            throw new NullPointerException();
+        }
+        if (target.getTableInfo()==null) {
+            throw new IllegalArgumentException("Passed target without table info");
         }
         return toRowType(target.getTableInfo());
     }
