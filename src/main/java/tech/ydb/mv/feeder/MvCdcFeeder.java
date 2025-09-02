@@ -13,7 +13,6 @@ import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
 import tech.ydb.mv.MvJobContext;
-import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 
@@ -82,10 +81,7 @@ public class MvCdcFeeder {
                 .setDecompressionExecutor(Runnable::run)   // CDC doesn't use compression, skip thread switching
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(handler.getConsumerNameAlways());
-        for (MvInput mi : handler.getInputs().values()) {
-            if (mi.isBatchMode()) {
-                continue;
-            }
+        for (MvInput mi : sink.getInputs()) {
             String topicPath = context.getYdb()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             parsers.put(topicPath, new MvCdcParser(mi));

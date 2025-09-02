@@ -13,6 +13,7 @@ import tech.ydb.mv.parser.MvKeyPathGenerator;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
@@ -171,6 +172,13 @@ public class MvApplyManager implements MvCdcSink {
             w.start();
         }
         LOG.info("Started {} apply workers.", workers.length);
+    }
+
+    @Override
+    public Collection<MvInput> getInputs() {
+        return context.getMetadata().getInputs().values().stream()
+                .filter(mi -> !mi.isBatchMode())
+                .toList();
     }
 
     /**
