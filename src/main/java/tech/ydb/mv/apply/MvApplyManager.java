@@ -76,6 +76,9 @@ public class MvApplyManager {
             MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(target);
             for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
                 src = target.getSources().get(sourceIndex);
+                if (src.getInput()==null || src.getInput().isBatchMode()) {
+                    continue;
+                }
                 cf = src.getChangefeedInfo();
                 if (cf==null) {
                     LOG.info("Missing changefeed for secondary input table {}, skipping for target {}.",
