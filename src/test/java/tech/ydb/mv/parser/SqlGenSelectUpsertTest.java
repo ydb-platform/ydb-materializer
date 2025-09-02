@@ -1,10 +1,10 @@
-package tech.ydb.mv;
+package tech.ydb.mv.parser;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import tech.ydb.mv.SqlConstants;
 import tech.ydb.mv.model.MvContext;
-import tech.ydb.mv.parser.MvSqlParser;
 
 /**
  * Test for MvSqlGen.makeSelect() and MvSqlGen.makeUpsert() methods

@@ -7,11 +7,10 @@ import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -47,8 +46,10 @@ public class MvScanContext {
         this.sqlPosUpsert = makePosUpsert(controlTable);
         this.sqlPosDelete = makePosDelete(controlTable);
         this.sqlPosSelect = makePosSelect(controlTable);
-        this.sqlSelectStart = makeSelectStart(target);
-        this.sqlSelectNext = makeSelectNext(target);
+        try (MvSqlGen sg = new MvSqlGen(target)) {
+            this.sqlSelectStart = sg.makeScanStart();
+            this.sqlSelectNext = sg.makeScanNext();
+        }
         this.handlerName = PrimitiveValue.newText(handler.getName());
         this.targetName = PrimitiveValue.newText(target.getName());
     }
@@ -138,67 +139,6 @@ public class MvScanContext {
                 + "DECLARE $table_name AS Text; "
                 + "SELECT key_position FROM `" + controlTable + "` "
                 + "WHERE handler_name=$handler_name AND table_name=$table_name;";
-    }
-
-    private static void keyNamesByComma(StringBuilder sb, MvTableInfo topmost) {
-        int index = 0;
-        for (String name : topmost.getKey()) {
-            if (index++ > 0) {
-                sb.append(", ");
-            }
-            sb.append("`").append(name).append("`");
-        }
-    }
-
-    public static String makeSelectNext(MvTarget target) {
-        MvTableInfo topmost = target.getTopMostSource().getTableInfo();
-        StringBuilder sb = new StringBuilder();
-        sb.append("DECLARE $limit AS Uint64;").append(MvSqlGen.EOL);
-        int index = 0;
-        for (String name : topmost.getKey()) {
-            sb.append("DECLARE $c").append(++index).append(" AS ");
-            sb.append(topmost.getColumns().get(name));
-            sb.append(";").append(MvSqlGen.EOL);
-        }
-        sb.append("SELECT ");
-        keyNamesByComma(sb, topmost);
-        sb.append(MvSqlGen.EOL);
-        sb.append("FROM `").append(topmost.getName()).append("`");
-        sb.append(MvSqlGen.EOL);
-        sb.append("WHERE (");
-        keyNamesByComma(sb, topmost);
-        sb.append(") > (");
-        index = 0;
-        for (String name : topmost.getKey()) {
-            if (index++ > 0) {
-                sb.append(", ");
-            }
-            sb.append("$c").append(index);
-        }
-        sb.append(")").append(MvSqlGen.EOL);
-        sb.append("ORDER BY ");
-        keyNamesByComma(sb, topmost);
-        sb.append(MvSqlGen.EOL);
-        sb.append("LIMIT $limit;");
-        sb.append(MvSqlGen.EOL);
-        return sb.toString();
-    }
-
-    public static String makeSelectStart(MvTarget target) {
-        MvTableInfo topmost = target.getTopMostSource().getTableInfo();
-        StringBuilder sb = new StringBuilder();
-        sb.append("DECLARE $limit AS Uint64;").append(MvSqlGen.EOL);
-        sb.append("SELECT ");
-        keyNamesByComma(sb, topmost);
-        sb.append(MvSqlGen.EOL);
-        sb.append("FROM `").append(topmost.getName()).append("`");
-        sb.append(MvSqlGen.EOL);
-        sb.append("ORDER BY ");
-        keyNamesByComma(sb, topmost);
-        sb.append(MvSqlGen.EOL);
-        sb.append("LIMIT $limit;");
-        sb.append(MvSqlGen.EOL);
-        return sb.toString();
     }
 
 }

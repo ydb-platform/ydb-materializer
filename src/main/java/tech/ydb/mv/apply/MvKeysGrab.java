@@ -6,7 +6,7 @@ import java.util.List;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.result.ResultSetReader;
 
-import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;

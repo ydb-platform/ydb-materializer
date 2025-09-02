@@ -1,4 +1,4 @@
-package tech.ydb.mv;
+package tech.ydb.mv.parser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -93,6 +93,67 @@ public class MvSqlGen implements AutoCloseable {
         safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
         sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
+    private static void keyNamesByComma(StringBuilder sb, MvTableInfo topmost) {
+        int index = 0;
+        for (String name : topmost.getKey()) {
+            if (index++ > 0) {
+                sb.append(", ");
+            }
+            sb.append("`").append(name).append("`");
+        }
+    }
+
+    public String makeScanNext() {
+        MvTableInfo topmost = target.getTopMostSource().getTableInfo();
+        StringBuilder sb = new StringBuilder();
+        sb.append("DECLARE $limit AS Uint64;").append(MvSqlGen.EOL);
+        int index = 0;
+        for (String name : topmost.getKey()) {
+            sb.append("DECLARE $c").append(++index).append(" AS ");
+            sb.append(topmost.getColumns().get(name));
+            sb.append(";").append(MvSqlGen.EOL);
+        }
+        sb.append("SELECT ");
+        keyNamesByComma(sb, topmost);
+        sb.append(MvSqlGen.EOL);
+        sb.append("FROM `").append(topmost.getName()).append("`");
+        sb.append(MvSqlGen.EOL);
+        sb.append("WHERE (");
+        keyNamesByComma(sb, topmost);
+        sb.append(") > (");
+        index = 0;
+        for (String name : topmost.getKey()) {
+            if (index++ > 0) {
+                sb.append(", ");
+            }
+            sb.append("$c").append(index);
+        }
+        sb.append(")").append(MvSqlGen.EOL);
+        sb.append("ORDER BY ");
+        keyNamesByComma(sb, topmost);
+        sb.append(MvSqlGen.EOL);
+        sb.append("LIMIT $limit;");
+        sb.append(MvSqlGen.EOL);
+        return sb.toString();
+    }
+
+    public String makeScanStart() {
+        MvTableInfo topmost = target.getTopMostSource().getTableInfo();
+        StringBuilder sb = new StringBuilder();
+        sb.append("DECLARE $limit AS Uint64;").append(MvSqlGen.EOL);
+        sb.append("SELECT ");
+        keyNamesByComma(sb, topmost);
+        sb.append(MvSqlGen.EOL);
+        sb.append("FROM `").append(topmost.getName()).append("`");
+        sb.append(MvSqlGen.EOL);
+        sb.append("ORDER BY ");
+        keyNamesByComma(sb, topmost);
+        sb.append(MvSqlGen.EOL);
+        sb.append("LIMIT $limit;");
+        sb.append(MvSqlGen.EOL);
         return sb.toString();
     }
 

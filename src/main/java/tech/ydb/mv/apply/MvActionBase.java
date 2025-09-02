@@ -15,7 +15,7 @@ import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.util.YdbConv;
 

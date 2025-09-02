@@ -14,7 +14,7 @@ import tech.ydb.query.result.QueryInfo;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
 
-import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKey;
