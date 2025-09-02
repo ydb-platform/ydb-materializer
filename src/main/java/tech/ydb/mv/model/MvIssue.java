@@ -367,6 +367,26 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class KeyExtractionImpossible extends Warning {
+        private final MvTarget target;
+        private final MvJoinSource source;
+
+        public KeyExtractionImpossible(MvTarget target, MvJoinSource source) {
+            super(source.getSqlPos());
+            this.target = target;
+            this.source = source;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Key extraction is not possible "
+                    + " for table `" + source.getTableName()
+                    + "` used as alias `" + source.getTableAlias()
+                    + "` in target `" + target.getName()
+                    + "` at " + sqlPos;
+        }
+    }
+
     public static class MissingJoinIndex extends Warning {
         private final MvTarget target;
         private final MvJoinSource source;

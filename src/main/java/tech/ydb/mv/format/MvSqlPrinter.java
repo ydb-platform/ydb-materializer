@@ -61,6 +61,15 @@ public class MvSqlPrinter {
         MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
+            if (!js.isTableKnown() || js.getInput()==null) {
+                pw.println("  ** Skipped key extraction for incomplete "
+                        + "join source " + js.getTableName() + " as " + js.getTableAlias());
+                continue;
+            }
+            if (js.getInput().isBatchMode()) {
+                // Key extraction not needed in batch mode
+                continue;
+            }
             MvTarget temp = pathGenerator.generate(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();

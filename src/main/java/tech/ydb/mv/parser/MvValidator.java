@@ -1,6 +1,8 @@
 package tech.ydb.mv.parser;
 
 import java.util.List;
+import tech.ydb.mv.MvSqlGen;
+import tech.ydb.mv.apply.MvKeyPathGenerator;
 
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
@@ -10,7 +12,6 @@ import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.model.MvTableInfo;
 
 /**
  * MV configuration validation logic.
@@ -65,6 +66,7 @@ public class MvValidator {
         for (MvTarget mt : context.getTargets().values()) {
             checkTarget(mt);
             checkJoinIndexes(mt);
+            checkKeyExtractionIndexes(mt);
         }
     }
 
@@ -133,6 +135,25 @@ public class MvValidator {
             // If no covering index found, add warning
             if (indexName==null) {
                 context.addIssue(new MvIssue.MissingJoinIndex(mt, src, joinColumns));
+            }
+        }
+    }
+
+    private void checkKeyExtractionIndexes(MvTarget mt) {
+        MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(mt);
+        for (int pos = 1; pos < mt.getSources().size(); ++pos) {
+            MvJoinSource js = mt.getSources().get(pos);
+            if (!js.isTableKnown() || js.getInput()==null) {
+                continue;
+            }
+            if (js.getInput().isBatchMode()) {
+                continue;
+            }
+            MvTarget temp = pathGenerator.generate(js);
+            if (temp==null) {
+                context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
+            } else {
+                checkJoinIndexes(temp);
             }
         }
     }

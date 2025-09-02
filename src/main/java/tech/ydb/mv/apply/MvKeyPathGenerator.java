@@ -160,7 +160,7 @@ public class MvKeyPathGenerator {
      * is the top-most source.
      */
     private MvTarget createSimpleTarget(MvJoinSource source) {
-        MvTarget result = new MvTarget(source.getTableName() + "_keys_simple");
+        MvTarget result = new MvTarget(source.getTableName() + "_keys_simple", source.getSqlPos());
 
         // Add the source as the main source
         MvJoinSource newSource = cloneJoinSource(source);
@@ -379,7 +379,7 @@ public class MvKeyPathGenerator {
         for (MvJoinCondition cond : cur.getConditions()) {
             MvJoinCondition copy = null;
             if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
-                copy = new MvJoinCondition();
+                copy = new MvJoinCondition(cond.getSqlPos());
                 copy.setFirstRef(dst);
                 copy.setFirstAlias(dst.getTableAlias());
                 copy.setFirstColumn(cond.getFirstColumn());
@@ -387,7 +387,7 @@ public class MvKeyPathGenerator {
                 copy.setSecondAlias(cond.getSecondAlias());
                 copy.setSecondColumn(cond.getSecondColumn());
             } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
-                copy = new MvJoinCondition();
+                copy = new MvJoinCondition(cond.getSqlPos());
                 copy.setFirstRef(dst);
                 copy.setFirstAlias(dst.getTableAlias());
                 copy.setFirstColumn(cond.getSecondColumn());
@@ -462,7 +462,7 @@ public class MvKeyPathGenerator {
      * Clones a MvJoinSource with a new SQL position.
      */
     private static MvJoinSource cloneJoinSource(MvJoinSource original) {
-        MvJoinSource clone = new MvJoinSource();
+        MvJoinSource clone = new MvJoinSource(original.getSqlPos());
         clone.setTableName(original.getTableName());
         clone.setTableAlias(original.getTableAlias());
         clone.setMode(original.getMode());
