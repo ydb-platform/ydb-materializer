@@ -1,9 +1,9 @@
 package tech.ydb.mv.parser;
 
 import java.util.List;
-import tech.ydb.mv.MvSqlGen;
-import tech.ydb.mv.apply.MvKeyPathGenerator;
 
+import tech.ydb.mv.apply.MvKeyPathGenerator;
+import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
@@ -71,6 +71,9 @@ public class MvValidator {
     }
 
     private void checkTarget(MvTarget mt) {
+        if (mt.getTableInfo()==null) {
+            context.addIssue(new MvIssue.MissingTargetTable(mt));
+        }
         context.addIssues(mt.getSources()
                 .stream()
                 .filter(js -> !js.isTableKnown())
@@ -98,6 +101,7 @@ public class MvValidator {
             context.addIssue(new MvIssue.UselessTarget(mt));
         }
         mt.getSources().forEach(src -> checkJoinConditions(mt, src));
+        mt.getColumns().forEach(column -> checkTargetColumn(mt, column));
     }
 
     private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
@@ -110,7 +114,51 @@ public class MvValidator {
                     && !src.getTableAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
+            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() == null
+                    && cond.getFirstAlias().equals(cond.getSecondAlias())) {
+                // TODO: maybe a different issue with better explanation
+                context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
+            } else {
+                checkJoinColumns(mt, cond);
             }
+        }
+    }
+
+    private void checkJoinColumns(MvTarget mt, MvJoinCondition cond) {
+        if (cond.getFirstAlias()!=null) {
+            MvJoinSource ref = mt.getSourceByAlias(cond.getFirstAlias());
+            if (ref!=null && ref.getTableInfo()!=null) {
+                if (ref.getTableInfo().getColumns().get(cond.getFirstColumn())==null) {
+                    context.addIssue(new MvIssue.UnknownColumnInCondition(
+                            mt, cond, cond.getFirstAlias(), cond.getFirstColumn()));
+                }
+            }
+        }
+        if (cond.getSecondAlias()!=null) {
+            MvJoinSource ref = mt.getSourceByAlias(cond.getSecondAlias());
+            if (ref!=null && ref.getTableInfo()!=null) {
+                if (ref.getTableInfo().getColumns().get(cond.getSecondColumn())==null) {
+                    context.addIssue(new MvIssue.UnknownColumnInCondition(
+                            mt, cond, cond.getSecondAlias(), cond.getSecondColumn()));
+                }
+            }
+        }
+    }
+
+    private void checkTargetColumn(MvTarget mt, MvColumn column) {
+        if (column.isComputation()) {
+            return;
+        }
+        MvJoinSource src = mt.getSourceByAlias(column.getSourceAlias());
+        if (src==null || src.getTableInfo()==null
+                || src.getTableInfo().getColumns().get(column.getSourceColumn())==null) {
+            context.addIssue(new MvIssue.IllegalOutputReference(mt, column));
+        }
+        if (mt.getTableInfo()==null) {
+            return;
+        }
+        if (mt.getTableInfo().getColumns().get(column.getName())==null) {
+            context.addIssue(new MvIssue.UnknownOutputColumn(mt, column));
         }
     }
 

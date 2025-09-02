@@ -228,7 +228,7 @@ public class MvService {
         } else {
             path = ydb.getDatabase() + "/" + tabname;
         }
-        LOG.info("Describing table {} ...", path);
+        LOG.debug("Describing table {} ...", path);
         TableDescription desc;
         try {
             DescribeTableSettings dts = new DescribeTableSettings();
@@ -240,11 +240,11 @@ public class MvService {
             if (ex instanceof UnexpectedResultException) {
                 Status status = ((UnexpectedResultException)ex).getStatus();
                 if (StatusCode.SCHEME_ERROR.equals(status.getCode())) {
-                    LOG.warn("Failed to obtain description for table {} - table is missing or no access", path);
+                    LOG.warn("Failed to obtain description for `{}` - table is missing or no access", path);
                     return null;
                 }
             }
-            LOG.warn("Failed to obtain description for table {}", path, ex);
+            LOG.warn("Failed to obtain description for table `{}`", path, ex);
             return null;
         }
 

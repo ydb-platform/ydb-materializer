@@ -1,6 +1,5 @@
 package tech.ydb.mv.model;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -119,6 +118,21 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class MissingTargetTable extends Error {
+        private final MvTarget target;
+
+        public MissingTargetTable(MvTarget target) {
+            super(target.getSqlPos());
+            this.target = target;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Missing output table for target `" + target.getName()
+                    + " at " + sqlPos;
+        }
+    }
+
     public static class UnknownSourceTable extends Error {
         private final MvTarget target;
         private final String tableName;
@@ -159,6 +173,68 @@ public interface MvIssue extends MvSqlPosHolder {
                         + "` in target " + target
                         + " at " + sqlPos;
             }
+        }
+    }
+
+    public static class UnknownColumnInCondition extends Error {
+        private final MvTarget target;
+        private final MvJoinCondition cond;
+        private final String tableAlias;
+        private final String columnName;
+
+        public UnknownColumnInCondition(MvTarget target, MvJoinCondition cond,
+                String tableAlias, String columnName) {
+            super(cond.getSqlPos());
+            this.target = target;
+            this.cond = cond;
+            this.tableAlias = tableAlias;
+            this.columnName = columnName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown column `" + columnName
+                    + "` referenced for alias `" + tableAlias
+                    + "` in target `" + target.getName()
+                    + "` at " + cond.getSqlPos();
+        }
+    }
+
+    public static class UnknownOutputColumn extends Error {
+        private final MvTarget target;
+        private final MvColumn column;
+
+        public UnknownOutputColumn(MvTarget target, MvColumn column) {
+            super(column.getSqlPos());
+            this.target = target;
+            this.column = column;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown output column `" + column.getName()
+                    + "` in target `" + target.getName()
+                    + "` at " + sqlPos;
+        }
+    }
+
+    public static class IllegalOutputReference extends Error {
+        private final MvTarget target;
+        private final MvColumn column;
+
+        public IllegalOutputReference(MvTarget target, MvColumn column) {
+            super(column.getSqlPos());
+            this.target = target;
+            this.column = column;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Illegal column reference `" + column.getSourceColumn()
+                    + "` by alias `" + column.getSourceAlias()
+                    + "` for output column `" + column.getName()
+                    + "` in target `" + target.getName()
+                    + "` at " + sqlPos;
         }
     }
 
