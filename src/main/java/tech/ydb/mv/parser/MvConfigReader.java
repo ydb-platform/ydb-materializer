@@ -4,13 +4,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.query.tools.QueryReader;
-import tech.ydb.query.tools.SessionRetryContext;
+
+import tech.ydb.table.query.Params;
+
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvContext;
-import tech.ydb.table.query.Params;
 
 /**
  * MV configuration reader logic.
