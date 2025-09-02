@@ -292,7 +292,8 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Missing changefeed input for table `" + source.getTableName()
+            return "Missing changefeed for table `" + source.getTableName()
+                    + "` used as `" + source.getTableAlias()
                     + "` in target " + target
                     + " at " + sqlPos;
         }
