@@ -357,18 +357,21 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class MissingInput extends Warning {
+        private final MvHandler handler;
         private final MvTarget target;
         private final MvJoinSource source;
 
-        public MissingInput(MvTarget target, MvJoinSource source) {
+        public MissingInput(MvHandler handler, MvTarget target, MvJoinSource source) {
             super(source.getSqlPos());
+            this.handler = handler;
             this.target = target;
             this.source = source;
         }
 
         @Override
         public String getMessage() {
-            return "Missing changefeed for table `" + source.getTableName()
+            return "Handler `" + handler.getName()
+                    + "` is missing input for table `" + source.getTableName()
                     + "` used as `" + source.getTableAlias()
                     + "` in target " + target
                     + " at " + sqlPos;

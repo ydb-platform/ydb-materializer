@@ -236,7 +236,7 @@ public class MvValidator {
     private void checkTargetVsInputs(MvHandler mh, MvTarget mt) {
         for (var joinSource : mt.getSources()) {
             if (mh.getInput(joinSource.getTableName()) == null) {
-                context.addIssue(new MvIssue.MissingInput(mt, joinSource));
+                context.addIssue(new MvIssue.MissingInput(mh, mt, joinSource));
             }
         }
     }
