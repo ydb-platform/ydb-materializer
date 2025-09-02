@@ -64,12 +64,12 @@ public class MvController {
 
     public synchronized boolean start() {
         if (context.isRunning()) {
-            LOG.warn("Ignored start call for an already running controller {}", getName());
+            LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
         }
-        LOG.info("Starting the controller {}", getName());
+        LOG.info("Starting the controller `{}`", getName());
         if (!context.getService().getCoordinator().lock(getName())) {
-            LOG.warn("Failed to obtain the lock for {}, refusing to start", getName());
+            LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
             return false;
         }
         context.start();
@@ -81,10 +81,10 @@ public class MvController {
 
     public synchronized boolean stop() {
         if (! context.isRunning()) {
-            LOG.warn("Ignored stop call for an already stopped controller {}", getName());
+            LOG.warn("Ignored stop call for an already stopped controller `{}`", getName());
             return false;
         }
-        LOG.info("Stopping the controller {}", getName());
+        LOG.info("Stopping the controller `{}`", getName());
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
         cdcFeeder.stop();

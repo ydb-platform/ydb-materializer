@@ -20,6 +20,7 @@ public class App {
                 LOG.info("Database connection established.");
                 MvService wc = new MvService(conn);
                 try {
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> wc.shutdown()));
                     switch (MvConfig.parseMode(args[1])) {
                         case CHECK:
                             LOG.info("Issues output requested.");
