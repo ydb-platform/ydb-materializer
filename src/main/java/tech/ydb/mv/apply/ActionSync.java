@@ -25,8 +25,8 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvSynchronize extends MvActionBase implements MvApplyAction {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvSynchronize.class);
+class ActionSync extends ActionBase implements MvApplyAction {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionSync.class);
 
     private final String targetTableName;
     private final String sqlSelect;
@@ -37,7 +37,7 @@ public class MvSynchronize extends MvActionBase implements MvApplyAction {
     private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
             = new ThreadLocal<>();
 
-    public MvSynchronize(MvTarget target, MvActionContext context) {
+    public ActionSync(MvTarget target, MvActionContext context) {
         super(context);
         if (target==null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo()==null) {

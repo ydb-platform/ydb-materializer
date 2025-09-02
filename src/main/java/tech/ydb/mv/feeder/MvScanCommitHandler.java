@@ -11,7 +11,6 @@ import tech.ydb.query.QuerySession;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.apply.MvCommitHandler;
 import tech.ydb.mv.model.MvKey;
 
 /**

@@ -6,6 +6,7 @@ import java.util.List;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.result.ResultSetReader;
 
+import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
@@ -17,13 +18,13 @@ import tech.ydb.mv.util.YdbConv;
  *
  * @author zinal
  */
-public class MvKeysGrab extends MvKeysAbstract {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysGrab.class);
+class ActionKeysGrab extends ActionKeysAbstract {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysGrab.class);
 
     private final String sqlSelect;
     private final StructType rowType;
 
-    public MvKeysGrab(MvTarget target, MvJoinSource src,
+    public ActionKeysGrab(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(target, src, transformation, context);
         try (MvSqlGen sg = new MvSqlGen(this.transformation)) {

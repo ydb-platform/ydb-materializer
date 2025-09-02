@@ -12,7 +12,7 @@ import tech.ydb.mv.model.MvHandlerSettings;
  *
  * @author zinal
  */
-public class MvActionContext {
+class MvActionContext {
 
     private final MvJobContext base;
     private final MvApplyManager applyManager;

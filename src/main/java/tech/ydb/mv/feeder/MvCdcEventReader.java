@@ -20,11 +20,11 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcEventReader.class);
 
     private final MvCdcFeeder owner;
-    private final MvApplyManager applyManager;
+    private final MvCdcSink sink;
 
     MvCdcEventReader(MvCdcFeeder owner) {
         this.owner = owner;
-        this.applyManager = owner.getApplyManager();
+        this.sink = owner.getSink();
     }
 
     @Override
@@ -61,7 +61,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         for (Message m : event.getMessages()) {
             records.add(parser.parse(m.getData()));
         }
-        applyManager.submit(records, new MvCdcCommitHandler(event));
+        sink.submit(records, new MvCdcCommitHandler(event));
     }
 
 }

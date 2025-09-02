@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTarget;
@@ -13,7 +14,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public abstract class MvKeysAbstract extends MvActionBase implements MvApplyAction {
+abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
     protected final MvTarget target;
     protected final MvTarget transformation;
@@ -21,7 +22,7 @@ public abstract class MvKeysAbstract extends MvActionBase implements MvApplyActi
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
 
-    public MvKeysAbstract(MvTarget target, MvJoinSource src,
+    public ActionKeysAbstract(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(context);
         if (target==null || src==null || src.getChangefeedInfo()==null

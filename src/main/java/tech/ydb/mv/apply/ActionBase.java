@@ -24,14 +24,14 @@ import tech.ydb.mv.util.YdbConv;
  *
  * @author zinal
  */
-public abstract class MvActionBase {
+abstract class ActionBase {
 
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
     protected final long instance;
     protected final MvActionContext context;
 
-    protected MvActionBase(MvActionContext context) {
+    protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
     }
@@ -54,7 +54,7 @@ public abstract class MvActionBase {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final MvActionBase other = (MvActionBase) obj;
+        final ActionBase other = (ActionBase) obj;
         return this.instance == other.instance;
     }
 

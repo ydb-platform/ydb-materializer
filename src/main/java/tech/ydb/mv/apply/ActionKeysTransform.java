@@ -3,6 +3,7 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.List;
 
+import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
@@ -14,12 +15,12 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvKeysTransform extends MvKeysAbstract {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvKeysTransform.class);
+class ActionKeysTransform extends ActionKeysAbstract {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysTransform.class);
 
     private final boolean keysTransform;
 
-    public MvKeysTransform(MvTarget target, MvJoinSource src,
+    public ActionKeysTransform(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(target, src, transformation, context);
         if (!transformation.isSingleStepTransformation()) {

@@ -26,15 +26,15 @@ public class MvCdcFeeder {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
     private final MvJobContext context;
-    private final MvApplyManager applyManager;
+    private final MvCdcSink sink;
     private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvCdcFeeder(MvJobContext context, MvApplyManager applyManager) {
+    public MvCdcFeeder(MvJobContext context, MvCdcSink sink) {
         this.context = context;
-        this.applyManager = applyManager;
+        this.sink = sink;
         this.executor = Executors.newFixedThreadPool(
                 context.getSettings().getCdcReaderThreads(), new ConfigureThreads());
         LOG.info("Started {} CDC reader threads for handler {}",
@@ -68,8 +68,8 @@ public class MvCdcFeeder {
         }
     }
 
-    public MvApplyManager getApplyManager() {
-        return applyManager;
+    public MvCdcSink getSink() {
+        return sink;
     }
 
     MvCdcParser findParser(String topicPath) {

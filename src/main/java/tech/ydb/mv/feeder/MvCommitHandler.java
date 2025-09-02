@@ -1,4 +1,4 @@
-package tech.ydb.mv.apply;
+package tech.ydb.mv.feeder;
 
 /**
  * The handler for the commit action to be executed when the record is processed.

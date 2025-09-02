@@ -2,7 +2,7 @@ package tech.ydb.mv.feeder;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import tech.ydb.mv.apply.MvCommitHandler;
+
 import tech.ydb.topic.read.events.DataReceivedEvent;
 
 /**

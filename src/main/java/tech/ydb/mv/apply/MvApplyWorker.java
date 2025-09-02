@@ -7,6 +7,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
