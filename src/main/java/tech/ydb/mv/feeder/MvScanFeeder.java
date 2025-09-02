@@ -9,6 +9,7 @@ import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvKey;
@@ -42,8 +43,9 @@ public class MvScanFeeder {
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.context = new AtomicReference<>();
         this.applyManager = applyManager;
-        this.controlTable = job.getYdb()
+        String temp = job.getYdb()
                 .getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+        this.controlTable = YdbConnector.safe(temp);
         this.rateLimiterLimit = job.getYdb().getProperty(MvConfig.CONF_SCAN_RATE, 10000);
     }
 
