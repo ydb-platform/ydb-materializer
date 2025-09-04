@@ -153,9 +153,9 @@ public class MvService {
     }
 
     /**
-     * Start and run the set of default handlers.
+     * Start the default handlers.
      */
-    public void runHandlers() {
+    public void startHandlers() {
         if (LOG.isInfoEnabled()) {
             String msg = new MvIssuePrinter(context).write();
             LOG.info("\n"
@@ -171,6 +171,13 @@ public class MvService {
                 LOG.error("Failed to activate the handler {}", handlerName, ex);
             }
         }
+    }
+
+    /**
+     * Start and run the set of default handlers.
+     */
+    public void runHandlers() {
+        startHandlers();
         while (isRunning()) {
             YdbMisc.sleep(100L);
         }

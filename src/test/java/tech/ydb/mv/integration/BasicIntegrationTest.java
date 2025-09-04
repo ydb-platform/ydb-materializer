@@ -18,7 +18,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
-import tech.ydb.mv.format.MvSqlPrinter;
+import tech.ydb.mv.util.YdbMisc;
 import tech.ydb.query.QuerySession;
 
 /**
@@ -96,7 +96,7 @@ ALTER TOPIC `test1/sub_table2/cf3` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table3/cf4` ADD CONSUMER `consumer1`;
 """;
 
-    private static final String UPSERT_DATA =
+    private static final String UPSERT_CONFIG =
 """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
@@ -120,6 +120,35 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INPUT `test1/sub_table3` CHANGEFEED cf4 AS BATCH;@@);
 """;
 
+    private static final String WRITE_INITIAL =
+"""
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c20) VALUES
+ ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 'text message one'u)
+,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 'text message two'u)
+,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 'text message three'u)
+,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 'text message four'u)
+;
+INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
+ (Timestamp('2021-01-02T10:15:21Z'), 10001, 501)
+,(Timestamp('2022-01-02T10:15:21Z'), 10002, 502)
+,(Timestamp('2023-01-02T10:15:21Z'), 10003, 503)
+,(Timestamp('2024-01-02T10:15:21Z'), 10004, 504)
+;
+INSERT INTO `test1/sub_table2` (c3,c4,c9) VALUES
+ (Decimal('10001.567',22,9), 'val2'u, Date('2020-07-10'))
+,(Decimal('10002.567',22,9), 'val1'u, Date('2020-07-11'))
+,(Decimal('10003.567',22,9), 'val1'u, Date('2020-07-12'))
+,(Decimal('10004.567',22,9), 'val1'u, Date('2020-07-13'))
+,(Decimal('10002.567',22,9), 'val2'u, Date('2020-07-14'))
+,(Decimal('10003.567',22,9), 'val3'u, Date('2020-07-15'))
+,(Decimal('10004.567',22,9), 'val4'u, Date('2020-07-16'))
+;
+INSERT INTO `test1/sub_table3` (c5,c10) VALUES
+ (58, 'Welcome!'u)
+,(59, 'Adieu!'u)
+;
+""";
+
     @RegisterExtension
     private static final YdbHelperExtension YDB = new YdbHelperExtension();
 
@@ -137,6 +166,9 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
         props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
+        props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
+        props.setProperty(MvConfig.CONF_DEF_APPLY_THREADS, "1");
+        props.setProperty(MvConfig.CONF_DEF_CDC_THREADS, "1");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
@@ -151,46 +183,91 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
         // has to wait a bit here
         try { Thread.sleep(5000L); } catch(InterruptedException ix) {}
         // now the work
-        System.err.println("Starting up...");
+        System.err.println("[AAA] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
-            System.err.println("Preparation: completed.");
+            System.err.println("[AAA] Preparation: completed.");
             MvService wc = new MvService(conn);
             try {
-                validateContext(wc);
-                new MvSqlPrinter(wc.getContext()).write(System.out);
+                System.err.println("[AAA] Checking context...");
+                new MvIssuePrinter(wc.getContext()).write(System.out);
+                Assertions.assertTrue(wc.getContext().isValid());
+                System.err.println("[AAA] Starting the services...");
+                wc.startHandlers();
+                System.err.println("[AAA] Sleeping for 2 seconds...");
+                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Writing some input data...");
+                writeInitialData(conn);
+                System.err.println("[AAA] Sleeping for 2 seconds...");
+                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Checking the view output...");
+                checkViewOutputInitial(conn);
+                System.err.println("[AAA] Updating some rows...");
+                writeUpdates1(conn);
+                System.err.println("[AAA] Sleeping for 2 seconds...");
+                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Checking the view output...");
+                checkViewOutputUpdates1(conn);
+                System.err.println("[AAA] Updating more rows...");
+                writeUpdates2(conn);
+                System.err.println("[AAA] Sleeping for 2 seconds...");
+                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Checking the view output...");
+                checkViewOutputUpdates2(conn);
+                System.err.println("[AAA] All done!");
             } finally {
                 wc.shutdown();
             }
         }
     }
 
-    private void validateContext(MvService wc) {
-        new MvIssuePrinter(wc.getContext()).write(System.out);
-        Assertions.assertTrue(wc.getContext().isValid());
-    }
-
     private void fillDatabase(YdbConnector conn) {
-        System.err.println("Preparation: creating tables...");
-        runScript(conn, CREATE_TABLES);
-        System.err.println("Preparation: adding consumers...");
-        runScript(conn, CDC_CONSUMERS);
-        System.err.println("Preparation: adding data...");
-        runScript(conn, UPSERT_DATA);
+        System.err.println("[AAA] Preparation: creating tables...");
+        runDdl(conn, CREATE_TABLES);
+        System.err.println("[AAA] Preparation: adding consumers...");
+        runDdl(conn, CDC_CONSUMERS);
+        System.err.println("[AAA] Preparation: adding config...");
+        runDdl(conn, UPSERT_CONFIG);
     }
 
-    private void runScript(YdbConnector conn, String sql) {
+    private CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {
+        return qs.createQuery(sql, txMode)
+                .execute()
+                .thenApply(res -> res.getStatus());
+    }
+
+    private void runDdl(YdbConnector conn, String sql) {
         conn.getQueryRetryCtx()
-                .supplyStatus(qs -> runDdl(qs, sql))
+                .supplyStatus(qs -> runSql(qs, sql, TxMode.NONE))
                 .join()
                 .expectSuccess();
     }
 
-    private CompletableFuture<Status> runDdl(QuerySession qs, String sql) {
-        return qs.createQuery(sql, TxMode.NONE)
-                .execute()
-                .thenApply(res -> res.getStatus());
+    private void runDml(YdbConnector conn, String sql) {
+        conn.getQueryRetryCtx()
+                .supplyStatus(qs -> runSql(qs, sql, TxMode.SERIALIZABLE_RW))
+                .join()
+                .expectSuccess();
+    }
+
+    private void writeInitialData(YdbConnector conn) {
+        runDml(conn, WRITE_INITIAL);
+    }
+
+    private void checkViewOutputInitial(YdbConnector conn) {
+    }
+
+    private void writeUpdates1(YdbConnector conn) {
+    }
+
+    private void checkViewOutputUpdates1(YdbConnector conn) {
+    }
+
+    private void writeUpdates2(YdbConnector conn) {
+    }
+
+    private void checkViewOutputUpdates2(YdbConnector conn) {
     }
 
 }
