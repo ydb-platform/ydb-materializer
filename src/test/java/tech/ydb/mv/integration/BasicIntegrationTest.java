@@ -20,6 +20,7 @@ import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.util.YdbMisc;
 import tech.ydb.query.QuerySession;
+import tech.ydb.topic.settings.DescribeConsumerSettings;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
@@ -104,7 +105,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
-         COMPUTE ON main #[ Unicode::Substring(main.c20,3,5) ]# AS c11,
+         #[ Unicode::Substring(main.c20,3,5) ]# AS c11,
          #[ CAST(999 AS Int32?) ]# AS c12
   FROM `test1/main_table` AS main
   INNER JOIN `test1/sub_table1` AS sub1
@@ -218,7 +219,11 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
                 checkViewOutputUpdates2(conn);
+                System.err.println("[AAA] Checking the topic consumer positions...");
+                checkConsumerPositions(conn);
                 System.err.println("[AAA] All done!");
+                // TODO: remove temp debugging statement
+                wc.runHandlers();
             } finally {
                 wc.shutdown();
             }
@@ -271,6 +276,21 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void checkViewOutputUpdates2(YdbConnector conn) {
+    }
+
+    private void checkConsumerPositions(YdbConnector conn) {
+        String consumerName = "consumer1";
+        var descMain = conn.getTopicClient().describeConsumer(
+                conn.fullCdcTopicName("test1/main_table", "cf1"),
+                consumerName,
+                DescribeConsumerSettings.newBuilder()
+                        .withIncludeStats(true)
+                        .build()).join().getValue();
+        for (var cpi : descMain.getPartitions()) {
+            long id = cpi.getPartitionId();
+            long offset = cpi.getConsumerStats().getCommittedOffset();
+            System.out.println(" -> " + id + ": " + offset);
+        }
     }
 
 }

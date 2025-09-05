@@ -85,7 +85,7 @@ public class MvApplyWorker implements Runnable {
         if (activeTasks.isEmpty()) {
             return 0;
         }
-        PerAction retries = new PerAction().apply();
+        PerAction retries = new PerAction().addItems(activeTasks).apply();
         if (! processRetries(retries)) {
             // no commit unless no retries needed, or retries succeeded
             return -1;
@@ -129,7 +129,7 @@ public class MvApplyWorker implements Runnable {
         try {
             action.apply(tasks);
         } catch(Exception ex) {
-            retries.items.put(action, tasks);
+            retries.addItems(tasks, action);
             LOG.error("Execution failed for action {}, scheduling for retry",
                     action, ex);
         }
@@ -138,21 +138,37 @@ public class MvApplyWorker implements Runnable {
     private class PerAction {
         final HashMap<MvApplyAction, List<MvApplyTask>> items = new HashMap<>();
 
-        PerAction() {
-            for (MvApplyTask task : activeTasks) {
-                for (MvApplyAction action : task.getActions().getActions()) {
-                    List<MvApplyTask> tasks = items.get(action);
-                    if (tasks==null) {
-                        tasks = new ArrayList<>();
-                        items.put(action, tasks);
-                    }
-                    tasks.add(task);
-                }
-            }
-        }
-
         boolean isEmpty() {
             return items.isEmpty();
+        }
+
+        PerAction addItems(List<MvApplyTask> input) {
+            for (MvApplyTask task : input) {
+                for (MvApplyAction action : task.getActions().getActions()) {
+                    addItem(task, action);
+                }
+            }
+            return this;
+        }
+
+        PerAction addItems(List<MvApplyTask> input, MvApplyAction cur) {
+            if (cur==null) {
+                return addItems(input);
+            }
+            for (MvApplyTask task : input) {
+                addItem(task, cur);
+            }
+            return this;
+        }
+
+        PerAction addItem(MvApplyTask task, MvApplyAction action) {
+            List<MvApplyTask> tasks = items.get(action);
+            if (tasks == null) {
+                tasks = new ArrayList<>();
+                items.put(action, tasks);
+            }
+            tasks.add(task);
+            return this;
         }
 
         PerAction apply() {
