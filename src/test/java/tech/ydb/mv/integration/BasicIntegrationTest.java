@@ -159,6 +159,29 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ;
 """;
 
+    private static final String WRITE_UP1 =
+"""
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c20) VALUES
+ ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 'text message one'u)
+;
+UPSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
+ (Timestamp('2021-01-02T10:15:21Z'), 10001, 1501)
+,(Timestamp('2022-01-02T10:15:21Z'), 10002, 1502)
+,(Timestamp('2023-01-02T10:15:21Z'), 10003, 1503)
+,(Timestamp('2024-01-02T10:15:21Z'), 10004, 1504)
+;
+""";
+
+    private static final String WRITE_UP2 =
+"""
+DELETE FROM `test1/main_table` WHERE id='main-001'u
+;
+DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val2'u
+;
+DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
+;
+""";
+
     @RegisterExtension
     private static final YdbHelperExtension YDB = new YdbHelperExtension();
 
@@ -216,28 +239,32 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output (should be empty)...");
-                checkViewOutput(conn, sqlQuery);
+                int diffCount = checkViewOutput(conn, sqlQuery);
+                Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
                 writeInitialData(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutput(conn, sqlQuery);
+                diffCount = checkViewOutput(conn, sqlQuery);
+                Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating some rows...");
                 writeUpdates1(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutput(conn, sqlQuery);
+                diffCount = checkViewOutput(conn, sqlQuery);
+                Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
                 writeUpdates2(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutput(conn, sqlQuery);
+                diffCount = checkViewOutput(conn, sqlQuery);
+                Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Checking the topic consumer positions...");
                 checkConsumerPositions(conn);
@@ -283,7 +310,15 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         runDml(conn, WRITE_INITIAL);
     }
 
-    private void checkViewOutput(YdbConnector conn, String sqlMain) {
+    private void writeUpdates1(YdbConnector conn) {
+        runDml(conn, WRITE_UP1);
+    }
+
+    private void writeUpdates2(YdbConnector conn) {
+        runDml(conn, WRITE_UP2);
+    }
+
+    private int checkViewOutput(YdbConnector conn, String sqlMain) {
         String sqlMv = "SELECT * FROM `test1/mv1`";
         var left = convertResultSet(
                 conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
@@ -291,24 +326,29 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
         System.out.println("*** comparing rowsets, size1="
                 + left.size() + ", size2=" + right.size());
+        int diffCount = 0;
         for (var leftMe : left.entrySet()) {
             var rightVal = right.get(leftMe.getKey());
             if (rightVal==null) {
                 System.out.println("  missing key: " + leftMe.getKey());
+                ++diffCount;
                 continue;
             }
             if (! leftMe.getValue().equals(rightVal)) {
                 System.out.println("  unequal records: \n\t"
                         + leftMe.getValue() + "\n\t"
                         + rightVal);
+                ++diffCount;
             }
         }
         for (var rightMe : right.entrySet()) {
             var leftVal = left.get(rightMe.getKey());
             if (leftVal==null) {
                 System.out.println("  extra key: " + rightMe.getKey());
+                ++diffCount;
             }
         }
+        return diffCount;
     }
 
     private HashMap<String, HashMap<String,Object>> convertResultSet(ResultSetReader rsr, String keyName) {
@@ -324,12 +364,6 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
             output.put(key, value);
         }
         return output;
-    }
-
-    private void writeUpdates1(YdbConnector conn) {
-    }
-
-    private void writeUpdates2(YdbConnector conn) {
     }
 
     private void checkConsumerPositions(YdbConnector conn) {
