@@ -43,36 +43,66 @@ public class MvSqlValidator {
     private boolean validateTarget(MvTarget target) {
         MvSqlGen sg = new MvSqlGen(target);
         // fast track - attempt to check the whole SELECT, if valid - stop
-        String largeSql = sg.makeSelect();
-        if (validateSql(largeSql) == null) {
+        String currentSql = sg.makeSelect();
+        String originalIssues = validateSql(currentSql);
+        if (originalIssues == null) {
             return true;
         }
         // there are issues with the whole SELECT, probably bad opaque expressions
         // trying to isolate and report properly
         HashSet<String> knownIssues = new HashSet<>();
-        MvComputation filter = target.getFilter();
         List<MvColumn> exprColumns = collectExpressionColumns(target);
-        for (int index = 0; index < exprColumns.size(); ++index) {
-            MvColumn column = exprColumns.get(index);
-            maskAllExcept(index, exprColumns, sg);
-            if (filter != null) {
-                sg.getExcludedComputations().add(filter);
-            }
-            String stepSql = sg.makeSelect();
-            String issues = validateSql(stepSql);
-            if (issues != null && knownIssues.add(issues)) {
-                context.addIssue(new MvIssue.SqlCustomColumnError(target, column, issues));
-            }
+        if (exprColumns.isEmpty() && target.getFilter() != null) {
+            // no expressions in columns, and we have the filter - so it is wrong
+            context.addIssue(new MvIssue.SqlCustomFilterError(target, target.getFilter(), originalIssues));
+            return false;
         }
-        if (filter!=null) {
-            maskAllExcept(-1, exprColumns, sg);
-            String stepSql = sg.makeSelect();
-            String issues = validateSql(stepSql);
-            if (issues != null && knownIssues.add(issues)) {
-                context.addIssue(new MvIssue.SqlCustomFilterError(target, filter, issues));
+        // check the filter
+        if (target.getFilter() != null) {
+            validateFilter(target, sg, exprColumns, knownIssues);
+        }
+        if (exprColumns.size() > 1) {
+            for (MvColumn current : exprColumns) {
+                // safe placeholders for all but the current column
+                // safe placeholder for WHERE filter
+                validateColumn(target, current, sg, exprColumns, knownIssues);
             }
+        } else if (exprColumns.size() == 1) {
+            // single expression column
+            MvColumn current = exprColumns.iterator().next();
+            validateColumn(target, current, sg, exprColumns, knownIssues);
+        }
+        if (knownIssues.isEmpty()) {
+            // Could not localize the error, but still need to report it.
+            context.addIssue(new MvIssue.SqlUnexpectedError(target, originalIssues));
         }
         return false;
+    }
+
+    private void validateFilter(MvTarget target, MvSqlGen sg,
+            List<MvColumn> exprColumns, HashSet<String> knownIssues) {
+        // safe placeholders for all columns
+        maskAllExcept(null, exprColumns, sg);
+        // now checking the filter
+        String currentSql = sg.makeSelect();
+        String issues = validateSql(currentSql);
+        if (issues != null && knownIssues.add(issues)) {
+            context.addIssue(new MvIssue.SqlCustomFilterError(target, target.getFilter(), issues));
+        }
+    }
+
+    private void validateColumn(MvTarget target, MvColumn current, MvSqlGen sg,
+            List<MvColumn> exprColumns, HashSet<String> knownIssues) {
+        maskAllExcept(current, exprColumns, sg);
+        if (target.getFilter() != null) {
+            // safe placeholder in WHERE
+            sg.getExcludedComputations().add(target.getFilter());
+        }
+        String currentSql = sg.makeSelect();
+        String issues = validateSql(currentSql);
+        if (issues != null && knownIssues.add(issues)) {
+            context.addIssue(new MvIssue.SqlCustomColumnError(target, current, issues));
+        }
     }
 
     private String validateSql(String sql) {
@@ -103,14 +133,27 @@ public class MvSqlValidator {
         return output;
     }
 
-    private void maskAllExcept(int index, List<MvColumn> exprColumns, MvSqlGen sg) {
+    private void maskAllExcept(MvColumn exclude, List<MvColumn> exprColumns, MvSqlGen sg) {
         sg.getExcludedComputations().clear();
-        for (int i = 0; i < exprColumns.size(); ++i) {
-            if (i == index) {
+        for (MvColumn column : exprColumns) {
+            if (column == exclude) {
                 continue;
             }
-            MvColumn c = exprColumns.get(0);
-            sg.getExcludedComputations().add(c.getComputation());
+            sg.getExcludedComputations().add(column.getComputation());
+        }
+        // TODO: debugging code, remove
+        if (exclude != null) {
+            if ( sg.getExcludedComputations().contains(exclude.getComputation()) ) {
+                throw new IllegalStateException("Internal error, current column expression got excluded");
+            }
+        }
+        for (MvColumn column : exprColumns) {
+            if (column == exclude) {
+                continue;
+            }
+            if (! sg.getExcludedComputations().contains(column.getComputation())) {
+                throw new IllegalStateException("Internal error, other column expression got included");
+            }
         }
     }
 

@@ -105,7 +105,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
          COMPUTE ON main #[ Substring(main.c20,3,5) ]# AS c11,
-         #[ CAST(NULL AS Int32?) ]# AS c12
+         #[ CAST(sub3.c99 AS Int32?) ]# AS c12
   FROM `test1/main_table` AS main
   INNER JOIN `test1/sub_table1` AS sub1
     ON main.c1=sub1.c1 AND main.c2=sub1.c2

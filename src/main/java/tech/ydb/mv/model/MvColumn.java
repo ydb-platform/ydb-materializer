@@ -82,4 +82,9 @@ public class MvColumn implements MvSqlPosHolder {
         return sqlPos;
     }
 
+    @Override
+    public String toString() {
+        return "MvColumn{" + "name=" + name + '}';
+    }
+
 }

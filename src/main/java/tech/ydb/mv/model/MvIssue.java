@@ -465,6 +465,24 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class SqlUnexpectedError extends Error {
+        private final MvTarget target;
+        private final String issues;
+
+        public SqlUnexpectedError(MvTarget target, String issues) {
+            super(target.getSqlPos());
+            this.target = target;
+            this.issues = issues;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unexpected SQL error at " + sqlPos
+                    + " for  target `" + target.getName()
+                    + "`: " + issues;
+        }
+    }
+
     public static enum EmptyHandlerType {
         NO_TARGETS,
         NO_INPUTS
