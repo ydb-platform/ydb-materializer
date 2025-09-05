@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  *
@@ -57,6 +58,32 @@ public class MvComputation implements MvSqlPosHolder {
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 61 * hash + Objects.hashCode(this.expression);
+        hash = 61 * hash + Objects.hashCode(this.literal);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvComputation other = (MvComputation) obj;
+        if (!Objects.equals(this.expression, other.expression)) {
+            return false;
+        }
+        return Objects.equals(this.literal, other.literal);
     }
 
     public static class Source {

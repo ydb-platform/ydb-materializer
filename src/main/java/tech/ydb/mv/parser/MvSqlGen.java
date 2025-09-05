@@ -2,6 +2,7 @@ package tech.ydb.mv.parser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -17,6 +18,7 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
+import static tech.ydb.table.values.PrimitiveType.Int32;
 
 /**
  * SQL query generation logic.
@@ -35,12 +37,22 @@ public class MvSqlGen implements AutoCloseable {
     public static final String EOL = System.getProperty("line.separator");
 
     private final MvTarget target;
+    private final HashSet<MvComputation> excludedComputations;
 
     public MvSqlGen(MvTarget target) {
         if (target==null) {
             throw new NullPointerException("target argument cannot be null");
         }
         this.target = target;
+        this.excludedComputations = new HashSet<>();
+    }
+
+    public MvTarget getTarget() {
+        return target;
+    }
+
+    public HashSet<MvComputation> getExcludedComputations() {
+        return excludedComputations;
     }
 
     @Override
@@ -250,7 +262,7 @@ public class MvSqlGen implements AutoCloseable {
         // Add WHERE clause if present
         if (target.getFilter() != null) {
             sb.append("WHERE ");
-            genExpression(sb, target.getFilter());
+            genExpression(sb, target.getFilter(), PrimitiveType.Bool);
             sb.append(EOL);
         }
     }
@@ -430,7 +442,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private void genColumn(StringBuilder sb, MvColumn c) {
         if (c.isComputation()) {
-            genExpression(sb, c.getComputation());
+            genExpression(sb, c.getComputation(), c.getType());
         } else {
             safeId(sb, c.getSourceAlias());
             sb.append(".");
@@ -440,11 +452,52 @@ public class MvSqlGen implements AutoCloseable {
         safeId(sb, c.getName());
     }
 
-    private void genExpression(StringBuilder sb, MvComputation c) {
+    private void genExpression(StringBuilder sb, MvComputation c, Type type) {
         if (c.isLiteral()) {
             sb.append(c.getLiteral().getValue());
         } else {
-            sb.append(c.getExpression());
+            if (excludedComputations.contains(c)) {
+                genExpressionPlaceholder(sb, type);
+            } else {
+                sb.append(c.getExpression());
+            }
+        }
+    }
+
+    private void genExpressionPlaceholder(StringBuilder sb, Type type) {
+        if (type == null) {
+            sb.append("CAST(NULL AS Text?)");
+            return;
+        }
+        while (type.getKind() == Type.Kind.OPTIONAL) {
+            type = type.unwrapOptional();
+        }
+        if (type.getKind() == Type.Kind.PRIMITIVE) {
+            switch ((PrimitiveType) type) {
+                case Bool:
+                    sb.append("true");
+                    break;
+                case Text:
+                    sb.append("''u");
+                    break;
+                case Bytes:
+                    sb.append("''");
+                    break;
+                case Int8:
+                case Int16:
+                case Int32:
+                case Int64:
+                case Uint8:
+                case Uint16:
+                case Uint32:
+                case Uint64:
+                    sb.append("CAST(0 AS ").append(type.toString()).append("?)");
+                    break;
+                default:
+                    sb.append("CAST(NULL AS ").append(type.toString()).append("?)");
+            }
+        } else {
+            sb.append("CAST(NULL AS ").append(type.toString()).append("?)");
         }
     }
 

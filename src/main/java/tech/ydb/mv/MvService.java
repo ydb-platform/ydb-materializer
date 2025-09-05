@@ -15,8 +15,9 @@ import tech.ydb.table.settings.DescribeTableSettings;
 
 import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.format.MvSqlPrinter;
+import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.parser.MvConfigReader;
-import tech.ydb.mv.parser.MvValidator;
+import tech.ydb.mv.parser.MvBasicValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
@@ -212,6 +213,7 @@ public class MvService {
             }
         }
         linkTables(info);
+        linkColumns();
         validate();
     }
 
@@ -225,6 +227,24 @@ public class MvService {
         for (MvHandler h : context.getHandlers().values()) {
             for (MvInput i : h.getInputs().values()) {
                 i.setTableInfo(info.get(i.getTableName()));
+            }
+        }
+    }
+
+    private void linkColumns() {
+        for (MvTarget target : context.getTargets().values()) {
+            MvTableInfo ti = target.getTableInfo();
+            if (ti==null) {
+                LOG.warn("Incomplete metadata: Missing type information for target `{}`",
+                        target.getName());
+                continue;
+            }
+            for (MvColumn column : target.getColumns()) {
+                column.setType(ti.getColumns().get(column.getName()));
+                if (column.getType() == null) {
+                    LOG.warn("Incomplete metadata: Missing type information for target `{}`, column `{}`",
+                            target.getName());
+                }
             }
         }
     }
@@ -276,7 +296,15 @@ public class MvService {
             LOG.warn("Context already invalid, validation skipped.");
             return false;
         }
-        return new MvValidator(context).validate();
+        boolean valid = new MvBasicValidator(context).validate();
+        if (! valid) {
+            return false;
+        }
+        valid = new MvSqlValidator(context, ydb).validate();
+        if (! valid) {
+            return false;
+        }
+        return true;
     }
 
     private void sleepSome() {

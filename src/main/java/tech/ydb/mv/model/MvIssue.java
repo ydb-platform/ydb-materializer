@@ -423,6 +423,48 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class SqlCustomColumnError extends Error {
+        private final MvTarget target;
+        private final MvColumn column;
+        private final String issues;
+
+        public SqlCustomColumnError(MvTarget target, MvColumn column, String issues) {
+            super(column.getSqlPos());
+            this.target = target;
+            this.column = column;
+            this.issues = issues;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Custom SQL expression at " + sqlPos
+                    + " for output column `" + column.getName()
+                    + "` of target `" + target.getName()
+                    + "` cannot be executed: " + issues;
+        }
+    }
+
+    public static class SqlCustomFilterError extends Error {
+        private final MvTarget target;
+        private final MvComputation filter;
+        private final String issues;
+
+        public SqlCustomFilterError(MvTarget target, MvComputation filter, String issues) {
+            super(filter.getSqlPos());
+            this.target = target;
+            this.filter = filter;
+            this.issues = issues;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Custom SQL expression at " + filter.getSqlPos()
+                    + " for output filtering"
+                    + " of target `" + target.getName()
+                    + "` cannot be executed: " + issues;
+        }
+    }
+
     public static enum EmptyHandlerType {
         NO_TARGETS,
         NO_INPUTS
