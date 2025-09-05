@@ -22,7 +22,7 @@ public class MvCdcCommitHandler implements MvCommitHandler {
         this.event = event;
         this.counter = event.getMessages().size();
         this.committed = false;
-        LOG.info("instance {} created -> {}", instance, counter);
+        LOG.debug("instance {} created -> {}", instance, counter);
     }
 
     @Override
@@ -41,11 +41,11 @@ public class MvCdcCommitHandler implements MvCommitHandler {
             return;
         }
         counter -= Math.min(count, counter);
-        LOG.info("instance {} commit {} -> {}", instance, count, counter);
+        LOG.debug("instance {} commit {} -> {}", instance, count, counter);
         if (counter == 0) {
             committed = true;
+            LOG.debug("instance {} commit APPLY", instance);
             try {
-                LOG.info("instance {} commit {} APPLY", instance);
                 event.commit().join();
             } catch (Exception ex) {
                 LOG.warn("Failed to commit the CDC message pack", ex);
@@ -57,7 +57,7 @@ public class MvCdcCommitHandler implements MvCommitHandler {
     public synchronized void reserve(int count) {
         if (count > 0 && !committed) {
             counter += count;
-            LOG.info("instance {} reserve {} -> {}", instance, count, counter);
+            LOG.debug("instance {} reserve {} -> {}", instance, count, counter);
         }
     }
 

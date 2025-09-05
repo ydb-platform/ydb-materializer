@@ -1,7 +1,6 @@
 package tech.ydb.mv.feeder;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,6 +41,7 @@ public class MvScanCommitHandler implements MvCommitHandler {
         this.next = new AtomicReference<>();
         this.terminal = terminal;
         initPredecessor(predecessor);
+        LOG.debug("instance {} created -> {}", instance, counter);
     }
 
     @Override
@@ -67,12 +67,16 @@ public class MvScanCommitHandler implements MvCommitHandler {
         }
         if (! context.isRunning()) {
             // no commits for an already stopped scan feeder
+            committed = true;
             resetNextChain();
+            LOG.debug("instance {} reset due to context stop", instance);
             return;
         }
         counter -= Math.min(count, counter);
+        LOG.debug("instance {} commit {} -> {}", instance, count, counter);
         if (isReady()) {
             committed = true;
+            LOG.debug("instance {} commit APPLY", instance);
             try {
                 context.getRetryCtx().supplyStatus(qs -> doApply(qs))
                         .join().expectSuccess();
@@ -88,6 +92,7 @@ public class MvScanCommitHandler implements MvCommitHandler {
     public synchronized void reserve(int count) {
         if (count > 0 && !committed) {
             counter += count;
+            LOG.debug("instance {} reserve {} -> {}", instance, count, counter);
         }
     }
 
