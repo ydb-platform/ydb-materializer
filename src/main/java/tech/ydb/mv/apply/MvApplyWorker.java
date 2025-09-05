@@ -3,11 +3,9 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import tech.ydb.mv.feeder.MvCdcCommitHandler;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.util.YdbMisc;
@@ -83,6 +81,7 @@ public class MvApplyWorker implements Runnable {
     }
 
     private int action() {
+        activeTasks.clear();
         queue.drainTo(activeTasks);
         if (activeTasks.isEmpty()) {
             return 0;
@@ -92,7 +91,7 @@ public class MvApplyWorker implements Runnable {
             // no commit unless no retries needed, or retries succeeded
             return -1;
         }
-        new PerCommit().apply();
+        new PerCommit(activeTasks).apply();
         return activeTasks.size();
     }
 
@@ -183,8 +182,8 @@ public class MvApplyWorker implements Runnable {
     private class PerCommit {
         final HashMap<MvCommitHandler, Integer> items = new HashMap<>();
 
-        PerCommit() {
-            for (MvApplyTask task : activeTasks) {
+        PerCommit(ArrayList<MvApplyTask> input) {
+            for (MvApplyTask task : input) {
                 Integer numTasks = items.get(task.getCommit());
                 if (numTasks==null) {
                     items.put(task.getCommit(), 1);
@@ -196,13 +195,6 @@ public class MvApplyWorker implements Runnable {
 
         void apply() {
             items.forEach((h, n) -> h.commit(n));
-            LOG.info("********* BEGIN");
-            for (var me : items.entrySet()) {
-                if (me.getKey() instanceof MvCdcCommitHandler cch) {
-                    LOG.info("CCH {} {} ({})", cch.getInstance(), cch.getCounter(), me.getValue());
-                }
-            }
-            LOG.info("********* END");
         }
     }
 

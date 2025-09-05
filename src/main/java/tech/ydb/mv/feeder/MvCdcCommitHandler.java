@@ -5,10 +5,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import tech.ydb.topic.read.events.DataReceivedEvent;
 
 /**
+ * CDC commit handler moves the topic offsets forward when the original
+ * messages are fully processed.
  *
  * @author zinal
  */
-public class MvCdcCommitHandler implements MvCommitHandler {
+class MvCdcCommitHandler implements MvCommitHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 

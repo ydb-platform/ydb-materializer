@@ -17,7 +17,7 @@ import tech.ydb.mv.model.MvKey;
  *
  * @author zinal
  */
-public class MvScanCommitHandler implements MvCommitHandler {
+class MvScanCommitHandler implements MvCommitHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 

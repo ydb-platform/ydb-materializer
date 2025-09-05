@@ -12,6 +12,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
+import tech.ydb.query.QuerySession;
+import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
 import tech.ydb.mv.MvConfig;
@@ -19,8 +21,6 @@ import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.util.YdbMisc;
-import tech.ydb.query.QuerySession;
-import tech.ydb.topic.settings.DescribeConsumerSettings;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
@@ -223,7 +223,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 checkConsumerPositions(conn);
                 System.err.println("[AAA] All done!");
                 // TODO: remove temp debugging statement
-                wc.runHandlers();
+                //wc.runHandlers();
             } finally {
                 wc.shutdown();
             }
@@ -280,17 +280,25 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private void checkConsumerPositions(YdbConnector conn) {
         String consumerName = "consumer1";
+        checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 4L);
+        checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 4L);
+        checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 7L);
+        checkConsumerPosition(conn, "test1/sub_table3", "cf4", consumerName, 0L);
+    }
+
+    private void checkConsumerPosition(YdbConnector conn, String tabName,
+            String feed, String consumer, long expected) {
         var descMain = conn.getTopicClient().describeConsumer(
-                conn.fullCdcTopicName("test1/main_table", "cf1"),
-                consumerName,
+                conn.fullCdcTopicName(tabName, feed),
+                consumer,
                 DescribeConsumerSettings.newBuilder()
                         .withIncludeStats(true)
                         .build()).join().getValue();
+        long sumMessages = 0L;
         for (var cpi : descMain.getPartitions()) {
-            long id = cpi.getPartitionId();
-            long offset = cpi.getConsumerStats().getCommittedOffset();
-            System.out.println(" -> " + id + ": " + offset);
+            sumMessages += cpi.getConsumerStats().getCommittedOffset();
         }
+        Assertions.assertEquals(expected, sumMessages);
     }
 
 }
