@@ -131,6 +131,13 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    public String makeSelectAll() {
+        final StringBuilder sb = new StringBuilder();
+        genFullSelect(sb, false);
+        sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
     public String makeSelect() {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeyFields(sb);

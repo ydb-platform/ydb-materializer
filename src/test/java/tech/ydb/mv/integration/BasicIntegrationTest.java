@@ -3,6 +3,7 @@ package tech.ydb.mv.integration;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
@@ -20,7 +21,12 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.parser.MvSqlGen;
+import tech.ydb.mv.util.YdbConv;
 import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.table.query.Params;
+import tech.ydb.table.result.ResultSetReader;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
@@ -197,28 +203,42 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 System.err.println("[AAA] Checking context...");
                 new MvIssuePrinter(wc.getContext()).write(System.out);
                 Assertions.assertTrue(wc.getContext().isValid());
+
+                MvTarget mainTarget = wc.getContext().getHandlers().values().iterator().next()
+                        .getTargets().values().iterator().next();
+                String sqlQuery;
+                try (MvSqlGen sg = new MvSqlGen(mainTarget)) {
+                    sqlQuery = sg.makeSelectAll();
+                }
+
                 System.err.println("[AAA] Starting the services...");
                 wc.startHandlers();
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Checking the view output (should be empty)...");
+                checkViewOutput(conn, sqlQuery);
+
                 System.err.println("[AAA] Writing some input data...");
                 writeInitialData(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutputInitial(conn);
+                checkViewOutput(conn, sqlQuery);
+
                 System.err.println("[AAA] Updating some rows...");
                 writeUpdates1(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutputUpdates1(conn);
+                checkViewOutput(conn, sqlQuery);
+
                 System.err.println("[AAA] Updating more rows...");
                 writeUpdates2(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output...");
-                checkViewOutputUpdates2(conn);
+                checkViewOutput(conn, sqlQuery);
+
                 System.err.println("[AAA] Checking the topic consumer positions...");
                 checkConsumerPositions(conn);
                 System.err.println("[AAA] All done!");
@@ -263,19 +283,53 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         runDml(conn, WRITE_INITIAL);
     }
 
-    private void checkViewOutputInitial(YdbConnector conn) {
+    private void checkViewOutput(YdbConnector conn, String sqlMain) {
+        String sqlMv = "SELECT * FROM `test1/mv1`";
+        var left = convertResultSet(
+                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
+        var right = convertResultSet(
+                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
+        System.out.println("*** comparing rowsets, size1="
+                + left.size() + ", size2=" + right.size());
+        for (var leftMe : left.entrySet()) {
+            var rightVal = right.get(leftMe.getKey());
+            if (rightVal==null) {
+                System.out.println("  missing key: " + leftMe.getKey());
+                continue;
+            }
+            if (! leftMe.getValue().equals(rightVal)) {
+                System.out.println("  unequal records: \n\t"
+                        + leftMe.getValue() + "\n\t"
+                        + rightVal);
+            }
+        }
+        for (var rightMe : right.entrySet()) {
+            var leftVal = left.get(rightMe.getKey());
+            if (leftVal==null) {
+                System.out.println("  extra key: " + rightMe.getKey());
+            }
+        }
+    }
+
+    private HashMap<String, HashMap<String,Object>> convertResultSet(ResultSetReader rsr, String keyName) {
+        int indexColumn = rsr.getColumnIndex(keyName);
+        HashMap<String, HashMap<String,Object>> output = new HashMap<>();
+        while (rsr.next()) {
+            String key = YdbConv.toPojo(rsr.getColumn(indexColumn).getValue()).toString();
+            HashMap<String,Object> value = new HashMap<>();
+            for (int index = 0; index < rsr.getColumnCount(); ++index) {
+                String name = rsr.getColumnName(index);
+                value.put(name, YdbConv.toPojo(rsr.getColumn(index).getValue()));
+            }
+            output.put(key, value);
+        }
+        return output;
     }
 
     private void writeUpdates1(YdbConnector conn) {
     }
 
-    private void checkViewOutputUpdates1(YdbConnector conn) {
-    }
-
     private void writeUpdates2(YdbConnector conn) {
-    }
-
-    private void checkViewOutputUpdates2(YdbConnector conn) {
     }
 
     private void checkConsumerPositions(YdbConnector conn) {
