@@ -3,9 +3,11 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.feeder.MvCdcCommitHandler;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.util.YdbMisc;
@@ -193,7 +195,14 @@ public class MvApplyWorker implements Runnable {
         }
 
         void apply() {
-            items.forEach((h, n) -> h.apply(n));
+            items.forEach((h, n) -> h.commit(n));
+            LOG.info("********* BEGIN");
+            for (var me : items.entrySet()) {
+                if (me.getKey() instanceof MvCdcCommitHandler cch) {
+                    LOG.info("CCH {} {} ({})", cch.getInstance(), cch.getCounter(), me.getValue());
+                }
+            }
+            LOG.info("********* END");
         }
     }
 

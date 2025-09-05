@@ -1,6 +1,5 @@
 package tech.ydb.mv.feeder;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import tech.ydb.topic.read.events.DataReceivedEvent;
@@ -9,28 +8,56 @@ import tech.ydb.topic.read.events.DataReceivedEvent;
  *
  * @author zinal
  */
-class MvCdcCommitHandler implements MvCommitHandler {
+public class MvCdcCommitHandler implements MvCommitHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
     private final long instance;
     private final DataReceivedEvent event;
-    private final AtomicInteger counter;
+    private volatile int counter;
+    private volatile boolean committed;
 
     public MvCdcCommitHandler(DataReceivedEvent event) {
         this.instance = COUNTER.incrementAndGet();
         this.event = event;
-        this.counter = new AtomicInteger(event.getMessages().size());
+        this.counter = event.getMessages().size();
+        this.committed = false;
+        LOG.info("instance {} created -> {}", instance, counter);
     }
 
     @Override
-    public void apply(int count) {
-        if (counter.addAndGet(-1 * count) <= 0) {
+    public long getInstance() {
+        return instance;
+    }
+
+    @Override
+    public synchronized int getCounter() {
+        return counter;
+    }
+
+    @Override
+    public synchronized void commit(int count) {
+        if (committed || counter < 0) {
+            return;
+        }
+        counter -= Math.min(count, counter);
+        LOG.info("instance {} commit {} -> {}", instance, count, counter);
+        if (counter == 0) {
+            committed = true;
             try {
+                LOG.info("instance {} commit {} APPLY", instance);
                 event.commit().join();
             } catch (Exception ex) {
                 LOG.warn("Failed to commit the CDC message pack", ex);
             }
+        }
+    }
+
+    @Override
+    public synchronized void reserve(int count) {
+        if (count > 0 && !committed) {
+            counter += count;
+            LOG.info("instance {} reserve {} -> {}", instance, count, counter);
         }
     }
 
@@ -54,6 +81,11 @@ class MvCdcCommitHandler implements MvCommitHandler {
         }
         final MvCdcCommitHandler other = (MvCdcCommitHandler) obj;
         return this.instance == other.instance;
+    }
+
+    @Override
+    public String toString() {
+        return "MvCdcCommitHandler{" + instance + '}';
     }
 
 }

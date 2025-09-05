@@ -201,7 +201,7 @@ public class MvApplyManager implements MvCdcSink {
         String tableName = changes.iterator().next().getKey().getTableInfo().getName();
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
-            commitHandler.apply(count);
+            commitHandler.commit(count);
             LOG.warn("Skipping {} change records for unexpected table `{}` in handler `{}`",
                     count, tableName, context.getMetadata().getName());
             return true;

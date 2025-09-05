@@ -8,11 +8,28 @@ package tech.ydb.mv.feeder;
 public interface MvCommitHandler {
 
     /**
+     * @return Unique instance identifier for this handler within its type.
+     */
+    long getInstance();
+
+    /**
+     * @return Current commit pending counter.
+     */
+    int getCounter();
+
+    /**
      * Apply the commit for the specified number of records.
      *
-     * @param count Number of records processed (positive), or number of extra operations pending on the records (negative).
+     * @param count Number of records processed (positive), or zero to just reinforce the commit operation.
      */
-    void apply(int count);
+    void commit(int count);
+
+    /**
+     * Reserve the extra number of records to be processed.
+     *
+     * @param count Number of records to be reserved (positive).
+     */
+    void reserve(int count);
 
     @Override
     boolean equals(Object obj);

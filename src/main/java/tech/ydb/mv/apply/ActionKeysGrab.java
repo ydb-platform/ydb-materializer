@@ -78,7 +78,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
             output.add(new MvChangeRecord(key));
         }
         // Allow for extra operations before the actual commit.
-        handler.apply(-1 * output.size());
+        handler.reserve(output.size());
         // Send the keys for processing.
         context.getApplyManager().submit(output, handler);
     }

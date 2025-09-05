@@ -25,7 +25,8 @@ public class MvScanCommitHandler implements MvCommitHandler {
     private final long instance;
     private final MvScanContext context;
     private final String jsonKey;
-    private final AtomicInteger counter;
+    private volatile int counter;
+    private volatile boolean committed;
     private final AtomicReference<MvScanCommitHandler> previous;
     private final AtomicReference<MvScanCommitHandler> next;
     private final boolean terminal;
@@ -35,16 +36,58 @@ public class MvScanCommitHandler implements MvCommitHandler {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.jsonKey = (key==null) ? "" : key.convertKeyToJson();
-        this.counter = new AtomicInteger(initialCount);
+        this.counter = initialCount;
+        this.committed = false;
         this.previous = new AtomicReference<>(predecessor);
         this.next = new AtomicReference<>();
         this.terminal = terminal;
         initPredecessor(predecessor);
     }
 
+    @Override
+    public long getInstance() {
+        return instance;
+    }
+
+    @Override
+    public synchronized int getCounter() {
+        return counter;
+    }
+
     private void initPredecessor(MvScanCommitHandler predecessor) {
         if (predecessor!=null) {
             predecessor.next.set(this);
+        }
+    }
+
+    @Override
+    public synchronized void commit(int count) {
+        if (committed || counter < 0) {
+            return;
+        }
+        if (! context.isRunning()) {
+            // no commits for an already stopped scan feeder
+            resetNextChain();
+            return;
+        }
+        counter -= Math.min(count, counter);
+        if (isReady()) {
+            committed = true;
+            try {
+                context.getRetryCtx().supplyStatus(qs -> doApply(qs))
+                        .join().expectSuccess();
+            } catch(Exception ex) {
+                LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
+                        context.getTarget().getName(), context.getHandler().getName(), ex);
+            }
+            resetNext();
+        }
+    }
+
+    @Override
+    public synchronized void reserve(int count) {
+        if (count > 0 && !committed) {
+            counter += count;
         }
     }
 
@@ -56,7 +99,7 @@ public class MvScanCommitHandler implements MvCommitHandler {
                 LOG.warn("Commit handler chain mismatched: expected {}, got {}",
                         instance, p.instance);
             }
-            n.apply(0);
+            n.commit(0);
         }
         return n;
     }
@@ -65,28 +108,6 @@ public class MvScanCommitHandler implements MvCommitHandler {
         MvScanCommitHandler n = this;
         while (n!=null) {
             n = n.resetNext();
-        }
-    }
-
-    @Override
-    public void apply(int count) {
-        if (! context.isRunning()) {
-            // no commits for an already stopped scan feeder
-            resetNextChain();
-            return;
-        }
-        if (count != 0) {
-            counter.addAndGet(-1 * count);
-        }
-        if (isReady()) {
-            try {
-                context.getRetryCtx().supplyStatus(qs -> doApply(qs))
-                        .join().expectSuccess();
-            } catch(Exception ex) {
-                LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
-                        context.getTarget().getName(), context.getHandler().getName(), ex);
-            }
-            resetNext();
         }
     }
 
@@ -117,7 +138,7 @@ public class MvScanCommitHandler implements MvCommitHandler {
     private boolean isReady() {
         MvScanCommitHandler p = this;
         while (p!=null) {
-            if (p.counter.get() > 0) {
+            if (p.getCounter() > 0) {
                 return false;
             }
             p = p.previous.get();
@@ -145,6 +166,11 @@ public class MvScanCommitHandler implements MvCommitHandler {
         }
         final MvScanCommitHandler other = (MvScanCommitHandler) obj;
         return this.instance == other.instance;
+    }
+
+    @Override
+    public String toString() {
+        return "MvScanCommitHandler{" + instance + '}';
     }
 
 }

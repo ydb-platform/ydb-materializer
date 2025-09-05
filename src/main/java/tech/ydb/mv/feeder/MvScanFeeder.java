@@ -179,7 +179,7 @@ public class MvScanFeeder {
         }
         ctx.setCurrentHandler(handler);
         // apply check for the case when the final commit is already performed
-        handler.apply(0);
+        handler.commit(0);
     }
 
     private void rateLimiter(int count) {
