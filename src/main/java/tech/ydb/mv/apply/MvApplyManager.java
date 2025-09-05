@@ -171,7 +171,7 @@ public class MvApplyManager implements MvCdcSink {
         for (MvApplyWorker w : workers) {
             w.start();
         }
-        LOG.info("Started {} apply workers for handler `{}`.",
+        LOG.info("Started {} apply worker(s) for handler `{}`.",
                 workers.length, context.getMetadata().getName());
     }
 

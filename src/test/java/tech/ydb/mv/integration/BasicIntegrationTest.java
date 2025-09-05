@@ -42,6 +42,7 @@ CREATE TABLE `test1/main_table` (
     c1 Timestamp,
     c2 Int64,
     c3 Decimal(22,9),
+    c6 Int32,
     c20 Text,
     PRIMARY KEY(id),
     INDEX ix_c1_c2 GLOBAL ON (c1,c2),
@@ -58,6 +59,7 @@ CREATE TABLE `test1/sub_table1` (
 CREATE TABLE `test1/sub_table2` (
     c3 Decimal(22,9),
     c4 Text,
+    c7 Text,
     c9 Date,
     PRIMARY KEY(c3, c4)
 );
@@ -103,7 +105,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
          COMPUTE ON main #[ Substring(main.c20,3,5) ]# AS c11,
-         COMPUTE #[ CAST(NULL AS Int32?) ]# AS c12
+         #[ CAST(NULL AS Int32?) ]# AS c12
   FROM `test1/main_table` AS main
   INNER JOIN `test1/sub_table1` AS sub1
     ON main.c1=sub1.c1 AND main.c2=sub1.c2
@@ -113,6 +115,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     ON sub3.c5=58
   WHERE COMPUTE ON main, sub2
   #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
+
   (2, @@CREATE ASYNC HANDLER handler1 CONSUMER consumer1 PROCESS `test1/mv1`,
   INPUT `test1/main_table` CHANGEFEED cf1 AS STREAM,
   INPUT `test1/sub_table1` CHANGEFEED cf2 AS STREAM,
@@ -122,11 +125,11 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
 
     private static final String WRITE_INITIAL =
 """
-INSERT INTO `test1/main_table` (id,c1,c2,c3,c20) VALUES
- ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 'text message one'u)
-,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 'text message two'u)
-,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 'text message three'u)
-,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 'text message four'u)
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c20) VALUES
+ ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 'text message one'u)
+,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 'text message two'u)
+,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 7, 'text message three'u)
+,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 7, 'text message four'u)
 ;
 INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
  (Timestamp('2021-01-02T10:15:21Z'), 10001, 501)
@@ -134,14 +137,14 @@ INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
 ,(Timestamp('2023-01-02T10:15:21Z'), 10003, 503)
 ,(Timestamp('2024-01-02T10:15:21Z'), 10004, 504)
 ;
-INSERT INTO `test1/sub_table2` (c3,c4,c9) VALUES
- (Decimal('10001.567',22,9), 'val2'u, Date('2020-07-10'))
-,(Decimal('10002.567',22,9), 'val1'u, Date('2020-07-11'))
-,(Decimal('10003.567',22,9), 'val1'u, Date('2020-07-12'))
-,(Decimal('10004.567',22,9), 'val1'u, Date('2020-07-13'))
-,(Decimal('10002.567',22,9), 'val2'u, Date('2020-07-14'))
-,(Decimal('10003.567',22,9), 'val3'u, Date('2020-07-15'))
-,(Decimal('10004.567',22,9), 'val4'u, Date('2020-07-16'))
+INSERT INTO `test1/sub_table2` (c3,c4,c7,c9) VALUES
+ (Decimal('10001.567',22,9), 'val2'u, NULL,    Date('2020-07-10'))
+,(Decimal('10002.567',22,9), 'val1'u, 'val2'u, Date('2020-07-11'))
+,(Decimal('10003.567',22,9), 'val1'u, NULL,    Date('2020-07-12'))
+,(Decimal('10004.567',22,9), 'val1'u, 'val2'u, Date('2020-07-13'))
+,(Decimal('10002.567',22,9), 'val2'u, NULL,    Date('2020-07-14'))
+,(Decimal('10003.567',22,9), 'val3'u, 'val2'u, Date('2020-07-15'))
+,(Decimal('10004.567',22,9), 'val4'u, NULL,    Date('2020-07-16'))
 ;
 INSERT INTO `test1/sub_table3` (c5,c10) VALUES
  (58, 'Welcome!'u)

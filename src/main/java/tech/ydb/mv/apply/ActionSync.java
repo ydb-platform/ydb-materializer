@@ -51,7 +51,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             this.rowType = sg.toRowType();
         }
         MvJoinSource src = target.getTopMostSource();
-        LOG.info(" * Handler {}, target {}, input {} as {}, changefeed {} mode {}",
+        LOG.info(" * Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
                 context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
