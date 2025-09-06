@@ -68,7 +68,9 @@ CREATE TABLE `test1/sub_table2` (
     c4 Text,
     c7 Text,
     c9 Date,
-    PRIMARY KEY(c3, c4)
+    main_id Text,
+    PRIMARY KEY(c3, c4),
+    INDEX ix_ref GLOBAL ON (main_id, c3, c4)
 );
 
 CREATE TABLE `test1/sub_table3` (
@@ -93,7 +95,7 @@ CREATE TABLE `test1/mv1` (
 
 ALTER TABLE `test1/main_table` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 ALTER TABLE `test1/sub_table1` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
-ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 """;
 
@@ -117,7 +119,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INNER JOIN `test1/sub_table1` AS sub1
     ON main.c1=sub1.c1 AND main.c2=sub1.c2
   LEFT JOIN `test1/sub_table2` AS sub2
-    ON main.c3=sub2.c3 AND 'val1'=sub2.c4
+    ON main.c3=sub2.c3 AND 'val1'u=sub2.c4 AND main.id=sub2.main_id
   INNER JOIN `test1/sub_table3` AS sub3
     ON sub3.c5=58
   WHERE COMPUTE ON main, sub2
@@ -144,14 +146,14 @@ INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
 ,(Timestamp('2023-01-02T10:15:21Z'), 10003, 503)
 ,(Timestamp('2024-01-02T10:15:21Z'), 10004, 504)
 ;
-INSERT INTO `test1/sub_table2` (c3,c4,c7,c9) VALUES
- (Decimal('10001.567',22,9), 'val2'u, NULL,    Date('2020-07-10'))
-,(Decimal('10002.567',22,9), 'val1'u, 'val2'u, Date('2020-07-11'))
-,(Decimal('10003.567',22,9), 'val1'u, NULL,    Date('2020-07-12'))
-,(Decimal('10004.567',22,9), 'val1'u, 'val2'u, Date('2020-07-13'))
-,(Decimal('10002.567',22,9), 'val2'u, NULL,    Date('2020-07-14'))
-,(Decimal('10003.567',22,9), 'val3'u, 'val2'u, Date('2020-07-15'))
-,(Decimal('10004.567',22,9), 'val4'u, NULL,    Date('2020-07-16'))
+INSERT INTO `test1/sub_table2` (c3,c4,c7,c9,main_id) VALUES
+ (Decimal('10001.567',22,9), 'val2'u, NULL,    Date('2020-07-10'), 'main-001'u)
+,(Decimal('10002.567',22,9), 'val1'u, 'val2'u, Date('2020-07-11'), 'main-002'u)
+,(Decimal('10003.567',22,9), 'val1'u, NULL,    Date('2020-07-12'), 'main-003'u)
+,(Decimal('10004.567',22,9), 'val1'u, 'val2'u, Date('2020-07-13'), 'main-004'u)
+,(Decimal('10002.567',22,9), 'val2'u, NULL,    Date('2020-07-14'), 'main-002'u)
+,(Decimal('10003.567',22,9), 'val3'u, 'val2'u, Date('2020-07-15'), 'main-003'u)
+,(Decimal('10004.567',22,9), 'val4'u, NULL,    Date('2020-07-16'), 'main-004'u)
 ;
 INSERT INTO `test1/sub_table3` (c5,c10) VALUES
  (58, 'Welcome!'u)

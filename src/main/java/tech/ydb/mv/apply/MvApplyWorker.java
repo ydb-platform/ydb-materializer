@@ -131,8 +131,14 @@ public class MvApplyWorker implements Runnable {
             action.apply(tasks);
         } catch(Exception ex) {
             retries.addItems(tasks, action);
-            LOG.error("Execution failed for action {}, scheduling for retry",
-                    action, ex);
+            String lastSql = ActionBase.getLastSqlStatement();
+            if (lastSql!=null) {
+                LOG.error("Execution failed for action {}, scheduling for retry. Last SQL:\n{}\n",
+                        action, lastSql, ex);
+            } else {
+                LOG.error("Execution failed for action {}, scheduling for retry",
+                        action, ex);
+            }
         }
     }
 

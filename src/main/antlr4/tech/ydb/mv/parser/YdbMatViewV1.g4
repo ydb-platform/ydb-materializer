@@ -69,7 +69,7 @@ integer_constant: MINUS? DIGITS;
 string_constant: STRING_SINGLE;
 
 fragment STRING_CORE_SINGLE: ~('\'' | '\\') | ('\\' .);
-STRING_SINGLE: (QUOTE_SINGLE STRING_CORE_SINGLE* QUOTE_SINGLE);
+STRING_SINGLE: (QUOTE_SINGLE STRING_CORE_SINGLE* QUOTE_SINGLE) (S | U)?;
 
 column_reference: table_alias DOT column_name;
 

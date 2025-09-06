@@ -15,10 +15,13 @@ public class MvLiteral {
     public MvLiteral(String value, String identity) {
         this.value = value;
         this.identity = identity;
-        if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
-            this.pojo = value.substring(1, value.length()-1);
-        } else if (value.matches("[+-]?[1-9][0-9]*")) {
+        if (value.matches("^[+-]?[1-9][0-9]*$")) {
             this.pojo = (long) Long.parseLong(value);
+        } else if (value.startsWith("'") && value.endsWith("'")) {
+            this.pojo = value.substring(1, value.length()-1);
+        } else if (value.startsWith("'")
+                && (value.endsWith("'s") || value.endsWith("'u"))) {
+            this.pojo = value.substring(1, value.length()-2);
         } else {
             this.pojo = value;
         }

@@ -31,8 +31,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
-        LOG.info(" * Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                context.getMetadata().getName(), target.getName(),
+        LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
+                instance, context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());

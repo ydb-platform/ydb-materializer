@@ -30,10 +30,15 @@ abstract class ActionBase {
 
     protected final long instance;
     protected final MvActionContext context;
+    protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
 
     protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
+    }
+
+    public static String getLastSqlStatement() {
+        return lastSqlStatement.get();
     }
 
     @Override
@@ -67,10 +72,14 @@ abstract class ActionBase {
     }
 
     protected final ResultSetReader readRows(List<MvKey> items) {
+        String statement = getSqlSelect();
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
-        return context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
-                session.createQuery(getSqlSelect(), TxMode.ONLINE_RO, params)
+        lastSqlStatement.set(statement);
+        ResultSetReader rsr = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
+                session.createQuery(statement, TxMode.ONLINE_RO, params)
         )).join().getValue().getResultSet(0);
+        lastSqlStatement.set(null);
+        return rsr;
     }
 
     protected final void readRows(List<MvKey> items, ArrayList<StructValue> output) {
