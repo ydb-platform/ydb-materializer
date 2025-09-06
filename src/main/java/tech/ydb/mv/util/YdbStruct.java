@@ -98,6 +98,14 @@ public class YdbStruct implements Serializable {
         }
     }
 
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
+    public boolean isFilled() {
+        return !values.isEmpty();
+    }
+
     public Set<String> keySet() {
         return values.keySet();
     }
@@ -301,6 +309,11 @@ public class YdbStruct implements Serializable {
             root.add(me.getKey(), jme);
         }
         return root.toString();
+    }
+
+    @Override
+    public String toString() {
+        return toJson();
     }
 
     public static YdbStruct fromJson(String json) {

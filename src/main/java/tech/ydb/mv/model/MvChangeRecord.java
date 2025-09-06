@@ -9,22 +9,22 @@ import tech.ydb.mv.util.YdbStruct;
 public class MvChangeRecord {
 
     private final MvKey key;
-    private final OperationType operationType;
+    private final OpType operationType;
     private final YdbStruct imageBefore;
     private final YdbStruct imageAfter;
 
     public MvChangeRecord(MvKey key) {
-        this(key, OperationType.UPSERT);
+        this(key, OpType.UPSERT);
     }
 
-    public MvChangeRecord(MvKey key, OperationType operationType) {
+    public MvChangeRecord(MvKey key, OpType operationType) {
         this.key = key;
         this.operationType = operationType;
         this.imageBefore = YdbStruct.EMPTY;
         this.imageAfter = YdbStruct.EMPTY;
     }
 
-    public MvChangeRecord(MvKey key, OperationType operationType,
+    public MvChangeRecord(MvKey key, OpType operationType,
             YdbStruct imageBefore, YdbStruct imageAfter) {
         this.key = key;
         this.operationType = operationType;
@@ -36,7 +36,7 @@ public class MvChangeRecord {
         return key;
     }
 
-    public OperationType getOperationType() {
+    public OpType getOperationType() {
         return operationType;
     }
 
@@ -48,7 +48,13 @@ public class MvChangeRecord {
         return imageAfter;
     }
 
-    public static enum OperationType {
+    @Override
+    public String toString() {
+        return "MvChangeRecord{" + "key=" + key + ", op=" + operationType
+                + ", before=" + imageBefore + ", after=" + imageAfter + '}';
+    }
+
+    public static enum OpType {
         UPSERT,
         DELETE
     }

@@ -59,7 +59,7 @@ class MvCdcParser {
             }
             return new MvChangeRecord(
                     parseKey(key),
-                    (erase==null) ? MvChangeRecord.OperationType.UPSERT : MvChangeRecord.OperationType.DELETE,
+                    (erase==null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
                     parseImage(oldImage),
                     parseImage(newImage)
             );

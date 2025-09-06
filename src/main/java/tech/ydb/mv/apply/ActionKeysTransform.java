@@ -50,20 +50,19 @@ class ActionKeysTransform extends ActionKeysAbstract {
         ArrayList<MvChangeRecord> output = new ArrayList<>(2 * tasks.size());
         for (MvApplyTask task : tasks) {
             MvChangeRecord cr = task.getData();
+            MvKey key = null;
             if (keysTransform) {
-                MvKey k = buildKey((name) -> cr.getKey().getValue(name));
-                if (k!=null) {
-                    output.add(new MvChangeRecord(k, cr.getOperationType()));
-                }
+                key = buildKey(cr, (name) -> cr.getKey().getValue(name));
             } else {
-                if (cr.getImageBefore()!=null) {
-                    MvKey k = buildKey((name) -> cr.getImageBefore().get(name));
-                    output.add(new MvChangeRecord(k, cr.getOperationType()));
+                if (cr.getImageBefore()!=null && cr.getImageBefore().isFilled()) {
+                    key = buildKey(cr, (name) -> cr.getImageBefore().get(name));
                 }
-                if (cr.getImageAfter()!=null) {
-                    MvKey k = buildKey((name) -> cr.getImageAfter().get(name));
-                    output.add(new MvChangeRecord(k, cr.getOperationType()));
+                if (cr.getImageAfter()!=null && cr.getImageAfter().isFilled()) {
+                    key = buildKey(cr, (name) -> cr.getImageAfter().get(name));
                 }
+            }
+            if (key!=null) {
+                output.add(new MvChangeRecord(key, MvChangeRecord.OpType.UPSERT));
             }
         }
         if (! output.isEmpty()) {
@@ -74,14 +73,21 @@ class ActionKeysTransform extends ActionKeysAbstract {
         }
     }
 
-    private MvKey buildKey(Grabber grabber) {
+    private MvKey buildKey(MvChangeRecord cr, Grabber grabber) {
         Comparable<?>[] values = new Comparable<?>[keyInfo.size()];
         for (int i = 0; i < keyInfo.size(); ++i) {
             MvColumn col = transformation.getColumns().get(i);
+            String column = null;
             if (col.isReference()) {
-                values[i] = grabber.getValue(col.getSourceColumn());
+                column = col.getSourceColumn();
+                values[i] = grabber.getValue(column);
             } else if (col.getComputation().isLiteral()) {
+                column = col.getComputation().getLiteral().getValue();
                 values[i] = col.getComputation().getLiteral().getPojo();
+            }
+            if (values[i]==null) {
+                LOG.warn(" [{}] Missing value for column {}, source {}", instance, column, cr);
+                return null;
             }
         }
         return new MvKey(keyInfo, values);

@@ -252,6 +252,9 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
+                // TODO: remove temp debugging statement
+                //wc.runHandlers();
+
                 System.err.println("[AAA] Updating some rows...");
                 writeUpdates1(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
@@ -271,8 +274,6 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
                 System.err.println("[AAA] Checking the topic consumer positions...");
                 checkConsumerPositions(conn);
                 System.err.println("[AAA] All done!");
-                // TODO: remove temp debugging statement
-                //wc.runHandlers();
             } finally {
                 wc.shutdown();
             }
@@ -370,9 +371,9 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
 
     private void checkConsumerPositions(YdbConnector conn) {
         String consumerName = "consumer1";
-        checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 4L);
-        checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 4L);
-        checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 7L);
+        checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 6L);
+        checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 8L);
+        checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 9L);
         checkConsumerPosition(conn, "test1/sub_table3", "cf4", consumerName, 0L);
     }
 
