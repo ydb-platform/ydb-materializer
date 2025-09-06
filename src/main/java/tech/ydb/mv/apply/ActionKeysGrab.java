@@ -80,7 +80,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
         // Allow for extra operations before the actual commit.
         handler.reserve(output.size());
         // Send the keys for processing.
-        context.getApplyManager().submit(output, handler);
+        context.getApplyManager().submitForce(output, handler);
     }
 
 }

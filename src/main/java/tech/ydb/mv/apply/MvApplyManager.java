@@ -182,38 +182,37 @@ public class MvApplyManager implements MvCdcSink {
                 .toList();
     }
 
-    /**
-     * Insert the input data to the queues of the proper workers.
-     *
-     * In case some of the queues are full, wait until the capacity
-     * becomes available, or until the update manager is stopped.
-     *
-     * @param changes The change records to be submitted for processing.
-     * @param commitHandler
-     * @return true, if all keys went to the queue, and false otherwise.
-     */
-    @Override
-    public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler commitHandler) {
-        if (changes.isEmpty()) {
-            return true;
-        }
+    private ArrayList<MvApplyTask> convertChanges(Collection<MvChangeRecord> changes,
+            MvCommitHandler handler) {
         int count = changes.size();
+        ArrayList<MvApplyTask> curr = new ArrayList<>(count);
         String tableName = changes.iterator().next().getKey().getTableInfo().getName();
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
-            commitHandler.commit(count);
+            handler.commit(count);
             LOG.warn("Skipping {} change records for unexpected table `{}` in handler `{}`",
                     count, tableName, context.getMetadata().getName());
-            return true;
+            return curr;
         }
-        ArrayList<MvApplyTask> curr = new ArrayList<>(count);
-        ArrayList<MvApplyTask> next = new ArrayList<>(count);
         for (MvChangeRecord change : changes) {
             if (! tableName.equals(change.getKey().getTableInfo().getName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
-            curr.add(new MvApplyTask(change, apply, commitHandler));
+            curr.add(new MvApplyTask(change, apply, handler));
         }
+        return curr;
+    }
+
+    @Override
+    public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+        if (changes.isEmpty()) {
+            return true;
+        }
+        ArrayList<MvApplyTask> curr = convertChanges(changes, handler);
+        if (curr.isEmpty()) {
+            return true; // fast exit
+        }
+        ArrayList<MvApplyTask> next = new ArrayList<>();
         while (isRunning()) {
             for (MvApplyTask task : curr) {
                 if (! getWorker(task.getWorkerId()).submit(task)) {
@@ -235,6 +234,12 @@ public class MvApplyManager implements MvCdcSink {
         }
         // Exit without processing all the inputs
         return false;
+    }
+
+    @Override
+    public void submitForce(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+        convertChanges(changes, handler).forEach(
+                task -> getWorker(task.getWorkerId()).submitForce(task));
     }
 
 }

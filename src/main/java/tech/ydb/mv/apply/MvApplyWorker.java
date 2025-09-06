@@ -3,7 +3,7 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,7 +22,8 @@ public class MvApplyWorker implements Runnable {
     private final MvApplyManager owner;
     private final int workerNumber;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
-    private final ArrayBlockingQueue<MvApplyTask> queue;
+    private final LinkedBlockingQueue<MvApplyTask> queue;
+    private final int queueSize;
     private final ArrayList<MvApplyTask> activeTasks;
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
@@ -30,7 +31,8 @@ public class MvApplyWorker implements Runnable {
         this.owner = owner;
         this.workerNumber = number;
         this.activeTasks = new ArrayList<>(10);
-        this.queue = new ArrayBlockingQueue<>(owner.getSettings().getApplyQueueSize());
+        this.queue = new LinkedBlockingQueue<>();
+        this.queueSize = owner.getSettings().getApplyQueueSize();
     }
 
     public void start() {
@@ -62,12 +64,27 @@ public class MvApplyWorker implements Runnable {
      * Attempt to add the task to the input queue.
      * The input queue may be full, in which case the tasks cannot be added
      * until some space is released in the queue.
+     * May sometimes overflow the queue, up to the number of concurrent
+     * calls to the method when the queue is mostly-full.
      *
      * @param task The task to be added
      * @return true, if the task was added, and false otherwise.
      */
     public boolean submit(MvApplyTask task) {
+        if (queueSize < queue.size()) {
+            return false;
+        }
         return queue.offer(task);
+    }
+
+    /**
+     * Always adds the task to the queue.
+     * May overflow the expected size.
+     *
+     * @param task The task to be added
+     */
+    public void submitForce(MvApplyTask task) {
+        queue.add(task);
     }
 
     @Override

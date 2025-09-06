@@ -69,7 +69,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
             // extra records to be committed
             handler.reserve(output.size());
             // submit the extracted keys for processing
-            context.getApplyManager().submit(output, handler);
+            context.getApplyManager().submitForce(output, handler);
         }
     }
 
