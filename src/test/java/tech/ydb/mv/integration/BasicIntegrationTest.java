@@ -252,9 +252,6 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
-                // TODO: remove temp debugging statement
-                //wc.runHandlers();
-
                 System.err.println("[AAA] Updating some rows...");
                 writeUpdates1(conn);
                 System.err.println("[AAA] Sleeping for 2 seconds...");
@@ -274,6 +271,16 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
                 System.err.println("[AAA] Checking the topic consumer positions...");
                 checkConsumerPositions(conn);
                 System.err.println("[AAA] All done!");
+
+                System.err.println("[AAA] Clearing MV...");
+                clearMV(conn);
+                System.err.println("[AAA] Starting the full refresh of MV...");
+                refreshMV(wc);
+                System.err.println("[AAA] Sleeping for 2 seconds...");
+                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery);
+                Assertions.assertEquals(0, diffCount);
             } finally {
                 wc.shutdown();
             }
@@ -390,6 +397,13 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
             sumMessages += cpi.getConsumerStats().getCommittedOffset();
         }
         Assertions.assertEquals(expected, sumMessages);
+    }
+
+    private void clearMV(YdbConnector conn) {
+        conn.sqlReadWrite("DELETE FROM `test1/mv1`;", Params.empty());
+    }
+
+    private void refreshMV(MvService wc) {
     }
 
 }
