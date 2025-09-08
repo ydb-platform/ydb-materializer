@@ -221,7 +221,12 @@ public class MvBasicValidator {
                     || mi.getTableInfo().getChangefeeds().get(mi.getChangefeed()) == null) {
                 context.addIssue(new MvIssue.UnknownChangefeed(mi));
             } else if (mi.getChangefeedInfo() != null) {
-                String desiredConsumer = mh.getConsumerNameAlways();
+                String desiredConsumer;
+                if (mi.isBatchMode()) {
+                    desiredConsumer = context.getDictionaryConsumer();
+                } else {
+                    desiredConsumer = mh.getConsumerNameAlways();
+                }
                 if (! mi.getChangefeedInfo().getConsumers().contains(desiredConsumer)) {
                     context.addIssue(new MvIssue.MissingConsumer(mi, desiredConsumer));
                 }

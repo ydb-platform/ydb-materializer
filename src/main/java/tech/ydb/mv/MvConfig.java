@@ -45,6 +45,11 @@ public class MvConfig {
     public static final String CONF_DICT_TABLE = "job.dict.table";
 
     /**
+     * Dictionary history consumer.
+     */
+    public static final String CONF_DICT_CONSUMER = "job.dict.consumer";
+
+    /**
      * Scan rate limiter, rows per second.
      */
     public static final String CONF_SCAN_RATE = "job.scan.rate";

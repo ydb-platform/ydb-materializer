@@ -62,7 +62,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
 
     @Override
     public String getConsumerName() {
-        return MvConfig.DICTINARY_HANDLER;
+        return context.getDictionaryConsumer();
     }
 
     @Override
@@ -99,6 +99,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
     public Collection<MvInput> getInputs() {
         return context.getHandlers().values().stream()
                 .flatMap(handler -> handler.getInputs().values().stream())
+                .filter(input -> input.isBatchMode() && input.isTableKnown())
                 .toList();
     }
 

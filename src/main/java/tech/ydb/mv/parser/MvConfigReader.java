@@ -21,12 +21,17 @@ public class MvConfigReader extends MvConfig {
 
     public static MvContext readContext(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
+        MvContext context;
         switch (MvConfig.parseInput(mode)) {
-            case FILE -> { return readFile(ydb, props); }
-            case TABLE -> { return readTable(ydb, props); }
-        }
-        throw new IllegalArgumentException("Illegal value [" + mode + "] for "
+            case FILE -> { context = readFile(ydb, props); }
+            case TABLE -> { context = readTable(ydb, props); }
+            default -> {
+                throw new IllegalArgumentException("Illegal value [" + mode + "] for "
                 + "property " + MvConfig.CONF_INPUT_MODE);
+            }
+        }
+        context.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, DICTINARY_HANDLER));
+        return context;
     }
 
     private static MvContext readFile(YdbConnector ydb, Properties props) {
