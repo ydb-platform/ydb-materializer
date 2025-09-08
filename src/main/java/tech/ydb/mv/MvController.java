@@ -1,12 +1,11 @@
 package tech.ydb.mv;
 
-import java.util.HashMap;
 
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
-import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -87,13 +86,13 @@ public class MvController {
         return true;
     }
 
-    public void startScan(String name) {
+    public void startScan(String name, MvScanSettings settings) {
         MvTarget target = context.getMetadata().getTarget(name);
         if (target==null) {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getMetadata().getName() + "`");
         }
-        context.startScan(target, applyManager);
+        context.startScan(target, settings, applyManager);
     }
 
     public boolean stopScan(String name) {

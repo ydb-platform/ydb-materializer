@@ -21,6 +21,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.util.YdbConv;
@@ -413,7 +414,8 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
     }
 
     private void refreshMV(MvService wc) {
-        wc.startScan("handler1", "test1/mv1");
+        wc.startScan("handler1", "test1/mv1",
+                new MvScanSettings(wc.getYdb().getConfig().getProperties()));
     }
 
 }

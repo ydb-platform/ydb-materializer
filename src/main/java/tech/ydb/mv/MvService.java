@@ -24,6 +24,7 @@ import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbMisc;
 
@@ -140,18 +141,22 @@ public class MvService {
     }
 
     /**
-     * Start the full scan for the specified target in  the specified handler.
-     * For illegal arguments, exceptions are thrown.
+     * Start the full scan for the specified target in  the specified handler.For illegal arguments, exceptions are thrown.
      *
      * @param handlerName Name of the handler
      * @param targetName Name of the target
+     * @param settings Settings for the specific scan
      */
-    public synchronized void startScan(String handlerName, String targetName) {
+    public synchronized void startScan(String handlerName, String targetName,
+            MvScanSettings settings) {
+        if (settings==null) {
+            settings = new MvScanSettings(ydb.getConfig().getProperties());
+        }
         MvController c = handlers.get(handlerName);
         if (c == null) {
             throw new IllegalArgumentException("Unknown handler name: " + handlerName);
         }
-        c.startScan(targetName);
+        c.startScan(targetName, settings);
     }
 
     /**

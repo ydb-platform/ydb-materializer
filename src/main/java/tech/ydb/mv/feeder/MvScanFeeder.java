@@ -7,13 +7,13 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.util.YdbMisc;
 import tech.ydb.mv.util.YdbStruct;
@@ -37,16 +37,15 @@ public class MvScanFeeder {
     private int rateLimiterCounter;
     private long rateLimiterStamp;
 
-    public MvScanFeeder(MvJobContext job, MvApplyManager applyManager, MvTarget target) {
+    public MvScanFeeder(MvJobContext job, MvApplyManager applyManager,
+            MvTarget target, MvScanSettings settings) {
         this.job = job;
         this.target = target;
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.context = new AtomicReference<>();
         this.applyManager = applyManager;
-        String temp = job.getYdb()
-                .getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
-        this.controlTable = YdbConnector.safe(temp);
-        this.rateLimiterLimit = job.getYdb().getProperty(MvConfig.CONF_SCAN_RATE, 10000);
+        this.controlTable = YdbConnector.safe(settings.getControlTableName());
+        this.rateLimiterLimit = settings.getRowsPerSecondLimit();
     }
 
     /**
@@ -172,7 +171,7 @@ public class MvScanFeeder {
             ArrayList<MvChangeRecord> output = new ArrayList<>();
             while (rsr.next()) {
                 key = new MvKey(rsr, keyInfo);
-                output.add(new MvChangeRecord(key));
+                output.add(new MvChangeRecord(key, ctx.getTvStart()));
             }
             ctx.setCurrentKey(key);
             handler = new MvScanCommitHandler(ctx,

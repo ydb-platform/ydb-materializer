@@ -62,7 +62,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
                 }
             }
             if (key!=null) {
-                output.add(new MvChangeRecord(key, MvChangeRecord.OpType.UPSERT));
+                output.add(new MvChangeRecord(key,
+                        task.getData().getTv(), MvChangeRecord.OpType.UPSERT));
             }
         }
         if (! output.isEmpty()) {

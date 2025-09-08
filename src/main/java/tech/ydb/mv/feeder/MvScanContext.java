@@ -1,5 +1,6 @@
 package tech.ydb.mv.feeder;
 
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -25,6 +26,7 @@ public class MvScanContext {
     private final AtomicBoolean shouldRun;
     private final AtomicReference<MvKey> currentKey;
     private final AtomicReference<MvScanCommitHandler> currentHandler;
+    private final Instant tvStart;
 
     private final String sqlPosUpsert;
     private final String sqlPosDelete;
@@ -43,6 +45,7 @@ public class MvScanContext {
         this.shouldRun = new AtomicBoolean(true);
         this.currentKey = new AtomicReference<>();
         this.currentHandler = new AtomicReference<>();
+        this.tvStart = Instant.now();
         this.sqlPosUpsert = makePosUpsert(controlTable);
         this.sqlPosDelete = makePosDelete(controlTable);
         this.sqlPosSelect = makePosSelect(controlTable);
@@ -72,6 +75,10 @@ public class MvScanContext {
 
     public SessionRetryContext getRetryCtx() {
         return retryCtx;
+    }
+
+    public Instant getTvStart() {
+        return tvStart;
     }
 
     public String getSqlPosUpsert() {

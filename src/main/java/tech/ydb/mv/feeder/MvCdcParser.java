@@ -39,7 +39,7 @@ class MvCdcParser {
         this.tableInfo = input.getTableInfo();
     }
 
-    public MvChangeRecord parse(byte[] jsonData) {
+    public MvChangeRecord parse(byte[] jsonData, Instant tv) {
         String jsonText = new String(jsonData, StandardCharsets.UTF_8);
         JsonElement rootElement = JsonParser.parseString(jsonText);
         JsonObject root = rootElement.isJsonObject() ?
@@ -59,7 +59,7 @@ class MvCdcParser {
             }
             MvKey theKey = parseKey(key);
             return new MvChangeRecord(
-                    theKey,
+                    theKey, tv,
                     (erase==null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
                     parseImage(theKey, oldImage),
                     parseImage(theKey, newImage)

@@ -1,5 +1,6 @@
 package tech.ydb.mv.feeder;
 
+import java.time.Instant;
 import java.util.ArrayList;
 
 import tech.ydb.topic.read.Message;
@@ -60,7 +61,14 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         }
         ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
         for (Message m : event.getMessages()) {
-            records.add(parser.parse(m.getData()));
+            Instant tv = m.getCreatedAt();
+            if (tv == null) {
+                tv = m.getWrittenAt();
+            }
+            if (tv == null) {
+                tv = Instant.now();
+            }
+            records.add(parser.parse(m.getData(), tv));
         }
         sink.submit(records, new MvCdcCommitHandler(event));
     }

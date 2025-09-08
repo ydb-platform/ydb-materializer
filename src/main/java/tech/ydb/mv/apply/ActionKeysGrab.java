@@ -1,5 +1,6 @@
 package tech.ydb.mv.apply;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +58,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
 
     @Override
     protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
+        Instant tvNow = Instant.now();
         ResultSetReader rows = readRows(tasks.stream()
                 .map(task -> task.getData().getKey())
                 .toList());
@@ -75,7 +77,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
                 values[pos] = YdbConv.toPojo(rows.getColumn(pos).getValue());
             }
             MvKey key = new MvKey(keyInfo, values);
-            output.add(new MvChangeRecord(key));
+            output.add(new MvChangeRecord(key, tvNow));
         }
         // Allow for extra operations before the actual commit.
         handler.reserve(output.size());

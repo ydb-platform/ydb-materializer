@@ -14,6 +14,16 @@ CREATE TABLE `mv/scans_state` (
    PRIMARY KEY(handler_name, table_name);
 );
 
+-- Dictionary changelog table
+CREATE TABLE `mv/dict_log` (
+   src Text NOT NULL,
+   key_text Text NOT NULL,
+   tv Timestamp NOT NULL,
+   key_val JsonDocument,
+   full_val JsonDocument,
+   PRIMARY KEY(src, key_text, tv);
+);
+
 -- ************
 
 -- An example schema for the source tables.

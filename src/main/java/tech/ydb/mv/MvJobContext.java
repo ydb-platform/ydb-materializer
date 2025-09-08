@@ -7,6 +7,7 @@ import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -63,7 +64,8 @@ public class MvJobContext {
         shouldRun.set(false);
     }
 
-    public synchronized void startScan(MvTarget target, MvApplyManager applyManager) {
+    public synchronized void startScan(MvTarget target, MvScanSettings settings,
+            MvApplyManager applyManager) {
         if ( target == null ||
                 metadata.getTargets().get(target.getName()) != target) {
             throw new IllegalArgumentException("Illegal target `" + target
@@ -75,7 +77,7 @@ public class MvJobContext {
         }
         MvScanFeeder sf = scanFeeders.get(target.getName());
         if (sf == null) {
-            sf = new MvScanFeeder(this, applyManager, target);
+            sf = new MvScanFeeder(this, applyManager, target, settings);
             scanFeeders.put(target.getName(), sf);
         }
         sf.start();

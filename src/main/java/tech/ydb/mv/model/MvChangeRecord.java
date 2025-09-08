@@ -1,5 +1,6 @@
 package tech.ydb.mv.model;
 
+import java.time.Instant;
 import tech.ydb.mv.util.YdbStruct;
 
 /**
@@ -9,24 +10,27 @@ import tech.ydb.mv.util.YdbStruct;
 public class MvChangeRecord {
 
     private final MvKey key;
+    private final Instant tv;
     private final OpType operationType;
     private final YdbStruct imageBefore;
     private final YdbStruct imageAfter;
 
-    public MvChangeRecord(MvKey key) {
-        this(key, OpType.UPSERT);
+    public MvChangeRecord(MvKey key, Instant tv) {
+        this(key, tv, OpType.UPSERT);
     }
 
-    public MvChangeRecord(MvKey key, OpType operationType) {
+    public MvChangeRecord(MvKey key, Instant tv, OpType operationType) {
         this.key = key;
+        this.tv = tv;
         this.operationType = operationType;
         this.imageBefore = YdbStruct.EMPTY;
         this.imageAfter = YdbStruct.EMPTY;
     }
 
-    public MvChangeRecord(MvKey key, OpType operationType,
+    public MvChangeRecord(MvKey key, Instant tv, OpType operationType,
             YdbStruct imageBefore, YdbStruct imageAfter) {
         this.key = key;
+        this.tv = tv;
         this.operationType = operationType;
         this.imageBefore = (imageBefore == null) ? YdbStruct.EMPTY : imageBefore;
         this.imageAfter = (imageAfter == null) ? YdbStruct.EMPTY : imageAfter;
@@ -34,6 +38,10 @@ public class MvChangeRecord {
 
     public MvKey getKey() {
         return key;
+    }
+
+    public Instant getTv() {
+        return tv;
     }
 
     public OpType getOperationType() {
