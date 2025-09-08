@@ -24,7 +24,6 @@ import tech.ydb.mv.util.YdbStruct;
  * @author zinal
  */
 public class MvScanFeeder {
-
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanFeeder.class);
 
     private final MvJobContext job;

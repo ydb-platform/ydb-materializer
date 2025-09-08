@@ -18,7 +18,6 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
-import static tech.ydb.table.values.PrimitiveType.Int32;
 
 /**
  * SQL query generation logic.

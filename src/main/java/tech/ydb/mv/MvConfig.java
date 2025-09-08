@@ -1,9 +1,5 @@
 package tech.ydb.mv;
 
-import java.util.Properties;
-
-import tech.ydb.mv.model.MvHandlerSettings;
-
 /**
  * Configuration setting names.
  *

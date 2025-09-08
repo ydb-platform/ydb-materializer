@@ -1,6 +1,5 @@
 package tech.ydb.mv;
 
-
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.model.MvHandler;

@@ -1,6 +1,7 @@
 package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
+
 import tech.ydb.mv.model.MvTableInfo;
 
 /**

@@ -18,7 +18,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvScanContext {
+class MvScanContext {
 
     private final MvHandler handler;
     private final MvTarget target;

@@ -10,7 +10,6 @@ import tech.ydb.topic.read.events.PartitionSessionClosedEvent;
 import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 
-import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.model.MvChangeRecord;
 
 /**

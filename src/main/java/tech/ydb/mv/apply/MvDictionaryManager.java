@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
 
+import tech.ydb.table.query.Params;
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.StructValue;
@@ -23,7 +24,6 @@ import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.util.YdbStruct;
-import tech.ydb.table.query.Params;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal table.

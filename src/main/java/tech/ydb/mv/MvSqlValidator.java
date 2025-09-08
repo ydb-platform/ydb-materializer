@@ -6,10 +6,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import tech.ydb.core.Status;
-import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvComputation;
 import tech.ydb.table.Session;
 
+import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTarget;
