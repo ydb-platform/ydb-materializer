@@ -57,11 +57,12 @@ class MvCdcParser {
             if (newImage==null && update!=null && update.isJsonObject()) {
                 newImage = update.getAsJsonObject();
             }
+            MvKey theKey = parseKey(key);
             return new MvChangeRecord(
-                    parseKey(key),
+                    theKey,
                     (erase==null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
-                    parseImage(oldImage),
-                    parseImage(newImage)
+                    parseImage(theKey, oldImage),
+                    parseImage(theKey, newImage)
             );
         } catch(Exception ex) {
             LOG.error("error parsing cdc message {}", jsonText, ex);
@@ -92,11 +93,14 @@ class MvCdcParser {
         return new MvKey(keyInfo, keyValues);
     }
 
-    private YdbStruct parseImage(JsonObject image) {
+    private YdbStruct parseImage(MvKey theKey, JsonObject image) {
         if (image==null || image.isEmpty()) {
             return YdbStruct.EMPTY;
         }
         YdbStruct ret = new YdbStruct(tableInfo.getColumns().size());
+        for (int pos = 0; pos < theKey.size(); ++pos) {
+            ret.put(theKey.getName(pos), theKey.getValue(pos));
+        }
         for (Map.Entry<String, Type> me : tableInfo.getColumns().entrySet()) {
             ret.put(me.getKey(), readValue(image.get(me.getKey()), me.getValue()));
         }

@@ -84,6 +84,10 @@ public class MvCdcFeeder {
         for (MvInput mi : sink.getInputs()) {
             String topicPath = context.getYdb()
                     .fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
+            if (parsers.containsKey(topicPath)) {
+                LOG.warn("Skipped duplicate topic: {}", topicPath);
+                continue;
+            }
             parsers.put(topicPath, new MvCdcParser(mi));
             builder.addTopic(TopicReadSettings.newBuilder()
                     .setPath(topicPath)

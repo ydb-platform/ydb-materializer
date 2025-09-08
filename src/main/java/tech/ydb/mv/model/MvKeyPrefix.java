@@ -55,6 +55,10 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         return values.length;
     }
 
+    public String getName(int pos) {
+        return info.getName(pos);
+    }
+
     public Comparable<?> getValue(int pos) {
         return values[pos];
     }
