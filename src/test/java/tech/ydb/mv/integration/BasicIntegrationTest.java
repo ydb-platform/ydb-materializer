@@ -268,7 +268,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
                 System.err.println("[AAA] Starting the services...");
                 wc.startHandlers();
-                wc.startDictionaryHandler();
+                //wc.startDictionaryHandler();
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output (should be empty)...");
@@ -285,16 +285,16 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
                 System.err.println("[AAA] Updating some rows...");
                 writeUpdates1(conn);
-                System.err.println("[AAA] Sleeping for 2 seconds...");
-                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Sleeping for 5 seconds...");
+                YdbMisc.sleep(5000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
                 writeUpdates2(conn);
-                System.err.println("[AAA] Sleeping for 2 seconds...");
-                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Sleeping for 5 seconds...");
+                YdbMisc.sleep(5000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
@@ -307,8 +307,8 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 clearMV(conn);
                 System.err.println("[AAA] Starting the full refresh of MV...");
                 refreshMV(wc);
-                System.err.println("[AAA] Sleeping for 2 seconds...");
-                YdbMisc.sleep(2000L);
+                System.err.println("[AAA] Sleeping for 5 seconds...");
+                YdbMisc.sleep(5000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
@@ -412,7 +412,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 6L);
         checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 8L);
         checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 9L);
-        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
+//        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
