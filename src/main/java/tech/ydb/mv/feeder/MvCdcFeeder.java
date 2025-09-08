@@ -12,8 +12,7 @@ import tech.ydb.topic.settings.ReadEventHandlersSettings;
 import tech.ydb.topic.settings.ReaderSettings;
 import tech.ydb.topic.settings.TopicReadSettings;
 
-import tech.ydb.mv.MvJobContext;
-import tech.ydb.mv.model.MvHandler;
+import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvInput;
 
 /**
@@ -24,45 +23,47 @@ import tech.ydb.mv.model.MvInput;
 public class MvCdcFeeder {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
-    private final MvJobContext context;
+    private final MvCdcAdapter adapter;
+    private final YdbConnector ydb;
     private final MvCdcSink sink;
     private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvCdcFeeder(MvJobContext context, MvCdcSink sink) {
-        this.context = context;
+    public MvCdcFeeder(MvCdcAdapter adapter, YdbConnector ydb, MvCdcSink sink) {
+        this.adapter = adapter;
+        this.ydb = ydb;
         this.sink = sink;
         this.executor = Executors.newFixedThreadPool(
-                context.getSettings().getCdcReaderThreads(), new ConfigureThreads());
+                adapter.getCdcReaderThreads(), new ConfigureThreads());
         LOG.info("Started {} CDC reader threads for handler `{}`",
-                context.getSettings().getCdcReaderThreads(),
-                context.getMetadata().getName());
+                adapter.getCdcReaderThreads(),
+                adapter.getFeederName());
     }
 
     public synchronized void start() {
         if (reader.get() != null) {
             return;
         }
-        if (! context.isRunning()) {
+        if (! adapter.isRunning()) {
             return;
         }
-        LOG.info("Activating the CDC reader for handler `{}`", context.getMetadata().getName());
+        LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
         AsyncReader theReader = buildReader();
         theReader.init();
         reader.set(theReader);
     }
 
     public synchronized void stop() {
-        if (context.isRunning()) {
-            LOG.error("Ignoring an attempt to stop the CDC reader for handler `{}` "
-                    + "while controller is still running", context.getMetadata().getName());
+        if (adapter.isRunning()) {
+            LOG.error("Ignoring an attempt to stop the CDC reader for feeder `{}` "
+                    + "while controller is still running", adapter.getFeederName());
             return;
         }
         AsyncReader theReader = reader.getAndSet(null);
         if (theReader!=null) {
-            LOG.info("Stopping the CDC reader for handler `{}`", context.getMetadata().getName());
+            LOG.info("Stopping the CDC reader for feeder `{}`", adapter.getFeederName());
             theReader.shutdown();
         }
     }
@@ -76,14 +77,12 @@ public class MvCdcFeeder {
     }
 
     private AsyncReader buildReader() {
-        MvHandler handler = context.getMetadata();
         ReaderSettings.Builder builder = ReaderSettings.newBuilder()
                 .setDecompressionExecutor(Runnable::run)   // CDC doesn't use compression, skip thread switching
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
-                .setConsumerName(handler.getConsumerNameAlways());
+                .setConsumerName(adapter.getConsumerName());
         for (MvInput mi : sink.getInputs()) {
-            String topicPath = context.getYdb()
-                    .fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
+            String topicPath = ydb.fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             if (parsers.containsKey(topicPath)) {
                 LOG.warn("Skipped duplicate topic: {}", topicPath);
                 continue;
@@ -97,7 +96,7 @@ public class MvCdcFeeder {
                 .setEventHandler(new MvCdcEventReader(this))
                 .setExecutor(executor)
                 .build();
-        return context.getYdb().getTopicClient().createAsyncReader(builder.build(), rehs);
+        return ydb.getTopicClient().createAsyncReader(builder.build(), rehs);
     }
 
     private static class ConfigureThreads implements ThreadFactory {

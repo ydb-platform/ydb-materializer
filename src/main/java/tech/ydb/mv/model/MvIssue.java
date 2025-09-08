@@ -342,6 +342,21 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class IllegalHandlerName extends Error {
+        private final MvHandler cur;
+
+        public IllegalHandlerName(MvHandler cur) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Illegal name for handler `" + cur.getName()
+                    + "` at " + sqlPos;
+        }
+    }
+
     public static class DuplicateInput extends Error {
         private final MvInput cur;
         private final MvInput prev;

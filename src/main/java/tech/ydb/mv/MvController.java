@@ -24,7 +24,7 @@ public class MvController {
     public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
-        this.cdcFeeder = new MvCdcFeeder(this.context, this.applyManager);
+        this.cdcFeeder = new MvCdcFeeder(this.context, service.getYdb(), this.applyManager);
     }
 
     @Override

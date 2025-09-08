@@ -11,6 +11,8 @@ import tech.ydb.mv.model.MvHandlerSettings;
  */
 public class MvConfig {
 
+    public static final String DICTINARY_HANDLER = "dictionary";
+
     /**
      * FILE        read input statements from file
      * TABLE       read input statements from database table

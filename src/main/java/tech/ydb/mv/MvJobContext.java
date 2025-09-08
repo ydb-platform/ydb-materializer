@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
@@ -15,7 +16,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvJobContext {
+public class MvJobContext implements MvCdcAdapter  {
 
     private final MvService service;
     private final MvHandler metadata;
@@ -52,6 +53,7 @@ public class MvJobContext {
         return settings;
     }
 
+    @Override
     public boolean isRunning() {
         return shouldRun.get();
     }
@@ -62,6 +64,21 @@ public class MvJobContext {
 
     public void stop() {
         shouldRun.set(false);
+    }
+
+    @Override
+    public String getFeederName() {
+        return metadata.getName();
+    }
+
+    @Override
+    public int getCdcReaderThreads() {
+        return settings.getCdcReaderThreads();
+    }
+
+    @Override
+    public String getConsumerName() {
+        return metadata.getConsumerNameAlways();
     }
 
     public synchronized void startScan(MvTarget target, MvScanSettings settings,

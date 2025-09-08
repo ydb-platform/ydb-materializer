@@ -14,20 +14,19 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
 import tech.ydb.query.QuerySession;
+import tech.ydb.table.query.Params;
+import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.util.YdbConv;
 import tech.ydb.mv.util.YdbMisc;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.result.ResultSetReader;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta
@@ -236,9 +235,13 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
             MvService wc = new MvService(conn);
             try {
                 System.err.println("[AAA] Checking context...");
-                new MvIssuePrinter(wc.getContext()).write(System.out);
+                wc.printIssues();
                 Assertions.assertTrue(wc.getContext().isValid());
 
+                System.err.println("[AAA] Printing SQL...");
+                wc.printSql();
+
+                System.err.println("[AAA] Generating SELECT ALL query...");
                 MvTarget mainTarget = wc.getContext().getHandlers().values().iterator().next()
                         .getTargets().values().iterator().next();
                 String sqlQuery;
