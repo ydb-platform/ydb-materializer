@@ -29,23 +29,27 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onStartPartitionSession(StartPartitionSessionEvent ev) {
-        LOG.info("Topic `{}` session {} for partition {} onStart with last committed offset {}",
-                ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(),
-                ev.getPartitionSession().getPartitionId(), ev.getCommittedOffset());
+        LOG.info("Feeder `{}` topic `{}` session {} for partition {} "
+                + "onStart with last committed offset {}",
+                owner.getName(), ev.getPartitionSession().getPath(),
+                ev.getPartitionSession().getId(), ev.getPartitionSession().getPartitionId(),
+                ev.getCommittedOffset());
         ev.confirm();
     }
 
     @Override
     public void onStopPartitionSession(StopPartitionSessionEvent ev) {
-        LOG.info("Topic `{}` session {} onStop with last committed offset {}",
-                ev.getPartitionSession().getPath(), ev.getPartitionSession().getId(), ev.getCommittedOffset());
+        LOG.info("Feeder `{}` topic `{}` session {} onStop with last committed offset {}",
+                owner.getName(), ev.getPartitionSession().getPath(),
+                ev.getPartitionSession().getId(), ev.getCommittedOffset());
         ev.confirm();
     }
 
     @Override
     public void onPartitionSessionClosed(PartitionSessionClosedEvent ev) {
-        LOG.info("Topic `{}` session {} onClosed",
-                ev.getPartitionSession().getPath(), ev.getPartitionSession().getId());
+        LOG.info("Feeder `{}` topic `{}` session {} onClosed",
+                owner.getName(), ev.getPartitionSession().getPath(),
+                ev.getPartitionSession().getId());
     }
 
     @Override
@@ -53,8 +57,8 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         String topicPath = event.getPartitionSession().getPath();
         MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
-            LOG.warn("Skipping {} message(s) for unhandled topic {}",
-                    event.getMessages().size(), topicPath);
+            LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic {}",
+                    owner.getName(), event.getMessages().size(), topicPath);
             event.commit();
             return;
         }

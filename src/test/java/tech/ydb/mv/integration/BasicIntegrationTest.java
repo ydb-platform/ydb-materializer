@@ -29,15 +29,15 @@ import tech.ydb.mv.util.YdbConv;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
- * colima start --arch aarch64 --vm-type=vz --vz-rosetta
- * (or) colima start --arch amd64
+ * colima start --arch aarch64 --vm-type=vz --vz-rosetta (or) colima start
+ * --arch amd64
  *
  * @author zinal
  */
 public class BasicIntegrationTest {
 
-    private static final String CREATE_TABLES =
-"""
+    private static final String CREATE_TABLES
+            = """
 CREATE TABLE `test1/statements` (
     statement_no Int32 NOT NULL,
     statement_text Text NOT NULL,
@@ -116,16 +116,16 @@ ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_IMAGE');
 """;
 
-    private static final String CDC_CONSUMERS =
-"""
+    private static final String CDC_CONSUMERS
+            = """
 ALTER TOPIC `test1/main_table/cf1` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table1/cf2` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table2/cf3` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table3/cf4` ADD CONSUMER `dictionary`;
 """;
 
-    private static final String UPSERT_CONFIG =
-"""
+    private static final String UPSERT_CONFIG
+            = """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
@@ -149,8 +149,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INPUT `test1/sub_table3` CHANGEFEED cf4 AS BATCH;@@);
 """;
 
-    private static final String WRITE_INITIAL =
-"""
+    private static final String WRITE_INITIAL
+            = """
 INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c20) VALUES
  ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 'text message one'u)
 ,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 'text message two'u)
@@ -178,8 +178,8 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ;
 """;
 
-    private static final String WRITE_UP1 =
-"""
+    private static final String WRITE_UP1
+            = """
 INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c20) VALUES
  ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 'text message one'u)
 ;
@@ -191,8 +191,8 @@ UPSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
 ;
 """;
 
-    private static final String WRITE_UP2 =
-"""
+    private static final String WRITE_UP2
+            = """
 DELETE FROM `test1/main_table` WHERE id='main-001'u
 ;
 DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val2'u
@@ -206,12 +206,20 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ;
 """;
 
+    private static final String WRITE_UP3
+            = """
+UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
+ (58, 'Welcome! News'u)
+,(59, 'Adieu! News'u)
+;
+""";
+
     @RegisterExtension
     private static final YdbHelperExtension YDB = new YdbHelperExtension();
 
     private static String getConnectionUrl() {
         StringBuilder sb = new StringBuilder();
-        sb.append(YDB.useTls() ? "grpcs://" : "grpc://" );
+        sb.append(YDB.useTls() ? "grpcs://" : "grpc://");
         sb.append(YDB.endpoint());
         sb.append(YDB.database());
         return sb.toString();
@@ -232,15 +240,15 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
             return baos.toByteArray();
-        } catch(IOException ix) {
+        } catch (IOException ix) {
             throw new RuntimeException(ix);
         }
     }
 
     @Test
     public void test1() {
-        // has to wait a bit here
-        try { Thread.sleep(5000L); } catch(InterruptedException ix) {}
+        // have to wait a bit here for YDB startup
+        pause(3000L);
         // now the work
         System.err.println("[AAA] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
@@ -268,33 +276,29 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
                 System.err.println("[AAA] Starting the services...");
                 wc.startHandlers();
-                //wc.startDictionaryHandler();
-                System.err.println("[AAA] Sleeping for 2 seconds...");
-                YdbMisc.sleep(2000L);
+                wc.startDictionaryHandler();
+                pause(2000L);
                 System.err.println("[AAA] Checking the view output (should be empty)...");
                 int diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
-                writeInitialData(conn);
-                System.err.println("[AAA] Sleeping for 2 seconds...");
-                YdbMisc.sleep(2000L);
+                runDml(conn, WRITE_INITIAL);
+                pause(2000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating some rows...");
-                writeUpdates1(conn);
-                System.err.println("[AAA] Sleeping for 5 seconds...");
-                YdbMisc.sleep(5000L);
+                runDml(conn, WRITE_UP1);
+                pause(2000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
-                writeUpdates2(conn);
-                System.err.println("[AAA] Sleeping for 5 seconds...");
-                YdbMisc.sleep(5000L);
+                runDml(conn, WRITE_UP2);
+                pause(2000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
@@ -307,15 +311,29 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 clearMV(conn);
                 System.err.println("[AAA] Starting the full refresh of MV...");
                 refreshMV(wc);
-                System.err.println("[AAA] Sleeping for 5 seconds...");
-                YdbMisc.sleep(5000L);
+                pause(2000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
+
+                System.err.println("[AAA] Checking the dictionary history...");
+                checkDictHist(conn);
+
+                System.err.println("[AAA] Updating just dictionary rows...");
+                runDml(conn, WRITE_UP3);
+                pause(2000L);
+
+                System.err.println("[AAA] Checking the dictionary history again...");
+                checkDictHist(conn);
             } finally {
                 wc.shutdown();
             }
         }
+    }
+
+    private void pause(long millis) {
+        System.err.println("\t...Sleeping for " + millis + "...");
+        YdbMisc.sleep(millis);
     }
 
     private void fillDatabase(YdbConnector conn) {
@@ -347,18 +365,6 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 .expectSuccess();
     }
 
-    private void writeInitialData(YdbConnector conn) {
-        runDml(conn, WRITE_INITIAL);
-    }
-
-    private void writeUpdates1(YdbConnector conn) {
-        runDml(conn, WRITE_UP1);
-    }
-
-    private void writeUpdates2(YdbConnector conn) {
-        runDml(conn, WRITE_UP2);
-    }
-
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
         String sqlMv = "SELECT * FROM `test1/mv1`";
         var left = convertResultSet(
@@ -370,12 +376,12 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         int diffCount = 0;
         for (var leftMe : left.entrySet()) {
             var rightVal = right.get(leftMe.getKey());
-            if (rightVal==null) {
+            if (rightVal == null) {
                 System.out.println("  missing key: " + leftMe.getKey());
                 ++diffCount;
                 continue;
             }
-            if (! leftMe.getValue().equals(rightVal)) {
+            if (!leftMe.getValue().equals(rightVal)) {
                 System.out.println("  unequal records: \n\t"
                         + leftMe.getValue() + "\n\t"
                         + rightVal);
@@ -384,7 +390,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         }
         for (var rightMe : right.entrySet()) {
             var leftVal = left.get(rightMe.getKey());
-            if (leftVal==null) {
+            if (leftVal == null) {
                 System.out.println("  extra key: " + rightMe.getKey());
                 ++diffCount;
             }
@@ -392,12 +398,12 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         return diffCount;
     }
 
-    private HashMap<String, HashMap<String,Object>> convertResultSet(ResultSetReader rsr, String keyName) {
+    private HashMap<String, HashMap<String, Object>> convertResultSet(ResultSetReader rsr, String keyName) {
         int indexColumn = rsr.getColumnIndex(keyName);
-        HashMap<String, HashMap<String,Object>> output = new HashMap<>();
+        HashMap<String, HashMap<String, Object>> output = new HashMap<>();
         while (rsr.next()) {
             String key = YdbConv.toPojo(rsr.getColumn(indexColumn).getValue()).toString();
-            HashMap<String,Object> value = new HashMap<>();
+            HashMap<String, Object> value = new HashMap<>();
             for (int index = 0; index < rsr.getColumnCount(); ++index) {
                 String name = rsr.getColumnName(index);
                 value.put(name, YdbConv.toPojo(rsr.getColumn(index).getValue()));
@@ -412,7 +418,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 6L);
         checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 8L);
         checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 9L);
-//        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
+        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
@@ -431,12 +437,24 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void clearMV(YdbConnector conn) {
-        conn.sqlReadWrite("DELETE FROM `test1/mv1`;", Params.empty());
+        conn.sqlWrite("DELETE FROM `test1/mv1`;", Params.empty());
     }
 
     private void refreshMV(MvService wc) {
         wc.startScan("handler1", "test1/mv1",
                 new MvScanSettings(wc.getYdb().getConfig().getProperties()));
+    }
+
+    private void checkDictHist(YdbConnector conn) {
+        var rs = conn.sqlRead("SELECT full_val, key_text, tv "
+                + "FROM `test1/dict_hist` ORDER BY tv, key_text;",
+                Params.empty()).getResultSet(0);
+        while (rs.next()) {
+            System.out.println("  DICT: " + rs.getColumn(1).getText()
+                    + " at " + rs.getColumn(2).getTimestamp().toString()
+                    + ": " + rs.getColumn(0).getValue().asOptional()
+                            .get().asData().getJsonDocument());
+        }
     }
 
 }

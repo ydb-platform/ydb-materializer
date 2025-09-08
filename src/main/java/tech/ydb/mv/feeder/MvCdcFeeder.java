@@ -41,6 +41,10 @@ public class MvCdcFeeder {
                 adapter.getCdcReaderThreads(),
                 adapter.getFeederName());
     }
+    
+    public String getName() {
+        return adapter.getFeederName();
+    }
 
     public synchronized void start() {
         if (reader.get() != null) {
@@ -84,13 +88,16 @@ public class MvCdcFeeder {
         for (MvInput mi : sink.getInputs()) {
             String topicPath = ydb.fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             if (parsers.containsKey(topicPath)) {
-                LOG.warn("Skipped duplicate topic: {}", topicPath);
+                LOG.warn("Skipped duplicate topic: `{}` for `{}`",
+                        topicPath, adapter.getFeederName());
                 continue;
             }
             parsers.put(topicPath, new MvCdcParser(mi));
             builder.addTopic(TopicReadSettings.newBuilder()
                     .setPath(topicPath)
                     .build());
+            LOG.debug("Topic `{}` reading configured for `{}` in consumer `{}`",
+                    topicPath, adapter.getFeederName(), adapter.getConsumerName());
         }
         ReadEventHandlersSettings rehs = ReadEventHandlersSettings.newBuilder()
                 .setEventHandler(new MvCdcEventReader(this))
