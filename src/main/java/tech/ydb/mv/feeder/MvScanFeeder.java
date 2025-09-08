@@ -66,6 +66,9 @@ public class MvScanFeeder {
             throw new IllegalStateException("Refusing to start scan feeder "
                     + "for a stopped handler job " + job.getMetadata().getName());
         }
+        if (context.get() != null) {
+            return;
+        }
         MvScanContext ctx = context.getAndSet(
                 new MvScanContext(job.getMetadata(), target, job.getYdb(), controlTable));
         if (ctx != null) {
@@ -128,6 +131,8 @@ public class MvScanFeeder {
             }
             rateLimiter(count);
         }
+        unregisterScan();
+        job.completeScan(target);
         LOG.info("Finished scan feeder for target {} in handler {}",
                 target.getName(), job.getMetadata().getName());
     }

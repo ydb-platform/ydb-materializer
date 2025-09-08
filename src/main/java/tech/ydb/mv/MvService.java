@@ -140,6 +140,37 @@ public class MvService {
     }
 
     /**
+     * Start the full scan for the specified target in  the specified handler.
+     * For illegal arguments, exceptions are thrown.
+     *
+     * @param handlerName Name of the handler
+     * @param targetName Name of the target
+     */
+    public synchronized void startScan(String handlerName, String targetName) {
+        MvController c = handlers.get(handlerName);
+        if (c == null) {
+            throw new IllegalArgumentException("Unknown handler name: " + handlerName);
+        }
+        c.startScan(targetName);
+    }
+
+    /**
+     * Stops the full scan for the specified target in the specified handler.
+     * For illegal arguments, false is returned.
+     *
+     * @param handlerName Name of the handler
+     * @param targetName Name of the target
+     * @return true, if the scan was started, false otherwise
+     */
+    public synchronized boolean stopScan(String handlerName, String targetName) {
+        MvController c = handlers.get(handlerName);
+        if (c == null) {
+            return false;
+        }
+        return c.stopScan(targetName);
+    }
+
+    /**
      * Print the list of issues in the current context to stdout.
      */
     public void printIssues() {

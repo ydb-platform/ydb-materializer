@@ -404,6 +404,7 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
     }
 
     private void refreshMV(MvService wc) {
+        wc.startScan("handler1", "test1/mv1");
     }
 
 }

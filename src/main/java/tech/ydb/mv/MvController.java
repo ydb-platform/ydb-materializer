@@ -1,12 +1,13 @@
 package tech.ydb.mv;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.HashMap;
 
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvTarget;
 
 /**
  * The controller logic for a single handler.
@@ -20,13 +21,11 @@ public class MvController {
     private final MvJobContext context;
     private final MvApplyManager applyManager;
     private final MvCdcFeeder cdcFeeder;
-    private final AtomicReference<MvScanFeeder> scanFeeder;
 
     public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
         this.cdcFeeder = new MvCdcFeeder(this.context, this.applyManager);
-        this.scanFeeder = new AtomicReference<>();
     }
 
     @Override
@@ -48,10 +47,6 @@ public class MvController {
 
     public MvCdcFeeder getCdcFeeder() {
         return cdcFeeder;
-    }
-
-    public MvScanFeeder getScanFeeder() {
-        return scanFeeder.get();
     }
 
     public boolean isRunning() {
@@ -90,6 +85,23 @@ public class MvController {
         cdcFeeder.stop();
         context.getService().getCoordinator().release(getName());
         return true;
+    }
+
+    public void startScan(String name) {
+        MvTarget target = context.getMetadata().getTarget(name);
+        if (target==null) {
+            throw new IllegalArgumentException("Illegal target name `" + name
+                    + "` for handler `" + context.getMetadata().getName() + "`");
+        }
+        context.startScan(target, applyManager);
+    }
+
+    public boolean stopScan(String name) {
+        MvTarget target = context.getMetadata().getTarget(name);
+        if (target==null) {
+            return false;
+        }
+        return context.stopScan(target);
     }
 
 }
