@@ -3,7 +3,7 @@ package tech.ydb.mv.apply;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collection;
-import tech.ydb.mv.YdbConnector;
+import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.table.values.ListValue;
 import tech.ydb.table.values.PrimitiveValue;
@@ -11,6 +11,10 @@ import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.Value;
 
+import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.feeder.MvCdcAdapter;
+import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvChangeRecord;
@@ -26,7 +30,8 @@ import tech.ydb.table.query.Params;
  *
  * @author zinal
  */
-public class MvDictionaryManager implements MvCdcSink {
+public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryManager.class);
 
     private static final Value<?> NULL_JSON = PrimitiveType.JsonDocument.makeOptional().emptyValue();
 
@@ -34,13 +39,60 @@ public class MvDictionaryManager implements MvCdcSink {
     private final YdbConnector conn;
     private final MvDictionarySettings settings;
     private final String historyTable;
+    // initially stopped -> null
+    private final AtomicReference<MvCdcFeeder> feeder = new AtomicReference<>();
 
     public MvDictionaryManager(MvContext context, YdbConnector conn,
             MvDictionarySettings settings) {
         this.context = context;
         this.conn = conn;
-        this.settings = settings;
+        this.settings = new MvDictionarySettings(settings);
         this.historyTable = YdbConnector.safe(settings.getHistoryTableName());
+    }
+
+    @Override
+    public String getFeederName() {
+        return MvConfig.DICTINARY_HANDLER;
+    }
+
+    @Override
+    public int getCdcReaderThreads() {
+        return settings.getThreadCount();
+    }
+
+    @Override
+    public String getConsumerName() {
+        return MvConfig.DICTINARY_HANDLER;
+    }
+
+    @Override
+    public boolean isRunning() {
+        return (feeder.get() != null);
+    }
+
+    public synchronized void start() {
+        if (isRunning()) {
+            LOG.info("Ignoring request to start an already-running dictionary manager.");
+            return;
+        }
+
+        LOG.info("Starting dictionary manager.");
+        MvCdcFeeder cf = new MvCdcFeeder(this, conn, this);
+        feeder.set(cf);
+        cf.start();
+    }
+
+    public synchronized void stop() {
+        if (! isRunning()) {
+            LOG.info("Ignoring request to stop an already-stopped dictionary manager.");
+            return;
+        }
+
+        LOG.info("Stopping dictionary manager.");
+        MvCdcFeeder cf = feeder.getAndSet(null);
+        if (cf != null) {
+            cf.stop();
+        }
     }
 
     @Override

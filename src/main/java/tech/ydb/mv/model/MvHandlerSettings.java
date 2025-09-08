@@ -1,6 +1,8 @@
 package tech.ydb.mv.model;
 
 import java.io.Serializable;
+import java.util.Properties;
+import tech.ydb.mv.MvConfig;
 
 /**
  * The settings for a specific handler.
@@ -25,6 +27,25 @@ public class MvHandlerSettings implements Serializable {
         this.applyQueueSize = src.applyQueueSize;
         this.selectBatchSize = src.selectBatchSize;
         this.upsertBatchSize = src.upsertBatchSize;
+    }
+
+    public MvHandlerSettings(Properties props) {
+        String v;
+
+        v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");
+        this.cdcReaderThreads = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_DEF_APPLY_THREADS, "4");
+        this.applyThreads = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_DEF_APPLY_QUEUE, "10000");
+        this.applyQueueSize = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_DEF_BATCH_SELECT, "1000");
+        this.selectBatchSize = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
+        this.upsertBatchSize = Integer.parseInt(v);
     }
 
     public int getCdcReaderThreads() {

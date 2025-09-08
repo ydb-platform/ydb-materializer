@@ -2,7 +2,7 @@
 CREATE TABLE `mv/statements` (
    statement_no Int32 NOT NULL,
    statement_text Text NOT NULL,
-   PRIMARY KEY(statement_no);
+   PRIMARY KEY(statement_no)
 );
 
 -- Scans state table
@@ -11,7 +11,7 @@ CREATE TABLE `mv/scans_state` (
    table_name Text NOT NULL,
    updated_at Timestamp,
    key_position JsonDocument,
-   PRIMARY KEY(handler_name, table_name);
+   PRIMARY KEY(handler_name, table_name)
 );
 
 -- Dictionary changelog table
@@ -21,7 +21,7 @@ CREATE TABLE `mv/dict_log` (
    tv Timestamp NOT NULL,
    key_val JsonDocument,
    full_val JsonDocument,
-   PRIMARY KEY(src, key_text, tv);
+   PRIMARY KEY(src, key_text, tv)
 );
 
 -- ************

@@ -13,12 +13,14 @@ import tech.ydb.core.UnexpectedResultException;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
+import tech.ydb.mv.apply.MvDictionaryManager;
 import tech.ydb.mv.format.MvIssuePrinter;
 import tech.ydb.mv.format.MvSqlPrinter;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.parser.MvConfigReader;
 import tech.ydb.mv.parser.MvBasicValidator;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
@@ -39,16 +41,19 @@ public class MvService {
     private final YdbConnector ydb;
     private final MvContext context;
     private final MvCoordinator coordinator;
-    private final AtomicReference<MvHandlerSettings> defaultSettings;
+    private final AtomicReference<MvHandlerSettings> handlerSettings;
+    private final AtomicReference<MvDictionarySettings> dictionarySettings;
+    private volatile MvDictionaryManager dictionaryManager = null;
     private final HashMap<String, MvController> handlers = new HashMap<>();
     private final RefreshTask refreshTask = new RefreshTask();
-    private Thread refreshThread = null;
+    private volatile Thread refreshThread = null;
 
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
         this.context = MvConfigReader.readContext(ydb, ydb.getConfig().getProperties());
         this.coordinator = new MvCoordinator(ydb);
-        this.defaultSettings = new AtomicReference<>(new MvHandlerSettings());
+        this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
+        this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         refreshMetadata();
     }
 
@@ -64,24 +69,43 @@ public class MvService {
         return coordinator;
     }
 
-    public MvHandlerSettings getDefaultSettings() {
-        return new MvHandlerSettings(defaultSettings.get());
+    public MvHandlerSettings getHandlerSettings() {
+        return new MvHandlerSettings(handlerSettings.get());
     }
 
-    public void setDefaultSettings(MvHandlerSettings defaultSettings) {
+    public void setHandlerSettings(MvHandlerSettings defaultSettings) {
         if (defaultSettings==null) {
             defaultSettings = new MvHandlerSettings();
         } else {
             defaultSettings = new MvHandlerSettings(defaultSettings);
         }
-        this.defaultSettings.set(defaultSettings);
+        this.handlerSettings.set(defaultSettings);
+    }
+
+    public MvDictionarySettings getDictionarySettings() {
+        return new MvDictionarySettings(dictionarySettings.get());
+    }
+
+    public void setDictionarySettings(MvDictionarySettings defaultSettings) {
+        if (defaultSettings==null) {
+            defaultSettings = new MvDictionarySettings();
+        } else {
+            defaultSettings = new MvDictionarySettings(defaultSettings);
+        }
+        this.dictionarySettings.set(defaultSettings);
+    }
+
+    public void setDefaults() {
+        var props = ydb.getConfig().getProperties();
+        setHandlerSettings(new MvHandlerSettings(props));
+        setDictionarySettings(new MvDictionarySettings(props));
     }
 
     /**
      * @return true, if at least one handler is active, and false otherwise.
      */
     public synchronized boolean isRunning() {
-        return !handlers.isEmpty();
+        return !handlers.isEmpty() || (dictionaryManager != null);
     }
 
     /**
@@ -91,6 +115,25 @@ public class MvService {
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
         coordinator.releaseAll();
+        if (dictionaryManager != null) {
+            dictionaryManager.stop();
+            dictionaryManager = null;
+        }
+    }
+
+    public synchronized void startDictionaryHandler() {
+        if (dictionaryManager != null) {
+            return;
+        }
+        dictionaryManager = new MvDictionaryManager(context, ydb, dictionarySettings.get());
+        dictionaryManager.start();
+    }
+
+    public synchronized void stopDictionaryHandler() {
+        if (dictionaryManager != null) {
+            dictionaryManager.stop();
+            dictionaryManager = null;
+        }
     }
 
     /**
@@ -98,7 +141,7 @@ public class MvService {
      * @param name Name of the handler to be started
      */
     public void startHandler(String name) {
-        startHandler(name, getDefaultSettings());
+        startHandler(name, getHandlerSettings());
     }
 
     /**
@@ -200,7 +243,6 @@ public class MvService {
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }
-        setDefaultSettings(MvConfig.parseHandlerSettings(ydb.getConfig().getProperties()));
         for (String handlerName : parseActiveHandlerNames()) {
             try {
                 startHandler(handlerName);

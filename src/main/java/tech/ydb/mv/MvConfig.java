@@ -40,6 +40,11 @@ public class MvConfig {
     public static final String CONF_SCAN_TABLE = "job.scan.table";
 
     /**
+     * Path to dictionary history table.
+     */
+    public static final String CONF_DICT_TABLE = "job.dict.table";
+
+    /**
      * Scan rate limiter, rows per second.
      */
     public static final String CONF_SCAN_RATE = "job.scan.rate";
@@ -91,6 +96,11 @@ public class MvConfig {
     public static final String DEF_SCAN_TABLE = "mv/scans_state";
 
     /**
+     * Dictionary history table name.
+     */
+    public static final String DEF_DICT_TABLE = "mv/dict_hist";
+
+    /**
      * Coordination node path.
      */
     public static final String DEF_COORD_PATH = "mv/coordination";
@@ -120,28 +130,6 @@ public class MvConfig {
             }
         }
         return null;
-    }
-
-    public static MvHandlerSettings parseHandlerSettings(Properties props) {
-        MvHandlerSettings settings = new MvHandlerSettings();
-        String v;
-
-        v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, String.valueOf(settings.getCdcReaderThreads()));
-        settings.setCdcReaderThreads(Integer.parseInt(v));
-
-        v = props.getProperty(MvConfig.CONF_DEF_APPLY_THREADS, String.valueOf(settings.getApplyThreads()));
-        settings.setApplyThreads(Integer.parseInt(v));
-
-        v = props.getProperty(MvConfig.CONF_DEF_APPLY_QUEUE, String.valueOf(settings.getApplyQueueSize()));
-        settings.setApplyQueueSize(Integer.parseInt(v));
-
-        v = props.getProperty(MvConfig.CONF_DEF_BATCH_SELECT, String.valueOf(settings.getSelectBatchSize()));
-        settings.setSelectBatchSize(Integer.parseInt(v));
-
-        v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, String.valueOf(settings.getUpsertBatchSize()));
-        settings.setUpsertBatchSize(Integer.parseInt(v));
-
-        return settings;
     }
 
     public static enum Mode {

@@ -52,6 +52,15 @@ CREATE TABLE `test1/scans_state` (
    PRIMARY KEY(handler_name, table_name)
 );
 
+CREATE TABLE `test1/dict_hist` (
+   src Text NOT NULL,
+   key_text Text NOT NULL,
+   tv Timestamp NOT NULL,
+   key_val JsonDocument,
+   full_val JsonDocument,
+   PRIMARY KEY(src, key_text, tv)
+);
+
 CREATE TABLE `test1/main_table` (
     id Text NOT NULL,
     c1 Timestamp,
@@ -104,7 +113,7 @@ CREATE TABLE `test1/mv1` (
 ALTER TABLE `test1/main_table` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 ALTER TABLE `test1/sub_table1` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
-ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
+ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_IMAGE');
 """;
 
     private static final String CDC_CONSUMERS =
@@ -112,7 +121,7 @@ ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE 
 ALTER TOPIC `test1/main_table/cf1` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table1/cf2` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table2/cf3` ADD CONSUMER `consumer1`;
-ALTER TOPIC `test1/sub_table3/cf4` ADD CONSUMER `consumer1`;
+ALTER TOPIC `test1/sub_table3/cf4` ADD CONSUMER `dictionary`;
 """;
 
     private static final String UPSERT_CONFIG =
@@ -190,6 +199,11 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val2'u
 ;
 DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
 ;
+INSERT INTO `test1/sub_table3` (c5,c10) VALUES
+  (1, 'One'u),
+  (2, 'Two'u),
+  (3, 'Three'u)
+;
 """;
 
     @RegisterExtension
@@ -213,6 +227,7 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
         props.setProperty(MvConfig.CONF_DEF_APPLY_THREADS, "1");
         props.setProperty(MvConfig.CONF_DEF_CDC_THREADS, "1");
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
+        props.setProperty(MvConfig.CONF_DICT_TABLE, "test1/dict_hist");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
@@ -234,6 +249,8 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
             System.err.println("[AAA] Preparation: completed.");
             MvService wc = new MvService(conn);
             try {
+                wc.setDefaults();
+
                 System.err.println("[AAA] Checking context...");
                 wc.printIssues();
                 Assertions.assertTrue(wc.getContext().isValid());
@@ -251,6 +268,7 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
 
                 System.err.println("[AAA] Starting the services...");
                 wc.startHandlers();
+                wc.startDictionaryHandler();
                 System.err.println("[AAA] Sleeping for 2 seconds...");
                 YdbMisc.sleep(2000L);
                 System.err.println("[AAA] Checking the view output (should be empty)...");
