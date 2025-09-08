@@ -68,7 +68,10 @@ class MvCdcEventReader extends AbstractReadEventHandler {
             if (tv == null) {
                 tv = Instant.now();
             }
-            records.add(parser.parse(m.getData(), tv));
+            MvChangeRecord cr = parser.parse(m.getData(), tv);
+            if (cr != null) {
+                records.add(cr);
+            }
         }
         sink.submit(records, new MvCdcCommitHandler(event));
     }
