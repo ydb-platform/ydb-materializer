@@ -44,6 +44,14 @@ CREATE TABLE `test1/statements` (
     PRIMARY KEY(statement_no)
 );
 
+CREATE TABLE `test1/scans_state` (
+   handler_name Text NOT NULL,
+   table_name Text NOT NULL,
+   updated_at Timestamp,
+   key_position JsonDocument,
+   PRIMARY KEY(handler_name, table_name)
+);
+
 CREATE TABLE `test1/main_table` (
     id Text NOT NULL,
     c1 Timestamp,
@@ -204,6 +212,7 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
         props.setProperty(MvConfig.CONF_DEF_APPLY_THREADS, "1");
         props.setProperty(MvConfig.CONF_DEF_CDC_THREADS, "1");
+        props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);

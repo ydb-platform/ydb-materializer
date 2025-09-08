@@ -132,7 +132,7 @@ class MvScanCommitHandler implements MvCommitHandler {
             params = Params.of(
                     "$handler_name", context.getHandlerName(),
                     "$table_name", context.getTargetName(),
-                    "$key_position", PrimitiveValue.newText(jsonKey)
+                    "$key_position", PrimitiveValue.newJsonDocument(jsonKey)
             );
         }
         return qs.createQuery(sqlText, TxMode.SERIALIZABLE_RW, params)

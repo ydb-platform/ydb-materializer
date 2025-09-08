@@ -229,7 +229,7 @@ public class MvScanFeeder {
         Params params = Params.of(
                 "$handler_name", ctx.getHandlerName(),
                 "$table_name", ctx.getTargetName(),
-                "$key_position", PrimitiveValue.newText("{}")
+                "$key_position", PrimitiveValue.newJsonDocument("{}")
         );
         job.getYdb().sqlWrite(sql, params);
     }
