@@ -98,24 +98,24 @@ class MvCdcParser {
             return YdbStruct.EMPTY;
         }
         YdbStruct ret = new YdbStruct(tableInfo.getColumns().size());
-        for (int pos = 0; pos < theKey.size(); ++pos) {
-            ret.put(theKey.getName(pos), theKey.getValue(pos));
-        }
         for (Map.Entry<String, Type> me : tableInfo.getColumns().entrySet()) {
             ret.put(me.getKey(), readValue(image.get(me.getKey()), me.getValue()));
+        }
+        for (int pos = 0; pos < theKey.size(); ++pos) {
+            ret.put(theKey.getName(pos), theKey.getValue(pos));
         }
         return ret;
     }
 
     @SuppressWarnings("rawtypes")
     public static Comparable readValue(JsonElement node, Type type) {
+        if (node == null || node.isJsonNull()) {
+            return null;
+        }
+
         if (type.getKind() == Type.Kind.OPTIONAL) {
             OptionalType optional = (OptionalType) type;
-            if (node == null || node.isJsonNull()) {
-                return null;
-            } else {
-                return readValue(node, optional.getItemType());
-            }
+            return readValue(node, optional.getItemType());
         }
 
         if (type.getKind() == Type.Kind.DECIMAL) {

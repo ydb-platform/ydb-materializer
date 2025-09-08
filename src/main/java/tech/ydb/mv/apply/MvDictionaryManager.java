@@ -126,18 +126,24 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
         StructValue[] values = records.stream()
                 .map(cr -> convertRecord(cr))
                 .toArray(StructValue[]::new);
-        String sql = "DECLARE $input AS List<Struct<>>; "
-                + "UPSERT INTO `" + historyTable + "` SELECT * FROM AS_TABLE($nput);";
-        conn.sqlWrite(sql, Params.of("$input", ListValue.of(values)));
+        String sql = "DECLARE $input AS List<Struct<src:Text, tv:Timestamp, "
+                + "key_text:Text, key_val:JsonDocument, full_val:JsonDocument>>; "
+                + "UPSERT INTO `" + historyTable + "` SELECT * FROM AS_TABLE($input);";
+        try {
+            conn.sqlWrite(sql, Params.of("$input", ListValue.of(values)));
+        } catch(Exception ex) {
+            LOG.error("Failed to write dictionary batch, will raise for re-processing", ex);
+            throw new RuntimeException(ex.toString());
+        }
     }
 
     private StructValue convertRecord(MvChangeRecord cr) {
         return StructValue.of(
                 "src", PrimitiveValue.newText(cr.getKey().getTableInfo().getName()),
                 "tv", PrimitiveValue.newTimestamp(cr.getTv()),
-                "key", PrimitiveValue.newText(convertKey(cr.getKey())),
-                "key_data", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),
-                "full_data", convertData(cr.getImageAfter())
+                "key_text", PrimitiveValue.newText(convertKey(cr.getKey())),
+                "key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),
+                "full_val", convertData(cr.getImageAfter())
         );
     }
 

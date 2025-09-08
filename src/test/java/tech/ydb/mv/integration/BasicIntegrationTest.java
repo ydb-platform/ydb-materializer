@@ -412,7 +412,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 6L);
         checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 8L);
         checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 9L);
-        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 3L);
+        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
