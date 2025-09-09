@@ -1,4 +1,4 @@
-package tech.ydb.mv;
+package tech.ydb.mv.support;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -7,13 +7,15 @@ import java.util.HashMap;
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
+import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.YdbConnector;
 
 /**
  *
  * @author zinal
  */
-public class MvCoordinator {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinator.class);
+public class MvLocker {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvLocker.class);
 
     public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10L);
 
@@ -22,7 +24,7 @@ public class MvCoordinator {
     private final String nodePath;
     private final HashMap<String, SemaphoreLease> leases = new HashMap<>();
 
-    public MvCoordinator(YdbConnector connector) {
+    public MvLocker(YdbConnector connector) {
         this.client = connector.getCoordinationClient();
         this.nodePath = connector.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
         connector.getCoordinationClient().createNode(this.nodePath).join().expectSuccess();

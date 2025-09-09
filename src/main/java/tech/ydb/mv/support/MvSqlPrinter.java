@@ -1,4 +1,4 @@
-package tech.ydb.mv.format;
+package tech.ydb.mv.support;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

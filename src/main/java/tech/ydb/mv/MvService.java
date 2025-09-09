@@ -14,11 +14,7 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
 import tech.ydb.mv.apply.MvDictionaryManager;
-import tech.ydb.mv.format.MvIssuePrinter;
-import tech.ydb.mv.format.MvSqlPrinter;
 import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.parser.MvConfigReader;
-import tech.ydb.mv.parser.MvBasicValidator;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
@@ -28,6 +24,11 @@ import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.parser.MvBasicValidator;
+import tech.ydb.mv.support.MvConfigReader;
+import tech.ydb.mv.support.MvLocker;
+import tech.ydb.mv.support.MvIssuePrinter;
+import tech.ydb.mv.support.MvSqlPrinter;
 import tech.ydb.mv.util.YdbMisc;
 
 /**
@@ -40,7 +41,7 @@ public class MvService {
 
     private final YdbConnector ydb;
     private final MvContext context;
-    private final MvCoordinator coordinator;
+    private final MvLocker coordinator;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
     private volatile MvDictionaryManager dictionaryManager = null;
@@ -51,7 +52,7 @@ public class MvService {
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
         this.context = MvConfigReader.readContext(ydb, ydb.getConfig().getProperties());
-        this.coordinator = new MvCoordinator(ydb);
+        this.coordinator = new MvLocker(ydb);
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         refreshMetadata();
@@ -65,7 +66,7 @@ public class MvService {
         return context;
     }
 
-    public MvCoordinator getCoordinator() {
+    public MvLocker getCoordinator() {
         return coordinator;
     }
 

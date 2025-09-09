@@ -1,4 +1,4 @@
-package tech.ydb.mv.parser;
+package tech.ydb.mv.support;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -10,6 +10,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.parser.MvSqlParser;
 
 /**
  * MV configuration reader logic.

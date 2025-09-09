@@ -3,7 +3,7 @@ package tech.ydb.mv.parser;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.SqlConstants;
-import tech.ydb.mv.format.MvIssuePrinter;
+import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
