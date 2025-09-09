@@ -1,14 +1,6 @@
 package tech.ydb.mv.parser;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
@@ -16,7 +8,6 @@ import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvLiteral;
-import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -31,31 +22,8 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvKeyPathGenerator extends MvGeneratorBase {
 
-    private final MvTarget originalTarget;
-    private final MvJoinSource topMostSource;
-    private final MvTableInfo topMostTable;
-    private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
-
     public MvKeyPathGenerator(MvTarget target) {
-        if (target==null || target.getSources().isEmpty()) {
-            throw new IllegalArgumentException("Target is not valid for path generator");
-        }
-        this.originalTarget = target;
-        this.topMostSource = target.getTopMostSource();
-        this.topMostTable = this.topMostSource.getTableInfo();
-        this.adjacencyMap = buildAdjacencyMap(target);
-    }
-
-    public MvTarget getOriginalTarget() {
-        return originalTarget;
-    }
-
-    public MvJoinSource getTopMostSource() {
-        return topMostSource;
-    }
-
-    public MvTableInfo getTopMostTable() {
-        return topMostTable;
+        super(target);
     }
 
     /**
@@ -103,56 +71,6 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
             }
         }
         return true;
-    }
-
-    /**
-     * Checks if a specific target key can be mapped directly from the input
-     * source by analyzing join conditions.
-     */
-    private boolean canMapTargetKey(MvJoinSource inputSource, String targetKey) {
-        if (inputSource == topMostSource
-                && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
-            return true;
-        }
-
-        // Look through all join conditions in the input source
-        for (MvJoinCondition condition : inputSource.getConditions()) {
-            if (isConditionMappingKey(condition, inputSource, targetKey)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if a join condition provides a mapping for the target key.
-     */
-    private boolean isConditionMappingKey(MvJoinCondition condition,
-            MvJoinSource inputSource, String targetKey) {
-        if (condition.getFirstLiteral() != null || condition.getSecondLiteral() != null) {
-            // Literal conditions never match
-            return false;
-        }
-
-        // Check if condition connects inputSource column to topMostSource key
-        if (condition.getFirstRef() == inputSource
-                && condition.getSecondRef() == topMostSource) {
-            if (targetKey.equals(condition.getSecondColumn())) {
-                // inputSource.firstColumn = topMostSource.targetKey
-                return true;
-            }
-        }
-
-        if (condition.getFirstRef() == topMostSource
-                && condition.getSecondRef() == inputSource) {
-            if (targetKey.equals(condition.getFirstColumn())) {
-                // topMostSource.targetKey = inputSource.secondColumn
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -206,7 +124,7 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
                 column.setType(source.getTableInfo().getColumns().get(sourceColumn));
                 result.getColumns().add(column);
             } else {
-                MvLiteral literalValue = findLiteralForKey(source, targetKey);
+                MvLiteral literalValue = findLiteral(source, targetKey);
                 if (literalValue != null) {
                     // Handle literal/constant values
                     MvColumn column = new MvColumn(targetKey);
@@ -224,79 +142,6 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
         }
 
         return result;
-    }
-
-    /**
-     * Finds the source column in inputSource that maps to the target key
-     * through join conditions.
-     */
-    private String findSourceColumnForKey(MvJoinSource inputSource, String targetKey) {
-        if (inputSource == topMostSource
-                && inputSource.getTableInfo().getColumns().containsKey(targetKey)) {
-            return targetKey;
-        }
-
-        // Check join conditions for column mappings
-        for (MvJoinCondition condition : inputSource.getConditions()) {
-            String sourceColumn = getSourceColumnFromCondition(condition, inputSource, targetKey);
-            if (sourceColumn != null) {
-                return sourceColumn;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Finds the literal value that maps to the target key through join
-     * conditions.
-     */
-    private MvLiteral findLiteralForKey(MvJoinSource inputSource, String targetKey) {
-        for (MvJoinCondition condition : inputSource.getConditions()) {
-            MvLiteral literal = getLiteralFromCondition(condition, targetKey);
-            if (literal != null) {
-                return literal;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extracts the source column from a join condition if it maps to the target key.
-     */
-    private String getSourceColumnFromCondition(MvJoinCondition condition,
-            MvJoinSource inputSource, String targetKey) {
-        if (condition.getFirstRef() == inputSource && condition.getSecondRef() == topMostSource) {
-            if (targetKey.equals(condition.getSecondColumn())) {
-                return condition.getFirstColumn();
-            }
-        }
-        if (condition.getFirstRef() == topMostSource && condition.getSecondRef() == inputSource) {
-            if (targetKey.equals(condition.getFirstColumn())) {
-                return condition.getSecondColumn();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Extracts the literal value from a join condition if it maps to the target
-     * key.
-     */
-    private MvLiteral getLiteralFromCondition(MvJoinCondition condition, String targetKey) {
-        if (condition.getSecondLiteral() != null) {
-            if (condition.getFirstRef() == topMostSource
-                    && targetKey.equals(condition.getFirstColumn())) {
-                return condition.getSecondLiteral();
-            }
-        }
-        if (condition.getFirstLiteral() != null) {
-            if (condition.getSecondRef() == topMostSource
-                    && targetKey.equals(condition.getSecondColumn())) {
-                return condition.getFirstLiteral();
-            }
-        }
-        return null;
     }
 
     /**
@@ -348,32 +193,6 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
     }
 
     /**
-     * Copy all literal conditions from the current level.
-     * These are the filtering conditions we need.
-     */
-    private void copyLiteralConditions(MvTarget result, MvJoinSource src, MvJoinSource dst) {
-        for (MvJoinCondition cond : src.getConditions()) {
-            MvLiteral literal = null;
-            String column = null;
-            if (cond.getFirstRef()==src) {
-                literal = cond.getSecondLiteral();
-                column = cond.getFirstColumn();
-            } else if (cond.getSecondRef()==src) {
-                literal = cond.getFirstLiteral();
-                column = cond.getSecondColumn();
-            }
-            if (literal!=null && column!=null) {
-                MvJoinCondition copy = new MvJoinCondition();
-                copy.setFirstRef(dst);
-                copy.setFirstAlias(dst.getTableAlias());
-                copy.setFirstColumn(column);
-                copy.setSecondLiteral(result.addLiteral(literal.getValue()));
-                dst.getConditions().add(copy);
-            }
-        }
-    }
-
-    /**
      * Copy the relevant relational conditions from cur to dst.
      * The relevant ones are linked to the src reference.
      */
@@ -404,133 +223,4 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
         }
     }
 
-    /**
-     * Checks if a condition is already present in the list to avoid duplicates.
-     */
-    private static boolean isDuplicateCondition(ArrayList<MvJoinCondition> conditions,
-            MvJoinCondition newCondition) {
-        for (MvJoinCondition existing : conditions) {
-            if (areConditionsEqual(existing, newCondition)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks if two conditions are semantically equal.
-     */
-    private static boolean areConditionsEqual(MvJoinCondition cond1, MvJoinCondition cond2) {
-        boolean forward = equalStrings(cond1.getFirstAlias(), cond2.getFirstAlias())
-                && equalStrings(cond1.getFirstColumn(), cond2.getFirstColumn())
-                && equalStrings(cond1.getSecondAlias(), cond2.getSecondAlias())
-                && equalStrings(cond1.getSecondColumn(), cond2.getSecondColumn())
-                && equalLiterals(cond1.getFirstLiteral(), cond2.getFirstLiteral())
-                && equalLiterals(cond1.getSecondLiteral(), cond2.getSecondLiteral());
-
-        boolean reverse = equalStrings(cond1.getFirstAlias(), cond2.getSecondAlias())
-                && equalStrings(cond1.getFirstColumn(), cond2.getSecondColumn())
-                && equalStrings(cond1.getSecondAlias(), cond2.getFirstAlias())
-                && equalStrings(cond1.getSecondColumn(), cond2.getFirstColumn())
-                && equalLiterals(cond1.getFirstLiteral(), cond2.getSecondLiteral())
-                && equalLiterals(cond1.getSecondLiteral(), cond2.getFirstLiteral());
-
-        return forward || reverse;
-    }
-
-    /**
-     * Helper method to compare strings safely (handling nulls).
-     */
-    private static boolean equalStrings(String s1, String s2) {
-        if (s1 == null && s2 == null) {
-            return true;
-        }
-        if (s1 == null || s2 == null) {
-            return false;
-        }
-        return s1.equals(s2);
-    }
-
-    private static boolean equalLiterals(MvLiteral lit1, MvLiteral lit2) {
-        if (lit1==null && lit2==null) {
-            return true;
-        }
-        if (lit1==null || lit2==null) {
-            return false;
-        }
-        return lit1.equals(lit2);
-    }
-
-    /**
-     * Clones a MvJoinSource with a new SQL position.
-     */
-    private static MvJoinSource cloneJoinSource(MvJoinSource original) {
-        MvJoinSource clone = new MvJoinSource(original.getSqlPos());
-        clone.setTableName(original.getTableName());
-        clone.setTableAlias(original.getTableAlias());
-        clone.setMode(original.getMode());
-        clone.setTableInfo(original.getTableInfo());
-        clone.setInput(original.getInput());
-        return clone;
-    }
-
-    /**
-     * Finds a path from source to target using BFS.
-     */
-    private List<MvJoinSource> findPath(MvJoinSource from, MvJoinSource to) {
-        if (from == to) {
-            return Arrays.asList(from);
-        }
-
-        LinkedList<MvJoinSource> queue = new LinkedList<>();
-        Map<MvJoinSource, MvJoinSource> parent = new HashMap<>();
-        Set<MvJoinSource> visited = new HashSet<>();
-
-        queue.offer(from);
-        visited.add(from);
-        parent.put(from, null);
-
-        while (!queue.isEmpty()) {
-            MvJoinSource current = queue.poll();
-
-            for (MvJoinSource neighbor : adjacencyMap.getOrDefault(current, Collections.emptyList())) {
-                if (!visited.contains(neighbor)) {
-                    visited.add(neighbor);
-                    parent.put(neighbor, current);
-                    queue.offer(neighbor);
-
-                    if (neighbor == to) {
-                        return reconstructPath(parent, from, to);
-                    }
-                }
-            }
-        }
-
-        return null; // No path found
-    }
-
-    /**
-     * Reconstructs the path from parent mapping.
-     */
-    private List<MvJoinSource> reconstructPath(Map<MvJoinSource, MvJoinSource> parent,
-            MvJoinSource from, MvJoinSource to) {
-        List<MvJoinSource> path = new ArrayList<>();
-        MvJoinSource current = to;
-
-        while (current != null) {
-            path.add(current);
-            current = parent.get(current);
-        }
-
-        Collections.reverse(path);
-
-        // Validation: ensure the path actually starts from the expected 'from' node
-        if (path.isEmpty() || !path.get(0).equals(from)) {
-            throw new IllegalStateException("Reconstructed path does not start from expected source: "
-                    + "expected=" + (from != null ? from.getTableAlias() : "null")
-                    + ", actual=" + (path.isEmpty() ? "empty" : path.get(0).getTableAlias()));
-        }
-
-        return path;
-    }
 }
