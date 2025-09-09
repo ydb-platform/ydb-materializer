@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
+import tech.ydb.mv.SqlConstants;
 
 import tech.ydb.table.values.PrimitiveType;
 
@@ -147,7 +148,7 @@ public class MvKeyPathGeneratorTest {
         columnD.setType(PrimitiveType.Text);
         originalTarget.getColumns().add(columnD);
 
-        if (! inputPrinted) {
+        if (SqlConstants.PRINT_SQL && ! inputPrinted) {
             System.out.println("*** Input SQL: " + new MvSqlGen(originalTarget).makeCreateView());
             inputPrinted = true;
         }
@@ -157,9 +158,11 @@ public class MvKeyPathGeneratorTest {
     public void testGenerateKeyPath_DirectCase() {
         // Test case where input source is the top-most source
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceA);
-
         assertNotNull(result);
-        System.out.println("*** A-A SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** A-A SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(1, result.getSources().size());
         assertEquals("a", result.getSources().get(0).getTableAlias());
@@ -175,9 +178,11 @@ public class MvKeyPathGeneratorTest {
     public void testGenerateKeyPath_OneStep() {
         // Test transformation from B to A (optimized - B has a_id foreign key)
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceB);
-
         assertNotNull(result);
-        System.out.println("*** B-A SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** B-A SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(2, result.getSources().size());
 
@@ -200,9 +205,11 @@ public class MvKeyPathGeneratorTest {
     public void testGenerateKeyPath_TwoSteps() {
         // Test transformation from C to A (two steps: C -> B -> A)
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceC);
-
         assertNotNull(result);
-        System.out.println("*** C-B-A SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** C-B-A SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(3, result.getSources().size());
 
@@ -222,9 +229,11 @@ public class MvKeyPathGeneratorTest {
     public void testGenerateKeyPath_Optimize() {
         // Test transformation from D to A (one step: D)
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceD);
-
         assertNotNull(result);
-        System.out.println("*** D-A SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** D-A SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(1, result.getSources().size());
         assertEquals("d", result.getSources().get(0).getTableAlias());
@@ -272,9 +281,11 @@ public class MvKeyPathGeneratorTest {
 
         // Should still optimize (D has a_id foreign key to A)
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceD);
-
         assertNotNull(result);
-        System.out.println("*** Circular SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Circular SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(1, result.getSources().size()); // Optimized: only D needed
     }
@@ -293,9 +304,11 @@ public class MvKeyPathGeneratorTest {
         sourceA.setTableInfo(tableInfoMultiKey);
 
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceA);
-
         assertNotNull(result);
-        System.out.println("*** Multikey SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Multikey SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(2, result.getColumns().size());
 
@@ -322,8 +335,10 @@ public class MvKeyPathGeneratorTest {
         sourceB.getConditions().add(literalCond);
 
         MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceC);
-
         assertNotNull(result);
-        System.out.println("*** Literal condition SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Literal condition SQL: " + new MvSqlGen(result).makeSelect());
+        }
     }
 }

@@ -2,6 +2,7 @@ package tech.ydb.mv.parser;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import tech.ydb.mv.SqlConstants;
 
 import tech.ydb.table.values.PrimitiveType;
 
@@ -92,9 +93,11 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from F to E
         MvTarget result = new MvKeyPathGenerator(multiColTarget).generate(sourceF);
-
         assertNotNull(result);
-        System.out.println("*** Multi-column F-E SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Multi-column F-E SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         assertEquals(2, result.getSources().size());
         assertEquals("f", result.getSources().get(0).getTableAlias());
@@ -229,10 +232,13 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from H to G (should go H -> I -> G)
         MvTarget result = new MvKeyPathGenerator(literalTarget).generate(sourceH);
-        System.out.println("*** Input H-I-G SQL: " + new MvSqlGen(literalTarget).makeSelect());
-        System.out.println("*** Result H-I-G SQL: " + new MvSqlGen(result).makeSelect());
-
         assertNotNull(result);
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Input H-I-G SQL: " + new MvSqlGen(literalTarget).makeSelect());
+            System.out.println("*** Result H-I-G SQL: " + new MvSqlGen(result).makeSelect());
+        }
+
         assertEquals(3, result.getSources().size());
         assertEquals("h", result.getSources().get(0).getTableAlias()); // Main source
         assertEquals("i", result.getSources().get(1).getTableAlias()); // First join
@@ -331,8 +337,8 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from K to J
         MvTarget result = new MvKeyPathGenerator(notReferencedTarget).generate(sourceK);
-
         assertNotNull(result);
+
         // The generator optimizes this case to use only K with the foreign key mapping
         assertEquals(1, result.getSources().size());
         assertEquals("k", result.getSources().get(0).getTableAlias()); // Main (and only) source
@@ -460,9 +466,11 @@ public class MvKeyPathComplexTest {
 
         // Test transformation from Z to X (should go Z -> Y -> X)
         MvTarget result = new MvKeyPathGenerator(crossTarget).generate(sourceZ);
-
         assertNotNull(result);
-        System.out.println("*** Cross-table Z-Y-X SQL: " + new MvSqlGen(result).makeSelect());
+
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("*** Cross-table Z-Y-X SQL: " + new MvSqlGen(result).makeSelect());
+        }
 
         // The generator optimizes this case! Instead of Z -> Y -> X, it uses the direct
         // cross-table relationship Z -> X through the condition X.org_id = Z.x_org_id

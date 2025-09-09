@@ -9,6 +9,8 @@ import tech.ydb.table.values.PrimitiveType;
  */
 public class SqlConstants {
 
+    public static final boolean PRINT_SQL = false;
+
     public static final String SQL_GOOD1 =
 """
 -- async view demo (with something strange within)

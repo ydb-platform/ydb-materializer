@@ -30,9 +30,10 @@ public class SqlGenSelectUpsertTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
-        // Print the generated SQL for debugging
-        System.out.println("Generated SELECT SQL:");
-        System.out.println(generatedSql);
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("Generated SELECT SQL:");
+            System.out.println(generatedSql);
+        }
 
         // Validate the generated SQL structure
         validateGeneratedSelectSql1(generatedSql, target);
@@ -55,9 +56,10 @@ public class SqlGenSelectUpsertTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
-        // Print the generated SQL for debugging
-        System.out.println("Generated SELECT SQL for SQL_GOOD2:");
-        System.out.println(generatedSql);
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("Generated SELECT SQL for SQL_GOOD2:");
+            System.out.println(generatedSql);
+        }
 
         // Validate the generated SQL structure
         validateGeneratedSelectSql2(generatedSql, target);

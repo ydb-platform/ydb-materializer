@@ -12,7 +12,7 @@ import tech.ydb.mv.model.MvContext;
  * @author zinal
  */
 public class SqlGenTest {
-
+    
     @Test
     public void testMakeCreateView1() {
         // Parse the input SQL
@@ -41,9 +41,10 @@ public class SqlGenTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
-        // Print the generated SQL for debugging
-        System.out.println("Generated SQL:");
-        System.out.println(generatedSql);
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("Generated SQL:");
+            System.out.println(generatedSql);
+        }
 
         // Validate the generated SQL structure
         validateGeneratedSql1(generatedSql, target);
@@ -77,9 +78,10 @@ public class SqlGenTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeCreateView();
 
-        // Print the generated SQL for debugging
-        System.out.println("Generated SQL for SQL_GOOD2:");
-        System.out.println(generatedSql);
+        if (SqlConstants.PRINT_SQL) {
+            System.out.println("Generated SQL for SQL_GOOD2:");
+            System.out.println(generatedSql);
+        }
 
         // Validate the generated SQL structure for SQL_GOOD2
         validateGeneratedSql2(generatedSql, target);
