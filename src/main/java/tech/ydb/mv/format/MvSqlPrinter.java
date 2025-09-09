@@ -77,7 +77,7 @@ public class MvSqlPrinter {
                 // Key extraction not needed in batch mode
                 continue;
             }
-            MvTarget temp = pathGenerator.generate(js);
+            MvTarget temp = pathGenerator.extractKeysReverse(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
             if (temp!=null) {

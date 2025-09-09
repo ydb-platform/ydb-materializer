@@ -94,7 +94,7 @@ public class MvKeyPathComplexTest {
         multiColTarget.getColumns().add(columnF);
 
         // Test transformation from F to E
-        MvTarget result = new MvKeyPathGenerator(multiColTarget).generate(sourceF);
+        MvTarget result = new MvKeyPathGenerator(multiColTarget).extractKeysReverse(sourceF);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -233,7 +233,7 @@ public class MvKeyPathComplexTest {
 
 
         // Test transformation from H to G (should go H -> I -> G)
-        MvTarget result = new MvKeyPathGenerator(literalTarget).generate(sourceH);
+        MvTarget result = new MvKeyPathGenerator(literalTarget).extractKeysReverse(sourceH);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -338,7 +338,7 @@ public class MvKeyPathComplexTest {
         notReferencedTarget.getColumns().add(columnK);
 
         // Test transformation from K to J
-        MvTarget result = new MvKeyPathGenerator(notReferencedTarget).generate(sourceK);
+        MvTarget result = new MvKeyPathGenerator(notReferencedTarget).extractKeysReverse(sourceK);
         assertNotNull(result);
 
         // The generator optimizes this case to use only K with the foreign key mapping
@@ -467,7 +467,7 @@ public class MvKeyPathComplexTest {
         crossTarget.getColumns().add(columnZ);
 
         // Test transformation from Z to X (should go Z -> Y -> X)
-        MvTarget result = new MvKeyPathGenerator(crossTarget).generate(sourceZ);
+        MvTarget result = new MvKeyPathGenerator(crossTarget).extractKeysReverse(sourceZ);
         assertNotNull(result);
 
         if (PRINT_SQL) {

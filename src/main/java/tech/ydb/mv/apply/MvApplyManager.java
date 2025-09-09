@@ -88,7 +88,7 @@ public class MvApplyManager implements MvCdcSink {
                             src.getTableName(), target.getName());
                     continue;
                 }
-                MvTarget transformation = pathGenerator.generate(src);
+                MvTarget transformation = pathGenerator.extractKeysReverse(src);
                 if (transformation==null) {
                     LOG.info("Keys from input table `{}` cannot be transformed "
                             + "to keys for table `{}`, skipping for target `{}`",

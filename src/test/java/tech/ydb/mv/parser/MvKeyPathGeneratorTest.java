@@ -159,7 +159,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_DirectCase() {
         // Test case where input source is the top-most source
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceA);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceA);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -179,7 +179,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_OneStep() {
         // Test transformation from B to A (optimized - B has a_id foreign key)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceB);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceB);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -206,7 +206,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_TwoSteps() {
         // Test transformation from C to A (two steps: C -> B -> A)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceC);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceC);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -230,7 +230,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_Optimize() {
         // Test transformation from D to A (one step: D)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceD);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -265,7 +265,7 @@ public class MvKeyPathGeneratorTest {
         originalTarget.getSources().add(disconnectedSource);
 
         // Should return null when no path exists
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(disconnectedSource);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(disconnectedSource);
         assertNull(result);
     }
 
@@ -282,7 +282,7 @@ public class MvKeyPathGeneratorTest {
         sourceA.getConditions().add(circularCondition);
 
         // Should still optimize (D has a_id foreign key to A)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceD);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -305,7 +305,7 @@ public class MvKeyPathGeneratorTest {
 
         sourceA.setTableInfo(tableInfoMultiKey);
 
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceA);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceA);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -336,7 +336,7 @@ public class MvKeyPathGeneratorTest {
         literalCond.setSecondLiteral(originalTarget.addLiteral("'AAA'"));
         sourceB.getConditions().add(literalCond);
 
-        MvTarget result = new MvKeyPathGenerator(originalTarget).generate(sourceC);
+        MvTarget result = new MvKeyPathGenerator(originalTarget).extractKeysReverse(sourceC);
         assertNotNull(result);
 
         if (PRINT_SQL) {

@@ -196,7 +196,7 @@ public class MvBasicValidator {
             if (js.getInput().isBatchMode()) {
                 continue;
             }
-            MvTarget temp = pathGenerator.generate(js);
+            MvTarget temp = pathGenerator.extractKeysReverse(js);
             if (temp==null) {
                 context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
             } else {
