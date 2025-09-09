@@ -1,6 +1,7 @@
 package tech.ydb.mv.feeder;
 
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.table.query.Params;
@@ -93,8 +94,19 @@ public class MvScanFeeder {
         unregisterScan();
     }
 
+    private void sleepSome() {
+        final long tvFinish = System.currentTimeMillis()
+                + ThreadLocalRandom.current().nextLong(2000, 20000);
+        while (isRunning()) {
+            YdbMisc.sleep(100L);
+            if (System.currentTimeMillis() >= tvFinish) {
+                return;
+            }
+        }
+    }
+
     private void safeRun() {
-        while (true) {
+        while (isRunning()) {
             try {
                 run();
                 return;
@@ -102,7 +114,7 @@ public class MvScanFeeder {
                 LOG.info("Failed scan feeder for target {} in handler {} - retry pending...",
                         target.getName(), job.getMetadata().getName(), ex);
             }
-            YdbMisc.randomSleep(2000L, 20000L);
+            sleepSome();
         }
     }
 
