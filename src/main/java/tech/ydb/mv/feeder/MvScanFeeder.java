@@ -10,7 +10,6 @@ import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
@@ -31,19 +30,19 @@ public class MvScanFeeder {
     private final MvTarget target;
     private final MvKeyInfo keyInfo;
     private final AtomicReference<MvScanContext> context;
-    private final MvApplyManager applyManager;
+    private final MvCdcSink sink;
     private final String controlTable;
     private final int rateLimiterLimit;
     private int rateLimiterCounter;
     private long rateLimiterStamp;
 
-    public MvScanFeeder(MvJobContext job, MvApplyManager applyManager,
+    public MvScanFeeder(MvJobContext job, MvCdcSink sink,
             MvTarget target, MvScanSettings settings) {
         this.job = job;
         this.target = target;
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.context = new AtomicReference<>();
-        this.applyManager = applyManager;
+        this.sink = sink;
         this.controlTable = YdbConnector.safe(settings.getControlTableName());
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
     }
@@ -187,7 +186,7 @@ public class MvScanFeeder {
             ctx.setCurrentKey(key);
             handler = new MvScanCommitHandler(ctx,
                     key, output.size(), ctx.getCurrentHandler(), false);
-            applyManager.submit(output, handler);
+            sink.submit(output, handler);
         } else {
             handler = new MvScanCommitHandler(ctx,
                     key, 0, ctx.getCurrentHandler(), true);
