@@ -47,13 +47,6 @@ public class MvScanFeeder {
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
     }
 
-    /**
-     * @return true if scan task is already registered, false otherwise
-     */
-    public boolean checkRegistered() {
-        return ( initScan() != null );
-    }
-
     public boolean isRunning() {
         MvScanContext ctx = context.get();
         return ctx != null && ctx.isRunning() && job.isRunning();
@@ -89,8 +82,11 @@ public class MvScanFeeder {
     }
 
     public synchronized void stopAndUnregister() {
-        stop();
-        unregisterScan();
+        MvScanContext ctx = context.getAndSet(null);
+        if (ctx != null) {
+            ctx.stop();
+            ctx.getScanDao().unregisterScan();
+        }
     }
 
     private void sleepSome() {
@@ -123,10 +119,10 @@ public class MvScanFeeder {
             LOG.error("Exiting the scanner due to missing context - PROGRAM DEFECT!");
             return;
         } else {
-            MvKey key = initScan();
+            MvKey key = ctx.getScanDao().initScan();
             ctx.setCurrentKey(key);
             if (key == null) {
-                registerStartScan();
+                ctx.getScanDao().registerScan();
             }
             LOG.info("Started scan feeder for target {} in handler {}, position {}",
                     target.getName(), job.getMetadata().getName(), key);
@@ -140,7 +136,7 @@ public class MvScanFeeder {
             }
             rateLimiter(count);
         }
-        unregisterScan();
+        ctx.getScanDao().unregisterScan();
         job.completeScan(target);
         LOG.info("Finished scan feeder for target {} in handler {}",
                 target.getName(), job.getMetadata().getName());
@@ -214,46 +210,6 @@ public class MvScanFeeder {
                 diff -= period;
             }
         }
-    }
-
-    private MvKey initScan() {
-        MvScanContext ctx = context.get();
-        String sql = ctx.getSqlPosSelect();
-        Params params = Params.of(
-                "$handler_name", ctx.getHandlerName(),
-                "$table_name", ctx.getTargetName()
-        );
-        ResultSetReader rsr = job.getYdb().sqlRead(sql, params).getResultSet(0);
-        MvKey key = null;
-        if (rsr.next()) {
-            YdbStruct ys = YdbStruct.fromJson(rsr.getColumn(0).getText());
-            key = new MvKey(ys, target.getTableInfo());
-        }
-        return key;
-    }
-
-    private void registerStartScan() {
-        MvScanContext ctx = context.get();
-        String sql = ctx.getSqlPosUpsert();
-        Params params = Params.of(
-                "$handler_name", ctx.getHandlerName(),
-                "$table_name", ctx.getTargetName(),
-                "$key_position", PrimitiveValue.newJsonDocument("{}")
-        );
-        job.getYdb().sqlWrite(sql, params);
-    }
-
-    private void unregisterScan() {
-        String sql = "DECLARE $handler_name AS Text; "
-                + "DECLARE $table_name AS Text; "
-                + "DELETE FROM `" + controlTable
-                + "` WHERE handler_name=$handler_name "
-                + "   AND table_name=$table_name";
-        Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(job.getMetadata().getName()),
-                "$table_name", PrimitiveValue.newText(target.getName())
-        );
-        job.getYdb().sqlWrite(sql, params);
     }
 
 }

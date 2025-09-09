@@ -12,49 +12,44 @@ import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
 /**
  *
  * @author zinal
  */
-class MvScanContext {
+class MvScanContext implements MvScanAdapter {
 
     private final MvHandler handler;
     private final MvTarget target;
-    private final SessionRetryContext retryCtx;
     private final AtomicBoolean shouldRun;
     private final AtomicReference<MvKey> currentKey;
     private final AtomicReference<MvScanCommitHandler> currentHandler;
     private final Instant tvStart;
 
-    private final String sqlPosUpsert;
-    private final String sqlPosDelete;
-    private final String sqlPosSelect;
+    private final MvTableInfo tableInfo;
+    private final String controlTable;
     private final String sqlSelectStart;
     private final String sqlSelectNext;
 
-    private final Value<?> handlerName;
-    private final Value<?> targetName;
+    private final MvScanDao scanDao;
 
     public MvScanContext(MvHandler handler, MvTarget target,
             YdbConnector ydb, String controlTable) {
         this.handler = handler;
         this.target = target;
-        this.retryCtx = ydb.getQueryRetryCtx();
         this.shouldRun = new AtomicBoolean(true);
         this.currentKey = new AtomicReference<>();
         this.currentHandler = new AtomicReference<>();
         this.tvStart = Instant.now();
-        this.sqlPosUpsert = makePosUpsert(controlTable);
-        this.sqlPosDelete = makePosDelete(controlTable);
-        this.sqlPosSelect = makePosSelect(controlTable);
+        this.tableInfo = target.getTopMostSource().getTableInfo();
+        this.controlTable = controlTable;
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelectStart = sg.makeScanStart();
             this.sqlSelectNext = sg.makeScanNext();
         }
-        this.handlerName = PrimitiveValue.newText(handler.getName());
-        this.targetName = PrimitiveValue.newText(target.getName());
+        this.scanDao = new MvScanDao(ydb, this);
     }
 
     public boolean isRunning() {
@@ -73,24 +68,8 @@ class MvScanContext {
         return target;
     }
 
-    public SessionRetryContext getRetryCtx() {
-        return retryCtx;
-    }
-
     public Instant getTvStart() {
         return tvStart;
-    }
-
-    public String getSqlPosUpsert() {
-        return sqlPosUpsert;
-    }
-
-    public String getSqlPosDelete() {
-        return sqlPosDelete;
-    }
-
-    public String getSqlPosSelect() {
-        return sqlPosSelect;
     }
 
     public String getSqlSelectStart() {
@@ -99,14 +78,6 @@ class MvScanContext {
 
     public String getSqlSelectNext() {
         return sqlSelectNext;
-    }
-
-    public Value<?> getHandlerName() {
-        return handlerName;
-    }
-
-    public Value<?> getTargetName() {
-        return targetName;
     }
 
     public MvKey getCurrentKey() {
@@ -125,27 +96,28 @@ class MvScanContext {
         currentHandler.set(handler);
     }
 
-    private static String makePosUpsert(String controlTable) {
-        return "DECLARE $handler_name AS Text; "
-                + "DECLARE $table_name AS Text; "
-                + "DECLARE $key_position AS JsonDocument; "
-                + "UPSERT INTO `" + controlTable + "` "
-                + "(handler_name, table_name, updated_at, key_position) "
-                + "VALUES ($handler_name, $table_name, CurrentUtcTimestamp(), $key_position);";
+    public MvScanDao getScanDao() {
+        return scanDao;
     }
 
-    private static String makePosDelete(String controlTable) {
-        return "DECLARE $handler_name AS Text; "
-                + "DECLARE $table_name AS Text; "
-                + "DELETE FROM `" + controlTable + "` "
-                + "WHERE handler_name=$handler_name AND table_name=$table_name;";
+    @Override
+    public String getHandlerName() {
+        return handler.getName();
     }
 
-    private static String makePosSelect(String controlTable) {
-        return "DECLARE $handler_name AS Text; "
-                + "DECLARE $table_name AS Text; "
-                + "SELECT key_position FROM `" + controlTable + "` "
-                + "WHERE handler_name=$handler_name AND table_name=$table_name;";
+    @Override
+    public String getTargetName() {
+        return target.getName();
+    }
+
+    @Override
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
+    }
+
+    @Override
+    public String getControlTable() {
+        return controlTable;
     }
 
 }

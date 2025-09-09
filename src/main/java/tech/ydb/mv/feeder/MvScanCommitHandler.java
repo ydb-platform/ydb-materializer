@@ -1,14 +1,8 @@
 package tech.ydb.mv.feeder;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.core.Status;
-import tech.ydb.query.QuerySession;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.model.MvKey;
 
@@ -23,7 +17,7 @@ class MvScanCommitHandler implements MvCommitHandler {
 
     private final long instance;
     private final MvScanContext context;
-    private final String jsonKey;
+    private final MvKey key;
     private volatile int counter;
     private volatile boolean committed;
     private final AtomicReference<MvScanCommitHandler> previous;
@@ -34,7 +28,7 @@ class MvScanCommitHandler implements MvCommitHandler {
             int initialCount, MvScanCommitHandler predecessor, boolean terminal) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
-        this.jsonKey = (key==null) ? "" : key.convertKeyToJson();
+        this.key = key;
         this.counter = initialCount;
         this.committed = false;
         this.previous = new AtomicReference<>(predecessor);
@@ -78,8 +72,13 @@ class MvScanCommitHandler implements MvCommitHandler {
             committed = true;
             LOG.debug("instance {} commit APPLY", instance);
             try {
-                context.getRetryCtx().supplyStatus(qs -> doApply(qs))
-                        .join().expectSuccess();
+                if (terminal) {
+                    LOG.info("Performing final commit in scan feeder for target {}, handler {}",
+                            context.getTarget().getName(), context.getHandler().getName());
+                    context.getScanDao().unregisterScan();
+                } else {
+                    context.getScanDao().saveScan(key);
+                }
             } catch(Exception ex) {
                 LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
                         context.getTarget().getName(), context.getHandler().getName(), ex);
@@ -114,30 +113,6 @@ class MvScanCommitHandler implements MvCommitHandler {
         while (n!=null) {
             n = n.resetNext();
         }
-    }
-
-    private CompletableFuture<Status> doApply(QuerySession qs) {
-        Params params;
-        String sqlText;
-        if (terminal) {
-            LOG.info("Performing final commit in scan feeder for target {}, handler {}",
-                    context.getTarget().getName(), context.getHandler().getName());
-            sqlText = context.getSqlPosDelete();
-            params = Params.of(
-                    "$handler_name", context.getHandlerName(),
-                    "$table_name", context.getTargetName()
-            );
-        } else {
-            sqlText = context.getSqlPosUpsert();
-            params = Params.of(
-                    "$handler_name", context.getHandlerName(),
-                    "$table_name", context.getTargetName(),
-                    "$key_position", PrimitiveValue.newJsonDocument(jsonKey)
-            );
-        }
-        return qs.createQuery(sqlText, TxMode.SERIALIZABLE_RW, params)
-                .execute()
-                .thenApply(qi -> qi.getStatus());
     }
 
     private boolean isReady() {
