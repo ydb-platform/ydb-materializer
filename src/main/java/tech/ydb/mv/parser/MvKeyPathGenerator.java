@@ -87,12 +87,12 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
         result.getSources().add(newSource);
 
         // Add columns for all primary key fields
-        for (String keyColumn : source.getTableInfo().getKey()) {
-            MvColumn column = new MvColumn(keyColumn);
+        for (String fieldName : source.getTableInfo().getKey()) {
+            MvColumn column = new MvColumn(fieldName);
             column.setSourceAlias(newSource.getTableAlias());
-            column.setSourceColumn(keyColumn);
+            column.setSourceColumn(fieldName);
             column.setSourceRef(newSource);
-            column.setType(source.getTableInfo().getColumns().get(keyColumn));
+            column.setType(source.getTableInfo().getColumns().get(fieldName));
             result.getColumns().add(column);
         }
 
