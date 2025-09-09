@@ -9,9 +9,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
-
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
@@ -250,46 +250,6 @@ abstract class MvGeneratorBase {
     }
 
     /**
-     * Checks if a specific target field can be mapped directly from the top-most source
-     * by analyzing join conditions. Used by field path generator.
-     */
-    protected boolean canMapTargetField(MvJoinSource source, String fieldName) {
-        if (source == topMostSource
-                && source.getTableInfo().getColumns().containsKey(fieldName)) {
-            return true;
-        }
-
-        // Look through all join conditions in the target source
-        for (MvJoinCondition condition : source.getConditions()) {
-            if (isMappingCondition(condition, topMostSource, source, fieldName)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if a specific target key can be mapped directly from the input source
-     * by analyzing join conditions. Used by key path generator.
-     */
-    protected boolean canMapTargetKey(MvJoinSource source, String fieldName) {
-        if (source == topMostSource
-                && source.getTableInfo().getColumns().containsKey(fieldName)) {
-            return true;
-        }
-
-        // Look through all join conditions in the input source
-        for (MvJoinCondition condition : source.getConditions()) {
-            if (isMappingCondition(condition, source, topMostSource, fieldName)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Checks if a join condition provides a mapping for the target field.
      */
     protected static boolean isMappingCondition(MvJoinCondition condition,
@@ -446,6 +406,32 @@ abstract class MvGeneratorBase {
         // Add columns for the requested fields from the target source
         MvJoinSource targetSourceInResult = result.getSources().get(result.getSources().size() - 1);
         fillTargetColumns(result, targetSourceInResult, fieldNames);
+
+        return result;
+    }
+
+    /**
+     * Creates a simple direct target for the case where target source
+     * is the top-most source.
+     */
+    protected static MvTarget createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
+        MvTarget result = new MvTarget(source.getTableName() + "_simple", source.getSqlPos());
+        result.setTableInfo(source.getTableInfo());
+
+        // Add the source as the main source
+        MvJoinSource newSource = cloneJoinSource(source);
+        newSource.setMode(MvJoinMode.MAIN);
+        result.getSources().add(newSource);
+
+        // Add columns for all requested fields
+        for (String fieldName : fieldNames) {
+            MvColumn column = new MvColumn(fieldName);
+            column.setSourceAlias(newSource.getTableAlias());
+            column.setSourceColumn(fieldName);
+            column.setSourceRef(newSource);
+            column.setType(source.getTableInfo().getColumns().get(fieldName));
+            result.getColumns().add(column);
+        }
 
         return result;
     }

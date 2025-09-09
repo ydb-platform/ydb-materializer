@@ -24,7 +24,7 @@ import java.util.Arrays;
  */
 public class MvFieldPathGeneratorTest {
 
-    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL || true;
+    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
 
     private MvTarget originalTarget;
     private MvJoinSource sourceA, sourceB, sourceC, sourceD;
@@ -251,7 +251,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateAllFields() {
         // Test transformation to get all fields from D
-        MvTarget result = new MvFieldPathGenerator(originalTarget).generateAllFields("d");
+        MvTarget result = new MvFieldPathGenerator(originalTarget).generate("d");
         assertNotNull(result);
 
         if (PRINT_SQL) {

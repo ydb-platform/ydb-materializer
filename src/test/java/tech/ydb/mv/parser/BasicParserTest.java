@@ -14,10 +14,14 @@ import tech.ydb.mv.model.MvJoinMode;
  */
 public class BasicParserTest {
 
+    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
+
     @Test
     public void parserTest1() {
         MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
-        new MvIssuePrinter(mc).write(System.out);
+        if (PRINT_SQL) {
+            new MvIssuePrinter(mc).write(System.out);
+        }
 
         // Test MvContext structure
         Assertions.assertTrue(mc.isValid());
@@ -175,7 +179,7 @@ public class BasicParserTest {
     @Test
     public void parserTest2() {
         MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);
         }
 
@@ -338,7 +342,7 @@ public class BasicParserTest {
     @Test
     public void parserErrorTest1() {
         MvContext mc = new MvSqlParser(SqlConstants.SQL_BAD1).fill();
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);
         }
 

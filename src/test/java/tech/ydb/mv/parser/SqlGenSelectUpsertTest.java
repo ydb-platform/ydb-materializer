@@ -13,6 +13,8 @@ import tech.ydb.mv.model.MvContext;
  */
 public class SqlGenSelectUpsertTest {
 
+    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
+
     @Test
     public void testMakeSelect1() {
         // Parse the input SQL
@@ -30,7 +32,7 @@ public class SqlGenSelectUpsertTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             System.out.println("Generated SELECT SQL:");
             System.out.println(generatedSql);
         }
@@ -56,7 +58,7 @@ public class SqlGenSelectUpsertTest {
         MvSqlGen sqlGen = new MvSqlGen(target);
         String generatedSql = sqlGen.makeSelect();
 
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             System.out.println("Generated SELECT SQL for SQL_GOOD2:");
             System.out.println(generatedSql);
         }

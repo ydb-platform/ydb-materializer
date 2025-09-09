@@ -2,10 +2,10 @@ package tech.ydb.mv.parser;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import tech.ydb.mv.SqlConstants;
 
 import tech.ydb.table.values.PrimitiveType;
 
+import tech.ydb.mv.SqlConstants;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
@@ -19,6 +19,8 @@ import tech.ydb.mv.model.MvTarget;
  * @author zinal
  */
 public class MvKeyPathComplexTest {
+
+    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
 
     @Test
     public void testGenerateKeyPath_MultiColumnJoinConditions() {
@@ -95,7 +97,7 @@ public class MvKeyPathComplexTest {
         MvTarget result = new MvKeyPathGenerator(multiColTarget).generate(sourceF);
         assertNotNull(result);
 
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             System.out.println("*** Multi-column F-E SQL: " + new MvSqlGen(result).makeSelect());
         }
 
@@ -234,7 +236,7 @@ public class MvKeyPathComplexTest {
         MvTarget result = new MvKeyPathGenerator(literalTarget).generate(sourceH);
         assertNotNull(result);
 
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             System.out.println("*** Input H-I-G SQL: " + new MvSqlGen(literalTarget).makeSelect());
             System.out.println("*** Result H-I-G SQL: " + new MvSqlGen(result).makeSelect());
         }
@@ -468,7 +470,7 @@ public class MvKeyPathComplexTest {
         MvTarget result = new MvKeyPathGenerator(crossTarget).generate(sourceZ);
         assertNotNull(result);
 
-        if (SqlConstants.PRINT_SQL) {
+        if (PRINT_SQL) {
             System.out.println("*** Cross-table Z-Y-X SQL: " + new MvSqlGen(result).makeSelect());
         }
 

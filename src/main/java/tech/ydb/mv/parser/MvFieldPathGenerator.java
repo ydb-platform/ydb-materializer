@@ -3,12 +3,8 @@ package tech.ydb.mv.parser;
 import java.util.ArrayList;
 import java.util.List;
 
-import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinCondition;
-import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 
@@ -87,18 +83,18 @@ public class MvFieldPathGenerator extends MvGeneratorBase {
      * @return A new MvTarget defining the minimal transformation, or null if no path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public MvTarget generateAllFields(String targetTableAlias) {
+    public MvTarget generate(String targetTableAlias) {
         MvJoinSource targetSource = originalTarget.getSourceByAlias(targetTableAlias);
         if (targetSource == null) {
             throw new IllegalArgumentException("Target table alias '" + targetTableAlias + "' not found in original target");
         }
 
-        MvTableInfo targetTableInfo = targetSource.getTableInfo();
-        if (targetTableInfo == null) {
+        MvTableInfo tableInfo = targetSource.getTableInfo();
+        if (tableInfo == null) {
             throw new IllegalArgumentException("Table info not available for target table '" + targetTableAlias + "'");
         }
 
-        List<String> allFields = new ArrayList<>(targetTableInfo.getColumns().keySet());
+        List<String> allFields = new ArrayList<>(tableInfo.getColumns().keySet());
         return generate(targetTableAlias, allFields);
     }
 
@@ -116,29 +112,23 @@ public class MvFieldPathGenerator extends MvGeneratorBase {
     }
 
     /**
-     * Creates a simple direct target for the case where target source
-     * is the top-most source.
+     * Checks if a specific target field can be mapped directly from the top-most source
+     * by analyzing join conditions. Used by field path generator.
      */
-    private MvTarget createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
-        MvTarget result = new MvTarget(source.getTableName() + "_simple", source.getSqlPos());
-        result.setTableInfo(source.getTableInfo());
-
-        // Add the source as the main source
-        MvJoinSource newSource = cloneJoinSource(source);
-        newSource.setMode(MvJoinMode.MAIN);
-        result.getSources().add(newSource);
-
-        // Add columns for all requested fields
-        for (String fieldName : fieldNames) {
-            MvColumn column = new MvColumn(fieldName);
-            column.setSourceAlias(newSource.getTableAlias());
-            column.setSourceColumn(fieldName);
-            column.setSourceRef(newSource);
-            column.setType(source.getTableInfo().getColumns().get(fieldName));
-            result.getColumns().add(column);
+    private boolean canMapTargetField(MvJoinSource source, String fieldName) {
+        if (source == topMostSource
+                && source.getTableInfo().getColumns().containsKey(fieldName)) {
+            return true;
         }
 
-        return result;
+        // Look through all join conditions in the target source
+        for (MvJoinCondition condition : source.getConditions()) {
+            if (isMappingCondition(condition, topMostSource, source, fieldName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

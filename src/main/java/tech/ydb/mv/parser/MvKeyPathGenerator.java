@@ -2,12 +2,8 @@ package tech.ydb.mv.parser;
 
 import java.util.List;
 
-import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinCondition;
-import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTarget;
 
 /**
@@ -43,7 +39,7 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
 
         // If input source is already the top-most source, create a simple target
         if (point == topMostSource) {
-            return createSimpleTarget(point);
+            return createSimpleTarget(point, point.getTableInfo().getKey());
         }
 
         // Check if the input source already contains all primary key fields of the top-most source
@@ -55,7 +51,7 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
         if (path == null || path.isEmpty()) {
             return null; // No path found
         }
-        return createTarget(path);
+        return createTarget(path, path.get(0), topMostTable.getKey());
     }
 
     /**
@@ -73,40 +69,25 @@ public class MvKeyPathGenerator extends MvGeneratorBase {
         return true;
     }
 
-    /**
-     * Creates a simple direct target for the case where input source
-     * is the top-most source.
-     */
-    private MvTarget createSimpleTarget(MvJoinSource source) {
-        MvTarget result = new MvTarget(source.getTableName() + "_simple", source.getSqlPos());
-        result.setTableInfo(source.getTableInfo());
-
-        // Add the source as the main source
-        MvJoinSource newSource = cloneJoinSource(source);
-        newSource.setMode(MvJoinMode.MAIN);
-        result.getSources().add(newSource);
-
-        // Add columns for all primary key fields
-        for (String fieldName : source.getTableInfo().getKey()) {
-            MvColumn column = new MvColumn(fieldName);
-            column.setSourceAlias(newSource.getTableAlias());
-            column.setSourceColumn(fieldName);
-            column.setSourceRef(newSource);
-            column.setType(source.getTableInfo().getColumns().get(fieldName));
-            result.getColumns().add(column);
-        }
-
-        return result;
-    }
 
     /**
-     * Creates a transformation target based on the found path.
+     * Checks if a specific target key can be mapped directly from the input source
+     * by analyzing join conditions. Used by key path generator.
      */
-    private MvTarget createTarget(List<MvJoinSource> path) {
-        if (path == null || path.isEmpty()) {
-            return null;
+    private boolean canMapTargetKey(MvJoinSource source, String fieldName) {
+        if (source == topMostSource
+                && source.getTableInfo().getColumns().containsKey(fieldName)) {
+            return true;
         }
-        return MvGeneratorBase.createTarget(path, path.get(0), topMostTable.getKey());
+
+        // Look through all join conditions in the input source
+        for (MvJoinCondition condition : source.getConditions()) {
+            if (isMappingCondition(condition, source, topMostSource, fieldName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }
