@@ -14,11 +14,12 @@
 1. Модель данных для описания материализованного представления
 2. Парсер конфигурационного формата
 3. Валидатор конфигурации (+ загрузчик метаданных)
-4. Компонент применения изменений
-5. Задание интерактивной обработки потоков изменений табличных данных
-6. Задание пакетного применения изменений справочников к конкретной MV
-7. Суб-задание полной перезагрузки данных MV
-8. Распределенный планировщик для управления заданиями
+4. Компонент сбора изменений
+5. Компонент применения изменений
+6. Генератор SQL-запросов
+7. Сбор изменений справочников
+8. Агрегатор изменений справочников
+9. Распределенный планировщик для управления заданиями
 
 Целостность данных обеспечивается на построчном уровне (разные строки могут соответствовать разным моментам времени изменения основных таблиц, но внутри одной строки данные полностью согласованы). Гарантируется "итоговая" согласованность: при остановке изменений основных таблиц MV приходит в полностью согласованное состояние после завершения обработки всех записей об изменениях в changefeed.
 
@@ -26,7 +27,21 @@
 
 ### Модель данных
 
-Более-менее готова, описана ниже в разделе "Model Classes UML Diagram". Модификации при выявлении недоделок и новых потребностей.
+Более-менее готова. Модификации при выявлении недоделок и новых потребностей.
+
+- MvContext - полный загруженный набор метаданных
+- MvTarget - SQL-трансформация в виде соединения нескольких таблиц, вертикальной проекции и опционально дополнительного фильтра
+- MvJoinSource - одна из таблиц в составе SQL-трансформации
+- MvJoinCondition - одно из условий (через AND) соединения таблиц, указывается в составе MvJoinSource для правой части
+- MvComputation - метод вычисления поля или условия
+- MvLiteral - целочисленная или строковая константа
+- MvColumn - описание выходной колонки SQL-трансформации и метода её получения
+- MvHandler - задание, включает несколько таблиц-источников и несколько материализованных представлений
+- MvTableInfo - метаданные таблицы
+- MvKeyInfo - метаданные первичного ключа, вместе со ссылкой на метаданные таблицы
+- MvKeyPrefix - префикс первичного ключа таблицы
+- MvKey - полный первичный ключ таблицы
+- MvIssue - ошибка или предупреждение при обработке модельной информации
 
 ### Парсер конфигурационного формата
 
@@ -43,190 +58,97 @@
 - нет автомата проверки синтаксической корректности генерируемых запросов
 - корректных методов доступа при соединении таблиц в различных ситуациях
 
+### Компонент сбора изменений
+
+Вариант для CDC:
+- Чтение изменений из CDC-топиков
+- Фиксация позиции в CDC-стриме в ответ на обратный вызов из обработчика
+
+Вариант для полного сканирования:
+- Чтение ключей "самой левой таблицы" MV с настраиваемым ограничением интенсивности чтения
+- Опционально - фильтр (используется при обработке изменений справочников)
+- Подача полученных ключей в компонент применения изменений
+- Фиксация позиции сканирования в виде записи в специальной табличке
+
 ### Компонент применения изменений
 
 В конкретном экземпляре активна обработка изменений для определённого набора MV. Доступны операции включения и выключения обработки конкретного MV.
 
 Используется N потоков обработки, в каждом из которых используется собственная входная очередь. В очередь поступают значения первичного ключа "самой левой" таблицы для сборки MV. Выбор конкретного обработчика (и очереди) осуществляется исходя из значения первичного ключа перед постановкой очереди.
 
-Периодически выполняется Describe для "самой левой" таблицы MV, и обновляются диапазоны значений ключей, привязанные к конкретным потокам обработки.
+У очереди есть два варианта подачи данных: нормальный (с ограничением на максимальный объём) и форсированный (без ограничения). Нормальный режим используют основные (штатные) источники изменений - CDC-топики, сканеры ключей. В нормальном режиме при заполнении очереди подача данных прекращается до появления в ней свободного пространства. Форсированный режим используется для внутренних трансформаций (дозагрузка ключей, преобразование записей в памяти) для исключения взаимо-блокировок обрабатывающих потоков. В форсированном режиме в очередь можно добавить данные фактически до исчерпания оперативной памяти.
+
+Отдельным потоком периодически выполняется Describe для "самой левой" таблицы MV, и обновляются диапазоны значений ключей, привязанные к конкретным потокам обработки.
 
 Каждый обработчик действует в цикле:
-1. Получил ключи из очереди (не более K штук)
-2. Выполнил оператор чтения данных по ключам (отдельная читающая транзакция)
-3. (если уже запущена запись) Дождался завершения предыдущей транзакции записи
-4. Запустил запись данных, полученных на шаге 2
+1. Получил записи об изменения из очереди (не более K штук)
+2. Сгруппировал записи по таблицам, к которым они относятся
+3. Сгруппировал далее по объектам подтверждения
+4. Определил состав обработчиков, которым нужно подать записи
+5. Подал записи в обработчики
+6. Подтвердил обработку, вызвав объекты подтверждения
+
+Типы обработчиков:
+- ActionSync - собственно обновление записей
+- ActionKeysTransform - трансформация записей без доступа к БД
+- ActionKeysGrab - чтение ключей из БД дополнительным запросом
+
+Основной обработчик - ActionSync:
+1. Выполнил оператор чтения данных по ключам (отдельная читающая транзакция)
+2. (если уже запущена запись) Дождался завершения предыдущей транзакции записи
+3. Запустил запись данных, полученных на шаге 2
 
 Запись выполняем через `UPSERT INTO mv SELECT * FROM AS_TABLE($input)`. В перспективе - поддержать BulkUpsert, активировать его автоматически, если на MV нет индексов.
 
-### Задание интерактивной обработки потоков изменений табличных данных
+### Генератор SQL-запросов
+
+Умеет строить необходимые SQL-запросы на основе заданной SQL-трансформации. Один из приёмов - построение новой SQL-трансформации из уже существующей, путём логического перестроения заданных связей в новом порядке.
 
 TODO
 
-### Задание пакетного применения изменений справочников к конкретной MV
+### Сбор изменений справочников
 
 TODO
 
-### Суб-задание полной перезагрузки данных MV
+### Агрегатор изменений справочников
 
-Задействованы три основных компонента:
-- чтение ключей из основной таблицы (SELECT);
-- передача ключей заданию интерактивной обработки изменений;
-- фиксация позиции обработки.
-
-Основной поток задания читает ключи, и передает на обработку. Вспомогательный поток фиксирует позиции обработки. Между потоками - очереди (перед пулом - очередь с лимитом на размер).
+TODO
 
 ### Распределенный планировщик для управления заданиями
 
-Планирую задействовать [db-scheduler](https://github.com/kagkarlsson/db-scheduler). Для этого обеспечена [работа поверх YDB](https://github.com/ydb-platform/db-scheduler-ydb).
+Распределенный планировщик настраивается таблицей mv_desired_state, где перечислены обработчики (MvHandler), которые должны быть запущены. Есть два специальных имени обработчиков: sys$dictionary (сканер изменений справочников) и sys$coordinator (собственно распределённый планировщик), которые нельзя использовать в именовании обычных обработчиков (MvHandler).
 
-Над стандартным планировщиком нужна надстройка, обеспечивающая запуск, остановку и контроль состояния заданий в прикладных терминах.
+Основные элементы: MvRunner, MvCoordinator
 
-## Model Classes UML Diagram
+В каждом процессе свой экземпляр MvRunner, который должен регулярно отправлять отчеты о своем состоянии в таблицу YDB "mv_runner" с уникальным идентификатором, именем хоста и меткой времени последнего обновления состояния.
 
-This diagram shows the relationships between all classes in the `tech.ydb.mv.model` package.
+Экземпляр MvRunner также должен проверять таблицу YDB "mv_commands" на наличие входных данных, которые могут быть командами для запуска или остановки конкретного задания (MvHandler).
 
-```mermaid
-classDiagram
-    class MvContext {
-        +isValid() boolean
-        +addTarget(MvTarget) void
-        +addHandler(MvHandler) void
-        +getTargets() Map
-        +getHandlers() Map
-    }
+Команда включает в себя:
+- идентификатор экземпляра MvRunner,
+- метку времени создания команды,
+- состояние команды (первоначально "SENT"),
+- имя задания (MvHandler),
+- дополнительные параметры в виде поля JsonDocument.
 
-    class MvHandler {
-        +getName() String
-        +getInputs() ArrayList
-    }
+Также команда включает:
+- метку времени выполнения команды
+- диагностику выполнения команды (для неуспешных).
 
-    class MvTarget {
-        +getSourceByAlias(String) MvJoinSource
-        +getName() String
-        +getSources() ArrayList
-        +getColumns() ArrayList
-        +getFilter() MvComputation
-        +setFilter(MvComputation)
-        +addLiteral(String) MvLiteral
-        +getLiteral(String) MvLiteral
-        +getLiterals() Collection
-    }
+Поле диагностики команды для успешных команд должно быть NULL, а для ошибок состояние команды должно быть "ERROR", а поле диагностики должно содержать полную трассировку стека исключений.
 
-    class MvInput {
-        +isTableKnown() boolean
-        +getTableName() String
-        +setTableName(String)
-        +getTableInfo() MvTableInfo
-        +setTableInfo(MvTableInfo)
-        +getChangeFeed() String
-        +setChangeFeed(String)
-        +isBatchMode() boolean
-        +setBatchMode(boolean)
-    }
+Когда MvRunner выбирает новую команду, он должен попытаться выполнить её, вызвав соответствующие методы MvService.startHandler()/stopHandler().
+При запуске обработчика в таблицу "mv_handlers" необходимо добавить строку, содержащую идентификатор экземпляра MvRunner, имя хоста, имя задания (MvHandler) и его настройки в формате JSON.
 
-    class MvTableInfo
+После остановки обработчика соответствующая строка должна быть удалена из таблицы "mv_handlers".
 
-    class MvJoinSource {
-        +isTableKnown() boolean
-        +getTableName() String
-        +setTableName(String)
-        +getTableAlias() String
-        +setTableAlias(String)
-        +getMode() MvJoinMode
-        +setMode(MvJoinMode)
-        +getConditions() ArrayList
-        +getTableInfo() MvTableInfo
-        +setTableInfo(MvTableInfo)
-    }
+Фактические имена таблиц и период сканирования/обновления состояния таблиц должны быть настраиваемыми, для этого следует предусмотреть класс настроек и возможность их подать через Properties.
 
-    class MvJoinMode {
-        <<enumeration>>
-        MAIN
-        INNER
-        LEFT
-    }
+MvCoordinator должен запускаться в единственном экземпляре. От также регистрируется в табличке mv_handlers со специальным именем обработчика, при длительном отсутствии активности MvCoordinator происходит выбор лидера через CoordinationService и запуск MvCoordinator на процессе-победителе. 
 
-    class MvJoinCondition
+Запущенный MvCoordinator должен регулярно проверять содержимое табличек mv_desired_state, mv_handlers и mv_runner. Действия:
+- неактивные mv_runner вычищаются из БД вместе со связанными записями из mv_handlers
+- при наличии запущенных "лишних" заданий (которых нет в mv_desired_state) в mv_commands добавляются команды на остановку лишнего
+- при наличии "недостающих" заданий (есть в mv_desired_state, нет в mv_handlers) в mv_commands добавляются команды на запуск недостающего
 
-    class MvColumn {
-        +isComputation() boolean
-        +getName() String
-        +setName(String)
-        +getType() Type
-        +setType(Type)
-        +getSourceAlias() String
-        +setSourceAlias(String)
-        +getSourceColumn() String
-        +setSourceColumn(String)
-        +getSourceRef() MvJoinSource
-        +setSourceRef(MvJoinSource)
-        +getComputation() MvComputation
-        +setComputation(MvComputation)
-    }
-
-    class MvComputation {
-        +getExpression() String
-        +setExpression(String)
-        +getSources() ArrayList
-    }
-
-    class MvComputationSource
-
-    class MvLiteral
-
-    MvContext --> MvTarget : targets
-    MvContext --> MvHandler : handlers
-    MvHandler --> MvInput : inputs
-
-    MvTarget --> MvJoinSource : sources
-    MvTarget --> MvColumn : columns
-    MvTarget --> MvComputation : filter
-    MvTarget --> MvLiteral : literals
-
-    MvInput --> MvTableInfo : tableInfo
-
-    MvJoinSource --> MvJoinCondition : conditions
-    MvJoinSource --> MvJoinMode : mode
-    MvJoinSource --> MvTableInfo : tableInfo
-
-    MvColumn --> MvJoinSource : sourceRef
-    MvColumn --> MvComputation : computation
-
-    MvComputation --> MvComputationSource : sources
-    MvComputationSource --> MvJoinSource : reference
-
-    MvJoinCondition --> MvJoinSource : firstRef
-    MvJoinCondition --> MvJoinSource : secondRef
-    MvJoinCondition --> MvLiteral : firstLiteral
-    MvJoinCondition --> MvLiteral : secondLiteral
-```
-
-## Class Descriptions
-
-### Core Classes
-
-- **MvContext**: Root container that holds materialized view targets and handlers; provides a validity check
-- **MvHandler**: Processing context that groups multiple inputs (changefeed streams)
-- **MvTarget**: A materialized view definition with join sources, output columns, optional filter, and de-duplicated literals
-- **MvInput**: An input table configuration with optional changefeed and discovered `MvTableInfo`; supports batch mode
-- **MvJoinSource**: A table participating in a join with alias, join mode, conditions, and optional `MvTableInfo`
-- **MvJoinMode**: Enumeration of join modes (`MAIN`, `INNER`, `LEFT`)
-- **MvJoinCondition**: A join predicate side-by-side specification using aliases/columns and/or literals
-- **MvColumn**: Output column mapping from a source or a computation; includes output type
-- **MvComputation**: A computed expression with a list of source aliases (each may reference a `MvJoinSource`)
-- **MvTableInfo**: Table metadata (columns, primary key, indexes, changefeeds)
-- **MvLiteral**: An immutable literal value identified within a target and reused across conditions/expressions
-
-
-
-### Key Relationships
-
-1. **MvContext** holds all materialized view targets and handlers
-2. **MvHandler** aggregates multiple **MvInput** entries
-3. **MvTarget** contains **MvJoinSource** items (sources), **MvColumn** items (columns), optional **MvComputation** (filter), and manages **MvLiteral** values
-4. **MvInput** links to discovered **MvTableInfo** metadata
-5. **MvJoinSource** owns **MvJoinCondition** items, has a **MvJoinMode**, and may link to **MvTableInfo**
-6. **MvColumn** references either a **MvJoinSource** (sourceRef) or a **MvComputation** (computation)
-7. **MvComputation** has multiple sources; each computation source may reference a **MvJoinSource**
-8. **MvJoinCondition** can reference two **MvJoinSource** sides and/or **MvLiteral** values
+При принятии решения о записи новых команд в mv_commands контролируется отсутствие ещё не выполненных дубликатов.

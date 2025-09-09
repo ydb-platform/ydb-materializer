@@ -13,6 +13,7 @@ public class YdbMisc {
             Thread.sleep(millis);
             return true;
         } catch(InterruptedException ix) {
+            Thread.currentThread().interrupt();
             return false;
         }
     }
