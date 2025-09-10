@@ -244,6 +244,10 @@ public class MvService {
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }
+        if (! metadata.isValid()) {
+            throw new IllegalStateException(
+                    "Refusing to start due to configuration errors.");
+        }
         for (String handlerName : parseActiveHandlerNames()) {
             try {
                 startHandler(handlerName);
