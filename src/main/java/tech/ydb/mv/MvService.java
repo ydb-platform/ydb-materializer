@@ -45,7 +45,7 @@ public class MvService {
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
     private volatile MvDictionaryManager dictionaryManager = null;
-    private final HashMap<String, MvController> handlers = new HashMap<>();
+    private final HashMap<String, MvJobController> handlers = new HashMap<>();
     private final RefreshTask refreshTask = new RefreshTask();
     private volatile Thread refreshThread = null;
 
@@ -152,13 +152,13 @@ public class MvService {
      * @param settings The settings to be used by the handler
      */
     public synchronized void startHandler(String name, MvHandlerSettings settings) {
-        MvController c = handlers.get(name);
+        MvJobController c = handlers.get(name);
         if (c==null) {
             MvHandler handler = context.getHandlers().get(name);
             if (handler==null) {
                 throw new IllegalArgumentException("Unknown handler name: " + name);
             }
-            c = new MvController(this, handler, settings);
+            c = new MvJobController(this, handler, settings);
             handlers.put(name, c);
         }
         c.start();
@@ -176,7 +176,7 @@ public class MvService {
      * @return true, if the handler was actually stopped, and false otherwise
      */
     public synchronized boolean stopHandler(String name) {
-        MvController c = handlers.remove(name);
+        MvJobController c = handlers.remove(name);
         if (c == null) {
             return false;
         }
@@ -196,7 +196,7 @@ public class MvService {
         if (settings==null) {
             settings = new MvScanSettings(ydb.getConfig().getProperties());
         }
-        MvController c = handlers.get(handlerName);
+        MvJobController c = handlers.get(handlerName);
         if (c == null) {
             throw new IllegalArgumentException("Unknown handler name: " + handlerName);
         }
@@ -212,7 +212,7 @@ public class MvService {
      * @return true, if the scan was started, false otherwise
      */
     public synchronized boolean stopScan(String handlerName, String targetName) {
-        MvController c = handlers.get(handlerName);
+        MvJobController c = handlers.get(handlerName);
         if (c == null) {
             return false;
         }
@@ -275,7 +275,7 @@ public class MvService {
         return Arrays.asList(v.split("[,]"));
     }
 
-    private synchronized ArrayList<MvController> grabControllers() {
+    private synchronized ArrayList<MvJobController> grabControllers() {
         return new ArrayList<>(handlers.values());
     }
 
@@ -396,7 +396,7 @@ public class MvService {
     }
 
     private void refreshSelectors() {
-        for (MvController c : grabControllers()) {
+        for (MvJobController c : grabControllers()) {
             c.getApplyManager().refreshSelectors(ydb.getTableClient());
         }
     }

@@ -13,14 +13,14 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvController {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvController.class);
+public class MvJobController {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvJobController.class);
 
     private final MvJobContext context;
     private final MvApplyManager applyManager;
     private final MvCdcFeeder cdcFeeder;
 
-    public MvController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
+    public MvJobController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, settings);
         this.applyManager = new MvApplyManager(this.context);
         this.cdcFeeder = new MvCdcFeeder(this.context, service.getYdb(), this.applyManager);
