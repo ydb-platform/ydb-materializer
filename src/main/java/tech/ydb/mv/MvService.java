@@ -40,8 +40,8 @@ public class MvService {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
-    private final MvContext context;
-    private final MvLocker coordinator;
+    private final MvContext metadata;
+    private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
     private volatile MvDictionaryManager dictionaryManager = null;
@@ -51,8 +51,8 @@ public class MvService {
 
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
-        this.context = MvConfigReader.readContext(ydb, ydb.getConfig().getProperties());
-        this.coordinator = new MvLocker(ydb);
+        this.metadata = MvConfigReader.read(ydb, ydb.getConfig().getProperties());
+        this.locker = new MvLocker(ydb);
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         refreshMetadata();
@@ -62,12 +62,12 @@ public class MvService {
         return ydb;
     }
 
-    public MvContext getContext() {
-        return context;
+    public MvContext getMetadata() {
+        return metadata;
     }
 
-    public MvLocker getCoordinator() {
-        return coordinator;
+    public MvLocker getLocker() {
+        return locker;
     }
 
     public MvHandlerSettings getHandlerSettings() {
@@ -96,7 +96,7 @@ public class MvService {
         this.dictionarySettings.set(defaultSettings);
     }
 
-    public void setDefaults() {
+    public void applyDefaults() {
         var props = ydb.getConfig().getProperties();
         setHandlerSettings(new MvHandlerSettings(props));
         setDictionarySettings(new MvDictionarySettings(props));
@@ -115,7 +115,7 @@ public class MvService {
     public synchronized void shutdown() {
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
-        coordinator.releaseAll();
+        locker.releaseAll();
         if (dictionaryManager != null) {
             dictionaryManager.stop();
             dictionaryManager = null;
@@ -126,7 +126,7 @@ public class MvService {
         if (dictionaryManager != null) {
             return;
         }
-        dictionaryManager = new MvDictionaryManager(context, ydb, dictionarySettings.get());
+        dictionaryManager = new MvDictionaryManager(metadata, ydb, dictionarySettings.get());
         dictionaryManager.start();
     }
 
@@ -154,7 +154,7 @@ public class MvService {
     public synchronized void startHandler(String name, MvHandlerSettings settings) {
         MvJobController c = handlers.get(name);
         if (c==null) {
-            MvHandler handler = context.getHandlers().get(name);
+            MvHandler handler = metadata.getHandlers().get(name);
             if (handler==null) {
                 throw new IllegalArgumentException("Unknown handler name: " + name);
             }
@@ -223,14 +223,14 @@ public class MvService {
      * Print the list of issues in the current context to stdout.
      */
     public void printIssues() {
-        new MvIssuePrinter(context).write(System.out);
+        new MvIssuePrinter(metadata).write(System.out);
     }
 
     /**
      * Generate the set of SQL statements and print to stdout.
      */
     public void printSql() {
-        new MvSqlPrinter(context).write(System.out);
+        new MvSqlPrinter(metadata).write(System.out);
     }
 
     /**
@@ -238,7 +238,7 @@ public class MvService {
      */
     public void startHandlers() {
         if (LOG.isInfoEnabled()) {
-            String msg = new MvIssuePrinter(context).write();
+            String msg = new MvIssuePrinter(metadata).write();
             LOG.info("\n"
                     + "---- BEGIN CONTEXT INFO ----\n"
                     + "{}\n"
@@ -280,12 +280,12 @@ public class MvService {
     }
 
     private void refreshMetadata() {
-        if (! context.isValid()) {
+        if (! metadata.isValid()) {
             LOG.warn("Context is not valid after parsing - metadata retrieval skipped.");
             return;
         }
         HashMap<String, MvTableInfo> info = new HashMap<>();
-        for (String tabname : context.collectTables()) {
+        for (String tabname : metadata.collectTables()) {
             MvTableInfo ti = describeTable(tabname);
             if (ti!=null) {
                 info.put(tabname, ti);
@@ -297,13 +297,13 @@ public class MvService {
     }
 
     private void linkTables(HashMap<String, MvTableInfo> info) {
-        for (MvTarget t : context.getTargets().values()) {
+        for (MvTarget t : metadata.getTargets().values()) {
             t.setTableInfo(info.get(t.getName()));
             for (MvJoinSource r : t.getSources()) {
                 r.setTableInfo(info.get(r.getTableName()));
             }
         }
-        for (MvHandler h : context.getHandlers().values()) {
+        for (MvHandler h : metadata.getHandlers().values()) {
             for (MvInput i : h.getInputs().values()) {
                 i.setTableInfo(info.get(i.getTableName()));
             }
@@ -311,7 +311,7 @@ public class MvService {
     }
 
     private void linkColumns() {
-        for (MvTarget target : context.getTargets().values()) {
+        for (MvTarget target : metadata.getTargets().values()) {
             MvTableInfo ti = target.getTableInfo();
             if (ti==null) {
                 LOG.warn("Incomplete metadata: Missing type information for target `{}`",
@@ -371,15 +371,15 @@ public class MvService {
     }
 
     private boolean validate() {
-        if (! context.isValid()) {
+        if (! metadata.isValid()) {
             LOG.warn("Context already invalid, validation skipped.");
             return false;
         }
-        boolean valid = new MvBasicValidator(context).validate();
+        boolean valid = new MvBasicValidator(metadata).validate();
         if (! valid) {
             return false;
         }
-        valid = new MvSqlValidator(context, ydb).validate();
+        valid = new MvSqlValidator(metadata, ydb).validate();
         if (! valid) {
             return false;
         }

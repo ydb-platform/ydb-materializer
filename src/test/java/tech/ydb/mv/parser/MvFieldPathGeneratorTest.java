@@ -52,6 +52,7 @@ public class MvFieldPathGeneratorTest {
         tableInfoC = MvTableInfo.newBuilder("tableC")
                 .addColumn("id", PrimitiveType.Uint64)
                 .addColumn("b_id", PrimitiveType.Uint64)
+                .addColumn("clazz", PrimitiveType.Text)
                 .addColumn("value", PrimitiveType.Text)
                 .addKey("id")
                 .build();
@@ -109,14 +110,20 @@ public class MvFieldPathGeneratorTest {
         sourceB.getConditions().add(condAB);
 
         // Add join conditions: B -> C
-        MvJoinCondition condBC = new MvJoinCondition();
-        condBC.setFirstRef(sourceB);
-        condBC.setFirstAlias("b");
-        condBC.setFirstColumn("id");
-        condBC.setSecondRef(sourceC);
-        condBC.setSecondAlias("c");
-        condBC.setSecondColumn("b_id");
-        sourceC.getConditions().add(condBC);
+        MvJoinCondition condBC1 = new MvJoinCondition();
+        condBC1.setFirstRef(sourceB);
+        condBC1.setFirstAlias("b");
+        condBC1.setFirstColumn("id");
+        condBC1.setSecondRef(sourceC);
+        condBC1.setSecondAlias("c");
+        condBC1.setSecondColumn("b_id");
+        sourceC.getConditions().add(condBC1);
+        MvJoinCondition condBC2 = new MvJoinCondition();
+        condBC2.setFirstLiteral(originalTarget.addLiteral("'LITERAL'u"));
+        condBC2.setSecondRef(sourceC);
+        condBC2.setSecondAlias("c");
+        condBC2.setSecondColumn("clazz");
+        sourceC.getConditions().add(condBC2);
 
         // Add join conditions: A -> D (direct connection)
         MvJoinCondition condAD = new MvJoinCondition();

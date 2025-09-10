@@ -257,17 +257,17 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
             System.err.println("[AAA] Preparation: completed.");
             MvService wc = new MvService(conn);
             try {
-                wc.setDefaults();
+                wc.applyDefaults();
 
                 System.err.println("[AAA] Checking context...");
                 wc.printIssues();
-                Assertions.assertTrue(wc.getContext().isValid());
+                Assertions.assertTrue(wc.getMetadata().isValid());
 
                 System.err.println("[AAA] Printing SQL...");
                 wc.printSql();
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
-                MvTarget mainTarget = wc.getContext().getHandlers().values().iterator().next()
+                MvTarget mainTarget = wc.getMetadata().getHandlers().values().iterator().next()
                         .getTargets().values().iterator().next();
                 String sqlQuery;
                 try (MvSqlGen sg = new MvSqlGen(mainTarget)) {

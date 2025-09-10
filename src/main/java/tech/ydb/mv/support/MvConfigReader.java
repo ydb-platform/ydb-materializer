@@ -20,7 +20,7 @@ import tech.ydb.mv.parser.MvSqlParser;
 public class MvConfigReader extends MvConfig {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConfigReader.class);
 
-    public static MvContext readContext(YdbConnector ydb, Properties props) {
+    public static MvContext read(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
         MvContext context;
         switch (MvConfig.parseInput(mode)) {

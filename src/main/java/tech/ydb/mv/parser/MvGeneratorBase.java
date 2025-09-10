@@ -372,9 +372,9 @@ abstract class MvGeneratorBase {
      * Creates a transformation target based on the found path to retrieve specific fields.
      */
     protected static MvTarget createTarget(List<MvJoinSource> path,
-            MvJoinSource original, List<String> fieldNames) {
-        MvTarget result = new MvTarget(original.getTableName() + "_full");
-        result.setTableInfo(original.getTableInfo());
+            MvJoinSource point, List<String> fieldNames) {
+        MvTarget result = new MvTarget(point.getTableName() + "_full");
+        result.setTableInfo(point.getTableInfo());
 
         // Add sources in the path
         for (int i = 0; i < path.size(); i++) {
@@ -391,16 +391,11 @@ abstract class MvGeneratorBase {
             result.getSources().add(dst);
         }
 
-        // Add the relevant conditions to each source
-        for (int i = 0; i < path.size(); i++) {
+        // Add the relevant conditions to each source, except the leftmost one
+        for (int i = 1; i < path.size(); i++) {
             MvJoinSource src = path.get(i);
             MvJoinSource dst = result.getSources().get(i);
-            if (i > 0) {
-                for (int j = i - 1; j >= 0; --j) {
-                    MvJoinSource cur = path.get(j);
-                    copyRelationalConditions(cur, src, dst, result);
-                }
-            }
+            copyRelationalConditions(path, src, dst, result);
         }
 
         // Add columns for the requested fields from the target source
@@ -470,34 +465,47 @@ abstract class MvGeneratorBase {
         return null;
     }
 
-
     /**
-     * Copy the relevant relational conditions from cur to dst.
-     * The relevant ones are linked to the src reference.
+     * Copy the relevant relational conditions from path components to dst.
+     * The relevant ones are linked to the src reference,
+     * and the other side must be linked below the src in the path.
      */
-    protected static void copyRelationalConditions(MvJoinSource cur,
+    protected static void copyRelationalConditions(List<MvJoinSource> path,
             MvJoinSource src, MvJoinSource dst, MvTarget result) {
-        for (MvJoinCondition cond : cur.getConditions()) {
-            MvJoinCondition copy = null;
-            if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
-                copy = new MvJoinCondition(cond.getSqlPos());
-                copy.setFirstRef(dst);
-                copy.setFirstAlias(dst.getTableAlias());
-                copy.setFirstColumn(cond.getFirstColumn());
-                copy.setSecondRef(result.getSourceByAlias(cond.getSecondAlias()));
-                copy.setSecondAlias(cond.getSecondAlias());
-                copy.setSecondColumn(cond.getSecondColumn());
-            } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
-                copy = new MvJoinCondition(cond.getSqlPos());
-                copy.setFirstRef(dst);
-                copy.setFirstAlias(dst.getTableAlias());
-                copy.setFirstColumn(cond.getSecondColumn());
-                copy.setSecondRef(result.getSourceByAlias(cond.getFirstAlias()));
-                copy.setSecondAlias(cond.getFirstAlias());
-                copy.setSecondColumn(cond.getFirstColumn());
-            }
-            if (copy!=null && !isDuplicateCondition(dst.getConditions(), copy)) {
-                dst.getConditions().add(copy);
+        int baseIndex = path.indexOf(src);
+        if (baseIndex < 0) {
+            throw new IllegalArgumentException("Component " + src
+                    + " is not in path " + path);
+        }
+        for (MvJoinSource cur : path) {
+            for (MvJoinCondition cond : cur.getConditions()) {
+                MvJoinCondition copy = null;
+                if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
+                    int refIndex = path.indexOf(cond.getSecondRef());
+                    if (refIndex >= 0 && refIndex < baseIndex) {
+                        copy = new MvJoinCondition(cond.getSqlPos());
+                        copy.setFirstRef(dst);
+                        copy.setFirstAlias(dst.getTableAlias());
+                        copy.setFirstColumn(cond.getFirstColumn());
+                        copy.setSecondRef(result.getSourceByAlias(cond.getSecondAlias()));
+                        copy.setSecondAlias(cond.getSecondAlias());
+                        copy.setSecondColumn(cond.getSecondColumn());
+                    }
+                } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
+                    int refIndex = path.indexOf(cond.getFirstRef());
+                    if (refIndex >= 0 && refIndex < baseIndex) {
+                        copy = new MvJoinCondition(cond.getSqlPos());
+                        copy.setFirstRef(dst);
+                        copy.setFirstAlias(dst.getTableAlias());
+                        copy.setFirstColumn(cond.getSecondColumn());
+                        copy.setSecondRef(result.getSourceByAlias(cond.getFirstAlias()));
+                        copy.setSecondAlias(cond.getFirstAlias());
+                        copy.setSecondColumn(cond.getFirstColumn());
+                    }
+                }
+                if (copy!=null && !isDuplicateCondition(dst.getConditions(), copy)) {
+                    dst.getConditions().add(copy);
+                }
             }
         }
     }

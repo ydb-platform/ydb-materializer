@@ -20,7 +20,7 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvKeyPathComplexTest {
 
-    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
+    private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL || true;
 
     @Test
     public void testGenerateKeyPath_MultiColumnJoinConditions() {

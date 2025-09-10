@@ -61,7 +61,7 @@ public class MvJobController {
             return false;
         }
         LOG.info("Starting the controller `{}`", getName());
-        if (!context.getService().getCoordinator().lock(getName())) {
+        if (!context.getService().getLocker().lock(getName())) {
             LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
             return false;
         }
@@ -81,7 +81,7 @@ public class MvJobController {
         context.stop();
         // no explicit stop for applyManager - threads are stopped by context
         cdcFeeder.stop();
-        context.getService().getCoordinator().release(getName());
+        context.getService().getLocker().release(getName());
         return true;
     }
 

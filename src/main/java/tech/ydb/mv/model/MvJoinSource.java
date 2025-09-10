@@ -108,4 +108,9 @@ public class MvJoinSource implements MvSqlPosHolder {
         return sqlPos;
     }
 
+    @Override
+    public String toString() {
+        return "MvJoinSource{" + "tableName=" + tableName + ", tableAlias=" + tableAlias + '}';
+    }
+
 }
