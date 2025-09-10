@@ -398,9 +398,9 @@ abstract class MvGeneratorBase {
             copyRelationalConditions(path, src, dst, result);
         }
 
-        // Add columns for the requested fields from the target source
-        MvJoinSource targetSourceInResult = result.getSources().get(result.getSources().size() - 1);
-        fillTargetColumns(result, targetSourceInResult, fieldNames);
+        // Add columns for the requested fields from the desired point
+        MvJoinSource pointInResult = result.getSources().get(result.getSources().size() - 1);
+        fillTargetColumns(result, pointInResult, fieldNames);
 
         return result;
     }
