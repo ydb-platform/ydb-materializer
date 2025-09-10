@@ -60,13 +60,14 @@ WHERE #[<yql_expression>]#
 CREATE ASYNC HANDLER <handler_name>
   [CONSUMER <consumer_name>]
   PROCESS <materialized_view_name>,
+  [PROCESS <materialized_view_name>,]
   INPUT <table_name> CHANGEFEED <changefeed_name> AS [STREAM|BATCH],
   [INPUT <table_name> CHANGEFEED <changefeed_name> AS [STREAM|BATCH], ...];
 ```
 
 #### Handler Components
 
-- **PROCESS**: Specifies which materialized view this handler updates
+- **PROCESS**: Specifies which materialized views this handler updates
 - **INPUT**: Defines input tables and their changefeed streams
   - `STREAM`: Real-time processing of individual changes
   - `BATCH`: Batch processing of accumulated changes
