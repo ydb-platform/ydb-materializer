@@ -18,11 +18,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * CREATE TABLE mv_jobs ( -- в девичестве desired_state
- *     job_name Text NOT NULL, -- MvHandler.getName()
- *     job_settings JsonDocument, -- сериализованный MvHandlerSettings / MvDictionarySettings
- *     should_run Boolean, -- должен ли работать
- *     runner_id Text,
- *     PRIMARY KEY(job_name)
+ * job_name Text NOT NULL, -- MvHandler.getName()
+ * job_settings JsonDocument, -- сериализованный MvHandlerSettings / MvDictionarySettings
+ * should_run Boolean, -- должен ли работать
+ * runner_id Text,
+ * PRIMARY KEY(job_name)
  * );
  *
  * @author Kirill Kurdyukov
@@ -32,7 +32,6 @@ public class MvCoordinator {
     private static final Logger LOG = LoggerFactory.getLogger(MvCoordinator.class);
 
     private static final String SEMAPHORE_NAME = "mv-coordinator-semaphore";
-
 
     private final MvLocker mvLocker;
     private final ScheduledExecutorService scheduler;
@@ -63,11 +62,15 @@ public class MvCoordinator {
     }
 
     private void scheduleAttempt(long delaySec) {
+        LOG.debug("Scheduling leadership attempt in {}s, instanceId={}", delaySec, instanceId);
+
         scheduler.schedule(this::attemptLeadership, delaySec, TimeUnit.SECONDS);
     }
 
     private void attemptLeadership() {
         try {
+            LOG.trace("Attempting leadership, instanceId={}", instanceId);
+
             if (leaderFuture.get() != null) {
                 ensureWatchArmed();
                 return;
@@ -80,7 +83,12 @@ public class MvCoordinator {
                 return;
             }
 
+            LOG.info("Semaphore '{}' acquired, instanceId={} — candidate for leader", SEMAPHORE_NAME, instanceId);
+
             if (IsStoppedRun()) {
+                LOG.warn("Coordinator desired state = STOPPED (should_run=false), instanceId={}. Not starting leader loop",
+                        instanceId);
+                safeRelease();
                 ensureWatchArmed();
                 scheduleAttempt(settings.getWatchStateDelaySeconds());
                 return;
@@ -88,7 +96,7 @@ public class MvCoordinator {
 
             startLeaderLoop();
         } catch (Exception ex) {
-            LOG.error("", ex);
+            LOG.error("Error during attemptLeadership, instanceId={}", instanceId, ex);
 
             ensureWatchArmed();
             scheduleAttempt(settings.getWatchStateDelaySeconds());
@@ -96,6 +104,9 @@ public class MvCoordinator {
     }
 
     private void startLeaderLoop() {
+        LOG.info("Becoming leader, starting leader loop, tick={}s, instanceId={}",
+                settings.getWatchStateDelaySeconds(), instanceId);
+
         ScheduledFuture<?> f = scheduler.scheduleWithFixedDelay(
                 this::leaderTick,
                 0,
@@ -103,7 +114,11 @@ public class MvCoordinator {
                 TimeUnit.SECONDS
         );
         ScheduledFuture<?> prev = leaderFuture.getAndSet(f);
-        if (prev != null) prev.cancel(true);
+        if (prev != null) {
+            LOG.debug("Cancelling previous leader loop future, instanceId={}", instanceId);
+
+            prev.cancel(true);
+        }
 
         ensureWatchArmed();
         startOrMaintainJobs();
@@ -140,7 +155,8 @@ public class MvCoordinator {
     private void safeRelease() {
         try {
             mvLocker.release(SEMAPHORE_NAME);
-        } catch (Exception ignore) { }
+        } catch (Exception ignore) {
+        }
     }
 
     private void cancelLeader() {
@@ -152,7 +168,6 @@ public class MvCoordinator {
         var resultSet = sessionRetryContext.supplyResult(session -> session.executeDataQuery(
                 """
                         DECLARE $runner_id AS Text;
-                                                  
                         SELECT * FROM mv_jobs WHERE job_name = 'sys$coordinator' AND runner_id = $runner_id;
                         """,
                 TxControl.serializableRw(),
@@ -167,12 +182,9 @@ public class MvCoordinator {
         if (watchFuture.get() != null) return;
 
         CompletableFuture<Void> wf = mvLocker.getSession()
-                .watchSemaphore(SEMAPHORE_NAME,
-                        DescribeSemaphoreMode.WITH_OWNERS,
-                        WatchSemaphoreMode.WATCH_OWNERS)
+                .watchSemaphore(SEMAPHORE_NAME, DescribeSemaphoreMode.WITH_OWNERS, WatchSemaphoreMode.WATCH_OWNERS)
                 .thenCompose(r -> r.getValue().getChangedFuture())
                 .thenRun(() -> {
-                    // Любое изменение владельцев — переоценка состояния
                     watchFuture.set(null);
                     scheduleAttempt(0);
                 })
