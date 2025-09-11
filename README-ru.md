@@ -86,7 +86,7 @@ SELECT #[Substring(main.c20, 3, 5)]# AS c11,
 WHERE #[main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u)]#
 
 -- С предложением COMPUTE ON
-#[COMPUTE ON main, sub2 main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u)]#
+COMPUTE ON main, sub2 #[main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u)]#
 ```
 
 ### Полный пример
