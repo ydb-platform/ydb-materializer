@@ -124,10 +124,11 @@ MvCoordinator должен запускаться глобально (в рам�
 
 ```sql
 -- Редактируется сторонним приложением
-CREATE TABLE mv_handlers ( -- в девичестве desired_state
+CREATE TABLE mv_jobs ( -- в девичестве desired_state
     job_name Text NOT NULL, -- MvHandler.getName()
     job_settings JsonDocument, -- сериализованный MvHandlerSettings / MvDictionarySettings
     should_run Boolean, -- должен ли работать
+    runner_id Text,
     PRIMARY KEY(job_name)
 );
 
