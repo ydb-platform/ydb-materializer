@@ -6,16 +6,23 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
+import tech.ydb.mv.model.MvCoordinator;
+import tech.ydb.mv.model.MvCoordinatorSettings;
+import tech.ydb.mv.support.MvLocker;
 import tech.ydb.query.QuerySession;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
@@ -26,7 +33,8 @@ import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.util.YdbConv;
-import tech.ydb.mv.util.YdbMisc;
+
+import static tech.ydb.mv.util.YdbMisc.sleep;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta (or) colima start
@@ -208,11 +216,11 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private static final String WRITE_UP3
             = """
-UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
- (58, 'Welcome! News'u)
-,(59, 'Adieu! News'u)
-;
-""";
+            UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
+             (58, 'Welcome! News'u)
+            ,(59, 'Adieu! News'u)
+            ;
+            """;
 
     @RegisterExtension
     private static final YdbHelperExtension YDB = new YdbHelperExtension();
@@ -331,12 +339,60 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
         }
     }
 
-    private void pause(long millis) {
-        System.err.println("\t...Sleeping for " + millis + "...");
-        YdbMisc.sleep(millis);
+    @Test
+    public void mvCoordination() {
+        pause(3000L);
+
+        final var concurrentQueue = new ConcurrentLinkedQueue<Integer>();
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            pause(3000);
+            runDdl(conn,
+                    """
+                            CREATE TABLE mv_jobs (
+                                job_name Text NOT NULL,
+                                job_settings JsonDocument,
+                                should_run Bool,
+                                runner_id Text,
+                                PRIMARY KEY(job_name)
+                            );
+                            """);
+            runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
+
+            for (int i = 0; i < 20; i++) {
+                int finalI = i;
+                CompletableFuture.runAsync(() -> new MvCoordinator(
+                        new MvLocker(conn),
+                        Executors.newScheduledThreadPool(3),
+                        conn.getQueryRetryCtx(),
+                        new MvCoordinatorSettings(1),
+                        "instance_" + finalI,
+                        () -> concurrentQueue.add(1)
+                ).start());
+            }
+
+            pause(5000);
+            Assertions.assertEquals(1, concurrentQueue.size());
+
+            conn.getTableRetryCtx().supplyResult(session -> session.executeDataQuery(
+                    "UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxControl.serializableRw())
+            ).join().getStatus().expectSuccess();
+
+            pause(5000);
+
+            conn.getTableRetryCtx().supplyResult(session -> session.executeDataQuery(
+                    "UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxControl.serializableRw())
+            ).join().getStatus().expectSuccess();
+            Assertions.assertEquals(2, concurrentQueue.size());
+        }
     }
 
-    private void fillDatabase(YdbConnector conn) {
+    private void pause(long millis) {
+        System.err.println("\t...Sleeping for " + millis + "...");
+        sleep(millis);
+    }
+
+    public void fillDatabase(YdbConnector conn) {
         System.err.println("[AAA] Preparation: creating tables...");
         runDdl(conn, CREATE_TABLES);
         System.err.println("[AAA] Preparation: adding consumers...");
@@ -345,13 +401,13 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
         runDdl(conn, UPSERT_CONFIG);
     }
 
-    private CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {
+    private static CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {
         return qs.createQuery(sql, txMode)
                 .execute()
                 .thenApply(res -> res.getStatus());
     }
 
-    private void runDdl(YdbConnector conn, String sql) {
+    private static void runDdl(YdbConnector conn, String sql) {
         conn.getQueryRetryCtx()
                 .supplyStatus(qs -> runSql(qs, sql, TxMode.NONE))
                 .join()

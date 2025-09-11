@@ -2,12 +2,13 @@ package tech.ydb.mv.model;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.ydb.common.transaction.TxMode;
 import tech.ydb.coordination.settings.DescribeSemaphoreMode;
 import tech.ydb.coordination.settings.WatchSemaphoreMode;
 import tech.ydb.mv.support.MvLocker;
-import tech.ydb.table.SessionRetryContext;
+import tech.ydb.query.tools.QueryReader;
+import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.table.values.PrimitiveValue;
 
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +39,7 @@ public class MvCoordinator {
     private final SessionRetryContext sessionRetryContext;
     private final MvCoordinatorSettings settings;
     private final String instanceId;
+    private final Runnable coordinatorJob;
 
     private final AtomicReference<ScheduledFuture<?>> leaderFuture = new AtomicReference<>();
     private final AtomicReference<CompletableFuture<?>> watchFuture = new AtomicReference<>();
@@ -47,13 +49,15 @@ public class MvCoordinator {
             ScheduledExecutorService scheduler,
             SessionRetryContext sessionRetryContext,
             MvCoordinatorSettings settings,
-            String instanceId
+            String instanceId,
+            Runnable coordinatorJob
     ) {
         this.mvLocker = mvLocker;
         this.scheduler = scheduler;
         this.sessionRetryContext = sessionRetryContext;
         this.settings = settings;
         this.instanceId = instanceId;
+        this.coordinatorJob = coordinatorJob;
     }
 
     public void start() {
@@ -121,11 +125,7 @@ public class MvCoordinator {
         }
 
         ensureWatchArmed();
-        startOrMaintainJobs();
-    }
-
-    private void startOrMaintainJobs() {
-
+        coordinatorJob.run();
     }
 
     private void leaderTick() {
@@ -165,18 +165,17 @@ public class MvCoordinator {
     }
 
     private boolean stillOwnsSemaphore() {
-        var resultSet = sessionRetryContext.supplyResult(session -> session.executeDataQuery(
+        var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
                 """
                         DECLARE $runner_id AS Text;
                         SELECT * FROM mv_jobs WHERE job_name = 'sys$coordinator' AND runner_id = $runner_id;
                         """,
-                TxControl.serializableRw(),
-                Params.of("$runner_id", PrimitiveValue.newText(instanceId)))
+                TxMode.SERIALIZABLE_RW,
+                Params.of("$runner_id", PrimitiveValue.newText(instanceId))))
         ).join().getValue().getResultSet(0);
 
         return resultSet.next();
     }
-
 
     private void ensureWatchArmed() {
         if (watchFuture.get() != null) return;
@@ -200,15 +199,15 @@ public class MvCoordinator {
 
     // корректная остановка задач при выключении координатора
     private void stopJobs() {
-        sessionRetryContext.supplyResult(session -> session.executeDataQuery(
-                "UPDATE mv_commands SET command_type = 'STOP' WHERE 1 = 1", TxControl.serializableRw())
-        ).join().getStatus().expectSuccess();
+        sessionRetryContext.supplyResult(session -> session.createQuery(
+                "UPDATE mv_commands SET command_type = 'STOP' WHERE 1 = 1", TxMode.SERIALIZABLE_RW
+        ).execute()).join().getStatus().expectSuccess();
     }
 
     private boolean IsStoppedRun() {
-        var resultSet = sessionRetryContext.supplyResult(session -> session.executeDataQuery(
-                "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'", TxControl.serializableRw())
-        ).join().getValue().getResultSet(0);
+        var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
+                "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'", TxMode.SERIALIZABLE_RW)
+        )).join().getValue().getResultSet(0);
         resultSet.next();
 
         return !resultSet.getColumn(0).getBool();
