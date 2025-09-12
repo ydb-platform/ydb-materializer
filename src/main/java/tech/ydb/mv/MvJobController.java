@@ -60,11 +60,11 @@ public class MvJobController {
             LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
         }
-        LOG.info("Starting the controller `{}`", getName());
         if (!context.getService().getLocker().lock(getName())) {
             LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
             return false;
         }
+        LOG.info("Starting the controller `{}`", getName());
         context.start();
         applyManager.refreshSelectors(context.getYdb().getTableClient());
         applyManager.start();

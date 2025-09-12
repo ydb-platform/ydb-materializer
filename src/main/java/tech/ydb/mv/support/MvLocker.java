@@ -8,7 +8,7 @@ import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
 import tech.ydb.core.Result;
-import tech.ydb.core.Status;
+
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 

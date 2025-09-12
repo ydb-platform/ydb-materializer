@@ -145,9 +145,10 @@ public class MvService implements AutoCloseable {
     /**
      * Start the handler with the specified name, using the current default settings.
      * @param name Name of the handler to be started
+     * @return true, if handler has been started, false otherwise
      */
-    public void startHandler(String name) {
-        startHandler(name, getHandlerSettings());
+    public boolean startHandler(String name) {
+        return startHandler(name, getHandlerSettings());
     }
 
     /**
@@ -155,8 +156,15 @@ public class MvService implements AutoCloseable {
      *
      * @param name Name of the handler to be started
      * @param settings The settings to be used by the handler
+     * @return true, if handler has been started, false otherwise
      */
-    public synchronized void startHandler(String name, MvHandlerSettings settings) {
+    public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
+        if (refreshThread==null || !refreshThread.isAlive()) {
+            refreshThread = new Thread(refreshTask);
+            refreshThread.setName("MvServiceRefreshThread");
+            refreshThread.setDaemon(true);
+            refreshThread.start();
+        }
         MvJobController c = handlers.get(name);
         if (c==null) {
             MvHandler handler = metadata.getHandlers().get(name);
@@ -166,13 +174,7 @@ public class MvService implements AutoCloseable {
             c = new MvJobController(this, handler, settings);
             handlers.put(name, c);
         }
-        c.start();
-        if (refreshThread==null || !refreshThread.isAlive()) {
-            refreshThread = new Thread(refreshTask);
-            refreshThread.setName("MvServiceRefreshThread");
-            refreshThread.setDaemon(true);
-            refreshThread.start();
-        }
+        return c.start();
     }
 
     /**
