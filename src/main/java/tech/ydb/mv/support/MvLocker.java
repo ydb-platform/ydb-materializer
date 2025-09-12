@@ -8,7 +8,7 @@ import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
 import tech.ydb.core.Result;
-import tech.ydb.core.Status;
+
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 
@@ -19,18 +19,22 @@ import tech.ydb.mv.YdbConnector;
 public class MvLocker {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvLocker.class);
 
-    public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10L);
-
     private final CoordinationClient client;
     private final CoordinationSession session;
     private final String nodePath;
     private final HashMap<String, SemaphoreLease> leases = new HashMap<>();
+    private final Duration timeout;
 
     public MvLocker(YdbConnector conn) {
         this.client = conn.getCoordinationClient();
         this.nodePath = conn.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
         prepareNode(conn, this.nodePath);
         this.session = obtainSession(conn, this.nodePath);
+        int seconds = conn.getProperty(MvConfig.CONF_COORD_TIMEOUT, 10);
+        if (seconds < 5) {
+            seconds = 5;
+        }
+        this.timeout = Duration.ofSeconds(seconds);
     }
 
     private static void prepareNode(YdbConnector conn, String nodePath) {
@@ -79,7 +83,7 @@ public class MvLocker {
 
     public boolean lock(String name) {
         LOG.info("Ensuring the single `{}` job instance through lock...", name);
-        boolean locked = lock(name, DEFAULT_TIMEOUT);
+        boolean locked = lock(name, timeout);
         if (locked) {
             LOG.warn("Lock obtained, proceeding with the `{}` job.", name);
         } else {
