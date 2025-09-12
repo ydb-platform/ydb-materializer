@@ -3,8 +3,6 @@ package tech.ydb.mv.model;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.ydb.common.transaction.TxMode;
-import tech.ydb.coordination.settings.DescribeSemaphoreMode;
-import tech.ydb.coordination.settings.WatchSemaphoreMode;
 import tech.ydb.mv.support.MvLocker;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
@@ -62,7 +60,6 @@ public class MvCoordinator {
 
     public void start() {
         scheduleAttempt(0);
-        ensureWatchArmed();
     }
 
     private void scheduleAttempt(long delaySec) {
@@ -76,13 +73,11 @@ public class MvCoordinator {
             LOG.trace("Attempting leadership, instanceId={}", instanceId);
 
             if (leaderFuture.get() != null) {
-                ensureWatchArmed();
                 return;
             }
 
             boolean acquired = mvLocker.lock(SEMAPHORE_NAME);
             if (!acquired) {
-                ensureWatchArmed();
                 scheduleAttempt(settings.getWatchStateDelaySeconds());
                 return;
             }
@@ -93,7 +88,6 @@ public class MvCoordinator {
                 LOG.warn("Coordinator desired state = STOPPED (should_run=false), instanceId={}. Not starting leader loop",
                         instanceId);
                 safeRelease();
-                ensureWatchArmed();
                 scheduleAttempt(settings.getWatchStateDelaySeconds());
                 return;
             }
@@ -111,7 +105,6 @@ public class MvCoordinator {
         } catch (Exception ex) {
             LOG.error("Error during attemptLeadership, instanceId={}", instanceId, ex);
 
-            ensureWatchArmed();
             scheduleAttempt(settings.getWatchStateDelaySeconds());
         }
     }
@@ -133,7 +126,6 @@ public class MvCoordinator {
             prev.cancel(true);
         }
 
-        ensureWatchArmed();
         coordinatorJob.run();
     }
 
@@ -161,14 +153,14 @@ public class MvCoordinator {
         stopJobs();
         safeRelease();
         // после демоушена снова в режим фолловера — ждем событий и иногда пробуем стать лидером
-        scheduleAttempt(0);
-        ensureWatchArmed();
+        scheduleAttempt(settings.getWatchStateDelaySeconds());
     }
 
     private void safeRelease() {
         try {
             mvLocker.release(SEMAPHORE_NAME);
-        } catch (Exception ignore) {
+        } catch (Exception e) {
+            LOG.trace("Fail release", e);
         }
     }
 
@@ -188,30 +180,6 @@ public class MvCoordinator {
         ).join().getValue().getResultSet(0);
 
         return resultSet.next();
-    }
-
-    private void ensureWatchArmed() {
-        if (watchFuture.get() != null) return;
-
-        CompletableFuture<Void> wf = mvLocker.getSession()
-                .watchSemaphore(SEMAPHORE_NAME, DescribeSemaphoreMode.WITH_OWNERS, WatchSemaphoreMode.WATCH_OWNERS)
-                .thenCompose(r -> r.getValue().getChangedFuture())
-                .thenRun(() -> {
-                    LOG.info("Semaphore watch '{}' triggered, instanceId={}", SEMAPHORE_NAME, instanceId);
-
-                    watchFuture.set(null);
-                    scheduleAttempt(0);
-                })
-                .exceptionally(ex -> {
-                    LOG.warn("Semaphore watch '{}' failed, will retry in {}s, instanceId={}",
-                            SEMAPHORE_NAME, settings.getWatchStateDelaySeconds(), instanceId, ex);
-
-                    watchFuture.set(null);
-                    scheduleAttempt(settings.getWatchStateDelaySeconds());
-                    return null;
-                });
-
-        watchFuture.set(wf);
     }
 
 
