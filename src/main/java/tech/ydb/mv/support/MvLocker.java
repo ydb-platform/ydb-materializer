@@ -7,6 +7,8 @@ import java.util.HashMap;
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
+import tech.ydb.core.Result;
+import tech.ydb.core.Status;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 
@@ -24,12 +26,30 @@ public class MvLocker {
     private final String nodePath;
     private final HashMap<String, SemaphoreLease> leases = new HashMap<>();
 
-    public MvLocker(YdbConnector connector) {
-        this.client = connector.getCoordinationClient();
-        this.nodePath = connector.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
-        connector.getCoordinationClient().createNode(this.nodePath).join().expectSuccess();
-        this.session = connector.getCoordinationClient().createSession(this.nodePath);
-        this.session.connect().join();
+    public MvLocker(YdbConnector conn) {
+        this.client = conn.getCoordinationClient();
+        this.nodePath = conn.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
+        prepareNode(conn, this.nodePath);
+        this.session = obtainSession(conn, this.nodePath);
+    }
+
+    private static void prepareNode(YdbConnector conn, String nodePath) {
+        // QueryRetryContext used for retry processing here,
+        // QuerySession is not actually needed
+        conn.getQueryRetryCtx().supplyStatus(
+                qs -> conn.getCoordinationClient().createNode(nodePath)
+        ).join().expectSuccess();
+    }
+
+    private static CoordinationSession obtainSession(YdbConnector conn, String nodePath) {
+        return conn.getQueryRetryCtx().supplyResult(
+                qs -> {
+                    var session = conn.getCoordinationClient().createSession(nodePath);
+                    return session.connect().thenApplyAsync(
+                            status -> status.isSuccess() ? Result.success(session) : Result.fail(status)
+                    );
+                }
+        ).join().getValue();
     }
 
     public CoordinationClient getClient() {
