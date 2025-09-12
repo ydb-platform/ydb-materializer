@@ -1,7 +1,9 @@
 package tech.ydb.mv.integration;
 
 import java.util.HashMap;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
@@ -16,19 +18,21 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
 
     private final HashMap<String, Integer> numSuccess = new HashMap<>();
 
+    @BeforeAll
+    public static void init() {
+        prepareDb();
+    }
+
+    @AfterAll
+    public static void cleanup() {
+        clearDb();
+    }
+
     @Test
     public void concurrencyIntegrationTest() {
-        // have to wait a bit here for YDB startup
-        pause(1000L);
-        // now the work
         System.err.println("[AAA] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            fillDatabase(conn);
-        }
-
-        System.err.println("[AAA] Preparation: completed.");
 
         Thread t1 = new Thread(() -> handler(cfg, "handler1"));
         Thread t2 = new Thread(() -> handler(cfg, "handler2"));
@@ -60,8 +64,8 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
 
             if ( wc.startHandler(name) ) {
                 reportSuccess(name);
+                YdbMisc.sleep(10000L);
             }
-            YdbMisc.sleep(10000L);
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
         }

@@ -1,13 +1,17 @@
 package tech.ydb.mv.integration;
 
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
+import static tech.ydb.mv.integration.AbstractIntegrationBase.clearDb;
+import static tech.ydb.mv.integration.AbstractIntegrationBase.prepareDb;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -56,16 +60,23 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ;
 """;
 
+
+    @BeforeAll
+    public static void init() {
+        prepareDb();
+    }
+
+    @AfterAll
+    public static void cleanup() {
+        clearDb();
+    }
+
     @Test
     public void basicIntegrationTest() {
-        // have to wait a bit here for YDB startup
-        pause(1000L);
         // now the work
         System.err.println("[AAA] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
-            fillDatabase(conn);
-            System.err.println("[AAA] Preparation: completed.");
             MvService wc = new MvService(conn);
             try {
                 wc.applyDefaults();

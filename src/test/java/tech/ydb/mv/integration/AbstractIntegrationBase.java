@@ -119,6 +119,19 @@ ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 """;
 
+    public static final String DROP_TABLES
+            = """
+DROP TABLE `test1/statements`;
+DROP TABLE `test1/scans_state`;
+DROP TABLE `test1/dict_hist`;
+DROP TABLE `test1/main_table`;
+DROP TABLE `test1/sub_table1`;
+DROP TABLE `test1/sub_table2`;
+DROP TABLE `test1/sub_table3`;
+DROP TABLE `test1/mv1`;
+DROP TABLE `test1/mv2`;
+""";
+
     public static final String CDC_CONSUMERS1
             = """
 ALTER TOPIC `test1/main_table/cf1` ADD CONSUMER `consumer1`;
@@ -235,6 +248,25 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
             return baos.toByteArray();
         } catch (IOException ix) {
             throw new RuntimeException(ix);
+        }
+    }
+
+    protected static void prepareDb() {
+        // have to wait a bit here for YDB startup
+        pause(1000L);
+        // init database
+        System.err.println("[AAA] Database setup...");
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            fillDatabase(conn);
+        }
+    }
+
+    protected static void clearDb() {
+        System.err.println("[AAA] Database cleanup...");
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            runDdl(conn, DROP_TABLES);
         }
     }
 
