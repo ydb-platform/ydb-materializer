@@ -1,36 +1,22 @@
 package tech.ydb.mv.integration;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.common.transaction.TxMode;
-import tech.ydb.core.Status;
 import tech.ydb.mv.model.MvCoordinator;
 import tech.ydb.mv.model.MvCoordinatorSettings;
 import tech.ydb.mv.support.MvLocker;
-import tech.ydb.query.QuerySession;
 import tech.ydb.table.query.Params;
-import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.transaction.TxControl;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.util.YdbConv;
-
-import static tech.ydb.mv.util.YdbMisc.sleep;
 
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta (or) colima start
@@ -75,38 +61,6 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ,(59, 'Adieu! News'u)
 ;
 """;
-
-    @RegisterExtension
-    private static final YdbHelperExtension YDB = new YdbHelperExtension();
-
-    private static String getConnectionUrl() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(YDB.useTls() ? "grpcs://" : "grpc://");
-        sb.append(YDB.endpoint());
-        sb.append(YDB.database());
-        return sb.toString();
-    }
-
-    private static byte[] getConfig() {
-        Properties props = new Properties();
-        props.setProperty("ydb.url", getConnectionUrl());
-        props.setProperty("ydb.auth.mode", "NONE");
-        props.setProperty("ydb.poolSize", "10");
-        props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
-        props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
-        props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
-        props.setProperty(MvConfig.CONF_DEF_APPLY_THREADS, "1");
-        props.setProperty(MvConfig.CONF_DEF_CDC_THREADS, "1");
-        props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
-        props.setProperty(MvConfig.CONF_DICT_TABLE, "test1/dict_hist");
-
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
-            return baos.toByteArray();
-        } catch (IOException ix) {
-            throw new RuntimeException(ix);
-        }
-    }
 
     @Test
     public void basicIntegrationTest() {
@@ -211,7 +165,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                                 runner_id Text,
                                 PRIMARY KEY(job_name)
                             );
-                            
+                                                        
                             CREATE TABLE mv_commands (
                                 runner_id Text NOT NULL,
                                 command_no Uint64 NOT NULL,
@@ -245,40 +199,6 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
             Assertions.assertEquals(2, concurrentQueue.size());
         }
-    }
-
-    private void pause(long millis) {
-        System.err.println("\t...Sleeping for " + millis + "...");
-        sleep(millis);
-    }
-
-    public void fillDatabase(YdbConnector conn) {
-        System.err.println("[AAA] Preparation: creating tables...");
-        runDdl(conn, CREATE_TABLES);
-        System.err.println("[AAA] Preparation: adding consumers...");
-        runDdl(conn, CDC_CONSUMERS);
-        System.err.println("[AAA] Preparation: adding config...");
-        runDdl(conn, UPSERT_CONFIG);
-    }
-
-    private static CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {
-        return qs.createQuery(sql, txMode)
-                .execute()
-                .thenApply(res -> res.getStatus());
-    }
-
-    private static void runDdl(YdbConnector conn, String sql) {
-        conn.getQueryRetryCtx()
-                .supplyStatus(qs -> runSql(qs, sql, TxMode.NONE))
-                .join()
-                .expectSuccess();
-    }
-
-    private void runDml(YdbConnector conn, String sql) {
-        conn.getQueryRetryCtx()
-                .supplyStatus(qs -> runSql(qs, sql, TxMode.SERIALIZABLE_RW))
-                .join()
-                .expectSuccess();
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
@@ -323,7 +243,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
-            String feed, String consumer, long expected) {
+                                       String feed, String consumer, long expected) {
         var descMain = conn.getTopicClient().describeConsumer(
                 conn.fullCdcTopicName(tabName, feed),
                 consumer,
@@ -348,13 +268,13 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private void checkDictHist(YdbConnector conn) {
         var rs = conn.sqlRead("SELECT full_val, key_text, tv "
-                + "FROM `test1/dict_hist` ORDER BY tv, key_text;",
+                        + "FROM `test1/dict_hist` ORDER BY tv, key_text;",
                 Params.empty()).getResultSet(0);
         while (rs.next()) {
             System.out.println("  DICT: " + rs.getColumn(1).getText()
                     + " at " + rs.getColumn(2).getTimestamp().toString()
                     + ": " + rs.getColumn(0).getValue().asOptional()
-                            .get().asData().getJsonDocument());
+                    .get().asData().getJsonDocument());
         }
     }
 
