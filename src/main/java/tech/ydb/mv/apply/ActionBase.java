@@ -25,6 +25,7 @@ import tech.ydb.mv.util.YdbConv;
  * @author zinal
  */
 abstract class ActionBase {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
 
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
@@ -73,7 +74,11 @@ abstract class ActionBase {
 
     protected final ResultSetReader readRows(List<MvKey> items) {
         String statement = getSqlSelect();
-        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
+        Value<?> keys = keysToParam(items);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("SELECT via statement << {} >>, keys {}", statement, keys);
+        }
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
         ResultSetReader rsr = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.ONLINE_RO, params)
