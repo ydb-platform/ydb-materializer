@@ -237,6 +237,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
+        props.setProperty("ydb.poolSize", "10");
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
@@ -341,49 +342,52 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     @Test
     public void mvCoordination() {
-        pause(3000L);
+        pause(3000);
 
-        final var concurrentQueue = new ConcurrentLinkedQueue<Integer>();
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            pause(3000);
-            runDdl(conn,
-                    """
-                            CREATE TABLE mv_jobs (
-                                job_name Text NOT NULL,
-                                job_settings JsonDocument,
-                                should_run Bool,
-                                runner_id Text,
-                                PRIMARY KEY(job_name)
-                            );
-                            """);
-            runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
+        try (var executors = Executors.newFixedThreadPool(20)) {
+            final var concurrentQueue = new ConcurrentLinkedQueue<Integer>();
+            YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
+            try (YdbConnector conn = new YdbConnector(cfg)) {
+                pause(10000);
+                runDdl(conn,
+                        """
+                                CREATE TABLE mv_jobs (
+                                    job_name Text NOT NULL,
+                                    job_settings JsonDocument,
+                                    should_run Bool,
+                                    runner_id Text,
+                                    PRIMARY KEY(job_name)
+                                );
+                                """);
+                runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
+                var scheduler = Executors.newScheduledThreadPool(3);
+                for (int i = 0; i < 20; i++) {
+                    int finalI = i;
+                    executors.submit(() -> new MvCoordinator(
+                            new MvLocker(conn),
+                            scheduler,
+                            conn.getQueryRetryCtx(),
+                            new MvCoordinatorSettings(1),
+                            "instance_" + finalI,
+                            () -> concurrentQueue.add(1)).start());
+                }
 
-            for (int i = 0; i < 20; i++) {
-                int finalI = i;
-                CompletableFuture.runAsync(() -> new MvCoordinator(
-                        new MvLocker(conn),
-                        Executors.newScheduledThreadPool(3),
-                        conn.getQueryRetryCtx(),
-                        new MvCoordinatorSettings(1),
-                        "instance_" + finalI,
-                        () -> concurrentQueue.add(1)
-                ).start());
+                pause(5000);
+                Assertions.assertEquals(1, concurrentQueue.size());
+
+                conn.getQueryRetryCtx().supplyResult(session -> session
+                        .createQuery("UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxMode.NONE).execute()
+                ).join().getStatus().expectSuccess();
+
+                pause(5000);
+
+                conn.getQueryRetryCtx().supplyResult(session -> session
+                        .createQuery("UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxMode.NONE).execute()
+                ).join().getStatus().expectSuccess();
+                pause(10_000);
+
+                Assertions.assertEquals(2, concurrentQueue.size());
             }
-
-            pause(5000);
-            Assertions.assertEquals(1, concurrentQueue.size());
-
-            conn.getTableRetryCtx().supplyResult(session -> session.executeDataQuery(
-                    "UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxControl.serializableRw())
-            ).join().getStatus().expectSuccess();
-
-            pause(5000);
-
-            conn.getTableRetryCtx().supplyResult(session -> session.executeDataQuery(
-                    "UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxControl.serializableRw())
-            ).join().getStatus().expectSuccess();
-            Assertions.assertEquals(2, concurrentQueue.size());
         }
     }
 
@@ -478,7 +482,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
-            String feed, String consumer, long expected) {
+                                       String feed, String consumer, long expected) {
         var descMain = conn.getTopicClient().describeConsumer(
                 conn.fullCdcTopicName(tabName, feed),
                 consumer,

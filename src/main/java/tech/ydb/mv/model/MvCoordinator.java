@@ -98,6 +98,15 @@ public class MvCoordinator {
                 return;
             }
 
+            sessionRetryContext.supplyResult(session -> session.createQuery(
+                    """
+                            DECLARE $runner_id AS Text;
+                                                       
+                            UPDATE mv_jobs SET runner_id = $runner_id WHERE job_name = 'sys$coordinator'
+                            """,
+                    TxMode.SERIALIZABLE_RW, Params.of("$runner_id", PrimitiveValue.newText(instanceId))).execute()
+            ).join().getStatus().expectSuccess();
+
             startLeaderLoop();
         } catch (Exception ex) {
             LOG.error("Error during attemptLeadership, instanceId={}", instanceId, ex);
@@ -131,11 +140,15 @@ public class MvCoordinator {
     private void leaderTick() {
         try {
             if (!stillOwnsSemaphore()) {
+                LOG.info("Lost semaphore ownership or runner_id mismatch, demoting, instanceId={}", instanceId);
+
                 demote();
                 return;
             }
 
             if (IsStoppedRun()) {
+                LOG.info("Coordinator received state is STOP, demoting leader, instanceId={}", instanceId);
+
                 demote();
             }
         } catch (Throwable t) {
@@ -184,10 +197,15 @@ public class MvCoordinator {
                 .watchSemaphore(SEMAPHORE_NAME, DescribeSemaphoreMode.WITH_OWNERS, WatchSemaphoreMode.WATCH_OWNERS)
                 .thenCompose(r -> r.getValue().getChangedFuture())
                 .thenRun(() -> {
+                    LOG.info("Semaphore watch '{}' triggered, instanceId={}", SEMAPHORE_NAME, instanceId);
+
                     watchFuture.set(null);
                     scheduleAttempt(0);
                 })
                 .exceptionally(ex -> {
+                    LOG.warn("Semaphore watch '{}' failed, will retry in {}s, instanceId={}",
+                            SEMAPHORE_NAME, settings.getWatchStateDelaySeconds(), instanceId, ex);
+
                     watchFuture.set(null);
                     scheduleAttempt(settings.getWatchStateDelaySeconds());
                     return null;
