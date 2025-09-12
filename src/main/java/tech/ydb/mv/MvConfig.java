@@ -56,6 +56,11 @@ public class MvConfig {
     public static final String CONF_COORD_PATH = "job.coordination.path";
 
     /**
+     * Lock timeout for job coordination in seconds.
+     */
+    public static final String CONF_COORD_TIMEOUT = "job.coordination.timeout";
+
+    /**
      * Handler setting: number of threads in the CDC reader pool.
      */
     public static final String CONF_DEF_CDC_THREADS = "job.default.cdc.threads";

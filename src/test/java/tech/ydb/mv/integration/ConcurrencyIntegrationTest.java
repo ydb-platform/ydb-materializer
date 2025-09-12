@@ -3,6 +3,7 @@ package tech.ydb.mv.integration;
 import java.util.HashMap;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.util.YdbMisc;
@@ -22,6 +23,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
         // now the work
         System.err.println("[AAA] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
         }
@@ -34,7 +36,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
 
         t1.start();
         t2.start();
-        YdbMisc.sleep(50L);
+        YdbMisc.sleep(100L);
         t1dup.start();
 
         try { t1.join(); } catch(InterruptedException ix) {}
@@ -59,7 +61,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
             if ( wc.startHandler(name) ) {
                 reportSuccess(name);
             }
-            YdbMisc.sleep(5000L);
+            YdbMisc.sleep(10000L);
         } catch(Exception ex) {
             ex.printStackTrace(System.err);
         }
