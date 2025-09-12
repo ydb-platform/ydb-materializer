@@ -103,24 +103,24 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
             runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
             var scheduler = Executors.newScheduledThreadPool(3);
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 20; i++)
                 new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1),
                         "instance_" + i, () -> concurrentQueue.add(1)).start();
 
             for (int i = 1; i <= 10; i++) {
-                pause(5000);
+                pause(15_000);
                 Assertions.assertEquals(i, concurrentQueue.size());
 
                 conn.getQueryRetryCtx().supplyResult(session -> session
                         .createQuery("UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxMode.NONE).execute()
                 ).join().getStatus().expectSuccess();
 
-                pause(5000);
+                pause(10_000);
 
                 conn.getQueryRetryCtx().supplyResult(session -> session
                         .createQuery("UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxMode.NONE).execute()
                 ).join().getStatus().expectSuccess();
-                pause(5_000);
+                pause(15_000);
             }
         }
     }

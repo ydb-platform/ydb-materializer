@@ -103,8 +103,7 @@ public class MvLocker {
         try {
             lease = session.acquireEphemeralSemaphore(name, true, timeout).join().getValue();
         } catch(Exception ex) {
-            LOG.info("Failed to acquire the semaphore {}: {}", name, ex.toString());
-            LOG.debug("Failed to acquire the semaphore {}", name, ex);
+            LOG.debug("Failed to acquire the semaphore {}: {}", name, ex.toString());
             return false;
         }
         synchronized(leases) {
