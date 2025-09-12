@@ -36,7 +36,7 @@ import tech.ydb.mv.util.YdbMisc;
  *
  * @author zinal
  */
-public class MvService {
+public class MvService implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
@@ -120,6 +120,11 @@ public class MvService {
             dictionaryManager.stop();
             dictionaryManager = null;
         }
+    }
+
+    @Override
+    public void close() {
+        shutdown();
     }
 
     public synchronized void startDictionaryHandler() {

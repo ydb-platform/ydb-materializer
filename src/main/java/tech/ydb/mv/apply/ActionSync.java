@@ -13,6 +13,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
+import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.model.MvChangeRecord;
@@ -116,7 +117,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
     }
 
     private void runDelete(List<MvKey> items) {
-        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keysToParam(items));
+        Value<?> keys = keysToParam(items);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("DELETE FROM {}: {}", targetTableName, keys);
+        }
+        Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         // wait for the previous query to complete
         finishStatement();
         // submit the new query
@@ -141,7 +146,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
     }
 
     private void runUpsert(List<StructValue> items) {
-        Params params = Params.of(MvSqlGen.SYS_INPUT_VAR, structsToParam(items));
+        Value<?> data = structsToParam(items);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("UPSERT TO {}: {}", targetTableName, data);
+        }
+        Params params = Params.of(MvSqlGen.SYS_INPUT_VAR, data);
         // wait for the previous query to complete
         finishStatement();
         // submit the new query
