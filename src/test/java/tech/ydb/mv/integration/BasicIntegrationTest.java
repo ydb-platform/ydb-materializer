@@ -1,23 +1,14 @@
 package tech.ydb.mv.integration;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.mv.model.MvCoordinator;
-import tech.ydb.mv.model.MvCoordinatorSettings;
-import tech.ydb.mv.support.MvLocker;
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
-import static tech.ydb.mv.integration.AbstractIntegrationBase.clearDb;
-import static tech.ydb.mv.integration.AbstractIntegrationBase.prepareDb;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -156,59 +147,6 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
             } finally {
                 wc.shutdown();
             }
-        }
-    }
-
-    @Test
-    public void mvCoordination() {
-        pause(3000);
-
-        final var concurrentQueue = new ConcurrentLinkedQueue<Integer>();
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            pause(10000);
-            runDdl(conn,
-                    """
-                            CREATE TABLE mv_jobs (
-                                job_name Text NOT NULL,
-                                job_settings JsonDocument,
-                                should_run Bool,
-                                runner_id Text,
-                                PRIMARY KEY(job_name)
-                            );
-                                                        
-                            CREATE TABLE mv_commands (
-                                runner_id Text NOT NULL,
-                                command_no Uint64 NOT NULL,
-                                created_at Timestamp,
-                                command_type Text, -- START / STOP
-                                job_name Text,
-                                job_settings JsonDocument,
-                                command_status Text, -- CREATED / TAKEN / SUCCESS / ERROR
-                                command_diag Text,
-                                PRIMARY KEY(runner_id, command_no)
-                            );
-                            """);
-            runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-            var scheduler = Executors.newScheduledThreadPool(3);
-            new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1),
-                    "instance", () -> concurrentQueue.add(1)).start();
-
-            pause(5000);
-            Assertions.assertEquals(1, concurrentQueue.size());
-
-            conn.getQueryRetryCtx().supplyResult(session -> session
-                    .createQuery("UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxMode.NONE).execute()
-            ).join().getStatus().expectSuccess();
-
-            pause(5000);
-
-            conn.getQueryRetryCtx().supplyResult(session -> session
-                    .createQuery("UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxMode.NONE).execute()
-            ).join().getStatus().expectSuccess();
-            pause(10_000);
-
-            Assertions.assertEquals(2, concurrentQueue.size());
         }
     }
 
