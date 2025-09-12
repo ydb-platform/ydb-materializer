@@ -158,6 +158,8 @@ public class MvCoordinator {
 
     private void safeRelease() {
         try {
+            LOG.debug("Releasing semaphore '{}', instanceId={}", SEMAPHORE_NAME, instanceId);
+
             mvLocker.release(SEMAPHORE_NAME);
         } catch (Exception e) {
             LOG.trace("Fail release", e);
