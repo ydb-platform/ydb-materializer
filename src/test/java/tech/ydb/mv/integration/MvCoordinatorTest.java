@@ -67,6 +67,8 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                 ).join().getStatus().expectSuccess();
                 pause(5_000);
             }
+
+            runDdl(conn, "DROP TABLE mv_jobs; DROP TABLE mv_commands;");
         }
     }
 
@@ -122,6 +124,8 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                 ).join().getStatus().expectSuccess();
                 pause(15_000);
             }
+
+            runDdl(conn, "DROP TABLE mv_jobs; DROP TABLE mv_commands;");
         }
     }
 }
