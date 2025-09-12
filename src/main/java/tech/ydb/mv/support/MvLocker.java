@@ -82,12 +82,12 @@ public class MvLocker {
     }
 
     public boolean lock(String name) {
-        LOG.info("Ensuring the single `{}` job instance through lock...", name);
+        LOG.debug("Ensuring the single `{}` job instance through lock...", name);
         boolean locked = lock(name, timeout);
         if (locked) {
-            LOG.warn("Lock obtained, proceeding with the `{}` job.", name);
+            LOG.debug("Lock obtained, proceeding with the `{}` job.", name);
         } else {
-            LOG.warn("Lock failed, concurrent `{}` job instance seems to be running.", name);
+            LOG.debug("Lock failed, concurrent `{}` job instance seems to be running.", name);
         }
         return locked;
     }

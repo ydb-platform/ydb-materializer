@@ -101,7 +101,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                             );
                             """);
             runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-            var scheduler = Executors.newScheduledThreadPool(3);
+            var scheduler = Executors.newScheduledThreadPool(20);
 
             for (int i = 0; i < 20; i++)
                 new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1),
