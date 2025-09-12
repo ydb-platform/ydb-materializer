@@ -183,7 +183,6 @@
                                 <YDB_ANONYMOUS_CREDENTIALS>1</YDB_ANONYMOUS_CREDENTIALS>
                                 <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
                                 <YDB_DOCKER_IMAGE>ydbplatform/local-ydb:latest</YDB_DOCKER_IMAGE>
-                                <YDB_ENDPOINT>localhost:2136</YDB_ENDPOINT>
                             </environmentVariables>
                         </configuration>
                     </plugin>
