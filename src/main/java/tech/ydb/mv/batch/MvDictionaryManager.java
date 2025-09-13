@@ -143,7 +143,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
                 "tv", PrimitiveValue.newTimestamp(cr.getTv()),
                 "key_text", PrimitiveValue.newText(convertKey(cr.getKey())),
                 "key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),
-                "full_val", convertData(cr.getImageAfter())
+                "full_val", convertData(cr.getImageBefore(), cr.getImageAfter())
         );
     }
 
@@ -158,11 +158,11 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
         return sb.toString();
     }
 
-    private Value<?> convertData(YdbStruct ys) {
-        if (ys==null || ys.isEmpty()) {
+    private Value<?> convertData(YdbStruct before, YdbStruct after) {
+        if (after==null || after.isEmpty()) {
             return NULL_JSON;
         }
-        return PrimitiveValue.newJsonDocument(ys.toJson());
+        return PrimitiveValue.newJsonDocument(after.toJson());
     }
 
 }
