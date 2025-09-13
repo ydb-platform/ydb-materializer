@@ -1,4 +1,4 @@
-package tech.ydb.mv.dist;
+package tech.ydb.mv.mgt;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;

@@ -1,4 +1,4 @@
-package tech.ydb.mv.dist;
+package tech.ydb.mv.mgt;
 
 import java.time.Duration;
 import java.util.ArrayList;

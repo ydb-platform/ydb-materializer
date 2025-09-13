@@ -1,4 +1,4 @@
-package tech.ydb.mv.batch;
+package tech.ydb.mv.dict;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;

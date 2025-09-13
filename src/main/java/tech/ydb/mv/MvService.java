@@ -7,8 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.mv.batch.MvDictionaryManager;
-import tech.ydb.mv.dist.MvLocker;
+import tech.ydb.mv.dict.MvDictionaryManager;
+import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
