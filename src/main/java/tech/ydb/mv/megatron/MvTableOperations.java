@@ -3,12 +3,13 @@ package tech.ydb.mv.megatron;
 import java.util.ArrayList;
 import java.util.List;
 
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
+
+import tech.ydb.mv.YdbConnector;
 
 /**
  * Database operations for the distributed job management system.
@@ -47,41 +48,81 @@ public class MvTableOperations {
 
         // MV_JOBS SQL statements
         this.sqlGetAllJobs = String.format("SELECT * FROM `%s`", mvJobsTable);
-        this.sqlGetJob = String.format("SELECT * FROM `%s` WHERE job_name = ?", mvJobsTable);
+        this.sqlGetJob = String.format(
+            "$DECLARE $job_name AS Text;\n" +
+            "SELECT * FROM `%s` WHERE job_name = $job_name", mvJobsTable
+        );
         this.sqlUpsertJob = String.format(
-            "UPSERT INTO `%s` (job_name, job_settings, should_run, runner_id) VALUES (?, ?, ?, ?)",
+            "$DECLARE $job_name AS Text;\n" +
+            "$DECLARE $job_settings AS JsonDocument;\n" +
+            "$DECLARE $should_run AS Bool;\n" +
+            "$DECLARE $runner_id AS Text;\n" +
+            "UPSERT INTO `%s` (job_name, job_settings, should_run, runner_id) VALUES ($job_name, $job_settings, $should_run, $runner_id)",
             mvJobsTable
         );
 
         // MV_RUNNERS SQL statements
         this.sqlUpsertRunner = String.format(
-            "UPSERT INTO `%s` (runner_id, runner_identity, updated_at) VALUES (?, ?, ?)",
+            "$DECLARE $runner_id AS Text;\n" +
+            "$DECLARE $runner_identity AS Text;\n" +
+            "$DECLARE $updated_at AS Timestamp;\n" +
+            "UPSERT INTO `%s` (runner_id, runner_identity, updated_at) VALUES ($runner_id, $runner_identity, $updated_at)",
             mvRunnersTable
         );
         this.sqlGetAllRunners = String.format("SELECT * FROM `%s`", mvRunnersTable);
-        this.sqlDeleteRunner = String.format("DELETE FROM `%s` WHERE runner_id = ?", mvRunnersTable);
+        this.sqlDeleteRunner = String.format(
+            "$DECLARE $runner_id AS Text;\n" +
+            "DELETE FROM `%s` WHERE runner_id = $runner_id", mvRunnersTable
+        );
 
         // MV_RUNNER_JOBS SQL statements
         this.sqlUpsertRunnerJob = String.format(
-            "UPSERT INTO `%s` (runner_id, job_name, job_settings, started_at) VALUES (?, ?, ?, ?)",
+            "$DECLARE $runner_id AS Text;\n" +
+            "$DECLARE $job_name AS Text;\n" +
+            "$DECLARE $job_settings AS JsonDocument;\n" +
+            "$DECLARE $started_at AS Timestamp;\n" +
+            "UPSERT INTO `%s` (runner_id, job_name, job_settings, started_at) VALUES ($runner_id, $job_name, $job_settings, $started_at)",
             mvRunnerJobsTable
         );
-        this.sqlGetRunnerJobs = String.format("SELECT * FROM `%s` WHERE runner_id = ?", mvRunnerJobsTable);
-        this.sqlDeleteRunnerJob = String.format("DELETE FROM `%s` WHERE runner_id = ? AND job_name = ?", mvRunnerJobsTable);
-        this.sqlDeleteRunnerJobs = String.format("DELETE FROM `%s` WHERE runner_id = ?", mvRunnerJobsTable);
+        this.sqlGetRunnerJobs = String.format(
+            "$DECLARE $runner_id AS Text;\n" +
+            "SELECT * FROM `%s` WHERE runner_id = $runner_id", mvRunnerJobsTable
+        );
+        this.sqlDeleteRunnerJob = String.format(
+            "$DECLARE $runner_id AS Text;\n" +
+            "$DECLARE $job_name AS Text;\n" +
+            "DELETE FROM `%s` WHERE runner_id = $runner_id AND job_name = $job_name", mvRunnerJobsTable
+        );
+        this.sqlDeleteRunnerJobs = String.format(
+            "$DECLARE $runner_id AS Text;\n" +
+            "DELETE FROM `%s` WHERE runner_id = $runner_id", mvRunnerJobsTable
+        );
 
         // MV_COMMANDS SQL statements
         this.sqlCreateCommand = String.format(
+            "$DECLARE $runner_id AS Text;\n" +
+            "$DECLARE $command_no AS Uint64;\n" +
+            "$DECLARE $created_at AS Timestamp;\n" +
+            "$DECLARE $command_type AS Text;\n" +
+            "$DECLARE $job_name AS Text;\n" +
+            "$DECLARE $job_settings AS JsonDocument;\n" +
+            "$DECLARE $command_status AS Text;\n" +
+            "$DECLARE $command_diag AS Text;\n" +
             "INSERT INTO `%s` (runner_id, command_no, created_at, command_type, job_name, job_settings, command_status, command_diag) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES ($runner_id, $command_no, $created_at, $command_type, $job_name, $job_settings, $command_status, $command_diag)",
             mvCommandsTable
         );
         this.sqlGetCommandsForRunner = String.format(
-            "SELECT * FROM `%s` WHERE runner_id = ? AND command_status IN ('CREATED', 'TAKEN') ORDER BY command_no",
+            "$DECLARE $runner_id AS Text;\n" +
+            "SELECT * FROM `%s` WHERE runner_id = $runner_id AND command_status IN ('CREATED', 'TAKEN') ORDER BY command_no",
             mvCommandsTable
         );
         this.sqlUpdateCommandStatus = String.format(
-            "UPDATE `%s` SET command_status = ?, command_diag = ? WHERE runner_id = ? AND command_no = ?",
+            "$DECLARE $command_status AS Text;\n" +
+            "$DECLARE $command_diag AS Text;\n" +
+            "$DECLARE $runner_id AS Text;\n" +
+            "$DECLARE $command_no AS Uint64;\n" +
+            "UPDATE `%s` SET command_status = $command_status, command_diag = $command_diag WHERE runner_id = $runner_id AND command_no = $command_no",
             mvCommandsTable
         );
     }
@@ -104,7 +145,7 @@ public class MvTableOperations {
 
     public MvJobInfo getJob(String jobName) {
         try {
-            QueryReader reader = ydb.sqlRead(sqlGetJob, Params.of("job_name", PrimitiveValue.newText(jobName)));
+            QueryReader reader = ydb.sqlRead(sqlGetJob, Params.of("$job_name", PrimitiveValue.newText(jobName)));
             ResultSetReader resultSet = reader.getResultSet(0);
             if (resultSet.next()) {
                 return parseJobInfo(resultSet);
@@ -119,12 +160,12 @@ public class MvTableOperations {
     public void upsertJob(MvJobInfo job) {
         try {
             ydb.sqlWrite(sqlUpsertJob, Params.of(
-                "job_name", PrimitiveValue.newText(job.getJobName()),
-                "job_settings", job.getJobSettings() != null ?
+                "$job_name", PrimitiveValue.newText(job.getJobName()),
+                "$job_settings", job.getJobSettings() != null ?
                     PrimitiveValue.newJsonDocument(job.getJobSettings()) :
                     PrimitiveValue.newJsonDocument("null"),
-                "should_run", PrimitiveValue.newBool(job.isShouldRun()),
-                "runner_id", job.getRunnerId() != null ?
+                "$should_run", PrimitiveValue.newBool(job.isShouldRun()),
+                "$runner_id", job.getRunnerId() != null ?
                     PrimitiveValue.newText(job.getRunnerId()) :
                     PrimitiveValue.newText("")
             ));
@@ -138,9 +179,9 @@ public class MvTableOperations {
     public void upsertRunner(MvRunnerInfo runner) {
         try {
             ydb.sqlWrite(sqlUpsertRunner, Params.of(
-                "runner_id", PrimitiveValue.newText(runner.getRunnerId()),
-                "runner_identity", PrimitiveValue.newText(runner.getRunnerIdentity()),
-                "updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
+                "$runner_id", PrimitiveValue.newText(runner.getRunnerId()),
+                "$runner_identity", PrimitiveValue.newText(runner.getRunnerIdentity()),
+                "$updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
             ));
         } catch (Exception ex) {
             LOG.error("Failed to upsert runner {}", runner.getRunnerId(), ex);
@@ -165,7 +206,7 @@ public class MvTableOperations {
 
     public void deleteRunner(String runnerId) {
         try {
-            ydb.sqlWrite(sqlDeleteRunner, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            ydb.sqlWrite(sqlDeleteRunner, Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
         } catch (Exception ex) {
             LOG.error("Failed to delete runner {}", runnerId, ex);
             throw new RuntimeException("Failed to delete runner " + runnerId, ex);
@@ -176,12 +217,12 @@ public class MvTableOperations {
     public void upsertRunnerJob(MvRunnerJobInfo runnerJob) {
         try {
             ydb.sqlWrite(sqlUpsertRunnerJob, Params.of(
-                "runner_id", PrimitiveValue.newText(runnerJob.getRunnerId()),
-                "job_name", PrimitiveValue.newText(runnerJob.getJobName()),
-                "job_settings", runnerJob.getJobSettings() != null ?
+                "$runner_id", PrimitiveValue.newText(runnerJob.getRunnerId()),
+                "$job_name", PrimitiveValue.newText(runnerJob.getJobName()),
+                "$job_settings", runnerJob.getJobSettings() != null ?
                     PrimitiveValue.newJsonDocument(runnerJob.getJobSettings()) :
                     PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                "started_at", PrimitiveValue.newTimestamp(runnerJob.getStartedAt())
+                "$started_at", PrimitiveValue.newTimestamp(runnerJob.getStartedAt())
             ));
         } catch (Exception ex) {
             LOG.error("Failed to upsert runner job {}/{}", runnerJob.getRunnerId(), runnerJob.getJobName(), ex);
@@ -191,7 +232,7 @@ public class MvTableOperations {
 
     public List<MvRunnerJobInfo> getRunnerJobs(String runnerId) {
         try {
-            QueryReader reader = ydb.sqlRead(sqlGetRunnerJobs, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            QueryReader reader = ydb.sqlRead(sqlGetRunnerJobs, Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
             ResultSetReader resultSet = reader.getResultSet(0);
             List<MvRunnerJobInfo> jobs = new ArrayList<>();
             while (resultSet.next()) {
@@ -207,8 +248,8 @@ public class MvTableOperations {
     public void deleteRunnerJob(String runnerId, String jobName) {
         try {
             ydb.sqlWrite(sqlDeleteRunnerJob, Params.of(
-                "runner_id", PrimitiveValue.newText(runnerId),
-                "job_name", PrimitiveValue.newText(jobName)
+                "$runner_id", PrimitiveValue.newText(runnerId),
+                "$job_name", PrimitiveValue.newText(jobName)
             ));
         } catch (Exception ex) {
             LOG.error("Failed to delete runner job {}/{}", runnerId, jobName, ex);
@@ -218,7 +259,7 @@ public class MvTableOperations {
 
     public void deleteRunnerJobs(String runnerId) {
         try {
-            ydb.sqlWrite(sqlDeleteRunnerJobs, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            ydb.sqlWrite(sqlDeleteRunnerJobs, Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
         } catch (Exception ex) {
             LOG.error("Failed to delete runner jobs for {}", runnerId, ex);
             throw new RuntimeException("Failed to delete runner jobs for " + runnerId, ex);
@@ -229,18 +270,18 @@ public class MvTableOperations {
     public void createCommand(MvCommand command) {
         try {
             ydb.sqlWrite(sqlCreateCommand, Params.of(
-                "runner_id", PrimitiveValue.newText(command.getRunnerId()),
-                "command_no", PrimitiveValue.newUint64(command.getCommandNo()),
-                "created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
-                "command_type", PrimitiveValue.newText(command.getCommandType()),
-                "job_name", command.getJobName() != null ?
+                "$runner_id", PrimitiveValue.newText(command.getRunnerId()),
+                "$command_no", PrimitiveValue.newUint64(command.getCommandNo()),
+                "$created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
+                "$command_type", PrimitiveValue.newText(command.getCommandType()),
+                "$job_name", command.getJobName() != null ?
                     PrimitiveValue.newText(command.getJobName()) :
                     PrimitiveValue.newText(""),
-                "job_settings", command.getJobSettings() != null ?
+                "$job_settings", command.getJobSettings() != null ?
                     PrimitiveValue.newJsonDocument(command.getJobSettings()) :
                     PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                "command_status", PrimitiveValue.newText(command.getCommandStatus()),
-                "command_diag", command.getCommandDiag() != null ?
+                "$command_status", PrimitiveValue.newText(command.getCommandStatus()),
+                "$command_diag", command.getCommandDiag() != null ?
                     PrimitiveValue.newText(command.getCommandDiag()) :
                     PrimitiveType.Text.makeOptional().emptyValue()
             ));
@@ -253,7 +294,7 @@ public class MvTableOperations {
     public List<MvCommand> getCommandsForRunner(String runnerId) {
         try {
             QueryReader reader = ydb.sqlRead(sqlGetCommandsForRunner,
-                    Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+                    Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
             ResultSetReader resultSet = reader.getResultSet(0);
             List<MvCommand> commands = new ArrayList<>();
             while (resultSet.next()) {
@@ -269,10 +310,10 @@ public class MvTableOperations {
     public void updateCommandStatus(String runnerId, long commandNo, String status, String diag) {
         try {
             ydb.sqlWrite(sqlUpdateCommandStatus, Params.of(
-                "command_status", PrimitiveValue.newText(status),
-                "command_diag", diag != null ? PrimitiveValue.newText(diag) : PrimitiveValue.newText(""),
-                "runner_id", PrimitiveValue.newText(runnerId),
-                "command_no", PrimitiveValue.newUint64(commandNo)
+                "$command_status", PrimitiveValue.newText(status),
+                "$command_diag", diag != null ? PrimitiveValue.newText(diag) : PrimitiveValue.newText(""),
+                "$runner_id", PrimitiveValue.newText(runnerId),
+                "$command_no", PrimitiveValue.newUint64(commandNo)
             ));
         } catch (Exception ex) {
             LOG.error("Failed to update command status {}/{}", runnerId, commandNo, ex);
