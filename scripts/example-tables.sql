@@ -20,7 +20,7 @@ CREATE TABLE `mv/dict_log` (
    tv Timestamp NOT NULL,
    key_text Text NOT NULL,
    key_val JsonDocument,
-   full_val JsonDocument,
+   diff_val JsonDocument,
    PRIMARY KEY(src, key_text, tv)
 );
 

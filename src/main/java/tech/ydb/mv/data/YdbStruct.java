@@ -293,7 +293,10 @@ public class YdbStruct implements Serializable {
     }
 
     public String toJson() {
-        JsonObject root = new JsonObject();
+        return appendJson(new JsonObject()).toString();
+    }
+
+    public JsonObject appendJson(JsonObject root) {
         for (Map.Entry<String, Comparable<?>> me : values.entrySet()) {
             if (me.getValue()==null) {
                 continue; // skipping null values
@@ -308,7 +311,7 @@ public class YdbStruct implements Serializable {
             jme.addProperty("v", ti.fnOut.apply(me.getValue()));
             root.add(me.getKey(), jme);
         }
-        return root.toString();
+        return root;
     }
 
     @Override

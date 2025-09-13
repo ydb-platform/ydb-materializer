@@ -1,9 +1,15 @@
 package tech.ydb.mv.dict;
 
-import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
+
+import com.google.common.collect.Lists;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.ListValue;
@@ -14,16 +20,16 @@ import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.data.MvKey;
-import tech.ydb.mv.data.YdbStruct;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal table.
@@ -127,7 +133,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
                 .map(cr -> convertRecord(cr))
                 .toArray(StructValue[]::new);
         String sql = "DECLARE $input AS List<Struct<src:Text, tv:Timestamp, "
-                + "key_text:Text, key_val:JsonDocument, full_val:JsonDocument>>; "
+                + "key_text:Text, key_val:JsonDocument, diff_val:JsonDocument>>; "
                 + "UPSERT INTO `" + historyTable + "` SELECT * FROM AS_TABLE($input);";
         try {
             conn.sqlWrite(sql, Params.of("$input", ListValue.of(values)));
@@ -143,7 +149,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
                 "tv", PrimitiveValue.newTimestamp(cr.getTv()),
                 "key_text", PrimitiveValue.newText(convertKey(cr.getKey())),
                 "key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),
-                "full_val", convertData(cr.getImageBefore(), cr.getImageAfter())
+                "diff_val", convertData(cr.getImageBefore(), cr.getImageAfter())
         );
     }
 
@@ -162,7 +168,40 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
         if (after==null || after.isEmpty()) {
             return NULL_JSON;
         }
-        return PrimitiveValue.newJsonDocument(after.toJson());
+        if (before == null) {
+            return fieldNamesToJson(after.keySet());
+        }
+        return fieldNamesToJson(calcDiffNames(before, after));
+    }
+
+    private Value<?> fieldNamesToJson(Collection<String> fields) {
+        TreeSet<String> fieldNames = new TreeSet<>(fields);
+        JsonArray array = new JsonArray(fieldNames.size());
+        for (String name : fieldNames) {
+            array.add(name);
+        }
+        JsonObject root = new JsonObject();
+        root.add("f", array);
+        return PrimitiveValue.newJsonDocument(root.toString());
+    }
+
+    private Collection<String> calcDiffNames(YdbStruct before, YdbStruct after) {
+        HashSet<String> output = new HashSet<>();
+        for (String name : after.keySet()) {
+            var va = after.get(name);
+            var vb = before.get(name);
+            if (! Objects.equals(va, vb)) {
+                output.add(name);
+            }
+        }
+        for (String name : before.keySet()) {
+            var va = after.get(name);
+            var vb = before.get(name);
+            if (! Objects.equals(va, vb)) {
+                output.add(name);
+            }
+        }
+        return output;
     }
 
 }

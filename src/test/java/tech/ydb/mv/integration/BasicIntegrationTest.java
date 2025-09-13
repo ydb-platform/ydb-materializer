@@ -68,6 +68,10 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
         clearDb();
     }
 
+    private void standardPause() {
+        pause(3000L);
+    }
+
     @Test
     public void basicIntegrationTest() {
         // now the work
@@ -96,28 +100,28 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 System.err.println("[AAA] Starting the services...");
                 wc.startHandlers();
                 wc.startDictionaryHandler();
-                pause(2000L);
+                standardPause();
                 System.err.println("[AAA] Checking the view output (should be empty)...");
                 int diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
                 runDml(conn, WRITE_INITIAL);
-                pause(2000L);
+                standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating some rows...");
                 runDml(conn, WRITE_UP1);
-                pause(2000L);
+                standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
                 runDml(conn, WRITE_UP2);
-                pause(2000L);
+                standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
@@ -130,7 +134,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 clearMV(conn);
                 System.err.println("[AAA] Starting the full refresh of MV...");
                 refreshMV(wc);
-                pause(2000L);
+                standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 Assertions.assertEquals(0, diffCount);
@@ -140,7 +144,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
                 System.err.println("[AAA] Updating just dictionary rows...");
                 runDml(conn, WRITE_UP3);
-                pause(2000L);
+                standardPause();
 
                 System.err.println("[AAA] Checking the dictionary history again...");
                 checkDictHist(conn);
@@ -216,7 +220,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void checkDictHist(YdbConnector conn) {
-        var rs = conn.sqlRead("SELECT full_val, key_text, tv "
+        var rs = conn.sqlRead("SELECT diff_val, key_text, tv "
                         + "FROM `test1/dict_hist` ORDER BY tv, key_text;",
                 Params.empty()).getResultSet(0);
         while (rs.next()) {
