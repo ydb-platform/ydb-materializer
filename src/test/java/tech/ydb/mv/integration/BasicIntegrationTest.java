@@ -1,5 +1,8 @@
 package tech.ydb.mv.integration;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -7,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
+
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvScanSettings;
@@ -16,6 +20,8 @@ import tech.ydb.mv.parser.MvSqlGen;
 /**
  * colima start --arch aarch64 --vm-type=vz --vz-rosetta (or) colima start
  * --arch amd64
+ *
+ * while mvn test -Dtest=BasicIntegrationTest; do sleep 0.5s; done
  *
  * @author zinal
  */
@@ -117,6 +123,10 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
+                if (diffCount > 0) {
+                    System.out.println("********* dumping threads **********");
+                    System.out.println(generateThreadDump());
+                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
@@ -124,6 +134,10 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
+                if (diffCount > 0) {
+                    System.out.println("********* dumping threads **********");
+                    System.out.println(generateThreadDump());
+                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Checking the topic consumer positions...");
@@ -137,6 +151,10 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
+                if (diffCount > 0) {
+                    System.out.println("********* dumping threads **********");
+                    System.out.println(generateThreadDump());
+                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Checking the dictionary history...");
@@ -233,6 +251,27 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                     .get().asData().getJsonDocument());
         }
         System.out.println("--- dictionary comparison end ---");
+    }
+
+    public static String generateThreadDump() {
+        final StringBuilder dump = new StringBuilder();
+        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
+        for (ThreadInfo threadInfo : threadInfos) {
+            dump.append('"');
+            dump.append(threadInfo.getThreadName());
+            dump.append("\" ");
+            final Thread.State state = threadInfo.getThreadState();
+            dump.append("\n   java.lang.Thread.State: ");
+            dump.append(state);
+            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
+            for (final StackTraceElement stackTraceElement : stackTraceElements) {
+                dump.append("\n        at ");
+                dump.append(stackTraceElement);
+            }
+            dump.append("\n\n");
+        }
+        return dump.toString();
     }
 
 }
