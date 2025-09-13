@@ -21,6 +21,7 @@ import tech.ydb.mv.model.MvInput;
  * @author zinal
  */
 public class MvCdcFeeder {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
     private final MvCdcAdapter adapter;
@@ -36,12 +37,12 @@ public class MvCdcFeeder {
         this.ydb = ydb;
         this.sink = sink;
         this.executor = Executors.newFixedThreadPool(
-                adapter.getCdcReaderThreads(), new ConfigureThreads());
+                adapter.getCdcReaderThreads(), new ConfigureThreads(adapter));
         LOG.info("Started {} CDC reader threads for handler `{}`",
                 adapter.getCdcReaderThreads(),
                 adapter.getFeederName());
     }
-    
+
     public String getName() {
         return adapter.getFeederName();
     }
@@ -50,7 +51,7 @@ public class MvCdcFeeder {
         if (reader.get() != null) {
             return;
         }
-        if (! adapter.isRunning()) {
+        if (!adapter.isRunning()) {
             return;
         }
         LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
@@ -66,7 +67,7 @@ public class MvCdcFeeder {
             return;
         }
         AsyncReader theReader = reader.getAndSet(null);
-        if (theReader!=null) {
+        if (theReader != null) {
             LOG.info("Stopping the CDC reader for feeder `{}`", adapter.getFeederName());
             theReader.shutdown();
         }
@@ -82,7 +83,7 @@ public class MvCdcFeeder {
 
     private AsyncReader buildReader() {
         ReaderSettings.Builder builder = ReaderSettings.newBuilder()
-                .setDecompressionExecutor(Runnable::run)   // CDC doesn't use compression, skip thread switching
+                .setDecompressionExecutor(Runnable::run) // CDC doesn't use compression, skip thread switching
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(adapter.getConsumerName());
         for (MvInput mi : sink.getInputs()) {
@@ -107,13 +108,19 @@ public class MvCdcFeeder {
     }
 
     private static class ConfigureThreads implements ThreadFactory {
+
         private final AtomicInteger threadNumber = new AtomicInteger(1);
+        private final MvCdcAdapter adapter;
+
+        public ConfigureThreads(MvCdcAdapter adapter) {
+            this.adapter = adapter;
+        }
 
         @Override
         public Thread newThread(Runnable r) {
             Thread t = new Thread(Thread.currentThread().getThreadGroup(), r,
-                                  "ydb-cdc-worker-" + threadNumber.getAndIncrement(),
-                                  0);
+                    "mv-cdc-worker-" + adapter.getFeederName()
+                    + "-" + threadNumber.getAndIncrement(), 0);
             t.setDaemon(false);
             t.setPriority(Thread.NORM_PRIORITY);
             return t;

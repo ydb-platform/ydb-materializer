@@ -1,4 +1,4 @@
-package tech.ydb.mv.feeder;
+package tech.ydb.mv.dict;
 
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvDictionarySettings;

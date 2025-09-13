@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.mv.dict.MvDictionaryManager;
+import tech.ydb.mv.dict.MvDictionaryLogger;
 import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
@@ -33,7 +33,7 @@ public class MvService implements AutoCloseable {
     private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
-    private volatile MvDictionaryManager dictionaryManager = null;
+    private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
     private final RefreshTask refreshTask = new RefreshTask();
     private volatile Thread refreshThread = null;
@@ -120,7 +120,7 @@ public class MvService implements AutoCloseable {
         if (dictionaryManager != null) {
             return;
         }
-        dictionaryManager = new MvDictionaryManager(metadata, ydb, dictionarySettings.get());
+        dictionaryManager = new MvDictionaryLogger(metadata, ydb, dictionarySettings.get());
         dictionaryManager.start();
     }
 
@@ -150,7 +150,7 @@ public class MvService implements AutoCloseable {
     public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
         if (refreshThread==null || !refreshThread.isAlive()) {
             refreshThread = new Thread(refreshTask);
-            refreshThread.setName("MvServiceRefreshThread");
+            refreshThread.setName("mv-refresh-partitions");
             refreshThread.setDaemon(true);
             refreshThread.start();
         }

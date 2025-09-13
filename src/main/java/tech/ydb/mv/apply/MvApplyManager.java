@@ -116,6 +116,10 @@ public class MvApplyManager implements MvCdcSink {
         }
     }
 
+    public String getJobName() {
+        return context.getMetadata().getName();
+    }
+
     public boolean isRunning() {
         return context.isRunning();
     }

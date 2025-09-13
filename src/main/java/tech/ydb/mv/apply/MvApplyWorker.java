@@ -37,7 +37,8 @@ class MvApplyWorker implements Runnable {
 
     public void start() {
         Thread t = new Thread(this);
-        t.setName("ydb-mv-apply-worker-" + String.valueOf(workerNumber));
+        t.setName("mv-apply-worker-" + owner.getJobName()
+                + "-" + String.valueOf(workerNumber));
         t.setDaemon(false);
         Thread old = thread.getAndSet(t);
         if (old!=null && old.isAlive()) {

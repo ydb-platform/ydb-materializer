@@ -37,8 +37,8 @@ import tech.ydb.mv.model.MvInput;
  *
  * @author zinal
  */
-public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryManager.class);
+public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryLogger.class);
 
     private static final Value<?> NULL_JSON = PrimitiveType.JsonDocument.makeOptional().emptyValue();
 
@@ -49,7 +49,7 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
     // initially stopped -> null
     private final AtomicReference<MvCdcFeeder> feeder = new AtomicReference<>();
 
-    public MvDictionaryManager(MvMetadata context, YdbConnector conn,
+    public MvDictionaryLogger(MvMetadata context, YdbConnector conn,
             MvDictionarySettings settings) {
         this.context = context;
         this.conn = conn;

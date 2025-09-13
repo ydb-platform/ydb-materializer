@@ -67,7 +67,7 @@ public class MvScanFeeder {
         }
         Thread thread = new Thread(() -> safeRun());
         thread.setDaemon(true);
-        thread.setName("ydb-scan-feeder-"
+        thread.setName("mv-scan-feeder-"
                 + job.getMetadata().getName()
                 + "-" + target.getName());
         thread.start();
