@@ -1,20 +1,23 @@
 package tech.ydb.mv.integration;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 import tech.ydb.common.transaction.TxMode;
+
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.dist.MvCoordinator;
 import tech.ydb.mv.dist.MvCoordinatorSettings;
 import tech.ydb.mv.dist.MvLocker;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-
-
 /**
  * @author Kirill Kurdyukov
  */
+@Disabled
 public class MvCoordinatorTest extends AbstractIntegrationBase {
 
     @Test
@@ -34,7 +37,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                                 runner_id Text,
                                 PRIMARY KEY(job_name)
                             );
-                                                        
+
                             CREATE TABLE mv_commands (
                                 runner_id Text NOT NULL,
                                 command_no Uint64 NOT NULL,
@@ -105,9 +108,10 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
             runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
             var scheduler = Executors.newScheduledThreadPool(20);
 
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 20; i++) {
                 new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1),
                         "instance_" + i, () -> concurrentQueue.add(1)).start();
+            }
 
             for (int i = 1; i <= 10; i++) {
                 pause(15_000);

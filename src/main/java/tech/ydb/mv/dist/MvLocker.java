@@ -101,13 +101,13 @@ public class MvLocker {
                     .join().getValue();
         } catch(Exception ex) {
             LOG.debug("Failed to acquire the semaphore {}", name, ex);
-            LOG.info("Lock failed, concurrent `{}` job instance seems to be running.", name);
+            LOG.info("Failed to obtain lock `{}`, concurrent job instance seems to be running.", name);
             return false;
         }
         synchronized(leases) {
             leases.put(name, lease);
         }
-        LOG.warn("Lock obtained, proceeding with the `{}` job.", name);
+        LOG.info("Lock `{}` obtained.", name);
         return true;
     }
 
