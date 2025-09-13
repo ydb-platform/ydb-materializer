@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.data.YdbConv;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
@@ -284,40 +283,40 @@ public class MvTableOperations {
     // Helper methods for parsing query results
     private MvJobInfo parseJobInfo(ResultSetReader reader) {
         return new MvJobInfo(
-            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
-            (Boolean) YdbConv.toPojo(reader.getColumn("should_run").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue())
+            reader.getColumn("job_name").getText(),
+            reader.getColumn("job_settings").getText(),
+            reader.getColumn("should_run").getBool(),
+            reader.getColumn("runner_id").getText()
         );
     }
 
     private MvRunnerInfo parseRunnerInfo(ResultSetReader reader) {
         return new MvRunnerInfo(
-            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("runner_identity").getValue()),
-            (java.time.Instant) YdbConv.toPojo(reader.getColumn("updated_at").getValue())
+            reader.getColumn("runner_id").getText(),
+            reader.getColumn("runner_identity").getText(),
+            reader.getColumn("updated_at").getTimestamp()
         );
     }
 
     private MvRunnerJobInfo parseRunnerJobInfo(ResultSetReader reader) {
         return new MvRunnerJobInfo(
-            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
-            (java.time.Instant) YdbConv.toPojo(reader.getColumn("started_at").getValue())
+            reader.getColumn("runner_id").getText(),
+            reader.getColumn("job_name").getText(),
+            reader.getColumn("job_settings").getText(),
+            reader.getColumn("started_at").getTimestamp()
         );
     }
 
     private MvCommand parseCommandInfo(ResultSetReader reader) {
         return new MvCommand(
-            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
-            (Long) YdbConv.toPojo(reader.getColumn("command_no").getValue()),
-            (java.time.Instant) YdbConv.toPojo(reader.getColumn("created_at").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("command_type").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("command_status").getValue()),
-            (String) YdbConv.toPojo(reader.getColumn("command_diag").getValue())
+            reader.getColumn("runner_id").getText(),
+            reader.getColumn("command_no").getInt64(),
+            reader.getColumn("created_at").getTimestamp(),
+            reader.getColumn("command_type").getText(),
+            reader.getColumn("job_name").getText(),
+            reader.getColumn("job_settings").getText(),
+            reader.getColumn("command_status").getText(),
+            reader.getColumn("command_diag").getText()
         );
     }
 

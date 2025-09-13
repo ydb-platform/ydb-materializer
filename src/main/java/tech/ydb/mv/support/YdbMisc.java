@@ -22,4 +22,16 @@ public class YdbMisc {
         return sleep(ThreadLocalRandom.current().nextLong(minMillis, maxMillis+1));
     }
 
+    /**
+     * Convert exception to string with full stack trace.
+     * @param ex Exception
+     * @return Formatted stack trace
+     */
+    public static String getStackTrace(Throwable ex) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+        ex.printStackTrace(pw);
+        return sw.toString();
+    }
+
 }

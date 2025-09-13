@@ -207,7 +207,7 @@ public class MvRunner implements AutoCloseable {
             LOG.error("Exception during command execution: {} for job: {}",
                     command.getCommandType(), command.getJobName(), ex);
             tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
-                    MvCommand.STATUS_ERROR, ex.getMessage());
+                    MvCommand.STATUS_ERROR, YdbMisc.getStackTrace(ex));
         }
     }
 
@@ -336,4 +336,5 @@ public class MvRunner implements AutoCloseable {
             return new HashMap<>(localJobs);
         }
     }
+
 }
