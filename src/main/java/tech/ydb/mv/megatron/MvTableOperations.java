@@ -1,0 +1,340 @@
+package tech.ydb.mv.megatron;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.data.YdbConv;
+import tech.ydb.query.tools.QueryReader;
+import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.query.Params;
+import tech.ydb.table.values.PrimitiveValue;
+
+/**
+ * Database operations for the distributed job management system.
+ * Handles all YDB table interactions for mv_jobs, mv_runners, mv_runner_jobs, and mv_commands tables.
+ *
+ * @author zinal
+ */
+public class MvTableOperations {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvTableOperations.class);
+
+    private final YdbConnector ydb;
+
+    // Pre-generated SQL statements
+    private final String sqlGetAllJobs;
+    private final String sqlGetJob;
+    private final String sqlUpsertJob;
+    private final String sqlUpsertRunner;
+    private final String sqlGetAllRunners;
+    private final String sqlDeleteRunner;
+    private final String sqlUpsertRunnerJob;
+    private final String sqlGetRunnerJobs;
+    private final String sqlDeleteRunnerJob;
+    private final String sqlDeleteRunnerJobs;
+    private final String sqlCreateCommand;
+    private final String sqlGetCommandsForRunner;
+    private final String sqlUpdateCommandStatus;
+
+    public MvTableOperations(YdbConnector ydb, MvBatchSettings settings) {
+        this.ydb = ydb;
+
+        // Generate all SQL statements in constructor
+        String mvJobsTable = settings.getFullMvJobsTable(ydb.getDatabase());
+        String mvRunnersTable = settings.getFullMvRunnersTable(ydb.getDatabase());
+        String mvRunnerJobsTable = settings.getFullMvRunnerJobsTable(ydb.getDatabase());
+        String mvCommandsTable = settings.getFullMvCommandsTable(ydb.getDatabase());
+
+        // MV_JOBS SQL statements
+        this.sqlGetAllJobs = String.format("SELECT * FROM `%s`", mvJobsTable);
+        this.sqlGetJob = String.format("SELECT * FROM `%s` WHERE job_name = ?", mvJobsTable);
+        this.sqlUpsertJob = String.format(
+            "UPSERT INTO `%s` (job_name, job_settings, should_run, runner_id) VALUES (?, ?, ?, ?)",
+            mvJobsTable
+        );
+
+        // MV_RUNNERS SQL statements
+        this.sqlUpsertRunner = String.format(
+            "UPSERT INTO `%s` (runner_id, runner_identity, updated_at) VALUES (?, ?, ?)",
+            mvRunnersTable
+        );
+        this.sqlGetAllRunners = String.format("SELECT * FROM `%s`", mvRunnersTable);
+        this.sqlDeleteRunner = String.format("DELETE FROM `%s` WHERE runner_id = ?", mvRunnersTable);
+
+        // MV_RUNNER_JOBS SQL statements
+        this.sqlUpsertRunnerJob = String.format(
+            "UPSERT INTO `%s` (runner_id, job_name, job_settings, started_at) VALUES (?, ?, ?, ?)",
+            mvRunnerJobsTable
+        );
+        this.sqlGetRunnerJobs = String.format("SELECT * FROM `%s` WHERE runner_id = ?", mvRunnerJobsTable);
+        this.sqlDeleteRunnerJob = String.format("DELETE FROM `%s` WHERE runner_id = ? AND job_name = ?", mvRunnerJobsTable);
+        this.sqlDeleteRunnerJobs = String.format("DELETE FROM `%s` WHERE runner_id = ?", mvRunnerJobsTable);
+
+        // MV_COMMANDS SQL statements
+        this.sqlCreateCommand = String.format(
+            "INSERT INTO `%s` (runner_id, command_no, created_at, command_type, job_name, job_settings, command_status, command_diag) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            mvCommandsTable
+        );
+        this.sqlGetCommandsForRunner = String.format(
+            "SELECT * FROM `%s` WHERE runner_id = ? AND command_status IN ('CREATED', 'TAKEN') ORDER BY command_no",
+            mvCommandsTable
+        );
+        this.sqlUpdateCommandStatus = String.format(
+            "UPDATE `%s` SET command_status = ?, command_diag = ? WHERE runner_id = ? AND command_no = ?",
+            mvCommandsTable
+        );
+    }
+
+    // MV_JOBS operations
+    public List<MvJobInfo> getAllJobs() {
+        try {
+            QueryReader reader = ydb.sqlRead(sqlGetAllJobs, Params.empty());
+            ResultSetReader resultSet = reader.getResultSet(0);
+            List<MvJobInfo> jobs = new ArrayList<>();
+            while (resultSet.next()) {
+                jobs.add(parseJobInfo(resultSet));
+            }
+            return jobs;
+        } catch (Exception ex) {
+            LOG.error("Failed to get all jobs", ex);
+            throw new RuntimeException("Failed to get all jobs", ex);
+        }
+    }
+
+    public MvJobInfo getJob(String jobName) {
+        try {
+            QueryReader reader = ydb.sqlRead(sqlGetJob, Params.of("job_name", PrimitiveValue.newText(jobName)));
+            ResultSetReader resultSet = reader.getResultSet(0);
+            if (resultSet.next()) {
+                return parseJobInfo(resultSet);
+            }
+            return null;
+        } catch (Exception ex) {
+            LOG.error("Failed to get job {}", jobName, ex);
+            throw new RuntimeException("Failed to get job " + jobName, ex);
+        }
+    }
+
+    public void upsertJob(MvJobInfo job) {
+        try {
+            ydb.sqlWrite(sqlUpsertJob, Params.of(
+                "job_name", PrimitiveValue.newText(job.getJobName()),
+                "job_settings", job.getJobSettings() != null ?
+                    PrimitiveValue.newJsonDocument(job.getJobSettings()) :
+                    PrimitiveValue.newJsonDocument("null"),
+                "should_run", PrimitiveValue.newBool(job.isShouldRun()),
+                "runner_id", job.getRunnerId() != null ?
+                    PrimitiveValue.newText(job.getRunnerId()) :
+                    PrimitiveValue.newText("")
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to upsert job {}", job.getJobName(), ex);
+            throw new RuntimeException("Failed to upsert job " + job.getJobName(), ex);
+        }
+    }
+
+    // MV_RUNNERS operations
+    public void upsertRunner(MvRunnerInfo runner) {
+        try {
+            ydb.sqlWrite(sqlUpsertRunner, Params.of(
+                "runner_id", PrimitiveValue.newText(runner.getRunnerId()),
+                "runner_identity", PrimitiveValue.newText(runner.getRunnerIdentity()),
+                "updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to upsert runner {}", runner.getRunnerId(), ex);
+            throw new RuntimeException("Failed to upsert runner " + runner.getRunnerId(), ex);
+        }
+    }
+
+    public List<MvRunnerInfo> getAllRunners() {
+        try {
+            QueryReader reader = ydb.sqlRead(sqlGetAllRunners, Params.empty());
+            ResultSetReader resultSet = reader.getResultSet(0);
+            List<MvRunnerInfo> runners = new ArrayList<>();
+            while (resultSet.next()) {
+                runners.add(parseRunnerInfo(resultSet));
+            }
+            return runners;
+        } catch (Exception ex) {
+            LOG.error("Failed to get all runners", ex);
+            throw new RuntimeException("Failed to get all runners", ex);
+        }
+    }
+
+    public void deleteRunner(String runnerId) {
+        try {
+            ydb.sqlWrite(sqlDeleteRunner, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+        } catch (Exception ex) {
+            LOG.error("Failed to delete runner {}", runnerId, ex);
+            throw new RuntimeException("Failed to delete runner " + runnerId, ex);
+        }
+    }
+
+    // MV_RUNNER_JOBS operations
+    public void upsertRunnerJob(MvRunnerJobInfo runnerJob) {
+        try {
+            ydb.sqlWrite(sqlUpsertRunnerJob, Params.of(
+                "runner_id", PrimitiveValue.newText(runnerJob.getRunnerId()),
+                "job_name", PrimitiveValue.newText(runnerJob.getJobName()),
+                "job_settings", runnerJob.getJobSettings() != null ?
+                    PrimitiveValue.newJsonDocument(runnerJob.getJobSettings()) :
+                    PrimitiveValue.newJsonDocument("null"),
+                "started_at", PrimitiveValue.newTimestamp(runnerJob.getStartedAt())
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to upsert runner job {}/{}", runnerJob.getRunnerId(), runnerJob.getJobName(), ex);
+            throw new RuntimeException("Failed to upsert runner job", ex);
+        }
+    }
+
+    public List<MvRunnerJobInfo> getRunnerJobs(String runnerId) {
+        try {
+            QueryReader reader = ydb.sqlRead(sqlGetRunnerJobs, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            ResultSetReader resultSet = reader.getResultSet(0);
+            List<MvRunnerJobInfo> jobs = new ArrayList<>();
+            while (resultSet.next()) {
+                jobs.add(parseRunnerJobInfo(resultSet));
+            }
+            return jobs;
+        } catch (Exception ex) {
+            LOG.error("Failed to get runner jobs for {}", runnerId, ex);
+            throw new RuntimeException("Failed to get runner jobs for " + runnerId, ex);
+        }
+    }
+
+    public void deleteRunnerJob(String runnerId, String jobName) {
+        try {
+            ydb.sqlWrite(sqlDeleteRunnerJob, Params.of(
+                "runner_id", PrimitiveValue.newText(runnerId),
+                "job_name", PrimitiveValue.newText(jobName)
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to delete runner job {}/{}", runnerId, jobName, ex);
+            throw new RuntimeException("Failed to delete runner job", ex);
+        }
+    }
+
+    public void deleteRunnerJobs(String runnerId) {
+        try {
+            ydb.sqlWrite(sqlDeleteRunnerJobs, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+        } catch (Exception ex) {
+            LOG.error("Failed to delete runner jobs for {}", runnerId, ex);
+            throw new RuntimeException("Failed to delete runner jobs for " + runnerId, ex);
+        }
+    }
+
+    // MV_COMMANDS operations
+    public void createCommand(MvCommandInfo command) {
+        try {
+            ydb.sqlWrite(sqlCreateCommand, Params.of(
+                "runner_id", PrimitiveValue.newText(command.getRunnerId()),
+                "command_no", PrimitiveValue.newUint64(command.getCommandNo()),
+                "created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
+                "command_type", PrimitiveValue.newText(command.getCommandType()),
+                "job_name", command.getJobName() != null ?
+                    PrimitiveValue.newText(command.getJobName()) :
+                    PrimitiveValue.newText(""),
+                "job_settings", command.getJobSettings() != null ?
+                    PrimitiveValue.newJsonDocument(command.getJobSettings()) :
+                    PrimitiveValue.newJsonDocument("null"),
+                "command_status", PrimitiveValue.newText(command.getCommandStatus()),
+                "command_diag", command.getCommandDiag() != null ?
+                    PrimitiveValue.newText(command.getCommandDiag()) :
+                    PrimitiveValue.newText("")
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to create command {}/{}", command.getRunnerId(), command.getCommandNo(), ex);
+            throw new RuntimeException("Failed to create command", ex);
+        }
+    }
+
+    public List<MvCommandInfo> getCommandsForRunner(String runnerId) {
+        try {
+            QueryReader reader = ydb.sqlRead(sqlGetCommandsForRunner, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            ResultSetReader resultSet = reader.getResultSet(0);
+            List<MvCommandInfo> commands = new ArrayList<>();
+            while (resultSet.next()) {
+                commands.add(parseCommandInfo(resultSet));
+            }
+            return commands;
+        } catch (Exception ex) {
+            LOG.error("Failed to get commands for runner {}", runnerId, ex);
+            throw new RuntimeException("Failed to get commands for runner " + runnerId, ex);
+        }
+    }
+
+    public void updateCommandStatus(String runnerId, long commandNo, String status, String diag) {
+        try {
+            ydb.sqlWrite(sqlUpdateCommandStatus, Params.of(
+                "command_status", PrimitiveValue.newText(status),
+                "command_diag", diag != null ? PrimitiveValue.newText(diag) : PrimitiveValue.newText(""),
+                "runner_id", PrimitiveValue.newText(runnerId),
+                "command_no", PrimitiveValue.newUint64(commandNo)
+            ));
+        } catch (Exception ex) {
+            LOG.error("Failed to update command status {}/{}", runnerId, commandNo, ex);
+            throw new RuntimeException("Failed to update command status", ex);
+        }
+    }
+
+    public void markCommandTaken(String runnerId, long commandNo) {
+        updateCommandStatus(runnerId, commandNo, "TAKEN", null);
+    }
+
+    public void markCommandSuccess(String runnerId, long commandNo) {
+        updateCommandStatus(runnerId, commandNo, "SUCCESS", null);
+    }
+
+    public void markCommandError(String runnerId, long commandNo, String error) {
+        updateCommandStatus(runnerId, commandNo, "ERROR", error);
+    }
+
+    // Helper methods for parsing query results
+    private MvJobInfo parseJobInfo(ResultSetReader reader) {
+        return new MvJobInfo(
+            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
+            (Boolean) YdbConv.toPojo(reader.getColumn("should_run").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue())
+        );
+    }
+
+    private MvRunnerInfo parseRunnerInfo(ResultSetReader reader) {
+        return new MvRunnerInfo(
+            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("runner_identity").getValue()),
+            (java.time.Instant) YdbConv.toPojo(reader.getColumn("updated_at").getValue())
+        );
+    }
+
+    private MvRunnerJobInfo parseRunnerJobInfo(ResultSetReader reader) {
+        return new MvRunnerJobInfo(
+            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
+            (java.time.Instant) YdbConv.toPojo(reader.getColumn("started_at").getValue())
+        );
+    }
+
+    private MvCommandInfo parseCommandInfo(ResultSetReader reader) {
+        return new MvCommandInfo(
+            (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
+            (Long) YdbConv.toPojo(reader.getColumn("command_no").getValue()),
+            (java.time.Instant) YdbConv.toPojo(reader.getColumn("created_at").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("command_type").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("job_name").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("job_settings").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("command_status").getValue()),
+            (String) YdbConv.toPojo(reader.getColumn("command_diag").getValue())
+        );
+    }
+
+    /**
+     * Generate a unique command number for a runner.
+     */
+    public long generateCommandNo() {
+        return System.currentTimeMillis() * 1000 + (System.nanoTime() % 1000);
+    }
+}
