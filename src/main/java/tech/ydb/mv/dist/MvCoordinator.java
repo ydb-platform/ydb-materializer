@@ -15,8 +15,6 @@ import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.support.MvLocker;
-
 /**
  * CREATE TABLE mv_jobs ( -- в девичестве desired_state job_name Text NOT NULL,
  * -- MvHandler.getName() job_settings JsonDocument, -- сериализованный

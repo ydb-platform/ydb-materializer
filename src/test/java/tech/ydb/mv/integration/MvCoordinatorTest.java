@@ -6,7 +6,7 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.dist.MvCoordinator;
 import tech.ydb.mv.dist.MvCoordinatorSettings;
-import tech.ydb.mv.support.MvLocker;
+import tech.ydb.mv.dist.MvLocker;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;

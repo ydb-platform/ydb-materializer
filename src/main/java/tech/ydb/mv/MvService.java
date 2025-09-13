@@ -14,6 +14,7 @@ import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
 import tech.ydb.mv.apply.MvDictionaryManager;
+import tech.ydb.mv.dist.MvLocker;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvDictionarySettings;
@@ -26,7 +27,6 @@ import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvBasicValidator;
 import tech.ydb.mv.support.MvConfigReader;
-import tech.ydb.mv.support.MvLocker;
 import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.support.MvSqlPrinter;
 import tech.ydb.mv.support.YdbMisc;
