@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.SqlConstants;
 import tech.ydb.mv.support.MvIssuePrinter;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 
@@ -18,7 +18,7 @@ public class BasicParserTest {
 
     @Test
     public void parserTest1() {
-        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
         if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);
         }
@@ -178,7 +178,7 @@ public class BasicParserTest {
 
     @Test
     public void parserTest2() {
-        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
         if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);
         }
@@ -341,7 +341,7 @@ public class BasicParserTest {
 
     @Test
     public void parserErrorTest1() {
-        MvContext mc = new MvSqlParser(SqlConstants.SQL_BAD1).fill();
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_BAD1).fill();
         if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);
         }

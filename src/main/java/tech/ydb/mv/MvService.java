@@ -7,25 +7,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.core.Status;
-import tech.ydb.core.StatusCode;
-import tech.ydb.core.UnexpectedResultException;
-import tech.ydb.table.description.TableDescription;
-import tech.ydb.table.settings.DescribeTableSettings;
-
-import tech.ydb.mv.apply.MvDictionaryManager;
+import tech.ydb.mv.batch.MvDictionaryManager;
 import tech.ydb.mv.dist.MvLocker;
-import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
-import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.parser.MvBasicValidator;
+import tech.ydb.mv.parser.MvMetadataReader;
 import tech.ydb.mv.support.MvConfigReader;
 import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.support.MvSqlPrinter;
@@ -40,7 +29,7 @@ public class MvService implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
-    private final MvContext metadata;
+    private final MvMetadata metadata;
     private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
@@ -62,7 +51,7 @@ public class MvService implements AutoCloseable {
         return ydb;
     }
 
-    public MvContext getMetadata() {
+    public MvMetadata getMetadata() {
         return metadata;
     }
 
@@ -292,109 +281,11 @@ public class MvService implements AutoCloseable {
 
     private void refreshMetadata() {
         if (! metadata.isValid()) {
-            LOG.warn("Context is not valid after parsing - metadata retrieval skipped.");
-            return;
-        }
-        HashMap<String, MvTableInfo> info = new HashMap<>();
-        for (String tabname : metadata.collectTables()) {
-            MvTableInfo ti = describeTable(tabname);
-            if (ti!=null) {
-                info.put(tabname, ti);
-            }
-        }
-        linkTables(info);
-        linkColumns();
-        validate();
-    }
-
-    private void linkTables(HashMap<String, MvTableInfo> info) {
-        for (MvTarget t : metadata.getTargets().values()) {
-            t.setTableInfo(info.get(t.getName()));
-            for (MvJoinSource r : t.getSources()) {
-                r.setTableInfo(info.get(r.getTableName()));
-            }
-        }
-        for (MvHandler h : metadata.getHandlers().values()) {
-            for (MvInput i : h.getInputs().values()) {
-                i.setTableInfo(info.get(i.getTableName()));
-            }
-        }
-    }
-
-    private void linkColumns() {
-        for (MvTarget target : metadata.getTargets().values()) {
-            MvTableInfo ti = target.getTableInfo();
-            if (ti==null) {
-                LOG.warn("Incomplete metadata: Missing type information for target `{}`",
-                        target.getName());
-                continue;
-            }
-            for (MvColumn column : target.getColumns()) {
-                column.setType(ti.getColumns().get(column.getName()));
-                if (column.getType() == null) {
-                    LOG.warn("Incomplete metadata: Missing type information for target `{}`, column `{}`",
-                            target.getName());
-                }
-            }
-        }
-    }
-
-    private MvTableInfo describeTable(String tabname) {
-        String path;
-        if (tabname.startsWith("/")) {
-            path = tabname;
+            LOG.warn("Parser produced errors, metadata retrieval skipped.");
         } else {
-            path = ydb.getDatabase() + "/" + tabname;
+            LOG.info("Loading metadata and performing validation...");
+            metadata.linkAndValidate(new MvMetadataReader(ydb));
         }
-        LOG.debug("Describing table {} ...", path);
-        TableDescription desc;
-        try {
-            DescribeTableSettings dts = new DescribeTableSettings();
-            dts.setIncludeShardKeyBounds(true);
-            desc = ydb.getTableRetryCtx()
-                    .supplyResult(sess -> sess.describeTable(path, dts))
-                    .join().getValue();
-        } catch(Exception ex) {
-            if (ex instanceof UnexpectedResultException) {
-                Status status = ((UnexpectedResultException)ex).getStatus();
-                if (StatusCode.SCHEME_ERROR.equals(status.getCode())) {
-                    LOG.warn("Failed to obtain description for `{}` - table is missing or no access", path);
-                    return null;
-                }
-            }
-            LOG.warn("Failed to obtain description for table `{}`", path, ex);
-            return null;
-        }
-
-        MvTableInfo output = new MvTableInfo(tabname, path, desc);
-        grabChangefeedInfo(output);
-        return output;
-    }
-
-    private void grabChangefeedInfo(MvTableInfo ti) {
-        for (MvTableInfo.Changefeed cf : ti.getChangefeeds().values()) {
-            String topicPath = ydb.fullCdcTopicName(ti.getName(), cf.getName());
-            var topicDesc = ydb.getTopicClient().describeTopic(topicPath).join().getValue();
-            for ( var consumer : topicDesc.getConsumers() ) {
-                cf.getConsumers().add(consumer.getName());
-            }
-        }
-    }
-
-    private boolean validate() {
-        if (! metadata.isValid()) {
-            LOG.warn("Context already invalid, validation skipped.");
-            return false;
-        }
-        boolean valid = new MvBasicValidator(metadata).validate();
-        if (! valid) {
-            return false;
-        }
-        valid = new MvSqlValidator(metadata, ydb).validate();
-        if (! valid) {
-            return false;
-        }
-        return true;
     }
 
     private void sleepSome() {

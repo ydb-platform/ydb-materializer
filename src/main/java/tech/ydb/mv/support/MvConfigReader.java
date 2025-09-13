@@ -9,7 +9,7 @@ import tech.ydb.table.query.Params;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.parser.MvSqlParser;
 
 /**
@@ -20,9 +20,9 @@ import tech.ydb.mv.parser.MvSqlParser;
 public class MvConfigReader extends MvConfig {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConfigReader.class);
 
-    public static MvContext read(YdbConnector ydb, Properties props) {
+    public static MvMetadata read(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
-        MvContext context;
+        MvMetadata context;
         switch (MvConfig.parseInput(mode)) {
             case FILE -> { context = readFile(ydb, props); }
             case TABLE -> { context = readTable(ydb, props); }
@@ -35,7 +35,7 @@ public class MvConfigReader extends MvConfig {
         return context;
     }
 
-    private static MvContext readFile(YdbConnector ydb, Properties props) {
+    private static MvMetadata readFile(YdbConnector ydb, Properties props) {
         String fname = props.getProperty(CONF_INPUT_FILE, DEF_STMT_FILE);
         LOG.info("Reading MV script from file {}", fname);
         try (FileInputStream fis = new FileInputStream(fname)) {
@@ -45,7 +45,7 @@ public class MvConfigReader extends MvConfig {
         }
     }
 
-    private static MvContext readTable(YdbConnector ydb, Properties props) {
+    private static MvMetadata readTable(YdbConnector ydb, Properties props) {
         String tabname = props.getProperty(CONF_INPUT_TABLE, DEF_STMT_TABLE);
         LOG.info("Reading MV script from table {}", tabname);
         String sql = readStatements(ydb, tabname);

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.SqlConstants;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 
 /**
  * Test for MvSqlGen.makeSelect() and MvSqlGen.makeUpsert() methods
@@ -18,7 +18,7 @@ public class SqlGenSelectUpsertTest {
     @Test
     public void testMakeSelect1() {
         // Parse the input SQL
-        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_GOOD1).fill();
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
@@ -44,7 +44,7 @@ public class SqlGenSelectUpsertTest {
     @Test
     public void testMakeSelect2() {
         // Parse the input SQL
-        MvContext mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_GOOD2).fill();
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());

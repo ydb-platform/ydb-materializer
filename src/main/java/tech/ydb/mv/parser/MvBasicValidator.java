@@ -3,7 +3,7 @@ package tech.ydb.mv.parser;
 import java.util.List;
 
 import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvIssue;
@@ -19,9 +19,9 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvBasicValidator {
 
-    private final MvContext context;
+    private final MvMetadata context;
 
-    public MvBasicValidator(MvContext context) {
+    public MvBasicValidator(MvMetadata context) {
         this.context = context;
     }
 

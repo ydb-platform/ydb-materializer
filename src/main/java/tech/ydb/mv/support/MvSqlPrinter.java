@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.parser.MvKeyPathGenerator;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
@@ -15,9 +15,9 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvSqlPrinter {
 
-    private final MvContext ctx;
+    private final MvMetadata ctx;
 
-    public MvSqlPrinter(MvContext ctx) {
+    public MvSqlPrinter(MvMetadata ctx) {
         this.ctx = ctx;
     }
 

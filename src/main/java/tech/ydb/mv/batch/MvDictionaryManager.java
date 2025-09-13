@@ -1,4 +1,4 @@
-package tech.ydb.mv.apply;
+package tech.ydb.mv.batch;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.data.MvChangeRecord;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.data.MvKey;
@@ -35,14 +35,14 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
 
     private static final Value<?> NULL_JSON = PrimitiveType.JsonDocument.makeOptional().emptyValue();
 
-    private final MvContext context;
+    private final MvMetadata context;
     private final YdbConnector conn;
     private final MvDictionarySettings settings;
     private final String historyTable;
     // initially stopped -> null
     private final AtomicReference<MvCdcFeeder> feeder = new AtomicReference<>();
 
-    public MvDictionaryManager(MvContext context, YdbConnector conn,
+    public MvDictionaryManager(MvMetadata context, YdbConnector conn,
             MvDictionarySettings settings) {
         this.context = context;
         this.conn = conn;

@@ -21,7 +21,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvSqlPos;
@@ -58,8 +58,8 @@ public class MvSqlParser {
         this(CharStreams.fromString(input));
     }
 
-    public MvContext fill() {
-        MvContext ctx = new MvContext();
+    public MvMetadata fill() {
+        MvMetadata ctx = new MvMetadata();
         ctx.addIssues(parseTimeIssues);
         // first pass: add MV definitions as MvTarget objects
         for ( var stmt : root.sql_stmt() ) {
@@ -88,7 +88,7 @@ public class MvSqlParser {
         return null;
     }
 
-    private void fillTarget(MvContext mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
+    private void fillTarget(MvMetadata mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
         var mt = new MvTarget(unquote(stmt.identifier()), toSqlPos(stmt));
         var sel = stmt.simple_select_stmt();
         var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
@@ -200,7 +200,7 @@ public class MvSqlParser {
         }
     }
 
-    private void fillHandler(MvContext mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
+    private void fillHandler(MvMetadata mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
         var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
         if (stmt.consumer_name()!=null) {
             mh.setConsumerName(unquote(stmt.consumer_name().identifier()));
@@ -222,7 +222,7 @@ public class MvSqlParser {
         }
     }
 
-    private void fillHandlerInput(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_input_partContext part) {
+    private void fillHandlerInput(MvMetadata mc, MvHandler mh, YdbMatViewV1Parser.Handler_input_partContext part) {
         MvInput mi = new MvInput(
                 unquote(part.main_table_ref().identifier()),
                 unquote(part.changefeed_name().identifier()),
@@ -238,7 +238,7 @@ public class MvSqlParser {
         }
     }
 
-    private void fillHandlerProcess(MvContext mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+    private void fillHandlerProcess(MvMetadata mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
         String mvName = unquote(part.mat_view_ref().identifier());
         MvTarget target = mc.getTargets().get(mvName);
         if (target==null) {
@@ -256,17 +256,17 @@ public class MvSqlParser {
         return v;
     }
 
-    public static void link(MvContext mc) {
+    public static void link(MvMetadata mc) {
         mc.getTargets().values().forEach(t -> linkTarget(t, mc));
         mc.getHandlers().values().forEach(h -> linkHandler(h, mc));
     }
 
-    private static void linkTarget(MvTarget t, MvContext mc) {
+    private static void linkTarget(MvTarget t, MvMetadata mc) {
         t.getColumns().stream().forEach(c -> linkColumn(c, t, mc));
         t.getSources().stream().forEach(s -> linkSource(s, t, mc));
     }
 
-    private static void linkHandler(MvHandler mh, MvContext mc) {
+    private static void linkHandler(MvHandler mh, MvMetadata mc) {
         for (MvTarget mt : mh.getTargets().values()) {
             for (MvJoinSource mjs : mt.getSources()) {
                 linkHandlerJoinSource(mt, mjs, mh, mc);
@@ -274,7 +274,7 @@ public class MvSqlParser {
         }
     }
 
-    private static void linkColumn(MvColumn c, MvTarget t, MvContext mc) {
+    private static void linkColumn(MvColumn c, MvTarget t, MvMetadata mc) {
         if (c.isComputation()) {
             linkComputation(c.getComputation(), t, mc);
         } else {
@@ -286,7 +286,7 @@ public class MvSqlParser {
         }
     }
 
-    private static void linkComputation(MvComputation c, MvTarget t, MvContext mc) {
+    private static void linkComputation(MvComputation c, MvTarget t, MvMetadata mc) {
         for (var src : c.getSources()) {
             var ref = t.getSourceByAlias(src.getAlias());
             src.setReference(ref);
@@ -296,11 +296,11 @@ public class MvSqlParser {
         }
     }
 
-    private static void linkSource(MvJoinSource s, MvTarget t, MvContext mc) {
+    private static void linkSource(MvJoinSource s, MvTarget t, MvMetadata mc) {
         s.getConditions().stream().forEach(c -> linkJoinCondition(c, t, mc));
     }
 
-    private static void linkJoinCondition(MvJoinCondition c, MvTarget t, MvContext mc) {
+    private static void linkJoinCondition(MvJoinCondition c, MvTarget t, MvMetadata mc) {
         if (c.getFirstAlias()!=null) {
             var ref = t.getSourceByAlias(c.getFirstAlias());
             c.setFirstRef(ref);
@@ -317,7 +317,7 @@ public class MvSqlParser {
         }
     }
 
-    private static void linkHandlerJoinSource(MvTarget target, MvJoinSource mjs, MvHandler mh, MvContext mc) {
+    private static void linkHandlerJoinSource(MvTarget target, MvJoinSource mjs, MvHandler mh, MvMetadata mc) {
         MvInput input = mh.getInput(mjs.getTableName());
         if (input != null) {
             mjs.setInput(input);

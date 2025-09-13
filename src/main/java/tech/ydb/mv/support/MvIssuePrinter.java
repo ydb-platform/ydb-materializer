@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvIssue;
 
 /**
@@ -15,9 +15,9 @@ import tech.ydb.mv.model.MvIssue;
  */
 public class MvIssuePrinter {
 
-    private final MvContext ctx;
+    private final MvMetadata ctx;
 
-    public MvIssuePrinter(MvContext ctx) {
+    public MvIssuePrinter(MvMetadata ctx) {
         this.ctx = ctx;
     }
 

@@ -1,4 +1,4 @@
-package tech.ydb.mv;
+package tech.ydb.mv.parser;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import tech.ydb.core.Status;
+
+import tech.ydb.mv.YdbConnector;
 import tech.ydb.table.Session;
 
 import tech.ydb.mv.model.MvColumn;
-import tech.ydb.mv.model.MvContext;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.parser.MvSqlGen;
 
 /**
  * SQL validation for MV context - used to detect errors in opaque expressions.
@@ -21,10 +22,10 @@ import tech.ydb.mv.parser.MvSqlGen;
  */
 public class MvSqlValidator {
 
-    private final MvContext context;
+    private final MvMetadata context;
     private final YdbConnector conn;
 
-    public MvSqlValidator(MvContext context, YdbConnector conn) {
+    public MvSqlValidator(MvMetadata context, YdbConnector conn) {
         this.context = context;
         this.conn = conn;
     }
