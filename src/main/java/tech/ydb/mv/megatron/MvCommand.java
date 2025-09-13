@@ -8,16 +8,16 @@ import java.time.Instant;
  *
  * @author zinal
  */
-public class MvCommandInfo implements Serializable {
+public class MvCommand implements Serializable {
     private static final long serialVersionUID = 20250113001L;
 
-    public static final String COMMAND_TYPE_START = "START";
-    public static final String COMMAND_TYPE_STOP = "STOP";
-    
-    public static final String COMMAND_STATUS_CREATED = "CREATED";
-    public static final String COMMAND_STATUS_TAKEN = "TAKEN";
-    public static final String COMMAND_STATUS_SUCCESS = "SUCCESS";
-    public static final String COMMAND_STATUS_ERROR = "ERROR";
+    public static final String TYPE_START = "START";
+    public static final String TYPE_STOP = "STOP";
+
+    public static final String STATUS_CREATED = "CREATED";
+    public static final String STATUS_TAKEN = "TAKEN";
+    public static final String STATUS_SUCCESS = "SUCCESS";
+    public static final String STATUS_ERROR = "ERROR";
 
     private final String runnerId;
     private final long commandNo;
@@ -28,7 +28,7 @@ public class MvCommandInfo implements Serializable {
     private final String commandStatus;
     private final String commandDiag;
 
-    public MvCommandInfo(String runnerId, long commandNo, Instant createdAt, String commandType, 
+    public MvCommand(String runnerId, long commandNo, Instant createdAt, String commandType,
                         String jobName, String jobSettings, String commandStatus, String commandDiag) {
         this.runnerId = runnerId;
         this.commandNo = commandNo;
@@ -73,27 +73,27 @@ public class MvCommandInfo implements Serializable {
     }
 
     public boolean isStartCommand() {
-        return COMMAND_TYPE_START.equals(commandType);
+        return TYPE_START.equals(commandType);
     }
 
     public boolean isStopCommand() {
-        return COMMAND_TYPE_STOP.equals(commandType);
+        return TYPE_STOP.equals(commandType);
     }
 
     public boolean isCreated() {
-        return COMMAND_STATUS_CREATED.equals(commandStatus);
+        return STATUS_CREATED.equals(commandStatus);
     }
 
     public boolean isTaken() {
-        return COMMAND_STATUS_TAKEN.equals(commandStatus);
+        return STATUS_TAKEN.equals(commandStatus);
     }
 
     public boolean isSuccess() {
-        return COMMAND_STATUS_SUCCESS.equals(commandStatus);
+        return STATUS_SUCCESS.equals(commandStatus);
     }
 
     public boolean isError() {
-        return COMMAND_STATUS_ERROR.equals(commandStatus);
+        return STATUS_ERROR.equals(commandStatus);
     }
 
     @Override
@@ -111,7 +111,7 @@ public class MvCommandInfo implements Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        MvCommandInfo that = (MvCommandInfo) o;
+        MvCommand that = (MvCommand) o;
         return commandNo == that.commandNo &&
                 java.util.Objects.equals(runnerId, that.runnerId) &&
                 java.util.Objects.equals(createdAt, that.createdAt) &&
@@ -124,6 +124,8 @@ public class MvCommandInfo implements Serializable {
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(runnerId, commandNo, createdAt, commandType, jobName, jobSettings, commandStatus, commandDiag);
+        return java.util.Objects.hash(runnerId, commandNo, createdAt,
+                commandType, jobName, jobSettings,
+                commandStatus, commandDiag);
     }
 }

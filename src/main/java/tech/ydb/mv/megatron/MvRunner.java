@@ -167,9 +167,9 @@ public class MvRunner implements AutoCloseable {
      */
     private void checkCommands() {
         try {
-            List<MvCommandInfo> commands = tableOps.getCommandsForRunner(runnerId);
+            List<MvCommand> commands = tableOps.getCommandsForRunner(runnerId);
 
-            for (MvCommandInfo command : commands) {
+            for (MvCommand command : commands) {
                 if (command.isCreated()) {
                     executeCommand(command);
                 }
@@ -182,124 +182,93 @@ public class MvRunner implements AutoCloseable {
     /**
      * Execute a command.
      */
-    private void executeCommand(MvCommandInfo command) {
+    private void executeCommand(MvCommand command) {
         LOG.info("Executing command: {} for job: {}", command.getCommandType(), command.getJobName());
 
         try {
-            // Mark command as taken
-            tableOps.markCommandTaken(command.getRunnerId(), command.getCommandNo());
-
-            boolean success = false;
-            String errorMessage = null;
+            tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
+                    MvCommand.STATUS_TAKEN, null);
 
             if (command.isStartCommand()) {
-                success = startHandler(command.getJobName(), command.getJobSettings());
+                startHandler(command.getJobName(), command.getJobSettings());
             } else if (command.isStopCommand()) {
-                success = stopHandler(command.getJobName());
+                stopHandler(command.getJobName());
             } else {
-                errorMessage = "Unknown command type: " + command.getCommandType();
+                throw new IllegalArgumentException("Unknown command type: " + command.getCommandType());
             }
 
-            if (success) {
-                tableOps.markCommandSuccess(command.getRunnerId(), command.getCommandNo());
-                LOG.info("Command executed successfully: {} for job: {}",
-                        command.getCommandType(), command.getJobName());
-            } else {
-                errorMessage = errorMessage != null ? errorMessage : "Command execution failed";
-                tableOps.markCommandError(command.getRunnerId(), command.getCommandNo(), errorMessage);
-                LOG.error("Command execution failed: {} for job: {} - {}",
-                        command.getCommandType(), command.getJobName(), errorMessage);
-            }
+            LOG.info("Command executed successfully: {} for job: {}",
+                    command.getCommandType(), command.getJobName());
+
+            tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
+                    MvCommand.STATUS_SUCCESS, null);
 
         } catch (Exception ex) {
-            String errorMessage = "Exception during command execution: " + ex.getMessage();
-            tableOps.markCommandError(command.getRunnerId(), command.getCommandNo(), errorMessage);
             LOG.error("Exception during command execution: {} for job: {}",
                     command.getCommandType(), command.getJobName(), ex);
+            tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
+                    MvCommand.STATUS_ERROR, ex.getMessage());
         }
     }
 
     /**
      * Start a handler with the given name and settings.
      */
-    private boolean startHandler(String jobName, String jobSettingsJson) {
-        try {
-            // Handle special system handlers
-            if ("sys$dictionary".equals(jobName)) {
-                mvService.startDictionaryHandler();
-                synchronized (localJobs) {
-                    localJobs.put(jobName, new MvRunnerJobInfo(
-                            runnerId, jobName, jobSettingsJson, Instant.now()
-                    ));
-                }
-                return true;
-            }
-
-            // Parse job settings if provided
-            MvHandlerSettings settings = null;
-            if (jobSettingsJson != null && !jobSettingsJson.trim().isEmpty() && !"null".equals(jobSettingsJson)) {
-                // For now, use default settings - in a real implementation,
-                // you would parse the JSON and create MvHandlerSettings
-                settings = mvService.getHandlerSettings();
-            } else {
-                settings = mvService.getHandlerSettings();
-            }
-
-            // Start the handler
-            boolean started = mvService.startHandler(jobName, settings);
-
-            if (started) {
-                // Record the job in local tracking and database
-                MvRunnerJobInfo runnerJob = new MvRunnerJobInfo(
+    private void startHandler(String jobName, String jobSettingsJson) {
+        // Handle special system handlers
+        if ("sys$dictionary".equals(jobName)) {
+            mvService.startDictionaryHandler();
+            synchronized (localJobs) {
+                localJobs.put(jobName, new MvRunnerJobInfo(
                         runnerId, jobName, jobSettingsJson, Instant.now()
-                );
+                ));
+            }
+            return;
+        }
 
-                synchronized (localJobs) {
-                    localJobs.put(jobName, runnerJob);
-                }
+        // Parse job settings if provided
+        MvHandlerSettings settings = null;
+        if (jobSettingsJson != null && !jobSettingsJson.trim().isEmpty() && !"null".equals(jobSettingsJson)) {
+            // For now, use default settings - in a real implementation,
+            // you would parse the JSON and create MvHandlerSettings
+            settings = mvService.getHandlerSettings();
+        } else {
+            settings = mvService.getHandlerSettings();
+        }
 
-                tableOps.upsertRunnerJob(runnerJob);
-                LOG.info("Started handler: {}", jobName);
+        // Start the handler
+        boolean started = mvService.startHandler(jobName, settings);
+
+        if (started) {
+            // Record the job in local tracking and database
+            MvRunnerJobInfo runnerJob = new MvRunnerJobInfo(
+                    runnerId, jobName, jobSettingsJson, Instant.now()
+            );
+
+            synchronized (localJobs) {
+                localJobs.put(jobName, runnerJob);
             }
 
-            return started;
-
-        } catch (Exception ex) {
-            LOG.error("Failed to start handler: {}", jobName, ex);
-            return false;
+            tableOps.upsertRunnerJob(runnerJob);
+            LOG.info("Started handler: {}", jobName);
         }
     }
 
     /**
      * Stop a handler with the given name.
      */
-    private boolean stopHandler(String jobName) {
-        try {
-            boolean stopped = false;
-
-            // Handle special system handlers
-            if ("sys$dictionary".equals(jobName)) {
-                mvService.stopDictionaryHandler();
-                stopped = true;
-            } else {
-                stopped = mvService.stopHandler(jobName);
+    private void stopHandler(String jobName) {
+        // Handle special system handlers
+        if ("sys$dictionary".equals(jobName)) {
+            mvService.stopDictionaryHandler();
+        } else {
+            mvService.stopHandler(jobName);
+            // Remove from local tracking and database
+            synchronized (localJobs) {
+                localJobs.remove(jobName);
             }
-
-            if (stopped) {
-                // Remove from local tracking and database
-                synchronized (localJobs) {
-                    localJobs.remove(jobName);
-                }
-
-                tableOps.deleteRunnerJob(runnerId, jobName);
-                LOG.info("Stopped handler: {}", jobName);
-            }
-
-            return stopped;
-
-        } catch (Exception ex) {
-            LOG.error("Failed to stop handler: {}", jobName, ex);
-            return false;
+            tableOps.deleteRunnerJob(runnerId, jobName);
+            LOG.info("Stopped handler: {}", jobName);
         }
     }
 

@@ -265,14 +265,14 @@ public class MvCoordinator implements AutoCloseable {
             // Use the first available runner
             MvRunnerInfo runner = runners.get(0);
 
-            MvCommandInfo command = new MvCommandInfo(
+            MvCommand command = new MvCommand(
                 runner.getRunnerId(),
                 tableOps.generateCommandNo(),
                 Instant.now(),
-                MvCommandInfo.COMMAND_TYPE_START,
+                MvCommand.TYPE_START,
                 job.getJobName(),
                 job.getJobSettings(),
-                MvCommandInfo.COMMAND_STATUS_CREATED,
+                MvCommand.STATUS_CREATED,
                 null
             );
 
@@ -307,14 +307,14 @@ public class MvCoordinator implements AutoCloseable {
                 return;
             }
 
-            MvCommandInfo command = new MvCommandInfo(
+            MvCommand command = new MvCommand(
                 targetRunner.getRunnerId(),
                 tableOps.generateCommandNo(),
                 Instant.now(),
-                MvCommandInfo.COMMAND_TYPE_STOP,
+                MvCommand.TYPE_STOP,
                 jobName,
                 null,
-                MvCommandInfo.COMMAND_STATUS_CREATED,
+                MvCommand.STATUS_CREATED,
                 null
             );
 

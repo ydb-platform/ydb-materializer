@@ -8,6 +8,7 @@ import tech.ydb.mv.data.YdbConv;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
+import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
 
 /**
@@ -180,7 +181,7 @@ public class MvTableOperations {
                 "job_name", PrimitiveValue.newText(runnerJob.getJobName()),
                 "job_settings", runnerJob.getJobSettings() != null ?
                     PrimitiveValue.newJsonDocument(runnerJob.getJobSettings()) :
-                    PrimitiveValue.newJsonDocument("null"),
+                    PrimitiveType.JsonDocument.makeOptional().emptyValue(),
                 "started_at", PrimitiveValue.newTimestamp(runnerJob.getStartedAt())
             ));
         } catch (Exception ex) {
@@ -226,7 +227,7 @@ public class MvTableOperations {
     }
 
     // MV_COMMANDS operations
-    public void createCommand(MvCommandInfo command) {
+    public void createCommand(MvCommand command) {
         try {
             ydb.sqlWrite(sqlCreateCommand, Params.of(
                 "runner_id", PrimitiveValue.newText(command.getRunnerId()),
@@ -238,11 +239,11 @@ public class MvTableOperations {
                     PrimitiveValue.newText(""),
                 "job_settings", command.getJobSettings() != null ?
                     PrimitiveValue.newJsonDocument(command.getJobSettings()) :
-                    PrimitiveValue.newJsonDocument("null"),
+                    PrimitiveType.JsonDocument.makeOptional().emptyValue(),
                 "command_status", PrimitiveValue.newText(command.getCommandStatus()),
                 "command_diag", command.getCommandDiag() != null ?
                     PrimitiveValue.newText(command.getCommandDiag()) :
-                    PrimitiveValue.newText("")
+                    PrimitiveType.Text.makeOptional().emptyValue()
             ));
         } catch (Exception ex) {
             LOG.error("Failed to create command {}/{}", command.getRunnerId(), command.getCommandNo(), ex);
@@ -250,11 +251,12 @@ public class MvTableOperations {
         }
     }
 
-    public List<MvCommandInfo> getCommandsForRunner(String runnerId) {
+    public List<MvCommand> getCommandsForRunner(String runnerId) {
         try {
-            QueryReader reader = ydb.sqlRead(sqlGetCommandsForRunner, Params.of("runner_id", PrimitiveValue.newText(runnerId)));
+            QueryReader reader = ydb.sqlRead(sqlGetCommandsForRunner,
+                    Params.of("runner_id", PrimitiveValue.newText(runnerId)));
             ResultSetReader resultSet = reader.getResultSet(0);
-            List<MvCommandInfo> commands = new ArrayList<>();
+            List<MvCommand> commands = new ArrayList<>();
             while (resultSet.next()) {
                 commands.add(parseCommandInfo(resultSet));
             }
@@ -277,18 +279,6 @@ public class MvTableOperations {
             LOG.error("Failed to update command status {}/{}", runnerId, commandNo, ex);
             throw new RuntimeException("Failed to update command status", ex);
         }
-    }
-
-    public void markCommandTaken(String runnerId, long commandNo) {
-        updateCommandStatus(runnerId, commandNo, "TAKEN", null);
-    }
-
-    public void markCommandSuccess(String runnerId, long commandNo) {
-        updateCommandStatus(runnerId, commandNo, "SUCCESS", null);
-    }
-
-    public void markCommandError(String runnerId, long commandNo, String error) {
-        updateCommandStatus(runnerId, commandNo, "ERROR", error);
     }
 
     // Helper methods for parsing query results
@@ -318,8 +308,8 @@ public class MvTableOperations {
         );
     }
 
-    private MvCommandInfo parseCommandInfo(ResultSetReader reader) {
-        return new MvCommandInfo(
+    private MvCommand parseCommandInfo(ResultSetReader reader) {
+        return new MvCommand(
             (String) YdbConv.toPojo(reader.getColumn("runner_id").getValue()),
             (Long) YdbConv.toPojo(reader.getColumn("command_no").getValue()),
             (java.time.Instant) YdbConv.toPojo(reader.getColumn("created_at").getValue()),
