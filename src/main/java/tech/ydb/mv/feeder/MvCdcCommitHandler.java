@@ -47,12 +47,13 @@ class MvCdcCommitHandler implements MvCommitHandler {
         if (counter == 0) {
             committed = true;
             LOG.debug("instance {} commit APPLY", instance);
-            try {
-                event.commit().join();
-            } catch (Exception ex) {
-                LOG.warn("Failed to commit the CDC message pack", ex);
-            }
+            event.commit().exceptionally((t) -> reportError(t));
         }
+    }
+
+    private Void reportError(Throwable t) {
+        LOG.error("Failed to commit the CDC message pack", t);
+        return null;
     }
 
     @Override
