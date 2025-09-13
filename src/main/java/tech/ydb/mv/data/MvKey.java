@@ -1,9 +1,10 @@
-package tech.ydb.mv.model;
+package tech.ydb.mv.data;
 
 import tech.ydb.table.result.ResultSetReader;
 
-import tech.ydb.mv.util.YdbConv;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvKeyPrefix;
+import tech.ydb.mv.model.MvTableInfo;
 
 /**
  * Table key and optional value.

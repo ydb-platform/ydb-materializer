@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.data.MvKey;
 
 /**
  * Scan commit handler writes the key position to the database table.

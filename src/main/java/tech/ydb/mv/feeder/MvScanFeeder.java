@@ -10,13 +10,12 @@ import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvChangeRecord;
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.util.YdbMisc;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  * Scan feeder reads the keys from the topmost-left source of a MV.

@@ -6,8 +6,8 @@ import tech.ydb.table.description.KeyBound;
 import tech.ydb.table.values.TupleValue;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.util.YdbConv;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.table.values.StructValue;
 
 /**

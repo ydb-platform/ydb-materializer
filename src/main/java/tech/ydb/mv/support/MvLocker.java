@@ -82,33 +82,32 @@ public class MvLocker {
     }
 
     public boolean lock(String name) {
-        LOG.debug("Ensuring the single `{}` job instance through lock...", name);
-        boolean locked = lock(name, timeout);
-        if (locked) {
-            LOG.debug("Lock obtained, proceeding with the `{}` job.", name);
-        } else {
-            LOG.debug("Lock failed, concurrent `{}` job instance seems to be running.", name);
-        }
-        return locked;
+        return lock(name, timeout);
     }
 
     public boolean lock(String name, Duration timeout) {
+        LOG.info("Ensuring the single `{}` job instance "
+                + "through lock with timeout {}...", name, timeout);
         SemaphoreLease lease;
         synchronized(leases) {
             lease = leases.get(name);
         }
         if (lease!=null) {
+            LOG.info("Lock `{}` already obtained, moving forward.", name);
             return true;
         }
         try {
-            lease = session.acquireEphemeralSemaphore(name, true, timeout).join().getValue();
+            lease = session.acquireEphemeralSemaphore(name, true, timeout)
+                    .join().getValue();
         } catch(Exception ex) {
-            LOG.debug("Failed to acquire the semaphore {}: {}", name, ex.toString());
+            LOG.debug("Failed to acquire the semaphore {}", name, ex);
+            LOG.info("Lock failed, concurrent `{}` job instance seems to be running.", name);
             return false;
         }
         synchronized(leases) {
             leases.put(name, lease);
         }
+        LOG.warn("Lock obtained, proceeding with the `{}` job.", name);
         return true;
     }
 

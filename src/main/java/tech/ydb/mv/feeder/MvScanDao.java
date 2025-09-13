@@ -5,8 +5,8 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.YdbStruct;
 
 /**
  *

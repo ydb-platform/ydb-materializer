@@ -2,7 +2,7 @@ package tech.ydb.mv.feeder;
 
 import java.util.Collection;
 
-import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvInput;
 
 /**

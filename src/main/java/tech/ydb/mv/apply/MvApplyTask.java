@@ -1,13 +1,14 @@
 package tech.ydb.mv.apply;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.model.MvChangeRecord;
+
+import tech.ydb.mv.data.MvChangeRecord;
 
 /**
  *
  * @author zinal
  */
-public class MvApplyTask {
+class MvApplyTask {
 
     private final MvChangeRecord data;
     private final MvApplyConfig actions;

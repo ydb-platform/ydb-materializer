@@ -1,7 +1,7 @@
-package tech.ydb.mv.model;
+package tech.ydb.mv.data;
 
 import java.time.Instant;
-import tech.ydb.mv.util.YdbStruct;
+
 
 /**
  *

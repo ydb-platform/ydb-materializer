@@ -10,7 +10,7 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
@@ -20,7 +20,7 @@ import tech.ydb.mv.model.MvTableInfo;
  *
  * @author zinal
  */
-public class MvWorkerSelector {
+class MvWorkerSelector {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvWorkerSelector.class);
 
     private final MvTableInfo tableInfo;

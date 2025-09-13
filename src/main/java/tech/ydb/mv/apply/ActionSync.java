@@ -15,11 +15,11 @@ import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.parser.MvSqlGen;
 
 /**
  * The main action collects updates the MV for the input keys provided.

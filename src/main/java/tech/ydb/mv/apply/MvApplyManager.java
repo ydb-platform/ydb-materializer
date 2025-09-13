@@ -3,21 +3,22 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import tech.ydb.table.TableClient;
 
 import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.parser.MvKeyPathGenerator;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.mv.parser.MvKeyPathGenerator;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  * The apply manager processes the changes in the context of a single handler.
@@ -30,6 +31,7 @@ public class MvApplyManager implements MvCdcSink {
 
     private final MvActionContext context;
     private final MvApplyWorker[] workers;
+    private final AtomicInteger queueSize;
 
     // table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
@@ -41,6 +43,7 @@ public class MvApplyManager implements MvCdcSink {
         for (int i=0; i<workerCount; ++i) {
             workers[i] = new MvApplyWorker(this, i);
         }
+        this.queueSize = new AtomicInteger(0);
         buildConfig();
     }
 
@@ -131,6 +134,24 @@ public class MvApplyManager implements MvCdcSink {
         }
         index = index % workers.length;
         return workers[index];
+    }
+
+    public int getQueueSize() {
+        return queueSize.get();
+    }
+
+    protected final int incrementQueueSize() {
+        return queueSize.incrementAndGet();
+    }
+
+    protected final int decrementQueueSize(int count) {
+        int temp = queueSize.addAndGet(-1 * count);
+        if (temp < 0) {
+            LOG.warn("Queue size below zero: {}", temp);
+            queueSize.set(0);
+            return 0;
+        }
+        return temp;
     }
 
     /**

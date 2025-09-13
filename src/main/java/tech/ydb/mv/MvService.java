@@ -29,7 +29,7 @@ import tech.ydb.mv.support.MvConfigReader;
 import tech.ydb.mv.support.MvLocker;
 import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.support.MvSqlPrinter;
-import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  * Work context for YDB Materializer activities.

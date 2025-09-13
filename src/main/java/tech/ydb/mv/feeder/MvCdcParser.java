@@ -17,14 +17,14 @@ import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.Type;
 
-import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvKey;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.util.YdbBytes;
-import tech.ydb.mv.util.YdbStruct;
-import tech.ydb.mv.util.YdbUnsigned;
+import tech.ydb.mv.data.YdbBytes;
+import tech.ydb.mv.data.YdbStruct;
+import tech.ydb.mv.data.YdbUnsigned;
 
 /**
  *

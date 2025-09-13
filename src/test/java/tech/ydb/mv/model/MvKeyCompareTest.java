@@ -1,11 +1,12 @@
 package tech.ydb.mv.model;
 
+import tech.ydb.mv.data.MvKey;
 import java.math.BigDecimal;
 import java.util.Base64;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import tech.ydb.mv.util.YdbBytes;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.data.YdbBytes;
+import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.table.values.DecimalType;
 import tech.ydb.table.values.PrimitiveType;
 

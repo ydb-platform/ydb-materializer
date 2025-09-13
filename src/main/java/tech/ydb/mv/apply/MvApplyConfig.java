@@ -10,7 +10,7 @@ import tech.ydb.mv.model.MvTableInfo;
  *
  * @author zinal
  */
-public class MvApplyConfig {
+class MvApplyConfig {
     private final MvTableInfo table;
     private final MvWorkerSelector selector;
     private final ArrayList<MvApplyAction> actions = new ArrayList<>();

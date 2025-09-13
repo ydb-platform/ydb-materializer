@@ -1,5 +1,8 @@
-package tech.ydb.mv.util;
+package tech.ydb.mv.data;
 
+import tech.ydb.mv.data.YdbBytes;
+import tech.ydb.mv.data.YdbUnsigned;
+import tech.ydb.mv.data.YdbStruct;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;

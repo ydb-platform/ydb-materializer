@@ -1,4 +1,4 @@
-package tech.ydb.mv.util;
+package tech.ydb.mv.support;
 
 import java.util.concurrent.ThreadLocalRandom;
 
