@@ -69,7 +69,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void standardPause() {
-        pause(3000L);
+        pause(2000L);
     }
 
     @Test
@@ -221,14 +221,18 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private void checkDictHist(YdbConnector conn) {
         var rs = conn.sqlRead("SELECT diff_val, key_text, tv "
-                        + "FROM `test1/dict_hist` ORDER BY tv, key_text;",
+                        + "FROM `test1/dict_hist` "
+                + "WHERE src='test1/sub_table3'u"
+                + "ORDER BY tv, key_text;",
                 Params.empty()).getResultSet(0);
+        System.out.println("--- dictionary comparison begin ---");
         while (rs.next()) {
             System.out.println("  DICT: " + rs.getColumn(1).getText()
                     + " at " + rs.getColumn(2).getTimestamp().toString()
                     + ": " + rs.getColumn(0).getValue().asOptional()
                     .get().asData().getJsonDocument());
         }
+        System.out.println("--- dictionary comparison end ---");
     }
 
 }
