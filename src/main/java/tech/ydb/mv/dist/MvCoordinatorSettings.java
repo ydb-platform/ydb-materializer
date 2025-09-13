@@ -1,4 +1,4 @@
-package tech.ydb.mv.model;
+package tech.ydb.mv.dist;
 
 /**
  * @author Kirill Kurdyukov

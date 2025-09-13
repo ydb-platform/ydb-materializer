@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvCoordinator;
-import tech.ydb.mv.model.MvCoordinatorSettings;
+import tech.ydb.mv.dist.MvCoordinator;
+import tech.ydb.mv.dist.MvCoordinatorSettings;
 import tech.ydb.mv.support.MvLocker;
 
 import java.util.concurrent.ConcurrentLinkedQueue;

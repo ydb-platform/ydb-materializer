@@ -1,13 +1,4 @@
-package tech.ydb.mv.model;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.mv.support.MvLocker;
-import tech.ydb.query.tools.QueryReader;
-import tech.ydb.query.tools.SessionRetryContext;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.values.PrimitiveValue;
+package tech.ydb.mv.dist;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -15,14 +6,22 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import tech.ydb.common.transaction.TxMode;
+import tech.ydb.query.tools.QueryReader;
+import tech.ydb.query.tools.SessionRetryContext;
+import tech.ydb.table.query.Params;
+import tech.ydb.table.values.PrimitiveValue;
+
+import tech.ydb.mv.support.MvLocker;
+
 /**
- * CREATE TABLE mv_jobs ( -- в девичестве desired_state
- * job_name Text NOT NULL, -- MvHandler.getName()
- * job_settings JsonDocument, -- сериализованный MvHandlerSettings / MvDictionarySettings
- * should_run Boolean, -- должен ли работать
- * runner_id Text,
- * PRIMARY KEY(job_name)
- * );
+ * CREATE TABLE mv_jobs ( -- в девичестве desired_state job_name Text NOT NULL,
+ * -- MvHandler.getName() job_settings JsonDocument, -- сериализованный
+ * MvHandlerSettings / MvDictionarySettings should_run Boolean, -- должен ли
+ * работать runner_id Text, PRIMARY KEY(job_name) );
  *
  * @author Kirill Kurdyukov
  */
@@ -95,7 +94,7 @@ public class MvCoordinator {
             sessionRetryContext.supplyResult(session -> session.createQuery(
                     """
                             DECLARE $runner_id AS Text;
-                                                       
+
                             UPDATE mv_jobs SET runner_id = $runner_id WHERE job_name = 'sys$coordinator'
                             """,
                     TxMode.SERIALIZABLE_RW, Params.of("$runner_id", PrimitiveValue.newText(instanceId))).execute()
@@ -168,7 +167,9 @@ public class MvCoordinator {
 
     private void cancelLeader() {
         ScheduledFuture<?> f = leaderFuture.getAndSet(null);
-        if (f != null) f.cancel(true);
+        if (f != null) {
+            f.cancel(true);
+        }
     }
 
     private boolean stillOwnsSemaphore() {
@@ -183,7 +184,6 @@ public class MvCoordinator {
 
         return resultSet.next();
     }
-
 
     // корректная остановка задач при выключении координатора
     private void stopJobs() {
