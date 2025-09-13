@@ -16,6 +16,9 @@ public class MvJobInfo implements Serializable {
     private final String runnerId;
 
     public MvJobInfo(String jobName, String jobSettings, boolean shouldRun, String runnerId) {
+        if (jobName==null || runnerId==null) {
+            throw new IllegalArgumentException();
+        }
         this.jobName = jobName;
         this.jobSettings = jobSettings;
         this.shouldRun = shouldRun;

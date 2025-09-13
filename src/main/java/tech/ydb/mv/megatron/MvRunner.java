@@ -25,7 +25,7 @@ public class MvRunner implements AutoCloseable {
 
     private final MvService mvService;
     private final MvBatchSettings settings;
-    private final MvTableOperations tableOps;
+    private final MvJobDao tableOps;
     private final String runnerId;
     private final String runnerIdentity;
 
@@ -36,7 +36,7 @@ public class MvRunner implements AutoCloseable {
     public MvRunner(YdbConnector ydb, MvService mvService, MvBatchSettings settings) {
         this.mvService = mvService;
         this.settings = settings;
-        this.tableOps = new MvTableOperations(ydb, settings);
+        this.tableOps = new MvJobDao(ydb, settings);
         this.runnerId = generateRunnerId();
         this.runnerIdentity = generateRunnerIdentity();
     }

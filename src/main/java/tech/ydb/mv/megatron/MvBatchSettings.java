@@ -62,7 +62,7 @@ public class MvBatchSettings implements Serializable {
         loadFromProperties(props);
     }
 
-    public void loadFromProperties(Properties props) {
+    private void loadFromProperties(Properties props) {
         this.mvJobsTable = props.getProperty(CONF_MV_JOBS_TABLE, DEF_MV_JOBS_TABLE);
         this.mvRunnersTable = props.getProperty(CONF_MV_RUNNERS_TABLE, DEF_MV_RUNNERS_TABLE);
         this.mvRunnerJobsTable = props.getProperty(CONF_MV_RUNNER_JOBS_TABLE, DEF_MV_RUNNER_JOBS_TABLE);

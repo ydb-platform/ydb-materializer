@@ -12,21 +12,31 @@ public class MvRunnerInfo implements Serializable {
     private static final long serialVersionUID = 20250113001L;
 
     private final String runnerId;
-    private final String runnerIdentity;
+    private final String identity;
     private final Instant updatedAt;
 
-    public MvRunnerInfo(String runnerId, String runnerIdentity, Instant updatedAt) {
+    public MvRunnerInfo(String runnerId, String identity, Instant updatedAt) {
+        if (identity==null) {
+            identity = makeIdentity();
+        }
+        if (updatedAt == null) {
+            updatedAt = Instant.now();
+        }
         this.runnerId = runnerId;
-        this.runnerIdentity = runnerIdentity;
+        this.identity = identity;
         this.updatedAt = updatedAt;
+    }
+
+    public MvRunnerInfo(String runnerId) {
+        this(runnerId, null, null);
     }
 
     public String getRunnerId() {
         return runnerId;
     }
 
-    public String getRunnerIdentity() {
-        return runnerIdentity;
+    public String getIdentity() {
+        return identity;
     }
 
     public Instant getUpdatedAt() {
@@ -37,7 +47,7 @@ public class MvRunnerInfo implements Serializable {
     public String toString() {
         return "MvRunnerInfo{" +
                 "runnerId='" + runnerId + '\'' +
-                ", runnerIdentity='" + runnerIdentity + '\'' +
+                ", runnerIdentity='" + identity + '\'' +
                 ", updatedAt=" + updatedAt +
                 '}';
     }
@@ -48,12 +58,31 @@ public class MvRunnerInfo implements Serializable {
         if (o == null || getClass() != o.getClass()) return false;
         MvRunnerInfo that = (MvRunnerInfo) o;
         return java.util.Objects.equals(runnerId, that.runnerId) &&
-                java.util.Objects.equals(runnerIdentity, that.runnerIdentity) &&
+                java.util.Objects.equals(identity, that.identity) &&
                 java.util.Objects.equals(updatedAt, that.updatedAt);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(runnerId, runnerIdentity, updatedAt);
+        return java.util.Objects.hash(runnerId, identity, updatedAt);
+    }
+
+    private String makeIdentity() {
+        try {
+            // Get host name
+            String hostName = java.net.InetAddress.getLocalHost().getHostName();
+
+            // Get process identifier
+            long pid = ProcessHandle.current().pid();
+
+            // Combine the information
+            StringBuilder sb = new StringBuilder();
+            sb.append(hostName).append(" / ");
+            sb.append(pid);
+            return sb.toString();
+        } catch (Exception e) {
+            // Fallback to a basic identifier if anything fails
+            return "unknown-" + System.currentTimeMillis();
+        }
     }
 }

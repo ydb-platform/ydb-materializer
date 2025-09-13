@@ -20,7 +20,7 @@ public class MvCoordinator implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinator.class);
 
     private final MvBatchSettings settings;
-    private final MvTableOperations tableOps;
+    private final MvJobDao tableOps;
 
     private volatile boolean running = false;
     private volatile Thread coordinatorThread = null;
@@ -29,7 +29,7 @@ public class MvCoordinator implements AutoCloseable {
 
     public MvCoordinator(YdbConnector ydb, MvBatchSettings settings) {
         this.settings = settings;
-        this.tableOps = new MvTableOperations(ydb, settings);
+        this.tableOps = new MvJobDao(ydb, settings);
     }
 
     public MvCoordinator(YdbConnector ydb) {
