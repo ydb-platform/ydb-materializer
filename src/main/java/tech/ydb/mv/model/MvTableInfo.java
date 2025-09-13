@@ -12,7 +12,6 @@ import java.util.Set;
 
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.values.Type;
-import tech.ydb.topic.description.TopicDescription;
 
 /**
  *
@@ -60,6 +59,9 @@ public class MvTableInfo {
                     break;
                 case OLD_IMAGE:
                     mode = ChangefeedMode.OLD_IMAGE;
+                    break;
+                case UPDATES:
+                    mode = ChangefeedMode.UPDATES;
                     break;
                 default:
                     mode = ChangefeedMode.KEYS_ONLY;
@@ -206,6 +208,7 @@ public class MvTableInfo {
 
     public static enum ChangefeedMode {
         KEYS_ONLY,
+        UPDATES,
         NEW_IMAGE,
         OLD_IMAGE,
         BOTH_IMAGES

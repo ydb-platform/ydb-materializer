@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  * The apply worker is an active object (thread) with the input queue to process.
@@ -16,7 +16,7 @@ import tech.ydb.mv.util.YdbMisc;
  *
  * @author zinal
  */
-public class MvApplyWorker implements Runnable {
+class MvApplyWorker implements Runnable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyWorker.class);
 
     private final MvApplyManager owner;

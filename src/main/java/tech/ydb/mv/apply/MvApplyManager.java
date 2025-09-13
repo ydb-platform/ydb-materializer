@@ -8,17 +8,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import tech.ydb.table.TableClient;
 
 import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.parser.MvKeyPathGenerator;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.mv.parser.MvKeyPathGenerator;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  * The apply manager processes the changes in the context of a single handler.

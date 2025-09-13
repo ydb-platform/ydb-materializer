@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.MvService;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.util.YdbMisc;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  *

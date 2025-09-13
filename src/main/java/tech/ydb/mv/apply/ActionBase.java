@@ -16,8 +16,8 @@ import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.util.YdbConv;
+import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.YdbConv;
 
 /**
  * Common parts of action handlers in the form of a base class.

@@ -7,13 +7,13 @@ import java.util.List;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.result.ResultSetReader;
 
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.util.YdbConv;
+import tech.ydb.mv.parser.MvSqlGen;
 
 /**
  *

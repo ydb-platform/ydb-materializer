@@ -3,11 +3,11 @@ package tech.ydb.mv.apply;
 import java.util.ArrayList;
 import java.util.List;
 
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.model.MvChangeRecord;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvKey;
 import tech.ydb.mv.model.MvTarget;
 
 /**

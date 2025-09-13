@@ -18,12 +18,12 @@ import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.model.MvChangeRecord;
+import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvContext;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvKey;
-import tech.ydb.mv.util.YdbStruct;
+import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.YdbStruct;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal table.

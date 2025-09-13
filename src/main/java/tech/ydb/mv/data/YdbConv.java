@@ -1,4 +1,4 @@
-package tech.ydb.mv.util;
+package tech.ydb.mv.data;
 
 import java.math.BigDecimal;
 
