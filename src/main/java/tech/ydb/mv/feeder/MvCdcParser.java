@@ -17,14 +17,14 @@ import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.Type;
 
-import tech.ydb.mv.data.MvChangeRecord;
-import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.data.MvKey;
-import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.data.YdbBytes;
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.mv.data.YdbUnsigned;
+import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvTableInfo;
 
 /**
  *
@@ -54,15 +54,17 @@ class MvCdcParser {
             JsonElement update = root.get("update");
             JsonObject oldImage = getObjectIf(root, "oldImage");
             JsonObject newImage = getObjectIf(root, "newImage");
+            boolean updateMode = false;
             if (newImage==null && update!=null && update.isJsonObject()) {
                 newImage = update.getAsJsonObject();
+                updateMode = true;
             }
             MvKey theKey = parseKey(key);
             return new MvChangeRecord(
                     theKey, tv,
                     (erase==null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
-                    parseImage(theKey, oldImage),
-                    parseImage(theKey, newImage)
+                    parseImage(updateMode ? null : theKey, oldImage),
+                    parseImage(updateMode ? null : theKey, newImage)
             );
         } catch(Exception ex) {
             LOG.error("error parsing cdc message {}", jsonText, ex);
@@ -101,8 +103,10 @@ class MvCdcParser {
         for (Map.Entry<String, Type> me : tableInfo.getColumns().entrySet()) {
             ret.put(me.getKey(), readValue(image.get(me.getKey()), me.getValue()));
         }
-        for (int pos = 0; pos < theKey.size(); ++pos) {
-            ret.put(theKey.getName(pos), theKey.getValue(pos));
+        if (theKey!=null) {
+            for (int pos = 0; pos < theKey.size(); ++pos) {
+                ret.put(theKey.getName(pos), theKey.getValue(pos));
+            }
         }
         return ret;
     }
