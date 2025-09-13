@@ -72,6 +72,7 @@ class MvApplyWorker implements Runnable {
      */
     public boolean submit(MvApplyTask task) {
         if (queueLimit < owner.getQueueSize()) {
+            LOG.debug("Queue size exceeded, input not accepted.");
             return false;
         }
         submitForce(task);
@@ -87,6 +88,7 @@ class MvApplyWorker implements Runnable {
     public void submitForce(MvApplyTask task) {
         owner.incrementQueueSize();
         queue.add(task);
+        LOG.debug("Task accepted: {}", task);
     }
 
     @Override

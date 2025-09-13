@@ -58,7 +58,7 @@ public class MvChangeRecord {
 
     @Override
     public String toString() {
-        return "MvChangeRecord{" + "key=" + key + ", op=" + operationType
+        return "CR{" + "key=" + key + ", op=" + operationType
                 + ", before=" + imageBefore + ", after=" + imageAfter + '}';
     }
 

@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.util.HashMap;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.ListValue;
@@ -103,10 +104,13 @@ public class MvDictionaryManager implements MvCdcSink, MvCdcAdapter {
 
     @Override
     public Collection<MvInput> getInputs() {
-        return context.getHandlers().values().stream()
+        // Filter out duplicates - they are expected here
+        HashMap<String, MvInput> inputs = new HashMap<>();
+        context.getHandlers().values().stream()
                 .flatMap(handler -> handler.getInputs().values().stream())
                 .filter(input -> input.isBatchMode() && input.isTableKnown())
-                .toList();
+                .forEach(mi -> inputs.put(mi.getTableName(), mi));
+        return inputs.values();
     }
 
     @Override

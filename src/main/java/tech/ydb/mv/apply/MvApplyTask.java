@@ -39,4 +39,9 @@ class MvApplyTask {
         return workerId;
     }
 
+    @Override
+    public String toString() {
+        return "MvApplyTask{" + data + '}';
+    }
+
 }

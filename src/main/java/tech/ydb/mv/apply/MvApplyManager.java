@@ -128,14 +128,6 @@ public class MvApplyManager implements MvCdcSink {
         return context.getSettings();
     }
 
-    public MvApplyWorker getWorker(int index) {
-        if (index < 0) {
-            index = -1 * index;
-        }
-        index = index % workers.length;
-        return workers[index];
-    }
-
     public int getQueueSize() {
         return queueSize.get();
     }
@@ -201,6 +193,14 @@ public class MvApplyManager implements MvCdcSink {
         return context.getMetadata().getInputs().values().stream()
                 .filter(mi -> !mi.isBatchMode())
                 .toList();
+    }
+
+    private MvApplyWorker getWorker(int index) {
+        if (index < 0) {
+            index = -1 * index;
+        }
+        index = index % workers.length;
+        return workers[index];
     }
 
     private ArrayList<MvApplyTask> convertChanges(Collection<MvChangeRecord> changes,

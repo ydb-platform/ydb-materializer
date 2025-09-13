@@ -50,6 +50,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
         ArrayList<MvChangeRecord> output = new ArrayList<>(2 * tasks.size());
         for (MvApplyTask task : tasks) {
             MvChangeRecord cr = task.getData();
+            LOG.debug("Processing {}", cr);
             MvKey key = null;
             if (keysTransform) {
                 key = buildKey(cr, (name) -> cr.getKey().getValue(name));
@@ -62,6 +63,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
                 }
             }
             if (key!=null) {
+                LOG.debug("Result key: {}", key);
                 output.add(new MvChangeRecord(key,
                         task.getData().getTv(), MvChangeRecord.OpType.UPSERT));
             }

@@ -76,6 +76,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
                 records.add(cr);
             }
         }
+        LOG.debug("Topic {} input {}", topicPath, records);
         sink.submit(records, new MvCdcCommitHandler(event));
     }
 
