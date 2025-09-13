@@ -23,7 +23,7 @@ public class MvApplyWorker implements Runnable {
     private final int workerNumber;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final LinkedBlockingQueue<MvApplyTask> queue;
-    private final int queueSize;
+    private final int queueLimit;
     private final ArrayList<MvApplyTask> activeTasks;
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
@@ -32,7 +32,7 @@ public class MvApplyWorker implements Runnable {
         this.workerNumber = number;
         this.activeTasks = new ArrayList<>(10);
         this.queue = new LinkedBlockingQueue<>();
-        this.queueSize = owner.getSettings().getApplyQueueSize();
+        this.queueLimit = owner.getSettings().getApplyQueueSize();
     }
 
     public void start() {
@@ -71,10 +71,11 @@ public class MvApplyWorker implements Runnable {
      * @return true, if the task was added, and false otherwise.
      */
     public boolean submit(MvApplyTask task) {
-        if (queueSize < queue.size()) {
+        if (queueLimit < owner.getQueueSize()) {
             return false;
         }
-        return queue.offer(task);
+        submitForce(task);
+        return true;
     }
 
     /**
@@ -84,6 +85,7 @@ public class MvApplyWorker implements Runnable {
      * @param task The task to be added
      */
     public void submitForce(MvApplyTask task) {
+        owner.incrementQueueSize();
         queue.add(task);
     }
 
@@ -103,6 +105,7 @@ public class MvApplyWorker implements Runnable {
         if (activeTasks.isEmpty()) {
             return 0;
         }
+        owner.decrementQueueSize(activeTasks.size());
         PerAction retries = new PerAction().addItems(activeTasks).apply();
         if (! processRetries(retries)) {
             // no commit unless no retries needed, or retries succeeded
