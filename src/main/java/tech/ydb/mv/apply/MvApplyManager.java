@@ -211,7 +211,7 @@ public class MvApplyManager implements MvCdcSink {
             MvCommitHandler handler) {
         int count = changes.size();
         ArrayList<MvApplyTask> curr = new ArrayList<>(count);
-        String tableName = changes.iterator().next().getKey().getTableInfo().getName();
+        String tableName = changes.iterator().next().getKey().getTableName();
         MvApplyConfig apply = applyConfig.get(tableName);
         if (apply==null) {
             handler.commit(count);
@@ -220,7 +220,7 @@ public class MvApplyManager implements MvCdcSink {
             return curr;
         }
         for (MvChangeRecord change : changes) {
-            if (! tableName.equals(change.getKey().getTableInfo().getName())) {
+            if (! tableName.equals(change.getKey().getTableName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
             curr.add(new MvApplyTask(change, apply, handler));

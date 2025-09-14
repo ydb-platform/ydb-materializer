@@ -12,7 +12,7 @@ import tech.ydb.table.settings.DescribeTableSettings;
 
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvKeyPrefix;
+import tech.ydb.mv.data.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 
 /**

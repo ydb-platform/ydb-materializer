@@ -149,7 +149,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
 
     private StructValue convertRecord(MvChangeRecord cr) {
         return StructValue.of(
-                "src", PrimitiveValue.newText(cr.getKey().getTableInfo().getName()),
+                "src", PrimitiveValue.newText(cr.getKey().getTableName()),
                 "tv", PrimitiveValue.newTimestamp(cr.getTv()),
                 "key_text", PrimitiveValue.newText(convertKey(cr.getKey())),
                 "key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),

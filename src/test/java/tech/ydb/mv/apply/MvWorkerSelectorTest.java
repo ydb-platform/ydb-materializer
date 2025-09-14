@@ -7,7 +7,7 @@ import tech.ydb.table.values.PrimitiveType;
 
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvKeyPrefix;
+import tech.ydb.mv.data.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.table.TableClient;

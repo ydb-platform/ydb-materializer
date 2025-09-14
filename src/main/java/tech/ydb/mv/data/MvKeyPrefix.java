@@ -1,14 +1,12 @@
-package tech.ydb.mv.model;
+package tech.ydb.mv.data;
 
-import java.util.Arrays;
-import java.util.Objects;
 import tech.ydb.table.description.KeyBound;
+import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.TupleValue;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.data.YdbConv;
-import tech.ydb.mv.data.YdbStruct;
-import tech.ydb.table.values.StructValue;
+import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvTableInfo;
 
 /**
  * Key prefix in the comparable form.
@@ -16,15 +14,13 @@ import tech.ydb.table.values.StructValue;
  *
  * @author zinal
  */
-@SuppressWarnings("rawtypes")
-public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
+public class MvKeyPrefix extends MvTuple {
 
     protected final MvKeyInfo info;
-    protected final Comparable[] values;
 
     protected MvKeyPrefix(MvKeyInfo info, Comparable[] values) {
+        super(values);
         this.info = info;
-        this.values = values;
     }
 
     public MvKeyPrefix(KeyBound kb, MvKeyInfo info) {
@@ -43,24 +39,16 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
         this(tableInfo.getKeyInfo(), makePrefix(ys, tableInfo.getKeyInfo()));
     }
 
-    public MvKeyInfo getInfo() {
-        return info;
+    public String getTableName() {
+        return info.getOwner().getName();
     }
 
     public MvTableInfo getTableInfo() {
         return info.getOwner();
     }
 
-    public int size() {
-        return values.length;
-    }
-
     public String getName(int pos) {
         return info.getName(pos);
-    }
-
-    public Comparable<?> getValue(int pos) {
-        return values[pos];
     }
 
     public Comparable<?> getValue(String name) {
@@ -101,62 +89,6 @@ public class MvKeyPrefix implements Comparable<MvKeyPrefix> {
             ys.put(info.getName(pos), values[pos]);
         }
         return ys.toJson();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public int compareTo(MvKeyPrefix other) {
-        if (! this.info.equals(other.info)) {
-            throw new IllegalArgumentException("Cannot compare keys of type "
-                    + this.info + " with " + other.info);
-        }
-        int keyLen = Math.min(this.values.length, other.values.length);
-        for (int pos = 0; pos < keyLen; ++pos) {
-            if (this.values[pos]==null) {
-                if (other.values[pos]==null) {
-                    continue;
-                }
-                return -1;
-            } else if (other.values[pos]==null) {
-                return 1;
-            }
-            int cmp = this.values[pos].compareTo(other.values[pos]);
-            if (cmp!=0) {
-                return cmp;
-            }
-        }
-        // If the prefix matches, we treat values as equal.
-        return 0;
-    }
-
-    @Override
-    public String toString() {
-        return Arrays.toString(values);
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 79 * hash + Arrays.deepHashCode(this.values);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final MvKeyPrefix other = (MvKeyPrefix) obj;
-        if (!Objects.equals(this.info, other.info)) {
-            return false;
-        }
-        return Arrays.deepEquals(this.values, other.values);
     }
 
     public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {

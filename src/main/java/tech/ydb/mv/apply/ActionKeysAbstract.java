@@ -17,7 +17,6 @@ import tech.ydb.mv.model.MvTarget;
 abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
     protected final MvTarget target;
-    protected final MvTarget transformation;
     protected final String inputTableName;
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
@@ -30,11 +29,10 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
             throw new IllegalArgumentException("Missing input");
         }
         this.target = target;
-        this.transformation = transformation;
         this.inputTableName = src.getTableName();
         this.inputTableAlias = src.getTableAlias();
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
-        if (this.keyInfo.size() != this.transformation.getColumns().size()) {
+        if (this.keyInfo.size() != transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }

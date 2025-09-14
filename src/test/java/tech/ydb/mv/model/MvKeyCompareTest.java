@@ -1,5 +1,6 @@
 package tech.ydb.mv.model;
 
+import tech.ydb.mv.data.MvKeyPrefix;
 import tech.ydb.mv.data.MvKey;
 import java.math.BigDecimal;
 import java.util.Base64;

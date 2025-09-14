@@ -28,7 +28,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
     public ActionKeysGrab(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(target, src, transformation, context);
-        try (MvSqlGen sg = new MvSqlGen(this.transformation)) {
+        try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();
             this.rowType = sg.toRowType();
         }

@@ -19,6 +19,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysTransform.class);
 
     private final boolean keysTransform;
+    private final List<MvColumn> columns;
 
     public ActionKeysTransform(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
@@ -26,11 +27,12 @@ class ActionKeysTransform extends ActionKeysAbstract {
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");
         }
-        if (this.keyInfo.size() != this.transformation.getColumns().size()) {
+        if (this.keyInfo.size() != transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
+        this.columns = transformation.getColumns();
         LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
@@ -79,7 +81,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
     private MvKey buildKey(MvChangeRecord cr, Grabber grabber) {
         Comparable<?>[] values = new Comparable<?>[keyInfo.size()];
         for (int i = 0; i < keyInfo.size(); ++i) {
-            MvColumn col = transformation.getColumns().get(i);
+            MvColumn col = columns.get(i);
             String column = null;
             if (col.isReference()) {
                 column = col.getSourceColumn();

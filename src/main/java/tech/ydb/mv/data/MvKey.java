@@ -3,7 +3,6 @@ package tech.ydb.mv.data;
 import tech.ydb.table.result.ResultSetReader;
 
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 
 /**

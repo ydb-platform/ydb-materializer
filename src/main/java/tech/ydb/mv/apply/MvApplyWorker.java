@@ -24,13 +24,11 @@ class MvApplyWorker implements Runnable {
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final LinkedBlockingQueue<MvApplyTask> queue;
     private final int queueLimit;
-    private final ArrayList<MvApplyTask> activeTasks;
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
     public MvApplyWorker(MvApplyManager owner, int number) {
         this.owner = owner;
         this.workerNumber = number;
-        this.activeTasks = new ArrayList<>(10);
         this.queue = new LinkedBlockingQueue<>();
         this.queueLimit = owner.getSettings().getApplyQueueSize();
     }
@@ -103,7 +101,7 @@ class MvApplyWorker implements Runnable {
     }
 
     private int action() {
-        activeTasks.clear();
+        ArrayList<MvApplyTask> activeTasks = new ArrayList<>();
         queue.drainTo(activeTasks);
         if (activeTasks.isEmpty()) {
             return 0;
