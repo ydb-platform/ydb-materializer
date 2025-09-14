@@ -144,6 +144,98 @@ public class MvKeyPathGenerator {
     }
 
     /**
+     * Applies the defined filter to the transformation. The filter allows to
+     * skip the unnecessary steps, so that only the required joins are
+     * performed.
+     *
+     * @param filter The list of sources and their destination columns
+     * @return Transformation after the filter is applied
+     */
+    public MvTarget applyFilter(Filter filter) {
+        if (filter == null || filter.items.isEmpty()) {
+            throw new IllegalArgumentException("Empty filter passed");
+        }
+
+        Set<MvJoinSource> required = new HashSet<>();
+        for (FilterItem item : filter.items) {
+            if (!target.getSources().contains(item.source)) {
+                throw new IllegalArgumentException("Filter contains join source "
+                        + "`" + item.source.getTableAlias() + "` which is not included "
+                        + "in the current target");
+            }
+            if (required.add(item.source)) {
+                var path = findPath(topMostSource, item.source);
+                if (path==null || path.isEmpty()) {
+                    throw new IllegalArgumentException("Filter contains join source "
+                            + "`" + item.source.getTableAlias() + "` which is not "
+                            + "a valid destination for the current target");
+                }
+                required.addAll(path);
+            }
+        }
+
+        MvTarget result = new MvTarget("filter");
+        // Add all sources
+        int index = 0;
+        for (MvJoinSource src : target.getSources()) {
+            if (! required.contains(src)) {
+                continue;
+            }
+            MvJoinSource dst = cloneJoinSource(src);
+            if (index == 0) {
+                dst.setMode(MvJoinMode.MAIN);
+            } else {
+                // Inner join, because we assume that the path exists
+                dst.setMode(MvJoinMode.INNER);
+            }
+            result.getSources().add(dst);
+            ++index;
+        }
+
+        // Add relevant join conditions
+        index = 0;
+        for (MvJoinSource src : target.getSources()) {
+            if (! required.contains(src)) {
+                continue;
+            }
+            MvJoinSource dst = result.getSources().get(index);
+            for (MvJoinCondition cond : src.getConditions()) {
+                if (required.contains(cond.getFirstRef())
+                        || required.contains(cond.getSecondRef())) {
+                    dst.getConditions().add(cond.cloneTo(result));
+                }
+            }
+            ++index;
+        }
+
+        // Add the requested columns
+        index = 0;
+        for (FilterItem item : filter.items) {
+            MvJoinSource ref = result.getSourceByAlias(item.source.getTableAlias());
+            if (ref==null) {
+                throw new IllegalStateException("Could not find reference by name: "
+                        + item.source.getTableAlias());
+            }
+            for (String fieldName : item.fieldNames) {
+                MvColumn column = new MvColumn("c" + String.valueOf(index++));
+                column.setSourceAlias(ref.getTableAlias());
+                column.setSourceRef(ref);
+                column.setSourceColumn(fieldName);
+                column.setType(ref.getTableInfo().getColumns().get(fieldName));
+                if (column.getType() == null) {
+                    throw new IllegalArgumentException("Filter requested column"
+                            + "`" + fieldName + "` which is missing in the join source "
+                            + "`" + item.source.getTableAlias() + "` linked to table "
+                            + "`" + item.source.getTableName() + "`");
+                }
+                result.getColumns().add(column);
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Checks if the input source can directly map to the target primary key
      * without joins. This analyzes join conditions to find direct mappings
      * between columns or literal values.
@@ -458,24 +550,12 @@ public class MvKeyPathGenerator {
                 if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
                     int refIndex = path.indexOf(cond.getSecondRef());
                     if (refIndex >= 0 && refIndex < baseIndex) {
-                        copy = new MvJoinCondition(cond.getSqlPos());
-                        copy.setFirstRef(dst);
-                        copy.setFirstAlias(dst.getTableAlias());
-                        copy.setFirstColumn(cond.getFirstColumn());
-                        copy.setSecondRef(result.getSourceByAlias(cond.getSecondAlias()));
-                        copy.setSecondAlias(cond.getSecondAlias());
-                        copy.setSecondColumn(cond.getSecondColumn());
+                        copy = cond.cloneTo(result);
                     }
                 } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
                     int refIndex = path.indexOf(cond.getFirstRef());
                     if (refIndex >= 0 && refIndex < baseIndex) {
-                        copy = new MvJoinCondition(cond.getSqlPos());
-                        copy.setFirstRef(dst);
-                        copy.setFirstAlias(dst.getTableAlias());
-                        copy.setFirstColumn(cond.getSecondColumn());
-                        copy.setSecondRef(result.getSourceByAlias(cond.getFirstAlias()));
-                        copy.setSecondAlias(cond.getFirstAlias());
-                        copy.setSecondColumn(cond.getFirstColumn());
+                        copy = cond.cloneTo(result);
                     }
                 }
                 if (copy!=null && !isDuplicateCondition(dst.getConditions(), copy)) {
@@ -664,6 +744,31 @@ public class MvKeyPathGenerator {
         }
 
         return map;
+    }
+
+    public static Filter newFilter() {
+        return new Filter();
+    }
+
+    public static final class FilterItem {
+        public final MvJoinSource source;
+        public final String[] fieldNames;
+        private boolean found; // used in applyFilter()
+
+        FilterItem(MvJoinSource source, String[] fieldNames) {
+            this.source = source;
+            this.fieldNames = fieldNames;
+            this.found = false;
+        }
+    }
+
+    public static final class Filter {
+        private final ArrayList<FilterItem> items = new ArrayList<>();
+
+        public Filter add(MvJoinSource source, String... names) {
+            items.add(new FilterItem(source, names));
+            return this;
+        }
     }
 
 }

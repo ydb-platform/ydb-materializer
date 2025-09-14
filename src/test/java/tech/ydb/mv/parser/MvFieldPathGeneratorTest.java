@@ -173,6 +173,29 @@ public class MvFieldPathGeneratorTest {
     }
 
     @Test
+    public void testApplyFilter() {
+        var filter = MvKeyPathGenerator.newFilter()
+                .add(sourceA, "id")
+                .add(sourceB, "id", "a_id")
+                .add(sourceD, "id", "a_id");
+        MvTarget result = new MvKeyPathGenerator(originalTarget).applyFilter(filter);
+        assertNotNull(result);
+
+        if (PRINT_SQL) {
+            System.out.println("*** Filtered SQL: " + new MvSqlGen(result).makeSelect());
+        }
+
+        assertEquals(3, result.getSources().size());
+        assertEquals("a", result.getSources().get(0).getTableAlias());
+        assertEquals("b", result.getSources().get(1).getTableAlias());
+        assertEquals("d", result.getSources().get(2).getTableAlias());
+        assertEquals(0, result.getSources().get(0).getConditions().size());
+        assertEquals(1, result.getSources().get(1).getConditions().size());
+        assertEquals(1, result.getSources().get(2).getConditions().size());
+        assertEquals(5, result.getColumns().size());
+    }
+
+    @Test
     public void testGenerateFields_DirectCase() {
         // Test case where target source is the top-most source
         MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(
