@@ -95,7 +95,7 @@ public class MvApplyManager implements MvCdcSink {
                 if (transformation==null) {
                     LOG.info("Keys from input table `{}` cannot be transformed "
                             + "to keys for table `{}`, skipping for target `{}`",
-                            src.getTableName(), pathGenerator.getTopMostSource().getTableName(), target.getName());
+                            src.getTableName(), pathGenerator.getTopSourceTableName(), target.getName());
                     continue;
                 }
                 if (transformation.isKeyOnlyTransformation()) {
