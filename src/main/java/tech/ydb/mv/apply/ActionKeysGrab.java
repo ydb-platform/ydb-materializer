@@ -45,11 +45,6 @@ class ActionKeysGrab extends ActionKeysAbstract {
     }
 
     @Override
-    public StructType getRowType() {
-        return rowType;
-    }
-
-    @Override
     public String toString() {
         return "MvKeysGrab{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
@@ -59,9 +54,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
     @Override
     protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
         Instant tvNow = Instant.now();
-        ResultSetReader rows = readRows(tasks.stream()
-                .map(task -> task.getData().getKey())
-                .toList());
+        ResultSetReader rows = readTaskRows(tasks);
         if (rows.getRowCount()==0) {
             return;
         }

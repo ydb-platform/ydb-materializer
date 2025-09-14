@@ -1,23 +1,23 @@
 package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.ListValue;
-import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
-import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
-import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.data.MvKey;
-import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.parser.MvSqlGen;
 
 /**
  * Common parts of action handlers in the form of a base class.
@@ -68,8 +68,11 @@ abstract class ActionBase {
         throw new UnsupportedOperationException();
     }
 
-    protected StructType getRowType() {
-        throw new UnsupportedOperationException();
+    protected final ResultSetReader readTaskRows(List<MvApplyTask> tasks) {
+        return readRows(tasks.stream()
+                .map(task -> task.getData().getKey())
+                .distinct()
+                .toList());
     }
 
     protected final ResultSetReader readRows(List<MvKey> items) {
@@ -85,34 +88,6 @@ abstract class ActionBase {
         )).join().getValue().getResultSet(0);
         lastSqlStatement.set(null);
         return rsr;
-    }
-
-    protected final void readRows(List<MvKey> items, ArrayList<StructValue> output) {
-        // perform the db query
-        ResultSetReader result = readRows(items);
-        if (result.getRowCount()==0) {
-            return;
-        }
-        // map the positions of columns
-        final StructType rowType = getRowType();
-        int[] positions = new int[rowType.getMembersCount()];
-        for (int ix = 0; ix < positions.length; ++ix) {
-            positions[ix] = result.getColumnIndex(rowType.getMemberName(ix));
-        }
-        // convert the output to the desired structures
-        while (result.next()) {
-            Value<?>[] members = new Value<?>[positions.length];
-            for (int ix = 0; ix < positions.length; ++ix) {
-                Type type = rowType.getMemberType(ix);
-                int pos = positions[ix];
-                if (pos < 0) {
-                    members[ix] = ((OptionalType)type).emptyValue();
-                } else {
-                    members[ix] = YdbConv.convert(result.getColumn(pos).getValue(), type);
-                }
-            }
-            output.add(rowType.newValueUnsafe(members));
-        }
     }
 
     protected static Value<?> keysToParam(List<MvKey> items) {
@@ -145,4 +120,26 @@ abstract class ActionBase {
         return writeBatchSize;
     }
 
+    /**
+     * Group the input records by commit handlers.
+     * This enables more efficient per-commit-handler behavior.
+     */
+    protected static class PerCommit {
+        final HashMap<MvCommitHandler, ArrayList<MvApplyTask>> items = new HashMap<>();
+
+        PerCommit(List<MvApplyTask> tasks) {
+            for (MvApplyTask task : tasks) {
+                ArrayList<MvApplyTask> cur = items.get(task.getCommit());
+                if (cur==null) {
+                    cur = new ArrayList<>();
+                    items.put(task.getCommit(), cur);
+                }
+                cur.add(task);
+            }
+        }
+
+        public void apply(BiConsumer<MvCommitHandler, List<MvApplyTask>> consumer) {
+            items.forEach((handler, tasks) -> consumer.accept(handler, tasks));
+        }
+    }
 }

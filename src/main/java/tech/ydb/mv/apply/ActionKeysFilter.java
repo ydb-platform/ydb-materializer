@@ -1,7 +1,17 @@
 package tech.ydb.mv.apply;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
-import tech.ydb.table.values.StructType;
+
+import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.MvRowFilter;
+import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.model.MvKeyInfo;
+import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.parser.MvSqlGen;
 
 /**
  *
@@ -10,23 +20,56 @@ import tech.ydb.table.values.StructType;
 class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysFilter.class);
 
-    public ActionKeysFilter(MvActionContext context) {
-        super(context);
-    }
+    private final MvKeyInfo topmostKey;
+    private final MvRowFilter filter;
+    private final String sqlSelect;
 
-    @Override
-    protected StructType getRowType() {
-        return super.getRowType(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+    public ActionKeysFilter(MvActionContext context, MvTarget target,
+            MvTarget request, MvRowFilter filter) {
+        super(context);
+        this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
+        this.filter = filter;
+        try (MvSqlGen sg = new MvSqlGen(request)) {
+            this.sqlSelect = sg.makeSelect();
+        }
+        LOG.info(" [{}] Handler `{}`, target `{}`, total {} filters",
+                instance, context.getMetadata().getName(), target.getName(),
+                filter.getBlocks().size());
     }
 
     @Override
     protected String getSqlSelect() {
-        return super.getSqlSelect(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+        return sqlSelect;
     }
 
     @Override
     public void apply(List<MvApplyTask> input) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        new PerCommit(input).apply((handler, tasks) -> process(handler, tasks));
+    }
+
+    private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
+        var rsr = readTaskRows(tasks);
+        var records = new ArrayList<MvChangeRecord>();
+        Instant tv = Instant.now();
+        while (rsr.next()) {
+            var row = YdbConv.toPojoRow(rsr);
+            if (filter.matches(row)) {
+                records.add(convert(row, tv));
+            }
+        }
+        if (! records.isEmpty()) {
+            handler.reserve(records.size());
+            context.getApplyManager().submitForce(records, handler);
+        }
+    }
+
+    private MvChangeRecord convert(Comparable<?>[] row, Instant tv) {
+        Comparable<?>[] keyPart = new Comparable<?>[topmostKey.size()];
+        for (int i = 0; i < keyPart.length; ++i) {
+            keyPart[i] = row[i];
+        }
+        MvKey key = new MvKey(topmostKey, keyPart);
+        return new MvChangeRecord(key, tv, MvChangeRecord.OpType.UPSERT);
     }
 
 }

@@ -1,6 +1,7 @@
 package tech.ydb.mv.feeder;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvInput;
@@ -36,5 +37,9 @@ public interface MvCdcSink {
      * @param handler The commit processing handler
      */
     void submitForce(Collection<MvChangeRecord> records, MvCommitHandler handler);
+
+    default void submitForce(MvChangeRecord cr, MvCommitHandler handler) {
+        submitForce(Collections.singletonList(cr), handler);
+    }
 
 }

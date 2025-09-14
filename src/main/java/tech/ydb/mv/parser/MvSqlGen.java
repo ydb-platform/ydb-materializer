@@ -578,10 +578,12 @@ public class MvSqlGen implements AutoCloseable {
         if (target==null) {
             throw new NullPointerException();
         }
-        if (target.getTableInfo()==null) {
-            throw new IllegalArgumentException("Passed target without table info");
+        if (target.getColumns().isEmpty()) {
+            throw new IllegalArgumentException("Passed target without column info");
         }
-        return toRowType(target.getTableInfo());
+        HashMap<String, Type> columns = new HashMap<>();
+        target.getColumns().forEach(c -> columns.put(c.getName(), c.getType()));
+        return StructType.of(columns);
     }
 
     public static StructType toRowType(MvTableInfo ti) {

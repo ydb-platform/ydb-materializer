@@ -2,6 +2,7 @@ package tech.ydb.mv.data;
 
 import java.math.BigDecimal;
 
+import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.DecimalType;
 import tech.ydb.table.values.DecimalValue;
 import tech.ydb.table.values.NullValue;
@@ -78,6 +79,109 @@ public abstract class YdbConv {
             default:
                 throw new IllegalArgumentException("Unsupported data type: " + t);
         }
+    }
+
+    public static Comparable<?> toPojo(Value<?> v) {
+        if (v==null) {
+            return null;
+        }
+        switch (v.getType().getKind()) {
+            case OPTIONAL:
+                if ( v.asOptional().isPresent() ) {
+                    return toPojo(v.asOptional().get());
+                } else {
+                    return null;
+                }
+            case DECIMAL:
+                return ((DecimalValue)v).toBigDecimal();
+            case PRIMITIVE:
+                return toPojo(v.asData());
+            case NULL:
+                return null;
+            default:
+                throw new IllegalArgumentException("Unsupported data type: " + v.getType());
+        }
+    }
+
+    public static Comparable<?> toPojo(PrimitiveValue v) {
+        switch (v.getType()) {
+            case Bool:          return v.getBool();
+            case Bytes:         return new YdbBytes(v.getBytes());
+            case Date:          return v.getDate();
+            case Date32:        return v.getDate32();
+            case Datetime:      return v.getDatetime();
+            case Datetime64:    return v.getDatetime64();
+            case Double:        return v.getDouble();
+            case Float:         return v.getFloat();
+            case Int16:         return v.getInt16();
+            case Int32:         return v.getInt32();
+            case Int64:         return v.getInt64();
+            case Int8:          return v.getInt8();
+            case Interval:      return v.getInterval();
+            case Interval64:    return v.getInterval64();
+            case Json:          return v.getJson();
+            case JsonDocument:  return v.getJsonDocument();
+            case Text:          return v.getText();
+            case Timestamp:     return v.getTimestamp();
+            case Timestamp64:   return v.getTimestamp64();
+            case Uint16:        return v.getUint16();
+            case Uint32:        return v.getUint32();
+            case Uint64:        return new YdbUnsigned(v.getUint64());
+            case Uint8:         return v.getUint8();
+            case Uuid:          return v.getUuidString();
+            default:
+                throw new IllegalArgumentException("Unsupported data type: " + v.getType());
+        }
+    }
+
+    public static Value<?> convert(Value<?> input, Type type) {
+        if (input==null) {
+            return null;
+        }
+        if (type==null) {
+            return input;
+        }
+        if (type.equals(input.getType())) {
+            return input;
+        }
+        if (input instanceof OptionalValue) {
+            OptionalValue ov = input.asOptional();
+            if (ov.isPresent()) {
+                return convert(ov.get(), type);
+            } else if (type instanceof OptionalType) {
+                return ((OptionalType)type).emptyValue();
+            } else {
+                throw new IllegalArgumentException("Cannot convert "
+                        + "empty value of type " + input.getType()
+                        + "to non-optional type " + type);
+            }
+        }
+        // We have two different types and non-empty input
+        Comparable<?> v = toPojo(input);
+        Exception reason = null;
+        try {
+            switch (type.getKind()) {
+                case OPTIONAL:
+                    return convert(input, type.unwrapOptional()).makeOptional();
+                case DECIMAL:
+                    return decimalFromPojo(v, (DecimalType)type);
+                case PRIMITIVE:
+                    return fromPojo(v, (PrimitiveType)type);
+            }
+        } catch(Exception ex) {
+            reason = ex;
+        }
+        throw new IllegalArgumentException("Cannot convert "
+                + "value of type " + input.getType()
+                + "to type " + type, reason);
+    }
+
+    public static Comparable<?>[] toPojoRow(ResultSetReader rsr) {
+        Comparable<?>[] ret = new Comparable<?>[rsr.getColumnCount()];
+        for (int i = 0; i < rsr.getColumnCount(); ++i) {
+            ret[i] = toPojo(rsr.getColumn(i).getValue());
+        }
+        return ret;
     }
 
     private static Value<?> decimalFromPojo(Object v, DecimalType dt) {
@@ -304,100 +408,4 @@ public abstract class YdbConv {
         }
         return PrimitiveValue.newUuid(java.util.UUID.fromString(v.toString()));
     }
-
-    public static Comparable<?> toPojo(Value<?> v) {
-        if (v==null) {
-            return null;
-        }
-        switch (v.getType().getKind()) {
-            case OPTIONAL:
-                if ( v.asOptional().isPresent() ) {
-                    return toPojo(v.asOptional().get());
-                } else {
-                    return null;
-                }
-            case DECIMAL:
-                return ((DecimalValue)v).toBigDecimal();
-            case PRIMITIVE:
-                return toPojo(v.asData());
-            case NULL:
-                return null;
-            default:
-                throw new IllegalArgumentException("Unsupported data type: " + v.getType());
-        }
-    }
-
-    public static Comparable<?> toPojo(PrimitiveValue v) {
-        switch (v.getType()) {
-            case Bool:          return v.getBool();
-            case Bytes:         return new YdbBytes(v.getBytes());
-            case Date:          return v.getDate();
-            case Date32:        return v.getDate32();
-            case Datetime:      return v.getDatetime();
-            case Datetime64:    return v.getDatetime64();
-            case Double:        return v.getDouble();
-            case Float:         return v.getFloat();
-            case Int16:         return v.getInt16();
-            case Int32:         return v.getInt32();
-            case Int64:         return v.getInt64();
-            case Int8:          return v.getInt8();
-            case Interval:      return v.getInterval();
-            case Interval64:    return v.getInterval64();
-            case Json:          return v.getJson();
-            case JsonDocument:  return v.getJsonDocument();
-            case Text:          return v.getText();
-            case Timestamp:     return v.getTimestamp();
-            case Timestamp64:   return v.getTimestamp64();
-            case Uint16:        return v.getUint16();
-            case Uint32:        return v.getUint32();
-            case Uint64:        return new YdbUnsigned(v.getUint64());
-            case Uint8:         return v.getUint8();
-            case Uuid:          return v.getUuidString();
-            default:
-                throw new IllegalArgumentException("Unsupported data type: " + v.getType());
-        }
-    }
-
-    public static Value<?> convert(Value<?> input, Type type) {
-        if (input==null) {
-            return null;
-        }
-        if (type==null) {
-            return input;
-        }
-        if (type.equals(input.getType())) {
-            return input;
-        }
-        if (input instanceof OptionalValue) {
-            OptionalValue ov = input.asOptional();
-            if (ov.isPresent()) {
-                return convert(ov.get(), type);
-            } else if (type instanceof OptionalType) {
-                return ((OptionalType)type).emptyValue();
-            } else {
-                throw new IllegalArgumentException("Cannot convert "
-                        + "empty value of type " + input.getType()
-                        + "to non-optional type " + type);
-            }
-        }
-        // We have two different types and non-empty input
-        Comparable<?> v = toPojo(input);
-        Exception reason = null;
-        try {
-            switch (type.getKind()) {
-                case OPTIONAL:
-                    return convert(input, type.unwrapOptional()).makeOptional();
-                case DECIMAL:
-                    return decimalFromPojo(v, (DecimalType)type);
-                case PRIMITIVE:
-                    return fromPojo(v, (PrimitiveType)type);
-            }
-        } catch(Exception ex) {
-            reason = ex;
-        }
-        throw new IllegalArgumentException("Cannot convert "
-                + "value of type " + input.getType()
-                + "to type " + type, reason);
-    }
-
 }

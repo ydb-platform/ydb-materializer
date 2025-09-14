@@ -1,7 +1,5 @@
 package tech.ydb.mv.apply;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
@@ -40,7 +38,7 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
     @Override
     public final void apply(List<MvApplyTask> input) {
-        new PerCommit(input).apply();
+        new PerCommit(input).apply((handler, tasks) -> process(handler, tasks));
     }
 
     /**
@@ -51,26 +49,4 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
      */
     protected abstract void process(MvCommitHandler handler, List<MvApplyTask> tasks);
 
-    /**
-     * Group the input records by commit handlers.
-     * This enables more efficient per-commit-handler behavior.
-     */
-    private class PerCommit {
-        final HashMap<MvCommitHandler, ArrayList<MvApplyTask>> items = new HashMap<>();
-
-        PerCommit(List<MvApplyTask> tasks) {
-            for (MvApplyTask task : tasks) {
-                ArrayList<MvApplyTask> cur = items.get(task.getCommit());
-                if (cur==null) {
-                    cur = new ArrayList<>();
-                    items.put(task.getCommit(), cur);
-                }
-                cur.add(task);
-            }
-        }
-
-        void apply() {
-            items.forEach((handler, tasks) -> process(handler, tasks));
-        }
-    }
 }

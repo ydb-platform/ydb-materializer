@@ -11,12 +11,16 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
+import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
+import tech.ydb.table.values.Type;
 import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -62,11 +66,6 @@ class ActionSync extends ActionBase implements MvApplyAction {
     @Override
     public String getSqlSelect() {
         return sqlSelect;
-    }
-
-    @Override
-    public StructType getRowType() {
-        return rowType;
     }
 
     @Override
@@ -170,4 +169,30 @@ class ActionSync extends ActionBase implements MvApplyAction {
         lastSqlStatement.set(null);
     }
 
+    private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
+        // perform the db query
+        ResultSetReader result = readRows(items);
+        if (result.getRowCount()==0) {
+            return;
+        }
+        // map the positions of columns
+        int[] positions = new int[rowType.getMembersCount()];
+        for (int ix = 0; ix < positions.length; ++ix) {
+            positions[ix] = result.getColumnIndex(rowType.getMemberName(ix));
+        }
+        // convert the output to the desired structures
+        while (result.next()) {
+            Value<?>[] members = new Value<?>[positions.length];
+            for (int ix = 0; ix < positions.length; ++ix) {
+                Type type = rowType.getMemberType(ix);
+                int pos = positions[ix];
+                if (pos < 0) {
+                    members[ix] = ((OptionalType)type).emptyValue();
+                } else {
+                    members[ix] = YdbConv.convert(result.getColumn(pos).getValue(), type);
+                }
+            }
+            output.add(rowType.newValueUnsafe(members));
+        }
+    }
 }
