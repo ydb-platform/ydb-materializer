@@ -117,7 +117,11 @@ public class MvMetadata {
         }
         linkTables(info);
         linkColumns();
-        return validate(describer.getYdb());
+        if (! validate(describer.getYdb()) ) {
+            return false;
+        }
+        targets.values().forEach(target -> target.updateUsedColumns());
+        return true;
     }
 
     private TreeSet<String> collectTables() {

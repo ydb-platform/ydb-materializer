@@ -8,6 +8,7 @@ import java.util.Objects;
 
 /**
  * Materialized view defined as a target of the transformation.
+ *
  * @author zinal
  */
 public class MvTarget implements MvSqlPosHolder {
@@ -18,6 +19,7 @@ public class MvTarget implements MvSqlPosHolder {
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
     private MvTableInfo tableInfo;
+    private MvUsedColumns usedColumns;
     private final MvSqlPos sqlPos;
 
     public MvTarget(String name, MvSqlPos sqlPos) {
@@ -139,6 +141,15 @@ public class MvTarget implements MvSqlPosHolder {
 
     public void setTableInfo(MvTableInfo tableInfo) {
         this.tableInfo = tableInfo;
+    }
+
+    public void updateUsedColumns() {
+        this.usedColumns = new MvUsedColumns();
+        this.usedColumns.fill(this);
+    }
+
+    public MvUsedColumns getUsedColumns() {
+        return usedColumns;
     }
 
     @Override
