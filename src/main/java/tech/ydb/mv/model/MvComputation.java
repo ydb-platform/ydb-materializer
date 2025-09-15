@@ -88,15 +88,18 @@ public class MvComputation implements MvSqlPosHolder {
 
     public static class Source {
 
-        private String alias;
+        private final String alias;
+        private final String column;
         private MvJoinSource reference;
 
-        public Source(String alias) {
+        public Source(String alias, String column) {
             this.alias = alias;
+            this.column = column;
         }
 
-        public Source(String alias, MvJoinSource reference) {
+        public Source(String alias, String column, MvJoinSource reference) {
             this.alias = alias;
+            this.column = column;
             this.reference = reference;
         }
 
@@ -104,8 +107,8 @@ public class MvComputation implements MvSqlPosHolder {
             return alias;
         }
 
-        public void setAlias(String alias) {
-            this.alias = alias;
+        public String getColumn() {
+            return column;
         }
 
         public MvJoinSource getReference() {

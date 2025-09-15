@@ -12,19 +12,21 @@ import tech.ydb.table.settings.DescribeTableSettings;
  *
  * @author zinal
  */
-public class MvMetadataReader {
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvMetadataReader.class);
+public class MvDescriberYdb implements MvDescriber {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDescriberYdb.class);
 
     private final YdbConnector ydb;
 
-    public MvMetadataReader(YdbConnector ydb) {
+    public MvDescriberYdb(YdbConnector ydb) {
         this.ydb = ydb;
     }
 
+    @Override
     public YdbConnector getYdb() {
         return ydb;
     }
 
+    @Override
     public MvTableInfo describeTable(String tabname) {
         String path;
         if (tabname.startsWith("/")) {

@@ -1,5 +1,6 @@
 package tech.ydb.mv.parser;
 
+import java.util.HashMap;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.SqlConstants;
@@ -7,6 +8,8 @@ import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
+import tech.ydb.mv.model.MvTableInfo;
+import tech.ydb.mv.model.MvTarget;
 
 /**
  *
@@ -350,6 +353,48 @@ public class BasicParserTest {
         Assertions.assertFalse(mc.isValid());
         Assertions.assertEquals(3, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
+    }
+
+    @Test
+    public void parserErrorTest2() {
+        MvMetadata mc = new MvSqlParser(SqlConstants.SQL_BAD2).fill();
+        Assertions.assertTrue(mc.isValid());
+
+        MvTableInfo ti;
+        HashMap<String, MvTableInfo> info = new HashMap<>();
+        ti = SqlConstants.tiMainTable("schema3/main_table");
+        info.put(ti.getName(), ti);
+        ti = SqlConstants.tiSubTable1("schema3/sub_table1");
+        info.put(ti.getName(), ti);
+        ti = SqlConstants.tiSubTable2("schema3/sub_table2");
+        info.put(ti.getName(), ti);
+        ti = SqlConstants.tiSubTable3("schema3/sub_table3");
+        info.put(ti.getName(), ti);
+        ti = SqlConstants.tiTarget("schema3/mv99");
+        info.put(ti.getName(), ti);
+
+        MvDescriber dummy = new MvDescriber() {
+            @Override
+            public MvTableInfo describeTable(String tabname) {
+                return info.get(tabname);
+            }
+        };
+        mc.linkAndValidate(dummy);
+
+        if (PRINT_SQL) {
+            new MvIssuePrinter(mc).write(System.out);
+        }
+
+/*
+ERROR: Cannot resolve column reference `main` . `c256` in target MV `schema3/mv99` at position [4:7]
+ERROR: Cannot resolve column reference `main` . `badcol` in target MV `schema3/mv99` at position [13:6]
+ERROR: Cannot resolve column reference `sub2` . `c77` in target MV `schema3/mv99` at position [13:6]
+WARNING: Missing index on columns [c1, c2] for table `schema3/main_table` used as alias `main` in target `schema3/sub_table1_full` at position [6:5]
+WARNING: Missing index on columns [c3, c4] for table `schema3/main_table` used as alias `main` in target `schema3/sub_table2_full` at position [6:5]
+*/
+        Assertions.assertFalse(mc.isValid());
+        Assertions.assertEquals(3, mc.getErrors().size());
+        Assertions.assertEquals(2, mc.getWarnings().size());
     }
 
     private void checkJoinCondition(MvJoinCondition cond,

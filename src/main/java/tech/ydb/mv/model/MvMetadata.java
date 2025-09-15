@@ -7,10 +7,10 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.parser.MvSqlValidator;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.parser.MvBasicValidator;
-import tech.ydb.mv.parser.MvMetadataReader;
+import tech.ydb.mv.parser.MvDescriber;
+import tech.ydb.mv.parser.MvValidateBasic;
+import tech.ydb.mv.parser.MvValidateSql;
 
 /**
  * Aggregated metadata used by the YDB Materializer.
@@ -90,9 +90,9 @@ public class MvMetadata {
         if (! isValid()) {
             return false;
         }
-        boolean valid = new MvBasicValidator(this).validate();
-        if (valid) {
-            valid = new MvSqlValidator(this, conn).validate();
+        boolean valid = new MvValidateBasic(this).validate();
+        if (valid && conn != null) {
+            valid = new MvValidateSql(this, conn).validate();
         }
         return valid;
     }
@@ -101,23 +101,23 @@ public class MvMetadata {
      * Load the missing parts of metadata and perform validation.
      * Table, column and changefeed information is loaded using the helper object passed.
      *
-     * @param metadataReader Helper for metadata retrieval
+     * @param describer Helper for metadata retrieval
      * @return true, if no errors detected, false otherwise
      */
-    public boolean linkAndValidate(MvMetadataReader metadataReader) {
+    public boolean linkAndValidate(MvDescriber describer) {
         if (! isValid()) {
             return false;
         }
         HashMap<String, MvTableInfo> info = new HashMap<>();
         for (String tabname : collectTables()) {
-            MvTableInfo ti = metadataReader.describeTable(tabname);
+            MvTableInfo ti = describer.describeTable(tabname);
             if (ti!=null) {
                 info.put(tabname, ti);
             }
         }
         linkTables(info);
         linkColumns();
-        return validate(metadataReader.getYdb());
+        return validate(describer.getYdb());
     }
 
     private TreeSet<String> collectTables() {

@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import java.util.List;
 
 import tech.ydb.mv.model.MvColumn;
+import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
@@ -17,11 +18,11 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvBasicValidator {
+public class MvValidateBasic {
 
     private final MvMetadata context;
 
-    public MvBasicValidator(MvMetadata context) {
+    public MvValidateBasic(MvMetadata context) {
         this.context = context;
     }
 
@@ -100,7 +101,24 @@ public class MvBasicValidator {
             context.addIssue(new MvIssue.UselessTarget(mt));
         }
         mt.getSources().forEach(src -> checkJoinConditions(mt, src));
-        mt.getColumns().forEach(column -> checkTargetColumn(mt, column));
+        mt.getColumns().forEach(column -> checkTargetOutputColumn(mt, column));
+        if (mt.getFilter() != null) {
+            checkTargetFilter(mt, mt.getFilter());
+        }
+    }
+
+    private void checkTargetFilter(MvTarget mt, MvComputation filter) {
+        for (var src : filter.getSources()) {
+            if (src.getReference() != null
+                    && src.getReference().getTableInfo() != null) {
+                boolean exists = src.getReference().getTableInfo()
+                        .getColumns().containsKey(src.getColumn());
+                if (! exists) {
+                    context.addIssue(new MvIssue.UnknownColumn(
+                            mt, src.getAlias(), src.getColumn(), filter));
+                }
+            }
+        }
     }
 
     private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
@@ -144,20 +162,32 @@ public class MvBasicValidator {
         }
     }
 
-    private void checkTargetColumn(MvTarget mt, MvColumn column) {
+    private void checkTargetOutputColumn(MvTarget mt, MvColumn column) {
         if (column.isComputation()) {
-            return;
-        }
-        MvJoinSource src = mt.getSourceByAlias(column.getSourceAlias());
-        if (src==null || src.getTableInfo()==null
-                || src.getTableInfo().getColumns().get(column.getSourceColumn())==null) {
-            context.addIssue(new MvIssue.IllegalOutputReference(mt, column));
-        }
-        if (mt.getTableInfo()==null) {
-            return;
-        }
-        if (mt.getTableInfo().getColumns().get(column.getName())==null) {
-            context.addIssue(new MvIssue.UnknownOutputColumn(mt, column));
+            MvComputation comp = column.getComputation();
+            for (var src : comp.getSources()) {
+                if (src.getReference() != null
+                        && src.getReference().getTableInfo() != null) {
+                    boolean exists = src.getReference().getTableInfo()
+                            .getColumns().containsKey(src.getColumn());
+                    if (! exists) {
+                        context.addIssue(new MvIssue.UnknownColumn(
+                                mt, src.getAlias(), src.getColumn(), comp));
+                    }
+                }
+            }
+        } else {
+            MvJoinSource src = mt.getSourceByAlias(column.getSourceAlias());
+            if (src==null || src.getTableInfo()==null
+                    || src.getTableInfo().getColumns().get(column.getSourceColumn())==null) {
+                context.addIssue(new MvIssue.IllegalOutputReference(mt, column));
+            }
+            if (mt.getTableInfo()==null) {
+                return;
+            }
+            if (mt.getTableInfo().getColumns().get(column.getName())==null) {
+                context.addIssue(new MvIssue.UnknownOutputColumn(mt, column));
+            }
         }
     }
 

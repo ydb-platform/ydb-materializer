@@ -29,7 +29,7 @@ simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
 
 result_column: (column_reference | opaque_expression) AS column_alias;
 
-opaque_expression: (COMPUTE (ON table_alias (COMMA table_alias)*)?)? opaque_expression_body;
+opaque_expression: (COMPUTE (ON column_reference (COMMA column_reference)*)?)? opaque_expression_body;
 opaque_expression_body: OPAQUE_EXPRESSION;
 
 fragment OPAQUE_BEGIN: '#[';
