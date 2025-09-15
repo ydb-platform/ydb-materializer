@@ -14,14 +14,12 @@ public class MvApplyTask {
     private final MvChangeRecord data;
     private final MvApplyActionList actions;
     private final MvCommitHandler commit;
-    private final int workerId;
 
     public MvApplyTask(MvChangeRecord data, MvCommitHandler commit,
-            MvApplyActionList actions, int workerId) {
+            MvApplyActionList actions) {
         this.data = data;
         this.actions = actions;
         this.commit = commit;
-        this.workerId = workerId;
     }
 
     public MvApplyTask(MvChangeRecord data, MvCommitHandler commit,
@@ -29,7 +27,6 @@ public class MvApplyTask {
         this.data = data;
         this.actions = new MvApplyActionList(actions);
         this.commit = commit;
-        this.workerId = workerId;
     }
 
     public MvChangeRecord getData() {
@@ -42,10 +39,6 @@ public class MvApplyTask {
 
     public MvCommitHandler getCommit() {
         return commit;
-    }
-
-    public int getWorkerId() {
-        return workerId;
     }
 
     @Override

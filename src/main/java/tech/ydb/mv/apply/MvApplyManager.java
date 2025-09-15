@@ -129,7 +129,8 @@ public class MvApplyManager implements MvCdcSink {
                 .toList();
     }
 
-    private MvApplyWorker getWorker(int index) {
+    private MvApplyWorker getWorker(MvApplyTask task, MvApplyConfig actions) {
+        int index = actions.getSelector().choose(task.getData().getKey());
         if (index < 0) {
             index = -1 * index;
         }
@@ -139,31 +140,23 @@ public class MvApplyManager implements MvCdcSink {
 
     private ArrayList<MvApplyTask> convertChanges(
             MvTarget target,
+            MvApplyConfig actions,
             Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         int count = changes.size();
         ArrayList<MvApplyTask> curr = new ArrayList<>(count);
-        String tableName = changes.iterator().next().getKey().getTableName();
-        MvApplyConfig apply = sourceActions.get(tableName);
-        if (apply == null) {
-            handler.commit(count);
-            LOG.warn("Skipping {} change records for unexpected table `{}` in handler `{}`",
-                    count, tableName, context.getMetadata().getName());
-            return curr;
-        }
-        MvApplyActionList actions = null;
+        MvApplyActionList actionList = null;
         if (target != null) {
-            actions = refreshActions.get(target.getName());
+            actionList = refreshActions.get(target.getName());
         }
-        if (actions == null) {
-            actions = apply.getActions();
+        if (actionList == null) {
+            actionList = actions.getActions();
         }
         for (MvChangeRecord change : changes) {
-            if (!tableName.equals(change.getKey().getTableName())) {
+            if (actions.getTable() != change.getKey().getTableInfo()) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
-            int workerId = apply.getSelector().choose(change.getKey());
-            curr.add(new MvApplyTask(change, handler, actions, workerId));
+            curr.add(new MvApplyTask(change, handler, actionList));
         }
         return curr;
     }
@@ -174,15 +167,23 @@ public class MvApplyManager implements MvCdcSink {
         if (changes.isEmpty()) {
             return true;
         }
-
-        ArrayList<MvApplyTask> curr = convertChanges(target, changes, handler);
+        String sourceTableName = changes.iterator().next().getKey().getTableName();
+        MvApplyConfig actions = sourceActions.get(sourceTableName);
+        if (actions == null) {
+            int count = changes.size();
+            handler.commit(count);
+            LOG.warn("Skipping {} input changes for unexpected table `{}` in handler `{}`",
+                    count, sourceTableName, context.getMetadata().getName());
+            return true;
+        }
+        ArrayList<MvApplyTask> curr = convertChanges(target, actions, changes, handler);
         if (curr.isEmpty()) {
             return true; // fast exit
         }
         ArrayList<MvApplyTask> next = new ArrayList<>();
         while (isRunning()) {
             for (MvApplyTask task : curr) {
-                if (! getWorker(task.getWorkerId()).submit(task)) {
+                if (! getWorker(task, actions).submit(task)) {
                     // add for re-processing
                     next.add(task);
                 }
@@ -206,8 +207,17 @@ public class MvApplyManager implements MvCdcSink {
     @Override
     public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
-        convertChanges(target, changes, handler).forEach(
-                task -> getWorker(task.getWorkerId()).submitForce(task)
+        String sourceTableName = changes.iterator().next().getKey().getTableName();
+        MvApplyConfig actions = sourceActions.get(sourceTableName);
+        if (actions == null) {
+            int count = changes.size();
+            handler.commit(count);
+            LOG.warn("Skipping {} forced changes for unexpected table `{}` in handler `{}`",
+                    count, sourceTableName, context.getMetadata().getName());
+            return;
+        }
+        convertChanges(target, actions, changes, handler).forEach(
+                task -> getWorker(task, actions).submitForce(task)
         );
     }
 
