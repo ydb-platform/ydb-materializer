@@ -31,7 +31,6 @@ import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvTarget;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal table.
@@ -115,15 +114,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     }
 
     @Override
-    public boolean submit(MvTarget target, Collection<MvChangeRecord> records,
-            MvCommitHandler handler) {
-        submitForce(target, records, handler);
-        return true;
-    }
-
-    @Override
-    public void submitForce(MvTarget target, Collection<MvChangeRecord> records,
-            MvCommitHandler handler) {
+    public boolean submit(Collection<MvChangeRecord> records, MvCommitHandler handler) {
         if (records.size() <= settings.getUpsertBatchSize()) {
             process(records);
         } else {
@@ -133,6 +124,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
             }
         }
         handler.commit(records.size());
+        return true;
     }
 
     private void process(Collection<MvChangeRecord> records) {

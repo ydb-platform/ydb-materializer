@@ -23,14 +23,16 @@ import tech.ydb.mv.support.YdbMisc;
  * @author zinal
  */
 public class MvApplyManager implements MvCdcSink {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 
     private final MvActionContext context;
     private final MvApplyWorker[] workers;
     private final AtomicInteger queueSize;
+    private final int queueLimit;
 
     // source table name -> table apply configuration data
-    private final HashMap<String, MvApplyConfig> sourceActions = new HashMap<>();
+    private final HashMap<String, MvApplyConfig> sourceConfigs = new HashMap<>();
     // target table name -> refresh action singleton list
     private final HashMap<String, MvApplyActionList> refreshActions = new HashMap<>();
 
@@ -38,12 +40,13 @@ public class MvApplyManager implements MvCdcSink {
         this.context = new MvActionContext(context, this);
         int workerCount = context.getSettings().getApplyThreads();
         this.workers = new MvApplyWorker[workerCount];
-        for (int i=0; i<workerCount; ++i) {
+        for (int i = 0; i < workerCount; ++i) {
             workers[i] = new MvApplyWorker(this, i);
         }
         this.queueSize = new AtomicInteger(0);
+        this.queueLimit = context.getSettings().getApplyQueueSize();
         new MvApplyConfig.Configurator(this.context)
-                .build(this.sourceActions, this.refreshActions);
+                .build(this.sourceConfigs, this.refreshActions);
     }
 
     public String getJobName() {
@@ -94,7 +97,8 @@ public class MvApplyManager implements MvCdcSink {
     }
 
     /**
-     * @return true if any of the workers is locked by the error being retried, false otherwise
+     * @return true if any of the workers is locked by the error being retried,
+     * false otherwise
      */
     public boolean isLocked() {
         return (getLockedWorkersCount() > 0);
@@ -106,13 +110,13 @@ public class MvApplyManager implements MvCdcSink {
      * @param tableClient Table client is needed to describe the source tables.
      */
     public void refreshSelectors(TableClient tableClient) {
-        sourceActions.values().forEach(ac -> ac.getSelector().refresh(tableClient));
+        sourceConfigs.values().forEach(ac -> ac.getSelector().refresh(tableClient));
     }
 
     /**
-     * Used by the controller to start the apply worker threads.
-     * No need for explicit stop method here - the threads stop when
-     * the controller reports itself as stopped via isRunning() method.
+     * Used by the controller to start the apply worker threads. No need for
+     * explicit stop method here - the threads stop when the controller reports
+     * itself as stopped via isRunning() method.
      */
     public void start() {
         for (MvApplyWorker w : workers) {
@@ -138,87 +142,101 @@ public class MvApplyManager implements MvCdcSink {
         return workers[index];
     }
 
-    private ArrayList<MvApplyTask> convertChanges(
-            MvTarget target,
-            MvApplyConfig actions,
-            Collection<MvChangeRecord> changes,
-            MvCommitHandler handler) {
-        int count = changes.size();
-        ArrayList<MvApplyTask> curr = new ArrayList<>(count);
-        MvApplyActionList actionList = null;
-        if (target != null) {
-            actionList = refreshActions.get(target.getName());
-        }
-        if (actionList == null) {
-            actionList = actions.getActions();
-        }
-        for (MvChangeRecord change : changes) {
-            if (actions.getTable() != change.getKey().getTableInfo()) {
-                throw new IllegalArgumentException("Mixed input tables on submission");
-            }
-            curr.add(new MvApplyTask(change, handler, actionList));
-        }
-        return curr;
-    }
-
-    @Override
-    public boolean submit(MvTarget target, Collection<MvChangeRecord> changes,
+    private MvApplyConfig grabSourceConfig(Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         if (changes.isEmpty()) {
-            return true;
+            return null;
         }
         String sourceTableName = changes.iterator().next().getKey().getTableName();
-        MvApplyConfig actions = sourceActions.get(sourceTableName);
-        if (actions == null) {
+        MvApplyConfig sourceConfig = sourceConfigs.get(sourceTableName);
+        if (sourceConfig == null) {
             int count = changes.size();
             handler.commit(count);
-            LOG.warn("Skipping {} input changes for unexpected table `{}` in handler `{}`",
+            LOG.warn("Skipping {} changes for unexpected table `{}` in handler `{}`",
                     count, sourceTableName, context.getMetadata().getName());
+            return null;
+        }
+        return sourceConfig;
+    }
+
+    private boolean doSubmit(MvApplyActionList actions, MvApplyConfig sourceConfig,
+            Collection<MvChangeRecord> changes, MvCommitHandler handler, boolean immediate) {
+        if (actions == null) {
+            actions = sourceConfig.getActions();
+        }
+        int count = changes.size();
+        ArrayList<MvApplyTask> curr = new ArrayList<>(count);
+        for (MvChangeRecord change : changes) {
+            if (sourceConfig.getTableInfo() != change.getKey().getTableInfo()) {
+                throw new IllegalArgumentException("Mixed input tables on submission");
+            }
+            curr.add(new MvApplyTask(change, handler, actions));
+        }
+        if (immediate) {
+            curr.forEach(task -> getWorker(task, sourceConfig).submit(task));
             return true;
         }
-        ArrayList<MvApplyTask> curr = convertChanges(target, actions, changes, handler);
-        if (curr.isEmpty()) {
-            return true; // fast exit
-        }
-        ArrayList<MvApplyTask> next = new ArrayList<>();
-        while (isRunning()) {
-            for (MvApplyTask task : curr) {
-                if (! getWorker(task, actions).submit(task)) {
-                    // add for re-processing
-                    next.add(task);
-                }
+        int position = 0;
+        while (isRunning() && position < curr.size()) {
+            // backpressure condition - wait until queue space is available
+            if (getQueueSize() < queueLimit) {
+                MvApplyTask task = curr.get(position);
+                getWorker(task, sourceConfig).submit(task);
+                ++position;
+            } else {
+                // Allow the queue to get released.
+                YdbMisc.randomSleep(10L, 50L);
             }
-            if (next.isEmpty()) {
-                // Everything submitted
-                return true;
-            }
-            // Switch the working set.
-            curr.clear();
-            ArrayList<MvApplyTask> temp = curr;
-            curr = next;
-            next = temp;
-            // Allow the queues to get released.
-            YdbMisc.randomSleep(10L, 50L);
         }
-        // Exit without processing all the inputs
-        return false;
+        return (position >= curr.size());
     }
 
     @Override
+    public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        if (sourceConfig == null) {
+            return true;
+        }
+        return doSubmit(null, sourceConfig, changes, handler, false);
+    }
+
+    @Override
+    public boolean submitCustom(MvApplyActionList actions,
+            Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        if (sourceConfig == null) {
+            return true;
+        }
+        return doSubmit(actions, sourceConfig, changes, handler, false);
+    }
+
+    @Override
+    public boolean submitRefresh(MvTarget target,
+            Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+        return submitCustom(refreshActions.get(target.getName()), changes, handler);
+    }
+
+    /**
+     * Forcibly insert the input data to the queue of the proper workers. May
+     * overflow the expected size of the queues.
+     *
+     * @param target Perform refresh of the specified target only. null
+     * otherwise
+     * @param changes The change records to be submitted for processing.
+     * @param handler The commit processing handler
+     */
     public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
-        String sourceTableName = changes.iterator().next().getKey().getTableName();
-        MvApplyConfig actions = sourceActions.get(sourceTableName);
-        if (actions == null) {
-            int count = changes.size();
-            handler.commit(count);
-            LOG.warn("Skipping {} forced changes for unexpected table `{}` in handler `{}`",
-                    count, sourceTableName, context.getMetadata().getName());
-            return;
+        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        if (sourceConfig != null) {
+            MvApplyActionList actions;
+            if (target == null) {
+                actions = sourceConfig.getActions();
+            } else {
+                actions = refreshActions.get(target.getName());
+            }
+            doSubmit(actions, sourceConfig, changes, handler, true);
         }
-        convertChanges(target, actions, changes, handler).forEach(
-                task -> getWorker(task, actions).submitForce(task)
-        );
     }
 
 }

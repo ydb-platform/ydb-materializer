@@ -18,18 +18,18 @@ import tech.ydb.mv.parser.MvKeyPathGenerator;
 class MvApplyConfig {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyConfig.class);
 
-    private final MvTableInfo table;
+    private final MvTableInfo tableInfo;
     private final MvWorkerSelector selector;
     private final MvApplyActionList actions;
 
     MvApplyConfig(Builder builder) {
-        this.table = builder.table;
+        this.tableInfo = builder.table;
         this.selector = builder.selector;
         this.actions = new MvApplyActionList(builder.actions);
     }
 
-    public MvTableInfo getTable() {
-        return table;
+    public MvTableInfo getTableInfo() {
+        return tableInfo;
     }
 
     public MvWorkerSelector getSelector() {
