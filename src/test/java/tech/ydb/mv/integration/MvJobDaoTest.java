@@ -11,12 +11,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.megatron.MvBatchSettings;
-import tech.ydb.mv.megatron.MvCommand;
-import tech.ydb.mv.megatron.MvJobDao;
-import tech.ydb.mv.megatron.MvJobInfo;
-import tech.ydb.mv.megatron.MvRunnerInfo;
-import tech.ydb.mv.megatron.MvRunnerJobInfo;
+import tech.ydb.mv.mgt.MvBatchSettings;
+import tech.ydb.mv.mgt.MvCommand;
+import tech.ydb.mv.mgt.MvJobDao;
+import tech.ydb.mv.mgt.MvJobInfo;
+import tech.ydb.mv.mgt.MvRunnerInfo;
+import tech.ydb.mv.mgt.MvRunnerJobInfo;
 
 /**
  * Comprehensive integration test for MvTableOperations class.

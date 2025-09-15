@@ -1,4 +1,4 @@
-package tech.ydb.mv.megatron;
+package tech.ydb.mv.mgt;
 
 import java.io.Serializable;
 import java.util.Properties;

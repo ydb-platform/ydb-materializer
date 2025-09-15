@@ -1,6 +1,5 @@
 package tech.ydb.mv.mgt;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +25,6 @@ import tech.ydb.table.values.PrimitiveValue;
 public class MvCoordinator {
 
     private static final Logger LOG = LoggerFactory.getLogger(MvCoordinator.class);
-
     private static final String SEMAPHORE_NAME = "mv-coordinator-semaphore";
 
     private final MvLocker mvLocker;
@@ -34,10 +32,9 @@ public class MvCoordinator {
     private final SessionRetryContext sessionRetryContext;
     private final MvCoordinatorSettings settings;
     private final String instanceId;
-    private final Runnable coordinatorJob;
+    private final MvCoordinatorJob mvCoordinatorJob;
 
     private final AtomicReference<ScheduledFuture<?>> leaderFuture = new AtomicReference<>();
-    private final AtomicReference<CompletableFuture<?>> watchFuture = new AtomicReference<>();
 
     public MvCoordinator(
             MvLocker mvLocker,
@@ -45,14 +42,14 @@ public class MvCoordinator {
             SessionRetryContext sessionRetryContext,
             MvCoordinatorSettings settings,
             String instanceId,
-            Runnable coordinatorJob
+            MvCoordinatorJob mvCoordinatorJob
     ) {
         this.mvLocker = mvLocker;
         this.scheduler = scheduler;
         this.sessionRetryContext = sessionRetryContext;
         this.settings = settings;
         this.instanceId = instanceId;
-        this.coordinatorJob = coordinatorJob;
+        this.mvCoordinatorJob = mvCoordinatorJob;
     }
 
     public void start() {
@@ -92,7 +89,6 @@ public class MvCoordinator {
             sessionRetryContext.supplyResult(session -> session.createQuery(
                     """
                             DECLARE $runner_id AS Text;
-
                             UPDATE mv_jobs SET runner_id = $runner_id WHERE job_name = 'sys$coordinator'
                             """,
                     TxMode.SERIALIZABLE_RW, Params.of("$runner_id", PrimitiveValue.newText(instanceId))).execute()
@@ -122,8 +118,6 @@ public class MvCoordinator {
 
             prev.cancel(true);
         }
-
-        coordinatorJob.run();
     }
 
     private void leaderTick() {
@@ -138,8 +132,13 @@ public class MvCoordinator {
             if (IsStoppedRun()) {
                 LOG.info("Coordinator received state is STOP, demoting leader, instanceId={}", instanceId);
 
+                mvCoordinatorJob.stopJobs();
                 demote();
+
+                return;
             }
+
+            mvCoordinatorJob.performCoordinationTask();
         } catch (Throwable t) {
             demote();
         }
@@ -147,9 +146,7 @@ public class MvCoordinator {
 
     private void demote() {
         cancelLeader();
-        stopJobs();
         safeRelease();
-        // после демоушена снова в режим фолловера — ждем событий и иногда пробуем стать лидером
         scheduleAttempt(settings.getWatchStateDelaySeconds());
     }
 
@@ -183,17 +180,10 @@ public class MvCoordinator {
         return resultSet.next();
     }
 
-    // корректная остановка задач при выключении координатора
-    private void stopJobs() {
-        sessionRetryContext.supplyResult(session -> session.createQuery(
-                "UPDATE mv_commands SET command_type = 'STOP' WHERE 1 = 1", TxMode.SERIALIZABLE_RW
-        ).execute()).join().getStatus().expectSuccess();
-    }
-
     private boolean IsStoppedRun() {
         var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
-                "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'", TxMode.SERIALIZABLE_RW)
-        )).join().getValue().getResultSet(0);
+                "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'",
+                TxMode.SERIALIZABLE_RW))).join().getValue().getResultSet(0);
         resultSet.next();
 
         return !resultSet.getColumn(0).getBool();
