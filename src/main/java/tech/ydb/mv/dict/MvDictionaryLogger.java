@@ -2,15 +2,16 @@ package tech.ydb.mv.dict;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.util.HashMap;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.ListValue;
@@ -46,8 +47,10 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     private final YdbConnector conn;
     private final MvDictionarySettings settings;
     private final String historyTable;
+    private final String sqlUpsert;
     // initially stopped -> null
     private final AtomicReference<MvCdcFeeder> feeder = new AtomicReference<>();
+    private final AtomicLong seqno;
 
     public MvDictionaryLogger(MvMetadata context, YdbConnector conn,
             MvDictionarySettings settings) {
@@ -55,6 +58,13 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
         this.historyTable = YdbConnector.safe(settings.getHistoryTableName());
+        this.seqno = new AtomicLong(100L * System.currentTimeMillis());
+        this.sqlUpsert = """
+            DECLARE $input AS List<Struct<
+                src:Text, tv:Timestamp, seqno:Uint64, key_text:Text,
+                key_val:JsonDocument, diff_val:JsonDocument>>;
+            UPSERT INTO `%s` SELECT * FROM AS_TABLE($input);
+            """.formatted(this.historyTable);
     }
 
     @Override
@@ -131,11 +141,8 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
         StructValue[] values = records.stream()
                 .map(cr -> convertRecord(cr))
                 .toArray(StructValue[]::new);
-        String sql = "DECLARE $input AS List<Struct<src:Text, tv:Timestamp, "
-                + "key_text:Text, key_val:JsonDocument, diff_val:JsonDocument>>; "
-                + "UPSERT INTO `" + historyTable + "` SELECT * FROM AS_TABLE($input);";
         try {
-            conn.sqlWrite(sql, Params.of("$input", ListValue.of(values)));
+            conn.sqlWrite(sqlUpsert, Params.of("$input", ListValue.of(values)));
         } catch(Exception ex) {
             LOG.error("Failed to write dictionary batch, will raise for re-processing", ex);
             throw new RuntimeException(ex.toString());
@@ -143,13 +150,14 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     }
 
     private StructValue convertRecord(MvChangeRecord cr) {
-        return StructValue.of(
-                "src", PrimitiveValue.newText(cr.getKey().getTableName()),
-                "tv", PrimitiveValue.newTimestamp(cr.getTv()),
-                "key_text", PrimitiveValue.newText(convertKey(cr.getKey())),
-                "key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()),
-                "diff_val", convertData(cr.getImageBefore(), cr.getImageAfter())
-        );
+        HashMap<String, Value<?>> m = new HashMap<>();
+        m.put("src", PrimitiveValue.newText(cr.getKey().getTableName()));
+        m.put("tv", PrimitiveValue.newTimestamp(cr.getTv()));
+        m.put("seqno", PrimitiveValue.newUint64(seqno.incrementAndGet()));
+        m.put("key_text", PrimitiveValue.newText(convertKey(cr.getKey())));
+        m.put("key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()));
+        m.put("diff_val", convertData(cr.getImageBefore(), cr.getImageAfter()));
+        return StructValue.of(m);
     }
 
     private String convertKey(MvKey key) {

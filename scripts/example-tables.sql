@@ -15,13 +15,14 @@ CREATE TABLE `mv/scans_state` (
 );
 
 -- Dictionary changelog table
-CREATE TABLE `mv/dict_log` (
+CREATE TABLE `mv/dict_hist` (
    src Text NOT NULL,
    tv Timestamp NOT NULL,
+   seqno Uint64 NOT NULL,
    key_text Text NOT NULL,
    key_val JsonDocument,
    diff_val JsonDocument,
-   PRIMARY KEY(src, key_text, tv)
+   PRIMARY KEY(src, tv, seqno, key_text)
 );
 
 -- ************

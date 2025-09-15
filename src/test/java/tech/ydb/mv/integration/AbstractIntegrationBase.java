@@ -41,11 +41,12 @@ CREATE TABLE `test1/scans_state` (
 
 CREATE TABLE `test1/dict_hist` (
    src Text NOT NULL,
-   key_text Text NOT NULL,
    tv Timestamp NOT NULL,
+   seqno Uint64 NOT NULL,
+   key_text Text NOT NULL,
    key_val JsonDocument,
    diff_val JsonDocument,
-   PRIMARY KEY(src, key_text, tv)
+   PRIMARY KEY(src, tv, seqno, key_text)
 );
 
 CREATE TABLE `test1/main_table` (
