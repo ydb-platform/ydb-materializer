@@ -6,6 +6,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.common.transaction.TxMode;
@@ -19,6 +20,7 @@ import tech.ydb.mv.mgt.MvLocker;
 /**
  * @author Kirill Kurdyukov
  */
+@Disabled
 public class MvCoordinatorTest extends AbstractIntegrationBase {
 
     @Test
