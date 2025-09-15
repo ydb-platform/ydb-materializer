@@ -1,34 +1,43 @@
 package tech.ydb.mv.apply;
 
-import tech.ydb.mv.feeder.MvCommitHandler;
+import java.util.List;
 
+import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.data.MvChangeRecord;
 
 /**
  *
  * @author zinal
  */
-class MvApplyTask {
+public class MvApplyTask {
 
     private final MvChangeRecord data;
-    private final MvApplyConfig actions;
+    private final MvApplyActionList actions;
     private final MvCommitHandler commit;
     private final int workerId;
 
-    public MvApplyTask(MvChangeRecord data, MvApplyConfig actions,
-            MvCommitHandler commit) {
+    public MvApplyTask(MvChangeRecord data, MvCommitHandler commit,
+            MvApplyActionList actions, int workerId) {
         this.data = data;
         this.actions = actions;
         this.commit = commit;
-        this.workerId = actions.getSelector().choose(data.getKey());
+        this.workerId = workerId;
+    }
+
+    public MvApplyTask(MvChangeRecord data, MvCommitHandler commit,
+            List<MvApplyAction> actions, int workerId) {
+        this.data = data;
+        this.actions = new MvApplyActionList(actions);
+        this.commit = commit;
+        this.workerId = workerId;
     }
 
     public MvChangeRecord getData() {
         return data;
     }
 
-    public MvApplyConfig getActions() {
-        return actions;
+    public List<MvApplyAction> getActions() {
+        return actions.getItems();
     }
 
     public MvCommitHandler getCommit() {

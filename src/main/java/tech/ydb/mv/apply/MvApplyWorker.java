@@ -172,7 +172,7 @@ class MvApplyWorker implements Runnable {
 
         PerAction addItems(List<MvApplyTask> input) {
             for (MvApplyTask task : input) {
-                for (MvApplyAction action : task.getActions().getActions()) {
+                for (MvApplyAction action : task.getActions()) {
                     addItem(task, action);
                 }
             }

@@ -11,13 +11,8 @@ import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
-import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.parser.MvKeyPathGenerator;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -33,7 +28,7 @@ public class MvApplyManager implements MvCdcSink {
     private final MvApplyWorker[] workers;
     private final AtomicInteger queueSize;
 
-    // table name -> table apply configuration data
+    // source table name -> table apply configuration data
     private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
 
     public MvApplyManager(MvJobContext context) {
@@ -44,76 +39,8 @@ public class MvApplyManager implements MvCdcSink {
             workers[i] = new MvApplyWorker(this, i);
         }
         this.queueSize = new AtomicInteger(0);
-        buildConfig();
-    }
-
-    private MvApplyConfig makeTableConfig(MvTableInfo ti) {
-        MvApplyConfig mac = applyConfig.get(ti.getName());
-        if (mac==null) {
-            mac = new MvApplyConfig(ti, workers.length);
-            applyConfig.put(ti.getName(), mac);
-        }
-        return mac;
-    }
-
-    private void buildConfig() {
-        MvHandler handler = context.getMetadata();
-        for (MvTarget target : handler.getTargets().values()) {
-            int sourceCount = target.getSources().size();
-            if (sourceCount < 1) {
-                // constant or expression-based target - nothing to do
-                continue;
-            }
-            // Add sync action for the current target
-            MvJoinSource src = target.getTopMostSource();
-            MvTableInfo.Changefeed cf = src.getChangefeedInfo();
-            if (cf==null) {
-                LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
-                        src.getTableName(), target.getName(), handler.getName());
-                continue;
-            }
-            LOG.info("Configuring handler `{}`, target `{}` ...", handler.getName(), target.getName());
-            makeTableConfig(src.getTableInfo())
-                    .addAction(new ActionSync(target, context));
-            if (sourceCount < 2) {
-                // single-source target, no joins
-                continue;
-            }
-            MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(target);
-            for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
-                src = target.getSources().get(sourceIndex);
-                if (src.getInput()==null || src.getInput().isBatchMode()) {
-                    continue;
-                }
-                cf = src.getChangefeedInfo();
-                if (cf==null) {
-                    LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
-                            src.getTableName(), target.getName());
-                    continue;
-                }
-                MvTarget transformation = pathGenerator.extractKeysReverse(src);
-                if (transformation==null) {
-                    LOG.info("Keys from input table `{}` cannot be transformed "
-                            + "to keys for table `{}`, skipping for target `{}`",
-                            src.getTableName(), pathGenerator.getTopSourceTableName(), target.getName());
-                    continue;
-                }
-                if (transformation.isKeyOnlyTransformation()) {
-                    // Can directly transform the input keys to topmost-left key
-                    makeTableConfig(src.getTableInfo())
-                            .addAction(new ActionKeysTransform(target, src, transformation, context));
-                } else if (transformation.isSingleStepTransformation()
-                        && MvTableInfo.ChangefeedMode.BOTH_IMAGES.equals(cf.getMode())) {
-                    // Can be directly transformed on the changefeed data
-                    makeTableConfig(src.getTableInfo())
-                            .addAction(new ActionKeysTransform(target, src, transformation, context));
-                } else {
-                    // The key information has to be grabbed from the database
-                    makeTableConfig(src.getTableInfo())
-                            .addAction(new ActionKeysGrab(target, src, transformation, context));
-                }
-            }
-        }
+        new MvApplyConfig.Configurator(this.context)
+                .build(this.applyConfig);
     }
 
     public String getJobName() {
@@ -223,7 +150,8 @@ public class MvApplyManager implements MvCdcSink {
             if (! tableName.equals(change.getKey().getTableName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
-            curr.add(new MvApplyTask(change, apply, handler));
+            int workerId = apply.getSelector().choose(change.getKey());
+            curr.add(new MvApplyTask(change, handler, apply.getActions(), workerId));
         }
         return curr;
     }
@@ -263,8 +191,15 @@ public class MvApplyManager implements MvCdcSink {
 
     @Override
     public void submitForce(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        convertChanges(changes, handler).forEach(
-                task -> getWorker(task.getWorkerId()).submitForce(task));
+        submitForce(convertChanges(changes, handler));
+    }
+
+    void submitForce(Collection<MvApplyTask> tasks) {
+        tasks.forEach(task -> submitForce(task));
+    }
+
+    void submitForce(MvApplyTask task) {
+        getWorker(task.getWorkerId()).submitForce(task);
     }
 
 }

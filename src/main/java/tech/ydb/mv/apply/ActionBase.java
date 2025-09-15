@@ -11,7 +11,6 @@ import tech.ydb.query.tools.QueryReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.ListValue;
-import tech.ydb.table.values.StructType;
 import tech.ydb.table.values.StructValue;
 import tech.ydb.table.values.Value;
 

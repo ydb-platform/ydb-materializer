@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Materialized view defined as a target of the transformation.
@@ -148,6 +149,28 @@ public class MvTarget implements MvSqlPosHolder {
     @Override
     public String toString() {
         return "MV `" + name + "`";
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 13 * hash + Objects.hashCode(this.name);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvTarget other = (MvTarget) obj;
+        return Objects.equals(this.name, other.name);
     }
 
 }

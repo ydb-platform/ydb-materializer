@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @author zinal
  */
-interface MvApplyAction {
+public interface MvApplyAction {
 
     void apply(List<MvApplyTask> input);
 
