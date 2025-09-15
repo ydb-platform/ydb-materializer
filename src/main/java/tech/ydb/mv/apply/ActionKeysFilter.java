@@ -14,12 +14,15 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
+ * Keys filter is used to skip the full refresh of unchanged records
+ * during the dictionary-initiated scan.
  *
  * @author zinal
  */
 class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysFilter.class);
 
+    private final MvTarget target;
     private final MvKeyInfo topmostKey;
     private final MvRowFilter filter;
     private final String sqlSelect;
@@ -27,6 +30,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     public ActionKeysFilter(MvActionContext context, MvTarget target,
             MvTarget request, MvRowFilter filter) {
         super(context);
+        this.target = target;
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.filter = filter;
         try (MvSqlGen sg = new MvSqlGen(request)) {
@@ -59,7 +63,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         }
         if (! records.isEmpty()) {
             handler.reserve(records.size());
-            context.getApplyManager().submitForce(records, handler);
+            context.getApplyManager().submitForce(target, records, handler);
         }
     }
 

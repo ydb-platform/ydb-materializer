@@ -13,6 +13,7 @@ import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -29,7 +30,9 @@ public class MvApplyManager implements MvCdcSink {
     private final AtomicInteger queueSize;
 
     // source table name -> table apply configuration data
-    private final HashMap<String, MvApplyConfig> applyConfig = new HashMap<>();
+    private final HashMap<String, MvApplyConfig> sourceActions = new HashMap<>();
+    // target table name -> refresh action singleton list
+    private final HashMap<String, MvApplyActionList> refreshActions = new HashMap<>();
 
     public MvApplyManager(MvJobContext context) {
         this.context = new MvActionContext(context, this);
@@ -40,7 +43,7 @@ public class MvApplyManager implements MvCdcSink {
         }
         this.queueSize = new AtomicInteger(0);
         new MvApplyConfig.Configurator(this.context)
-                .build(this.applyConfig);
+                .build(this.sourceActions, this.refreshActions);
     }
 
     public String getJobName() {
@@ -103,7 +106,7 @@ public class MvApplyManager implements MvCdcSink {
      * @param tableClient Table client is needed to describe the source tables.
      */
     public void refreshSelectors(TableClient tableClient) {
-        applyConfig.values().forEach(ac -> ac.getSelector().refresh(tableClient));
+        sourceActions.values().forEach(ac -> ac.getSelector().refresh(tableClient));
     }
 
     /**
@@ -134,34 +137,45 @@ public class MvApplyManager implements MvCdcSink {
         return workers[index];
     }
 
-    private ArrayList<MvApplyTask> convertChanges(Collection<MvChangeRecord> changes,
+    private ArrayList<MvApplyTask> convertChanges(
+            MvTarget target,
+            Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         int count = changes.size();
         ArrayList<MvApplyTask> curr = new ArrayList<>(count);
         String tableName = changes.iterator().next().getKey().getTableName();
-        MvApplyConfig apply = applyConfig.get(tableName);
-        if (apply==null) {
+        MvApplyConfig apply = sourceActions.get(tableName);
+        if (apply == null) {
             handler.commit(count);
             LOG.warn("Skipping {} change records for unexpected table `{}` in handler `{}`",
                     count, tableName, context.getMetadata().getName());
             return curr;
         }
+        MvApplyActionList actions = null;
+        if (target != null) {
+            actions = refreshActions.get(target.getName());
+        }
+        if (actions == null) {
+            actions = apply.getActions();
+        }
         for (MvChangeRecord change : changes) {
-            if (! tableName.equals(change.getKey().getTableName())) {
+            if (!tableName.equals(change.getKey().getTableName())) {
                 throw new IllegalArgumentException("Mixed input tables on submission");
             }
             int workerId = apply.getSelector().choose(change.getKey());
-            curr.add(new MvApplyTask(change, handler, apply.getActions(), workerId));
+            curr.add(new MvApplyTask(change, handler, actions, workerId));
         }
         return curr;
     }
 
     @Override
-    public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
+    public boolean submit(MvTarget target, Collection<MvChangeRecord> changes,
+            MvCommitHandler handler) {
         if (changes.isEmpty()) {
             return true;
         }
-        ArrayList<MvApplyTask> curr = convertChanges(changes, handler);
+
+        ArrayList<MvApplyTask> curr = convertChanges(target, changes, handler);
         if (curr.isEmpty()) {
             return true; // fast exit
         }
@@ -190,16 +204,11 @@ public class MvApplyManager implements MvCdcSink {
     }
 
     @Override
-    public void submitForce(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        submitForce(convertChanges(changes, handler));
-    }
-
-    void submitForce(Collection<MvApplyTask> tasks) {
-        tasks.forEach(task -> submitForce(task));
-    }
-
-    void submitForce(MvApplyTask task) {
-        getWorker(task.getWorkerId()).submitForce(task);
+    public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
+            MvCommitHandler handler) {
+        convertChanges(target, changes, handler).forEach(
+                task -> getWorker(task.getWorkerId()).submitForce(task)
+        );
     }
 
 }

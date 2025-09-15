@@ -63,6 +63,10 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 src.getChangefeedInfo().getMode());
     }
 
+    public String getTargetTableName() {
+        return targetTableName;
+    }
+
     @Override
     public String getSqlSelect() {
         return sqlSelect;

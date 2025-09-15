@@ -25,7 +25,6 @@ import tech.ydb.mv.parser.MvSqlGen;
  */
 abstract class ActionBase {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
-
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
     protected final long instance;

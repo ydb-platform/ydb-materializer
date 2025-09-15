@@ -181,7 +181,7 @@ public class MvScanFeeder {
             ctx.setCurrentKey(key);
             handler = new MvScanCommitHandler(ctx,
                     key, output.size(), ctx.getCurrentHandler(), false);
-            sink.submit(output, handler);
+            sink.submit(target, output, handler);
         } else {
             handler = new MvScanCommitHandler(ctx,
                     key, 0, ctx.getCurrentHandler(), true);

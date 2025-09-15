@@ -91,6 +91,21 @@ public class MvKeyPrefix extends MvTuple {
         return ys.toJson();
     }
 
+    @Override
+    public int compareTo(MvTuple other) {
+        if (!(other instanceof MvKeyPrefix)) {
+            throw new IllegalArgumentException("Refusing to compare "
+                    + getClass() + " versus " + other.getClass());
+        }
+        MvKeyPrefix otherPrefix = (MvKeyPrefix) other;
+        if (info != otherPrefix.info
+                && !getTableName().equals(otherPrefix.getTableName())) {
+            throw new IllegalArgumentException("Refusing to compare keys between "
+                    + "`" + getTableName() + "` and `" + otherPrefix.getTableName() + "`");
+        }
+        return super.compareTo(other);
+    }
+
     public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
         return makePrefix(kb.getValue(), info);
     }

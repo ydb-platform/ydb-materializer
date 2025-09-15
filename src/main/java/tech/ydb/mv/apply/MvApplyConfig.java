@@ -67,7 +67,8 @@ class MvApplyConfig {
     static class Configurator {
         final MvActionContext context;
         final MvHandler metadata;
-        final HashMap<String, MvApplyConfig.Builder> builders = new HashMap<>();
+        final HashMap<String, Builder> builders = new HashMap<>();
+        final HashMap<String, ActionSync> syncers = new HashMap<>();
         final int workersCount;
 
         public Configurator(MvActionContext context) {
@@ -76,22 +77,17 @@ class MvApplyConfig {
             this.workersCount = context.getSettings().getApplyThreads();
         }
 
-        void build(HashMap<String, MvApplyConfig> applyConfig) {
+        void build(HashMap<String, MvApplyConfig> source, HashMap<String, MvApplyActionList> refresh) {
             prepare();
-            fillInto(applyConfig);
+            builders.forEach((k, v) -> source.put(k, v.build()));
+            syncers.forEach((k, v) -> refresh.put(k, new MvApplyActionList(v)));
         }
 
-        void fillInto(HashMap<String, MvApplyConfig> applyConfig) {
-            for (var me : builders.entrySet()) {
-                applyConfig.put(me.getKey(), me.getValue().build());
-            }
-        }
-
-        MvApplyConfig.Builder makeBuilder(MvTableInfo ti) {
-            MvApplyConfig.Builder b = builders.get(ti.getName());
+        Builder makeBuilder(MvTableInfo ti) {
+            Builder b = builders.get(ti.getName());
             if (b == null) {
                 MvWorkerSelector selector = new MvWorkerSelector(ti, workersCount);
-                b = MvApplyConfig.newBuilder(ti, selector);
+                b = newBuilder(ti, selector);
                 builders.put(ti.getName(), b);
             }
             return b;
@@ -99,26 +95,30 @@ class MvApplyConfig {
 
         void prepare() {
             for (MvTarget target : metadata.getTargets().values()) {
-                prepareTarget(target);
+                ActionSync actionSync = prepareTarget(target);
+                if (actionSync != null) {
+                    syncers.put(actionSync.getTargetTableName(), actionSync);
+                }
             }
         }
 
-        void prepareTarget(MvTarget target) {
+        ActionSync prepareTarget(MvTarget target) {
             int sourceCount = target.getSources().size();
             if (sourceCount < 1) {
                 // constant or expression-based target - nothing to do
-                return;
+                return null;
             }
             MvJoinSource source = target.getTopMostSource();
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf==null) {
                 LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
                         source.getTableName(), target.getName(), metadata.getName());
-                return;
+                return null;
             }
             LOG.info("Configuring handler `{}`, target `{}` ...", metadata.getName(), target.getName());
             // Add sync action for the current target
-            makeBuilder(source.getTableInfo()).addAction(new ActionSync(target, context));
+            ActionSync actionSync = new ActionSync(target, context);
+            makeBuilder(source.getTableInfo()).addAction(actionSync);
             if (sourceCount > 1) {
                 MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(target);
                 for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
@@ -126,6 +126,7 @@ class MvApplyConfig {
                     prepareComplexTarget(target, pathGenerator, source);
                 }
             }
+            return actionSync;
         }
 
         void prepareComplexTarget(MvTarget target, MvKeyPathGenerator pathGenerator, MvJoinSource source) {

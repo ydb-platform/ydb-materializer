@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import tech.ydb.table.values.StructType;
 import tech.ydb.table.result.ResultSetReader;
 
 import tech.ydb.mv.data.MvChangeRecord;
@@ -23,14 +22,12 @@ class ActionKeysGrab extends ActionKeysAbstract {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysGrab.class);
 
     private final String sqlSelect;
-    private final StructType rowType;
 
     public ActionKeysGrab(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(target, src, transformation, context);
         try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();
-            this.rowType = sg.toRowType();
         }
         LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(), target.getName(),
@@ -75,7 +72,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
         // Allow for extra operations before the actual commit.
         handler.reserve(output.size());
         // Send the keys for processing.
-        context.getApplyManager().submitForce(output, handler);
+        context.getApplyManager().submitForce(null, output, handler);
     }
 
 }
