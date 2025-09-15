@@ -63,7 +63,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         }
         if (! records.isEmpty()) {
             handler.reserve(records.size());
-            context.getApplyManager().submitForce(target, records, handler);
+            applyManager.submitForce(target, records, handler);
         }
     }
 

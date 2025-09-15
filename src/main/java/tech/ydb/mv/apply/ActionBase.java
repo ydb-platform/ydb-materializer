@@ -8,6 +8,7 @@ import java.util.function.BiConsumer;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.query.tools.QueryReader;
+import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.ListValue;
@@ -29,11 +30,15 @@ abstract class ActionBase {
 
     protected final long instance;
     protected final MvActionContext context;
+    protected final MvApplyManager applyManager;
+    protected final SessionRetryContext retryCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
 
     protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
+        this.applyManager = context.getApplyManager();
+        this.retryCtx = context.getRetryCtx();
     }
 
     public static String getLastSqlStatement() {
@@ -81,7 +86,7 @@ abstract class ActionBase {
         }
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
-        ResultSetReader rsr = context.getRetryCtx().supplyResult(session -> QueryReader.readFrom(
+        ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.ONLINE_RO, params)
         )).join().getValue().getResultSet(0);
         lastSqlStatement.set(null);
