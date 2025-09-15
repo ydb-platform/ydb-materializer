@@ -169,4 +169,27 @@ public class MvMetadata {
         }
     }
 
+
+    /**
+     * Create a new MvMetadata instance as a subset of the current one.
+     *
+     * @param handler The handler which should be available in the subset
+     * @return MvMetadata instance limited to the specified handler only
+     */
+    public MvMetadata subset(MvHandler handler) {
+        if (! isValid()) {
+            throw new IllegalStateException("Cannot subset a non-valid metadata");
+        }
+        if (handler != handlers.get(handler.getName())) {
+            throw new IllegalArgumentException("Input handler is not included in the working set");
+        }
+        MvMetadata output = new MvMetadata();
+        output.setDictionaryConsumer(dictionaryConsumer);
+        output.addHandler(handler);
+        for (MvTarget target : handler.getTargets().values()) {
+            output.addTarget(target);
+        }
+        return output;
+    }
+
 }
