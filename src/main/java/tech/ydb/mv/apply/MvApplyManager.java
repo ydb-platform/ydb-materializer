@@ -9,6 +9,7 @@ import tech.ydb.table.TableClient;
 
 import tech.ydb.mv.MvJobContext;
 import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
@@ -32,9 +33,9 @@ public class MvApplyManager implements MvCdcSink {
     private final int queueLimit;
 
     // source table name -> table apply configuration data
-    private final HashMap<String, MvApplyConfig> sourceConfigs = new HashMap<>();
+    private final HashMap<String, MvApply.Source> sourceConfigs = new HashMap<>();
     // target table name -> refresh action singleton list
-    private final HashMap<String, MvApplyActionList> refreshActions = new HashMap<>();
+    private final HashMap<String, MvApply.Target> targetConfigs = new HashMap<>();
 
     public MvApplyManager(MvJobContext context) {
         this.context = new MvActionContext(context, this);
@@ -45,8 +46,8 @@ public class MvApplyManager implements MvCdcSink {
         }
         this.queueSize = new AtomicInteger(0);
         this.queueLimit = context.getSettings().getApplyQueueSize();
-        new MvApplyConfig.Configurator(this.context)
-                .build(this.sourceConfigs, this.refreshActions);
+        new MvApply.Configurator(this.context)
+                .build(this.sourceConfigs, this.targetConfigs);
     }
 
     public String getJobName() {
@@ -133,8 +134,8 @@ public class MvApplyManager implements MvCdcSink {
                 .toList();
     }
 
-    private MvApplyWorker getWorker(MvApplyTask task, MvApplyConfig actions) {
-        int index = actions.getSelector().choose(task.getData().getKey());
+    private MvApplyWorker getWorker(MvApplyTask task, MvApply.Source src) {
+        int index = src.getSelector().choose(task.getData().getKey());
         if (index < 0) {
             index = -1 * index;
         }
@@ -142,24 +143,24 @@ public class MvApplyManager implements MvCdcSink {
         return workers[index];
     }
 
-    private MvApplyConfig grabSourceConfig(Collection<MvChangeRecord> changes,
+    private MvApply.Source findSource(Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         if (changes.isEmpty()) {
             return null;
         }
         String sourceTableName = changes.iterator().next().getKey().getTableName();
-        MvApplyConfig sourceConfig = sourceConfigs.get(sourceTableName);
-        if (sourceConfig == null) {
+        var src = sourceConfigs.get(sourceTableName);
+        if (src == null) {
             int count = changes.size();
             handler.commit(count);
             LOG.warn("Skipping {} changes for unexpected table `{}` in handler `{}`",
                     count, sourceTableName, context.getMetadata().getName());
             return null;
         }
-        return sourceConfig;
+        return src;
     }
 
-    private boolean doSubmit(MvApplyActionList actions, MvApplyConfig sourceConfig,
+    private boolean doSubmit(MvApplyActionList actions, MvApply.Source sourceConfig,
             Collection<MvChangeRecord> changes, MvCommitHandler handler, boolean immediate) {
         if (actions == null) {
             actions = sourceConfig.getActions();
@@ -193,7 +194,7 @@ public class MvApplyManager implements MvCdcSink {
 
     @Override
     public boolean submit(Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        var sourceConfig = findSource(changes, handler);
         if (sourceConfig == null) {
             return true;
         }
@@ -203,7 +204,7 @@ public class MvApplyManager implements MvCdcSink {
     @Override
     public boolean submitCustom(MvApplyActionList actions,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        var sourceConfig = findSource(changes, handler);
         if (sourceConfig == null) {
             return true;
         }
@@ -213,7 +214,11 @@ public class MvApplyManager implements MvCdcSink {
     @Override
     public boolean submitRefresh(MvTarget target,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        return submitCustom(refreshActions.get(target.getName()), changes, handler);
+        var targetConfig = targetConfigs.get(target.getName());
+        if (targetConfig==null) {
+            return submitCustom(null, changes, handler);
+        }
+        return submitCustom(targetConfig.getRefreshActions(), changes, handler);
     }
 
     /**
@@ -227,16 +232,34 @@ public class MvApplyManager implements MvCdcSink {
      */
     public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
-        MvApplyConfig sourceConfig = grabSourceConfig(changes, handler);
+        var sourceConfig = findSource(changes, handler);
         if (sourceConfig != null) {
             MvApplyActionList actions;
             if (target == null) {
                 actions = sourceConfig.getActions();
             } else {
-                actions = refreshActions.get(target.getName());
+                var targetConfig = targetConfigs.get(target.getName());
+                if (targetConfig != null) {
+                    actions = targetConfig.getRefreshActions();
+                } else {
+                    actions = null;
+                }
             }
             doSubmit(actions, sourceConfig, changes, handler, true);
         }
+    }
+
+    public MvApplyAction createFilterAction(MvTarget target, MvRowFilter filter) {
+        var targetConfig = targetConfigs.get(target.getName());
+        if (targetConfig == null) {
+            throw new IllegalArgumentException("Cannot produce filter action "
+                    + "for unknown target " + target.getName());
+        }
+        if (targetConfig.getDictTrans() == null) {
+            throw new IllegalArgumentException("Cannot produce filter action "
+                    + "for non-dictionary target " + target.getName());
+        }
+        return new ActionKeysFilter(context, target, targetConfig.getDictTrans(), filter);
     }
 
 }

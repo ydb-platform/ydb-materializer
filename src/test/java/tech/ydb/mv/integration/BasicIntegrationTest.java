@@ -29,8 +29,8 @@ public class BasicIntegrationTest extends AbstractIntegrationBase {
 
     private static final String WRITE_UP1
             = """
-INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c20) VALUES
- ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 'text message one'u)
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20) VALUES
+ ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u)
 ;
 UPSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
  (Timestamp('2021-01-02T10:15:21Z'), 10001, 1501)
@@ -207,10 +207,11 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private void checkConsumerPositions(YdbConnector conn) {
         String consumerName = "consumer1";
-        checkConsumerPosition(conn, "test1/main_table", "cf1", consumerName, 6L);
-        checkConsumerPosition(conn, "test1/sub_table1", "cf2", consumerName, 8L);
-        checkConsumerPosition(conn, "test1/sub_table2", "cf3", consumerName, 9L);
-        checkConsumerPosition(conn, "test1/sub_table3", "cf4", "dictionary", 5L);
+        checkConsumerPosition(conn, "test1/main_table", "cf0", consumerName, 6L);
+        checkConsumerPosition(conn, "test1/sub_table1", "cf1", consumerName, 8L);
+        checkConsumerPosition(conn, "test1/sub_table2", "cf2", consumerName, 9L);
+        checkConsumerPosition(conn, "test1/sub_table3", "cf3", "dictionary", 5L);
+        checkConsumerPosition(conn, "test1/sub_table4", "cf4", "dictionary", 4L);
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
