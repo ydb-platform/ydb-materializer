@@ -1,4 +1,4 @@
-package tech.ydb.mv.megatron;
+package tech.ydb.mv.mgt;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -150,11 +150,7 @@ public class MvRunner implements AutoCloseable {
      */
     private void reportStatus() {
         try {
-            MvRunnerInfo runnerInfo = new MvRunnerInfo(
-                    runnerId,
-                    runnerIdentity,
-                    Instant.now()
-            );
+            MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
             tableOps.upsertRunner(runnerInfo);
             LOG.debug("Reported status for runner: {}", runnerId);
         } catch (Exception ex) {
@@ -226,15 +222,7 @@ public class MvRunner implements AutoCloseable {
             return;
         }
 
-        // Parse job settings if provided
-        MvHandlerSettings settings = null;
-        if (jobSettingsJson != null && !jobSettingsJson.trim().isEmpty() && !"null".equals(jobSettingsJson)) {
-            // For now, use default settings - in a real implementation,
-            // you would parse the JSON and create MvHandlerSettings
-            settings = mvService.getHandlerSettings();
-        } else {
-            settings = mvService.getHandlerSettings();
-        }
+        MvHandlerSettings settings = mvService.getHandlerSettings();
 
         // Start the handler
         boolean started = mvService.startHandler(jobName, settings);
@@ -284,11 +272,9 @@ public class MvRunner implements AutoCloseable {
      * Generate runner identity information.
      */
     private String generateRunnerIdentity() {
-        StringBuilder identity = new StringBuilder();
-        identity.append("host:").append(getHostname());
-        identity.append(",pid:").append(getProcessId());
-        identity.append(",start:").append(System.currentTimeMillis());
-        return identity.toString();
+        return "host:" + getHostname() +
+                ",pid:" + getProcessId() +
+                ",start:" + System.currentTimeMillis();
     }
 
     private String getHostname() {
@@ -336,5 +322,4 @@ public class MvRunner implements AutoCloseable {
             return new HashMap<>(localJobs);
         }
     }
-
 }
