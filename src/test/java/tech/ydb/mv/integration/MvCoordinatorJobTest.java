@@ -194,6 +194,12 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
     }
 
     @Test
+    /*
+     * 2025-09-16 16:09:59 INFO      1  MvCoordinatorJobImpl:189  Created START command for job: job_5 on runner: 2
+     * 2025-09-16 16:10:00 INFO      1  MvCoordinatorJobImpl:189  Created START command for job: job_7 on runner: 2
+     * 2025-09-16 16:10:00 INFO      1  MvCoordinatorJobImpl:189  Created START command for job: job_6 on runner: 2
+     * 2025-09-16 16:10:00 INFO      1  MvCoordinatorJobImpl:114  Balanced jobs - stopped 0 extra, started 3 missing
+     */
     public void balancingTest2() {
         runDdl(ydbConnector, """
                 INSERT INTO `test1/mv_jobs` (job_name, should_run) VALUES
