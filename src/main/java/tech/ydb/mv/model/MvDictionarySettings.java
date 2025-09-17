@@ -12,24 +12,27 @@ public class MvDictionarySettings implements Serializable {
     private static final long serialVersionUID = 202500908001L;
 
     private String historyTableName;
+    private String controlTableName;
     private int upsertBatchSize;
     private int threadCount;
 
     public MvDictionarySettings() {
         this.historyTableName = "mv/dict_hist";
+        this.historyTableName = "mv/dict_ctl";
         this.upsertBatchSize = 500;
         this.threadCount = 4;
     }
 
     public MvDictionarySettings(MvDictionarySettings other) {
         this.historyTableName = other.historyTableName;
+        this.controlTableName = other.controlTableName;
         this.upsertBatchSize = other.upsertBatchSize;
         this.threadCount = other.threadCount;
     }
 
     public MvDictionarySettings(Properties props) {
-        this.historyTableName = props.getProperty(
-                MvConfig.CONF_DICT_TABLE, MvConfig.DEF_DICT_TABLE);
+        this.historyTableName = props.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
+        this.controlTableName = props.getProperty(MvConfig.CONF_DICT_CTL_TABLE, MvConfig.DEF_DICT_CTL_TABLE);
         String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");
@@ -42,6 +45,14 @@ public class MvDictionarySettings implements Serializable {
 
     public void setHistoryTableName(String historyTableName) {
         this.historyTableName = historyTableName;
+    }
+
+    public String getControlTableName() {
+        return controlTableName;
+    }
+
+    public void setControlTableName(String controlTableName) {
+        this.controlTableName = controlTableName;
     }
 
     public int getUpsertBatchSize() {

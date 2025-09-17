@@ -17,6 +17,7 @@ public class MvDictionaryScan {
     private final YdbConnector conn;
     private final MvDictionarySettings settings;
     private final String historyTable;
+    private final String controlTable;
 
     public MvDictionaryScan(MvHandler handler, YdbConnector conn,
             MvDictionarySettings settings) {
@@ -24,6 +25,7 @@ public class MvDictionaryScan {
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
         this.historyTable = YdbConnector.safe(settings.getHistoryTableName());
+        this.controlTable = YdbConnector.safe(settings.getControlTableName());
     }
 
 }
