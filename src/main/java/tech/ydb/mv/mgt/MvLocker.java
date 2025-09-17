@@ -86,14 +86,14 @@ public class MvLocker {
     }
 
     public boolean lock(String name, Duration timeout) {
-        LOG.info("Ensuring the single `{}` job instance "
+        LOG.debug("Ensuring the single `{}` job instance "
                 + "through lock with timeout {}...", name, timeout);
         SemaphoreLease lease;
         synchronized(leases) {
             lease = leases.get(name);
         }
         if (lease!=null) {
-            LOG.info("Lock `{}` already obtained, moving forward.", name);
+            LOG.debug("Lock `{}` already obtained, moving forward.", name);
             return true;
         }
         try {
