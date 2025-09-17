@@ -253,7 +253,7 @@ INSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     protected static void prepareDb() {
         // have to wait a bit here for YDB startup
-        pause(1000L);
+        pause(5000L);
         // init database
         System.err.println("[AAA] Database setup...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);

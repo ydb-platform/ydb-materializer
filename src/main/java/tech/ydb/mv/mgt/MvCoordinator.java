@@ -185,8 +185,7 @@ public class MvCoordinator {
         var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
                 "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'",
                 TxMode.SERIALIZABLE_RW))).join().getValue().getResultSet(0);
-        resultSet.next();
 
-        return !resultSet.getColumn(0).getBool();
+        return resultSet.next() && !resultSet.getColumn(0).getBool();
     }
 }
