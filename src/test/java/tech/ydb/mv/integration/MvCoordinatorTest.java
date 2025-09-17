@@ -2,6 +2,7 @@ package tech.ydb.mv.integration;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,6 +28,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
     public void mvCoordinationOneThread() {
         pause(10000);
 
+        final var queue = new ConcurrentLinkedQueue<>();
         final var deque = new ConcurrentLinkedDeque<>();
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
@@ -48,6 +50,11 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                         private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
                         @Override
+                        public void start() {
+                            queue.add(1);
+                        }
+
+                        @Override
                         public void performCoordinationTask() {
                             var peekLast = deque.peekLast();
                             if (peekLast == null) {
@@ -61,13 +68,14 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                         }
 
                         @Override
-                        public void stopJobs() {
+                        public void stop() {
                             tick.set(UUID.randomUUID().toString());
                         }
                     }).start();
 
             for (int i = 1; i <= 10; i++) {
                 pause(5_000);
+                Assertions.assertEquals(i, queue.size());
                 Assertions.assertEquals(i, deque.size());
 
                 conn.getQueryRetryCtx().supplyResult(session -> session
@@ -90,6 +98,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
     public void mvCoordinationMultiThread() {
         pause(10000);
 
+        final var queue = new ConcurrentLinkedQueue<>();
         final var deque = new ConcurrentLinkedDeque<String>();
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
@@ -113,6 +122,11 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                             private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
                             @Override
+                            public void start() {
+                                queue.add(1);
+                            }
+
+                            @Override
                             public void performCoordinationTask() {
                                 var peekLast = deque.peekLast();
 
@@ -127,7 +141,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                             }
 
                             @Override
-                            public void stopJobs() {
+                            public void stop() {
                                 tick.set(UUID.randomUUID().toString());
                             }
                         }).start();
@@ -135,6 +149,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
 
             for (int i = 1; i <= 10; i++) {
                 pause(15_000);
+                Assertions.assertEquals(i, queue.size());
                 Assertions.assertEquals(i, deque.size());
 
                 conn.getQueryRetryCtx().supplyResult(session -> session

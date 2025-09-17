@@ -532,34 +532,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 4L));
     }
 
-    // ========== Utility Methods Tests ==========
-
-    @Test
-    public void testGenerateCommandNo() {
-        long cmdNo1 = jobDao.generateCommandNo();
-        long cmdNo2 = jobDao.generateCommandNo();
-
-        Assertions.assertTrue(cmdNo1 > 0);
-        Assertions.assertTrue(cmdNo2 > 0);
-        Assertions.assertNotEquals(cmdNo1, cmdNo2);
-
-        // Command numbers should be increasing
-        Assertions.assertTrue(cmdNo2 > cmdNo1);
-    }
-
-    @Test
-    public void testGenerateCommandNoUniqueness() {
-        java.util.Set<Long> commandNumbers = new java.util.HashSet<>();
-
-        // Generate multiple command numbers and verify uniqueness
-        for (int i = 0; i < 100; i++) {
-            long cmdNo = jobDao.generateCommandNo();
-            Assertions.assertTrue(commandNumbers.add(cmdNo), "Command number should be unique: " + cmdNo);
-        }
-
-        Assertions.assertEquals(100, commandNumbers.size());
-    }
-
     // ========== Error Handling Tests ==========
 
     @Test

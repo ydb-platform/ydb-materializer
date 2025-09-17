@@ -185,12 +185,16 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
                     ('3', 'instance_3', CurrentUtcTimestamp()),
                     ('4', 'instance_4', CurrentUtcTimestamp()),
                     ('5', 'instance_5', CurrentUtcTimestamp());
+                INSERT INTO `test1/mv_runner_jobs` (runner_id, job_name) VALUES
+                    ('1', 'not_found_job');
                 INSERT INTO `test1/mv_commands`(runner_id, command_no, job_name, command_status) VALUES
-                    ('1', 3, 'not_found_job', 'TAKEN');
+                    ('1', 1, 'not_found_job', 'TAKEN');
                 """);
+        mvCoordinatorJob.start();
         mvCoordinatorJob.performCoordinationTask();
         for (var instance : List.of("1", "2", "3", "4", "5"))
             Assertions.assertTrue(mvJobDao.getCommandsForRunner(instance).size() <= 2);
+        Assertions.assertEquals(9, mvJobDao.getMaxCommandNo());
     }
 
     @Test
@@ -214,15 +218,21 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
                 INSERT INTO `test1/mv_runners` (runner_id, runner_identity, updated_at) VALUES
                     ('1', 'instance_1', CurrentUtcTimestamp()),
                     ('2', 'instance_2', CurrentUtcTimestamp());
+                INSERT INTO `test1/mv_runner_jobs` (runner_id, job_name) VALUES
+                    ('1', 'job_1'),
+                    ('1', 'job_2'),
+                    ('1', 'job_3'),
+                    ('1', 'job_4');
                 INSERT INTO `test1/mv_commands`(runner_id, command_no, job_name, command_status) VALUES
                     ('1', 1, 'job_1', 'TAKEN'),
                     ('1', 2, 'job_2', 'TAKEN'),
                     ('1', 3, 'job_3', 'TAKEN'),
                     ('1', 4, 'job_4', 'TAKEN');
                 """);
+        mvCoordinatorJob.start();
         Assertions.assertEquals(0, mvJobDao.getCommandsForRunner("2").size());
         mvCoordinatorJob.performCoordinationTask();
         Assertions.assertEquals(3, mvJobDao.getCommandsForRunner("2").size());
-        Assertions.assertEquals(4, mvJobDao.getCommandsForRunner("1").size());
+        Assertions.assertEquals(7, mvJobDao.getMaxCommandNo());
     }
 }
