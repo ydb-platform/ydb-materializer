@@ -5,7 +5,9 @@ package tech.ydb.mv.mgt;
  */
 public interface MvCoordinatorJob {
 
+    void start();
+
     void performCoordinationTask();
 
-    void stopJobs();
+    void stop();
 }
