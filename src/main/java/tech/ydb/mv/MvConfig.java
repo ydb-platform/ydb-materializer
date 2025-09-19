@@ -41,11 +41,6 @@ public class MvConfig {
     public static final String CONF_DICT_HIST_TABLE = "job.dict.hist.table";
 
     /**
-     * Path to dictionary control table.
-     */
-    public static final String CONF_DICT_CTL_TABLE = "job.dict.ctl.table";
-
-    /**
      * Dictionary history consumer.
      */
     public static final String CONF_DICT_CONSUMER = "job.dict.consumer";
@@ -110,11 +105,6 @@ public class MvConfig {
      * Dictionary history table name.
      */
     public static final String DEF_DICT_HIST_TABLE = "mv/dict_hist";
-
-    /**
-     * Dictionary control table name.
-     */
-    public static final String DEF_DICT_CTL_TABLE = "mv/dict_ctl";
 
     /**
      * Coordination node path.

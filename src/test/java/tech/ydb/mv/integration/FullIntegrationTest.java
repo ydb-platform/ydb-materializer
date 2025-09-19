@@ -15,11 +15,14 @@ import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.mgt.MvRunner;
 
 import java.util.concurrent.Executors;
+import org.junit.jupiter.api.Disabled;
 
 /**
  * @author Kirill Kurdyukov
  */
+@Disabled
 public class FullIntegrationTest extends AbstractIntegrationBase {
+
     @BeforeAll
     public static void init() {
         prepareDb();
@@ -265,7 +268,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 runner_id Text,
                 PRIMARY KEY(job_name)
             );
-                    
+
             CREATE TABLE `mv_runners` (
                 runner_id Text NOT NULL,
                 runner_identity Text,

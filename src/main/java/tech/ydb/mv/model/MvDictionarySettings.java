@@ -17,7 +17,7 @@ public class MvDictionarySettings extends MvScanSettings {
     private MvTableInfo historyTableInfo;
 
     public MvDictionarySettings() {
-        this.historyTableName = MvConfig.DEF_DICT_TABLE;
+        this.historyTableName = MvConfig.DEF_DICT_HIST_TABLE;
         this.upsertBatchSize = 500;
         this.threadCount = 4;
     }
@@ -33,7 +33,7 @@ public class MvDictionarySettings extends MvScanSettings {
     public MvDictionarySettings(Properties props) {
         super(props);
         this.historyTableName = props.getProperty(
-                MvConfig.CONF_DICT_TABLE, MvConfig.DEF_DICT_TABLE);
+                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
        String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");

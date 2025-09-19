@@ -26,7 +26,7 @@ public class MvKey extends MvKeyPrefix {
     }
 
     public MvKey(ResultSetReader rsr, MvKeyInfo info) {
-        this(toYdbStruct(rsr), info);
+        this(toYdbStruct(rsr, info.size()), info);
     }
 
     public MvKey(MvKeyInfo info, Comparable[] values) {
@@ -50,13 +50,20 @@ public class MvKey extends MvKeyPrefix {
         return output;
     }
 
-    public static YdbStruct toYdbStruct(ResultSetReader rsr) {
+    public static YdbStruct toYdbStruct(ResultSetReader rsr, int maxColumns) {
         int count = rsr.getColumnCount();
+        if (maxColumns > 0 && count > maxColumns) {
+            count = maxColumns;
+        }
         YdbStruct ys = new YdbStruct(count);
         for (int pos = 0; pos < count; ++pos) {
             ys.add(rsr.getColumnName(pos), YdbConv.toPojo(rsr.getColumn(pos).getValue()));
         }
         return ys;
+    }
+
+    public static YdbStruct toYdbStruct(ResultSetReader rsr) {
+        return toYdbStruct(rsr, -1);
     }
 
 }
