@@ -1,18 +1,16 @@
 package tech.ydb.mv.dict;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.result.ResultSetReader;
-import tech.ydb.table.values.PrimitiveValue;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
+import tech.ydb.table.query.Params;
+import tech.ydb.table.result.ResultSetReader;
+import tech.ydb.table.values.PrimitiveValue;
+
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.data.MvDictChanges;
 import tech.ydb.mv.data.MvKey;
-import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
@@ -85,16 +83,20 @@ public class MvDictionaryScan implements MvScanAdapter {
         return historyTableInfo;
     }
 
-    public void run() {
-        MvScanDao scanDao = new MvScanDao(conn, this);
-        MvKey key = scanDao.initScan();
-        ScanResult result = scan(key);
-        if (result.lastKey != null && !result.lastKey.isEmpty()) {
-            scanDao.saveScan(result.lastKey);
+    public MvDictChanges scan() {
+        return scan(new MvScanDao(conn, this).initScan());
+    }
+
+    public void commit(MvDictChanges mdc) {
+        var scanDao = new MvScanDao(conn, this);
+        if (mdc.getScanPosition() == null || mdc.getScanPosition().isEmpty()) {
+            scanDao.unregisterScan();
+        } else {
+            scanDao.saveScan(mdc.getScanPosition());
         }
     }
 
-    private ScanResult scan(MvKey startKey) {
+    private MvDictChanges scan(MvKey startKey) {
         Params params;
         String sql;
         if (startKey == null || startKey.isEmpty()) {
@@ -119,10 +121,11 @@ public class MvDictionaryScan implements MvScanAdapter {
                     + "ORDER BY src, tv, seqno, key_text;";
         }
         ResultSetReader rsr = conn.sqlRead(sql, params).getResultSet(0);
-        ScanResult result = new ScanResult();
+        var result = new MvDictChanges();
+        result.setScanPosition(startKey);
         while (rsr.next()) {
-            result.lastKey = new MvKey(rsr, historyTableInfo.getKeyInfo());
-            String diffStr = rsr.getColumn(4).getText();
+            result.setScanPosition(new MvKey(rsr, historyTableInfo.getKeyInfo()));
+            String diffStr = rsr.getColumn(5).getText();
             if (diffStr==null) {
                 continue;
             }
@@ -133,21 +136,10 @@ public class MvDictionaryScan implements MvScanAdapter {
             MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(), sourceTableInfo.getKeyInfo());
             JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
             for (JsonElement item : diffArray.asList()) {
-                String fieldName = item.getAsString();
-                HashSet<MvKey> rowKeys = result.fields.get(fieldName);
-                if (rowKeys == null) {
-                    rowKeys = new HashSet<>();
-                    result.fields.put(fieldName, rowKeys);
-                }
-                rowKeys.add(rowKey);
+                result.updateField(item.getAsString(), rowKey);
             }
         }
         return result;
     }
 
-    static class ScanResult {
-        MvKey lastKey = null;
-        // fieldName -> row keys where the field is modified
-        final HashMap<String, HashSet<MvKey>> fields = new HashMap<>();
-    }
 }
