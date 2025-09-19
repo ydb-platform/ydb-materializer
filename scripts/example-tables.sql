@@ -21,7 +21,7 @@ CREATE TABLE `mv/dict_log` (
    key_text Text NOT NULL,
    key_val JsonDocument,
    diff_val JsonDocument,
-   PRIMARY KEY(src, key_text, tv)
+   PRIMARY KEY(src, tv, key_text)
 );
 
 -- ************
