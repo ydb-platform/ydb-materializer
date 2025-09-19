@@ -7,10 +7,10 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.parser.MvSqlValidator;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.parser.MvBasicValidator;
-import tech.ydb.mv.parser.MvMetadataReader;
+import tech.ydb.mv.parser.MvDescriber;
+import tech.ydb.mv.parser.MvValidateBasic;
+import tech.ydb.mv.parser.MvValidateSql;
 
 /**
  * Aggregated metadata used by the YDB Materializer.
@@ -95,9 +95,9 @@ public class MvMetadata {
         if (! isValid()) {
             return false;
         }
-        boolean valid = new MvBasicValidator(this).validate();
-        if (valid) {
-            valid = new MvSqlValidator(this, conn).validate();
+        boolean valid = new MvValidateBasic(this).validate();
+        if (valid && conn != null) {
+            valid = new MvValidateSql(this, conn).validate();
         }
         return valid;
     }
@@ -106,23 +106,27 @@ public class MvMetadata {
      * Load the missing parts of metadata and perform validation.
      * Table, column and changefeed information is loaded using the helper object passed.
      *
-     * @param metadataReader Helper for metadata retrieval
+     * @param describer Helper for metadata retrieval
      * @return true, if no errors detected, false otherwise
      */
-    public boolean linkAndValidate(MvMetadataReader metadataReader) {
+    public boolean linkAndValidate(MvDescriber describer) {
         if (! isValid()) {
             return false;
         }
         tables.clear();
         for (String tabname : collectTables()) {
-            MvTableInfo ti = metadataReader.describeTable(tabname);
+            MvTableInfo ti = describer.describeTable(tabname);
             if (ti!=null) {
                 tables.put(tabname, ti);
             }
         }
         linkTables();
         linkColumns();
-        return validate(metadataReader.getYdb());
+        if (! validate(describer.getYdb()) ) {
+            return false;
+        }
+        targets.values().forEach(target -> target.updateUsedColumns());
+        return true;
     }
 
     private TreeSet<String> collectTables() {
@@ -168,6 +172,29 @@ public class MvMetadata {
                 column.setType(ti.getColumns().get(column.getName()));
             }
         }
+    }
+
+
+    /**
+     * Create a new MvMetadata instance as a subset of the current one.
+     *
+     * @param handler The handler which should be available in the subset
+     * @return MvMetadata instance limited to the specified handler only
+     */
+    public MvMetadata subset(MvHandler handler) {
+        if (! isValid()) {
+            throw new IllegalStateException("Cannot subset a non-valid metadata");
+        }
+        if (handler != handlers.get(handler.getName())) {
+            throw new IllegalArgumentException("Input handler is not included in the working set");
+        }
+        MvMetadata output = new MvMetadata();
+        output.setDictionaryConsumer(dictionaryConsumer);
+        output.addHandler(handler);
+        for (MvTarget target : handler.getTargets().values()) {
+            output.addTarget(target);
+        }
+        return output;
     }
 
 }

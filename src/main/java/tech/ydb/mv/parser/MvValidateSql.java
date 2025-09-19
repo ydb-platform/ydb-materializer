@@ -20,12 +20,12 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvSqlValidator {
+public class MvValidateSql {
 
     private final MvMetadata context;
     private final YdbConnector conn;
 
-    public MvSqlValidator(MvMetadata context, YdbConnector conn) {
+    public MvValidateSql(MvMetadata context, YdbConnector conn) {
         this.context = context;
         this.conn = conn;
     }

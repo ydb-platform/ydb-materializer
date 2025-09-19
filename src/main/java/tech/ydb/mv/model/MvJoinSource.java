@@ -2,6 +2,7 @@ package tech.ydb.mv.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  *
@@ -35,6 +36,30 @@ public class MvJoinSource implements MvSqlPosHolder {
             return null;
         }
         return input.getChangefeedInfo();
+    }
+
+    public String[] getKeyColumnNames() {
+        return tableInfo.getKey().toArray(String[]::new);
+    }
+
+    public boolean isRelated() {
+        for (var cond : conditions) {
+            if ((cond.getFirstRef() == this)
+                    || (cond.getFirstRef() == null
+                    && Objects.equals(tableAlias, cond.getFirstAlias()))) {
+                if (cond.getSecondAlias() != null) {
+                    return true;
+                }
+            }
+            if ((cond.getSecondRef() == this)
+                    || (cond.getSecondRef() == null
+                    && Objects.equals(tableAlias, cond.getSecondAlias()))) {
+                if (cond.getFirstAlias() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

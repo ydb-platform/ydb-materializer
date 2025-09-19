@@ -11,6 +11,7 @@ public class MvDictionarySettings extends MvScanSettings {
     private static final long serialVersionUID = 202500918001L;
 
     private String historyTableName;
+    private String controlTableName;
     private int upsertBatchSize;
     private int threadCount;
     private MvTableInfo historyTableInfo;
@@ -24,6 +25,7 @@ public class MvDictionarySettings extends MvScanSettings {
     public MvDictionarySettings(MvDictionarySettings other) {
         super(other);
         this.historyTableName = other.historyTableName;
+        this.controlTableName = other.controlTableName;
         this.upsertBatchSize = other.upsertBatchSize;
         this.threadCount = other.threadCount;
     }
@@ -32,7 +34,7 @@ public class MvDictionarySettings extends MvScanSettings {
         super(props);
         this.historyTableName = props.getProperty(
                 MvConfig.CONF_DICT_TABLE, MvConfig.DEF_DICT_TABLE);
-        String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
+       String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");
         this.threadCount = Integer.parseInt(v);
@@ -44,6 +46,14 @@ public class MvDictionarySettings extends MvScanSettings {
 
     public void setHistoryTableName(String historyTableName) {
         this.historyTableName = historyTableName;
+    }
+
+    public String getControlTableName() {
+        return controlTableName;
+    }
+
+    public void setControlTableName(String controlTableName) {
+        this.controlTableName = controlTableName;
     }
 
     public int getUpsertBatchSize() {

@@ -111,17 +111,6 @@ public class MvSqlParser {
         }
     }
 
-    private void fillCondition(MvTarget mt, YdbMatViewV1Parser.Opaque_expressionContext cond) {
-        MvComputation filter = new MvComputation(
-                getExpressionText(cond.opaque_expression_body()),
-                toSqlPos(cond)
-        );
-        mt.setFilter(filter);
-        for (var tabref : cond.table_alias()) {
-            filter.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
-        }
-    }
-
     private static String getExpressionText(YdbMatViewV1Parser.Opaque_expression_bodyContext e) {
         String retval = e.OPAQUE_EXPRESSION().getText();
         if (retval.startsWith("#[")) {
@@ -179,22 +168,45 @@ public class MvSqlParser {
         }
     }
 
+    private void fillCondition(MvTarget mt, YdbMatViewV1Parser.Opaque_expressionContext cond) {
+        MvComputation filter = fillComputationColumns(cond);
+        mt.setFilter(filter);
+    }
+
+    private MvComputation fillComputationColumns(YdbMatViewV1Parser.Opaque_expressionContext input) {
+        if (input==null || input.opaque_expression_body()==null) {
+            return null;
+        }
+        MvComputation expr = new MvComputation(
+                getExpressionText(input.opaque_expression_body()),
+                toSqlPos(input)
+        );
+        for (var colref : input.column_reference()) {
+            if (colref.table_alias()==null || colref.column_name()==null) {
+                continue;
+            }
+            var src = new MvComputation.Source(
+                    unquote(colref.table_alias().ID_PLAIN()),
+                    unquote(colref.column_name().identifier().ID_PLAIN())
+            );
+            expr.getSources().add(src);
+        }
+        return expr;
+    }
+
     private void fillColumn(MvTarget mt, YdbMatViewV1Parser.Result_columnContext cc) {
         var column = new MvColumn(
                 unquote(cc.column_alias().ID_PLAIN()),
                 toSqlPos(cc));
         mt.getColumns().add(column);
-        if (cc.opaque_expression()!=null) {
-            MvComputation expr = new MvComputation(
-                    getExpressionText(cc.opaque_expression().opaque_expression_body()),
-                    toSqlPos(cc.opaque_expression())
-            );
-            column.setComputation(expr);
-            for (var tabref : cc.opaque_expression().table_alias()) {
-                expr.getSources().add(new MvComputation.Source(unquote(tabref.ID_PLAIN())));
+        if (cc.opaque_expression() != null) {
+            MvComputation expr = fillComputationColumns(cc.opaque_expression());
+            if (expr != null) {
+                column.setComputation(expr);
             }
-        }
-        if (cc.column_reference()!=null) {
+        } else if (cc.column_reference() != null
+                && cc.column_reference().column_name() != null
+                && cc.column_reference().table_alias() != null) {
             column.setSourceColumn(unquote(cc.column_reference().column_name().identifier()));
             column.setSourceAlias(unquote(cc.column_reference().table_alias().ID_PLAIN()));
         }
@@ -264,6 +276,9 @@ public class MvSqlParser {
     private static void linkTarget(MvTarget t, MvMetadata mc) {
         t.getColumns().stream().forEach(c -> linkColumn(c, t, mc));
         t.getSources().stream().forEach(s -> linkSource(s, t, mc));
+        if (t.getFilter() != null) {
+            linkComputation(t.getFilter(), t, mc);
+        }
     }
 
     private static void linkHandler(MvHandler mh, MvMetadata mc) {

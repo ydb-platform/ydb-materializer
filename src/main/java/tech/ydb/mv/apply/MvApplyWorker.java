@@ -23,14 +23,12 @@ class MvApplyWorker implements Runnable {
     private final int workerNumber;
     private final AtomicReference<Thread> thread = new AtomicReference<>();
     private final LinkedBlockingQueue<MvApplyTask> queue;
-    private final int queueLimit;
     private final AtomicBoolean locked = new AtomicBoolean(false);
 
     public MvApplyWorker(MvApplyManager owner, int number) {
         this.owner = owner;
         this.workerNumber = number;
         this.queue = new LinkedBlockingQueue<>();
-        this.queueLimit = owner.getSettings().getApplyQueueSize();
     }
 
     public void start() {
@@ -60,31 +58,12 @@ class MvApplyWorker implements Runnable {
     }
 
     /**
-     * Attempt to add the task to the input queue.
-     * The input queue may be full, in which case the tasks cannot be added
-     * until some space is released in the queue.
-     * May sometimes overflow the queue, up to the number of concurrent
-     * calls to the method when the queue is mostly-full.
-     *
-     * @param task The task to be added
-     * @return true, if the task was added, and false otherwise.
-     */
-    public boolean submit(MvApplyTask task) {
-        if (queueLimit < owner.getQueueSize()) {
-            LOG.debug("Queue size exceeded, input not accepted.");
-            return false;
-        }
-        submitForce(task);
-        return true;
-    }
-
-    /**
      * Always adds the task to the queue.
      * May overflow the expected size.
      *
      * @param task The task to be added
      */
-    public void submitForce(MvApplyTask task) {
+    public void submit(MvApplyTask task) {
         owner.incrementQueueSize();
         queue.add(task);
         LOG.debug("Task accepted: {}", task);

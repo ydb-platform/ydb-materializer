@@ -60,7 +60,7 @@ public class MvDictionaryScan implements MvScanAdapter {
     public String getTargetName() {
         // Here we report the source table name as the target, unlike regular scans.
         return sourceTableName;
-    }
+   }
 
     @Override
     public MvTableInfo getTableInfo() {

@@ -47,6 +47,10 @@ public class MvKeyPathGenerator {
         this.adjacencyMap = buildAdjacencyMap(target);
     }
 
+    public MvTarget getTarget() {
+        return target;
+    }
+
     public String getTopSourceTableName() {
         return topMostSource.getTableName();
     }

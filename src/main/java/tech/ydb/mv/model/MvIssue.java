@@ -98,6 +98,27 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class UnknownColumn extends Error {
+        private final MvTarget target;
+        private final String aliasName;
+        private final String columnName;
+
+        public UnknownColumn(MvTarget target,
+                String aliasName, String columnName, MvSqlPosHolder place) {
+            super(place.getSqlPos());
+            this.target = target;
+            this.aliasName = aliasName;
+            this.columnName = columnName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Cannot resolve column reference `" + aliasName
+                    + "` . `" + columnName + "` in target " + target
+                    + " at " + sqlPos;
+        }
+    }
+
     public static class IllegalJoinCondition extends Error {
         private final MvTarget target;
         private final MvJoinSource src;
@@ -112,8 +133,8 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Illegal join condition on source alias " + src.getTableAlias()
-                    + " in target " + target
+            return "Illegal join condition on source alias `" + src.getTableAlias()
+                    + "` in target " + target
                     + " at " + sqlPos;
         }
     }
@@ -129,7 +150,7 @@ public interface MvIssue extends MvSqlPosHolder {
         @Override
         public String getMessage() {
             return "Missing output table for target `" + target.getName()
-                    + " at " + sqlPos;
+                    + "` at " + sqlPos;
         }
     }
 

@@ -14,7 +14,7 @@ import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.parser.MvMetadataReader;
+import tech.ydb.mv.parser.MvDescriberYdb;
 import tech.ydb.mv.support.MvConfigReader;
 import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.support.MvSqlPrinter;
@@ -284,7 +284,7 @@ public class MvService implements AutoCloseable {
             LOG.warn("Parser produced errors, metadata retrieval skipped.");
         } else {
             LOG.info("Loading metadata and performing validation...");
-            metadata.linkAndValidate(new MvMetadataReader(ydb));
+            metadata.linkAndValidate(new MvDescriberYdb(ydb));
         }
     }
 

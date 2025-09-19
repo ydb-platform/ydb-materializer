@@ -94,7 +94,7 @@ public class MvJobContext implements MvCdcAdapter  {
         }
         MvScanFeeder sf = scanFeeders.get(target.getName());
         if (sf == null) {
-            sf = new MvScanFeeder(this, applyManager, target, settings);
+            sf = new MvScanFeeder(this, applyManager, target, settings, null);
             scanFeeders.put(target.getName(), sf);
         }
         sf.start();
