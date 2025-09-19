@@ -1,6 +1,5 @@
 package tech.ydb.mv.model;
 
-import java.io.Serializable;
 import java.util.Properties;
 import tech.ydb.mv.MvConfig;
 
@@ -8,22 +7,23 @@ import tech.ydb.mv.MvConfig;
  *
  * @author zinal
  */
-public class MvDictionarySettings implements Serializable {
-    private static final long serialVersionUID = 202500908001L;
+public class MvDictionarySettings extends MvScanSettings {
+    private static final long serialVersionUID = 202500918001L;
 
     private String historyTableName;
     private String controlTableName;
     private int upsertBatchSize;
     private int threadCount;
+    private MvTableInfo historyTableInfo;
 
     public MvDictionarySettings() {
-        this.historyTableName = "mv/dict_hist";
-        this.historyTableName = "mv/dict_ctl";
+        this.historyTableName = MvConfig.DEF_DICT_TABLE;
         this.upsertBatchSize = 500;
         this.threadCount = 4;
     }
 
     public MvDictionarySettings(MvDictionarySettings other) {
+        super(other);
         this.historyTableName = other.historyTableName;
         this.controlTableName = other.controlTableName;
         this.upsertBatchSize = other.upsertBatchSize;
@@ -31,9 +31,10 @@ public class MvDictionarySettings implements Serializable {
     }
 
     public MvDictionarySettings(Properties props) {
-        this.historyTableName = props.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
-        this.controlTableName = props.getProperty(MvConfig.CONF_DICT_CTL_TABLE, MvConfig.DEF_DICT_CTL_TABLE);
-        String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
+        super(props);
+        this.historyTableName = props.getProperty(
+                MvConfig.CONF_DICT_TABLE, MvConfig.DEF_DICT_TABLE);
+       String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");
         this.threadCount = Integer.parseInt(v);
@@ -69,6 +70,14 @@ public class MvDictionarySettings implements Serializable {
 
     public void setThreadCount(int threadCount) {
         this.threadCount = threadCount;
+    }
+
+    public MvTableInfo getHistoryTableInfo() {
+        return historyTableInfo;
+    }
+
+    public void setHistoryTableInfo(MvTableInfo historyTableInfo) {
+        this.historyTableInfo = historyTableInfo;
     }
 
 }

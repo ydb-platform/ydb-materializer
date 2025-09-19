@@ -12,7 +12,7 @@ import tech.ydb.mv.MvConfig;
 public class MvScanSettings implements Serializable {
     private static final long serialVersionUID = 202500908001L;
 
-    private String controlTableName = "mv/dict_log";
+    private String controlTableName = MvConfig.DEF_SCAN_TABLE;
     private int rowsPerSecondLimit = 10000;
 
     public MvScanSettings() {

@@ -10,6 +10,8 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
+import tech.ydb.mv.support.MvScanAdapter;
+import tech.ydb.mv.support.MvScanDao;
 
 /**
  *

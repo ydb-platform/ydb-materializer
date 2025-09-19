@@ -106,6 +106,7 @@ public class MvCoordinator {
         LOG.info("Becoming leader, starting leader loop, tick={}s, instanceId={}",
                 settings.getWatchStateDelaySeconds(), instanceId);
 
+        mvCoordinatorJob.start();
         ScheduledFuture<?> f = scheduler.scheduleWithFixedDelay(
                 this::leaderTick,
                 0,
@@ -132,7 +133,7 @@ public class MvCoordinator {
             if (IsStoppedRun()) {
                 LOG.info("Coordinator received state is STOP, demoting leader, instanceId={}", instanceId);
 
-                mvCoordinatorJob.stopJobs();
+                mvCoordinatorJob.stop();
                 demote();
 
                 return;
@@ -184,8 +185,7 @@ public class MvCoordinator {
         var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
                 "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'",
                 TxMode.SERIALIZABLE_RW))).join().getValue().getResultSet(0);
-        resultSet.next();
 
-        return !resultSet.getColumn(0).getBool();
+        return resultSet.next() && !resultSet.getColumn(0).getBool();
     }
 }
