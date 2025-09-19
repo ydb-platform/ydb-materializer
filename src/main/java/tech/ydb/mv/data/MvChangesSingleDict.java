@@ -8,12 +8,20 @@ import java.util.HashSet;
  *
  * @author zinal
  */
-public class MvDictChanges {
+public class MvChangesSingleDict {
 
+    private final String tableName;
     // fieldName -> row keys where the field is modified
     private final HashMap<String, HashSet<MvKey>> fields = new HashMap<>();
-
     private MvKey scanPosition;
+
+    public MvChangesSingleDict(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
 
     public HashMap<String, HashSet<MvKey>> getFields() {
         return fields;
@@ -27,7 +35,7 @@ public class MvDictChanges {
         this.scanPosition = scanPosition;
     }
 
-    public MvDictChanges updateField(String fieldName, MvKey rowKey) {
+    public MvChangesSingleDict updateField(String fieldName, MvKey rowKey) {
         HashSet<MvKey> rowKeys = fields.get(fieldName);
         if (rowKeys == null) {
             rowKeys = new HashSet<>();

@@ -7,7 +7,7 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
-import tech.ydb.mv.parser.MvKeyPathGenerator;
+import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
  * The apply configuration includes the settings to process the change records
@@ -176,7 +176,7 @@ class MvApply {
             ActionSync actionSync = new ActionSync(target, context);
             makeSource(source.getTableInfo()).addAction(actionSync);
             // Put the sync action as a refresh-only for this target
-            MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(target);
+            MvPathGenerator pathGenerator = new MvPathGenerator(target);
             makeTarget(target, makeDictTrans(target, pathGenerator)).addAction(actionSync);
             // Create configuration for other sources
             for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
@@ -185,7 +185,7 @@ class MvApply {
             }
         }
 
-        void configureSource(MvKeyPathGenerator pg, MvJoinSource source) {
+        void configureSource(MvPathGenerator pg, MvJoinSource source) {
             if (source.getInput()==null || source.getInput().isBatchMode()) {
                 return;
             }
@@ -218,7 +218,7 @@ class MvApply {
             makeSource(source.getTableInfo()).addAction(action);
         }
 
-        MvTarget makeDictTrans(MvTarget target, MvKeyPathGenerator pathGenerator) {
+        MvTarget makeDictTrans(MvTarget target, MvPathGenerator pathGenerator) {
             var batchSources = target.getSources().stream()
                     .filter(js -> js.isTableKnown())
                     .filter(js -> js.getInput().isBatchMode())
@@ -228,7 +228,7 @@ class MvApply {
                 return null;
             }
             var topmostSource = target.getTopMostSource();
-            var filter = MvKeyPathGenerator.newFilter();
+            var filter = MvPathGenerator.newFilter();
             filter.add(topmostSource, topmostSource.getKeyColumnNames());
             for (var js : batchSources) {
                 filter.add(js, js.getKeyColumnNames());

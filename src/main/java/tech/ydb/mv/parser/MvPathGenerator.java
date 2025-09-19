@@ -30,14 +30,14 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvKeyPathGenerator {
+public class MvPathGenerator {
 
     private final MvTarget target;
     private final MvJoinSource topMostSource;
     private final MvTableInfo topMostTable;
     private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
 
-    public MvKeyPathGenerator(MvTarget target) {
+    public MvPathGenerator(MvTarget target) {
         if (target == null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException("Target is not valid for generator");
         }
@@ -757,12 +757,10 @@ public class MvKeyPathGenerator {
     public static final class FilterItem {
         public final MvJoinSource source;
         public final String[] fieldNames;
-        private boolean found; // used in applyFilter()
 
         FilterItem(MvJoinSource source, String[] fieldNames) {
             this.source = source;
             this.fieldNames = fieldNames;
-            this.found = false;
         }
     }
 

@@ -3,6 +3,8 @@ package tech.ydb.mv.data;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import tech.ydb.mv.model.MvTarget;
+
 /**
  *
  * @author zinal
@@ -10,9 +12,18 @@ import java.util.HashSet;
 public class MvRowFilter {
 
     private final ArrayList<Block> blocks = new ArrayList<>();
+    private MvTarget scanTarget;
 
     public ArrayList<Block> getBlocks() {
         return blocks;
+    }
+
+    public MvTarget getScanTarget() {
+        return scanTarget;
+    }
+
+    public void setScanTarget(MvTarget scanTarget) {
+        this.scanTarget = scanTarget;
     }
 
     public boolean matches(Comparable<?>[] row) {
@@ -22,6 +33,16 @@ public class MvRowFilter {
             }
         }
         return true;
+    }
+
+    public boolean isEmpty() {
+        if (blocks.isEmpty()) {
+            return true;
+        }
+        int countNonEmpty = blocks.stream()
+                .mapToInt(b -> b.isEmpty() ? 0 : 1)
+                .sum();
+        return (countNonEmpty == 0);
     }
 
     public static class Block {
@@ -44,6 +65,10 @@ public class MvRowFilter {
 
         public int getLength() {
             return length;
+        }
+
+        public boolean isEmpty() {
+            return tuples.isEmpty();
         }
 
         public boolean matches(Comparable<?>[] row) {

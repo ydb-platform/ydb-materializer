@@ -174,11 +174,11 @@ public class MvFieldPathGeneratorTest {
 
     @Test
     public void testApplyFilter() {
-        var filter = MvKeyPathGenerator.newFilter()
+        var filter = MvPathGenerator.newFilter()
                 .add(sourceA, "id")
                 .add(sourceB, "id", "a_id")
                 .add(sourceD, "id", "a_id");
-        MvTarget result = new MvKeyPathGenerator(originalTarget).applyFilter(filter);
+        MvTarget result = new MvPathGenerator(originalTarget).applyFilter(filter);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -198,7 +198,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_DirectCase() {
         // Test case where target source is the top-most source
-        MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(
+        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
                 sourceA, Arrays.asList("name", "id"));
         assertNotNull(result);
 
@@ -227,7 +227,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_OneStep() {
         // Test transformation to get fields from B (one step: A -> B)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(
+        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
                 sourceB, Arrays.asList("description", "some"));
         assertNotNull(result);
 
@@ -259,7 +259,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_TwoSteps() {
         // Test transformation to get fields from C (two steps: A -> B -> C)
-        MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(
+        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
                 sourceC, Arrays.asList("value"));
         assertNotNull(result);
 
@@ -284,7 +284,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateAllFields() {
         // Test transformation to get all fields from D
-        MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(sourceD);
+        MvTarget result = new MvPathGenerator(originalTarget).extractFields(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -319,7 +319,7 @@ public class MvFieldPathGeneratorTest {
     public void testGenerateFields_InvalidFieldName() {
         // Test with invalid field name
         assertThrows(IllegalArgumentException.class, () -> {
-            new MvKeyPathGenerator(originalTarget).extractFields(sourceA, Arrays.asList("nonexistent"));
+            new MvPathGenerator(originalTarget).extractFields(sourceA, Arrays.asList("nonexistent"));
         });
     }
 
@@ -327,7 +327,7 @@ public class MvFieldPathGeneratorTest {
     public void testGenerateFields_EmptyFieldList() {
         // Test with empty field list
         assertThrows(IllegalArgumentException.class, () -> {
-            new MvKeyPathGenerator(originalTarget).extractFields(sourceA, Arrays.<String>asList());
+            new MvPathGenerator(originalTarget).extractFields(sourceA, Arrays.<String>asList());
         });
     }
 
@@ -335,11 +335,11 @@ public class MvFieldPathGeneratorTest {
     public void testGenerateFields_NullParameters() {
         // Test with null parameters
         assertThrows(IllegalArgumentException.class, () -> {
-            new MvKeyPathGenerator(originalTarget).extractFields(null, Arrays.asList("field"));
+            new MvPathGenerator(originalTarget).extractFields(null, Arrays.asList("field"));
         });
 
         assertThrows(IllegalArgumentException.class, () -> {
-            new MvKeyPathGenerator(originalTarget).extractFields(sourceA, null);
+            new MvPathGenerator(originalTarget).extractFields(sourceA, null);
         });
     }
 
@@ -361,7 +361,7 @@ public class MvFieldPathGeneratorTest {
         originalTarget.getSources().add(sourceE);
 
         // Should return null when no path exists
-        MvTarget result = new MvKeyPathGenerator(originalTarget).extractFields(
+        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
                 sourceE, Arrays.asList("data"));
         assertNull(result);
     }

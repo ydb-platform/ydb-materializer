@@ -4,7 +4,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 
 import tech.ydb.mv.parser.MvSqlGen;
-import tech.ydb.mv.parser.MvKeyPathGenerator;
+import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
@@ -65,7 +65,7 @@ public class MvSqlPrinter {
         pw.println("  ** Topmost scan next:");
         pw.println();
         pw.println(sg.makeScanNext());
-        MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(mt);
+        MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
             if (!js.isTableKnown() || js.getInput()==null) {

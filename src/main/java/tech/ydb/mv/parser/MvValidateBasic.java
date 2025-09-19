@@ -217,7 +217,7 @@ public class MvValidateBasic {
     }
 
     private void checkKeyExtractionIndexes(MvTarget mt) {
-        MvKeyPathGenerator pathGenerator = new MvKeyPathGenerator(mt);
+        MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
             if (!js.isTableKnown() || js.getInput()==null) {

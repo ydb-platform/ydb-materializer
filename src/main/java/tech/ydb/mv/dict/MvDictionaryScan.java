@@ -9,12 +9,13 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.data.MvDictChanges;
+import tech.ydb.mv.data.MvChangesMultiDict;
+import tech.ydb.mv.data.MvChangesSingleDict;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.parser.MvMetadataReader;
+import tech.ydb.mv.parser.MvDescriber;
 import tech.ydb.mv.support.MvScanAdapter;
 import tech.ydb.mv.support.MvScanDao;
 
@@ -25,82 +26,31 @@ import tech.ydb.mv.support.MvScanDao;
  *
  * @author zinal
  */
-public class MvDictionaryScan implements MvScanAdapter {
+public class MvDictionaryScan {
 
     private final YdbConnector conn;
     private final MvHandler handler;
     private final MvDictionarySettings settings;
-    private final String sourceTableName;
+    private final MvDescriber describer;
     private final MvTableInfo historyTableInfo;
-    private final MvTableInfo sourceTableInfo;
 
-    public MvDictionaryScan(YdbConnector conn, MvHandler handler,
-            MvDictionarySettings settings, String sourceTableName) {
+    public MvDictionaryScan(YdbConnector conn, MvDescriber describer,
+            MvHandler handler, MvDictionarySettings settings) {
         this.handler = handler;
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
-        this.sourceTableName = sourceTableName;
-        this.historyTableInfo = grabHistoryTableInfo(conn, settings);
-        this.sourceTableInfo = grabSourceTableInfo(conn, handler, sourceTableName);
+        this.describer = describer;
+        this.historyTableInfo = describer.describeTable(settings.getHistoryTableName());
     }
 
-    private MvTableInfo grabHistoryTableInfo(YdbConnector conn, MvDictionarySettings settings) {
-        if (settings.getHistoryTableInfo() != null) {
-            return settings.getHistoryTableInfo();
-        }
-        return new MvMetadataReader(conn).describeTable(settings.getHistoryTableName());
-    }
+    public MvChangesSingleDict scan(String tableName) {
+        var adapter = new Adapter(tableName);
+        MvKey startKey = new MvScanDao(conn, adapter).initScan();
 
-    private MvTableInfo grabSourceTableInfo(YdbConnector conn, MvHandler handler, String tableName) {
-        var input = handler.getInput(tableName);
-        if (input != null && input.getTableInfo() != null) {
-            return input.getTableInfo();
-        }
-        return new MvMetadataReader(conn).describeTable(tableName);
-    }
-
-    @Override
-    public String getControlTable() {
-        // Normally there is a single control table per whole database.
-        return settings.getControlTableName();
-    }
-
-    @Override
-    public String getHandlerName() {
-        // Each handler has its own dictionary log scan context.
-        return handler.getName();
-    }
-
-    @Override
-    public String getTargetName() {
-        // Here we report the source table name as the target, unlike regular scans.
-        return sourceTableName;
-    }
-
-    @Override
-    public MvTableInfo getTableInfo() {
-        // The actual table being scanned is the dictionary history table.
-        return historyTableInfo;
-    }
-
-    public MvDictChanges scan() {
-        return scan(new MvScanDao(conn, this).initScan());
-    }
-
-    public void commit(MvDictChanges mdc) {
-        var scanDao = new MvScanDao(conn, this);
-        if (mdc.getScanPosition() == null || mdc.getScanPosition().isEmpty()) {
-            scanDao.unregisterScan();
-        } else {
-            scanDao.saveScan(mdc.getScanPosition());
-        }
-    }
-
-    private MvDictChanges scan(MvKey startKey) {
         Params params;
         String sql;
         if (startKey == null || startKey.isEmpty()) {
-            params = Params.of("$src", PrimitiveValue.newText(sourceTableName));
+            params = Params.of("$src", PrimitiveValue.newText(tableName));
             sql = "DECLARE $src AS Text; "
                     + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
                     + YdbConnector.safe(settings.getHistoryTableName())
@@ -108,7 +58,7 @@ public class MvDictionaryScan implements MvScanAdapter {
                     + "ORDER BY src, tv, seqno, key_text;";
         } else {
             params = Params.of(
-                    "$src", PrimitiveValue.newText(sourceTableName),
+                    "$src", PrimitiveValue.newText(tableName),
                     "$tv", startKey.convertValue(1),
                     "$seqno", startKey.convertValue(2),
                     "$key_text", startKey.convertValue(3)
@@ -121,7 +71,7 @@ public class MvDictionaryScan implements MvScanAdapter {
                     + "ORDER BY src, tv, seqno, key_text;";
         }
         ResultSetReader rsr = conn.sqlRead(sql, params).getResultSet(0);
-        var result = new MvDictChanges();
+        var result = new MvChangesSingleDict(tableName);
         result.setScanPosition(startKey);
         while (rsr.next()) {
             result.setScanPosition(new MvKey(rsr, historyTableInfo.getKeyInfo()));
@@ -133,13 +83,73 @@ public class MvDictionaryScan implements MvScanAdapter {
             if (! diffObj.isJsonObject()) {
                 continue;
             }
-            MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(), sourceTableInfo.getKeyInfo());
+            MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),
+                    adapter.sourceTableInfo.getKeyInfo());
             JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
             for (JsonElement item : diffArray.asList()) {
                 result.updateField(item.getAsString(), rowKey);
             }
         }
         return result;
+    }
+
+    public void commit(MvChangesSingleDict mdc) {
+        var scanDao = new MvScanDao(conn, new Adapter(mdc.getTableName()));
+        if (mdc.getScanPosition() == null || mdc.getScanPosition().isEmpty()) {
+            scanDao.unregisterScan();
+        } else {
+            scanDao.saveScan(mdc.getScanPosition());
+        }
+    }
+
+    public MvChangesMultiDict scanAll() {
+        MvChangesMultiDict ret = new MvChangesMultiDict();
+        handler.getInputs().values().stream()
+                .filter(i -> i.isBatchMode())
+                .filter(i -> i.isTableKnown())
+                .map(i -> i.getTableName())
+                .forEach(tableName -> ret.addItem(scan(tableName)));
+        return ret;
+    }
+
+    public void commitAll(MvChangesMultiDict cmd) {
+        cmd.getItems().forEach(item -> commit(item));
+    }
+
+    class Adapter implements MvScanAdapter {
+
+        private final String sourceTableName;
+        private final MvTableInfo sourceTableInfo;
+
+        public Adapter(String sourceTableName) {
+            this.sourceTableName = sourceTableName;
+            this.sourceTableInfo = describer.describeTable(sourceTableName);
+        }
+
+        @Override
+        public MvTableInfo getTableInfo() {
+            // The actual table being scanned is the dictionary history table.
+            return historyTableInfo;
+        }
+
+        @Override
+        public String getControlTable() {
+            // Normally there is a single control table per whole database.
+            return settings.getControlTableName();
+        }
+
+        @Override
+        public String getHandlerName() {
+            // Each handler has its own dictionary log scan context.
+            return handler.getName();
+        }
+
+        @Override
+        public String getTargetName() {
+            // Here we report the source table name as the target, unlike regular scans.
+            return sourceTableName;
+        }
+
     }
 
 }
