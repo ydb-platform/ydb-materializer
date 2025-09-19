@@ -1,4 +1,4 @@
-package tech.ydb.mv.feeder;
+package tech.ydb.mv.support;
 
 import tech.ydb.mv.model.MvTableInfo;
 

@@ -1,6 +1,5 @@
 package tech.ydb.mv.model;
 
-import java.io.Serializable;
 import java.util.Properties;
 import tech.ydb.mv.MvConfig;
 
@@ -8,26 +7,29 @@ import tech.ydb.mv.MvConfig;
  *
  * @author zinal
  */
-public class MvDictionarySettings implements Serializable {
-    private static final long serialVersionUID = 202500908001L;
+public class MvDictionarySettings extends MvScanSettings {
+    private static final long serialVersionUID = 202500918001L;
 
     private String historyTableName;
     private int upsertBatchSize;
     private int threadCount;
+    private MvTableInfo historyTableInfo;
 
     public MvDictionarySettings() {
-        this.historyTableName = "mv/dict_hist";
+        this.historyTableName = MvConfig.DEF_DICT_TABLE;
         this.upsertBatchSize = 500;
         this.threadCount = 4;
     }
 
     public MvDictionarySettings(MvDictionarySettings other) {
+        super(other);
         this.historyTableName = other.historyTableName;
         this.upsertBatchSize = other.upsertBatchSize;
         this.threadCount = other.threadCount;
     }
 
     public MvDictionarySettings(Properties props) {
+        super(props);
         this.historyTableName = props.getProperty(
                 MvConfig.CONF_DICT_TABLE, MvConfig.DEF_DICT_TABLE);
         String v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
@@ -58,6 +60,14 @@ public class MvDictionarySettings implements Serializable {
 
     public void setThreadCount(int threadCount) {
         this.threadCount = threadCount;
+    }
+
+    public MvTableInfo getHistoryTableInfo() {
+        return historyTableInfo;
+    }
+
+    public void setHistoryTableInfo(MvTableInfo historyTableInfo) {
+        this.historyTableInfo = historyTableInfo;
     }
 
 }

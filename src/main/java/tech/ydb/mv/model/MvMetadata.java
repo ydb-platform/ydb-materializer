@@ -23,6 +23,7 @@ public class MvMetadata {
 
     private final HashMap<String, MvTarget> targets = new HashMap<>();
     private final HashMap<String, MvHandler> handlers = new HashMap<>();
+    private final HashMap<String, MvTableInfo> tables = new HashMap<>();
 
     private final ArrayList<MvIssue> errors = new ArrayList<>();
     private final ArrayList<MvIssue> warnings = new ArrayList<>();
@@ -44,6 +45,10 @@ public class MvMetadata {
 
     public Map<String, MvHandler> getHandlers() {
         return handlers;
+    }
+
+    public Map<String, MvTableInfo> getTables() {
+        return tables;
     }
 
     public ArrayList<MvIssue> getErrors() {
@@ -108,14 +113,14 @@ public class MvMetadata {
         if (! isValid()) {
             return false;
         }
-        HashMap<String, MvTableInfo> info = new HashMap<>();
+        tables.clear();
         for (String tabname : collectTables()) {
             MvTableInfo ti = metadataReader.describeTable(tabname);
             if (ti!=null) {
-                info.put(tabname, ti);
+                tables.put(tabname, ti);
             }
         }
-        linkTables(info);
+        linkTables();
         linkColumns();
         return validate(metadataReader.getYdb());
     }
@@ -139,16 +144,16 @@ public class MvMetadata {
         return ret;
     }
 
-    private void linkTables(HashMap<String, MvTableInfo> info) {
+    private void linkTables() {
         for (MvTarget t : targets.values()) {
-            t.setTableInfo(info.get(t.getName()));
+            t.setTableInfo(tables.get(t.getName()));
             for (MvJoinSource r : t.getSources()) {
-                r.setTableInfo(info.get(r.getTableName()));
+                r.setTableInfo(tables.get(r.getTableName()));
             }
         }
         for (MvHandler h : handlers.values()) {
             for (MvInput i : h.getInputs().values()) {
-                i.setTableInfo(info.get(i.getTableName()));
+                i.setTableInfo(tables.get(i.getTableName()));
             }
         }
     }
