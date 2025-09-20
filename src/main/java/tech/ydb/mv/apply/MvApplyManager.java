@@ -111,7 +111,21 @@ public class MvApplyManager implements MvCdcSink {
      * @param tableClient Table client is needed to describe the source tables.
      */
     public void refreshSelectors(TableClient tableClient) {
-        sourceConfigs.values().forEach(ac -> ac.getSelector().refresh(tableClient));
+        for (var source : sourceConfigs.values()) {
+            try {
+                source.getSelector().refresh(tableClient);
+            } catch (Exception ex) {
+                LOG.error("Table metadata refresh operation failed for {}",
+                        source.getTableInfo().getName(), ex);
+            }
+        }
+    }
+
+    /**
+     * Check the extra tasks to be started, and start them.
+     */
+    public void pingTasks() {
+        // TODO
     }
 
     /**

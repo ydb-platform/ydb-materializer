@@ -30,6 +30,7 @@ import tech.ydb.mv.support.YdbMisc;
  * @author zinal
  */
 public class MvService implements MvApi {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
@@ -74,7 +75,7 @@ public class MvService implements MvApi {
 
     @Override
     public void setHandlerSettings(MvHandlerSettings defaultSettings) {
-        if (defaultSettings==null) {
+        if (defaultSettings == null) {
             defaultSettings = new MvHandlerSettings();
         } else {
             defaultSettings = new MvHandlerSettings(defaultSettings);
@@ -89,7 +90,7 @@ public class MvService implements MvApi {
 
     @Override
     public void setDictionarySettings(MvDictionarySettings defaultSettings) {
-        if (defaultSettings==null) {
+        if (defaultSettings == null) {
             defaultSettings = new MvDictionarySettings();
         } else {
             defaultSettings = new MvDictionarySettings(defaultSettings);
@@ -104,7 +105,7 @@ public class MvService implements MvApi {
 
     @Override
     public void setScanSettings(MvScanSettings defaultSettings) {
-        if (defaultSettings==null) {
+        if (defaultSettings == null) {
             defaultSettings = new MvScanSettings();
         } else {
             defaultSettings = new MvScanSettings(defaultSettings);
@@ -162,7 +163,9 @@ public class MvService implements MvApi {
     }
 
     /**
-     * Start the handler with the specified name, using the current default settings.
+     * Start the handler with the specified name, using the current default
+     * settings.
+     *
      * @param name Name of the handler to be started
      */
     @Override
@@ -181,16 +184,16 @@ public class MvService implements MvApi {
      * @return true, if handler has been started, false otherwise
      */
     public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
-        if (schedulerThread==null || !schedulerThread.isAlive()) {
+        if (schedulerThread == null || !schedulerThread.isAlive()) {
             schedulerThread = new Thread(schedulerTask);
             schedulerThread.setName("mv-scheduler");
             schedulerThread.setDaemon(true);
             schedulerThread.start();
         }
         MvJobController c = handlers.get(name);
-        if (c==null) {
+        if (c == null) {
             MvHandler handler = metadata.getHandlers().get(name);
-            if (handler==null) {
+            if (handler == null) {
                 throw new IllegalArgumentException("Unknown handler name: " + name);
             }
             c = new MvJobController(this, handler, settings);
@@ -201,6 +204,7 @@ public class MvService implements MvApi {
 
     /**
      * Stop the handler with the specified name.
+     *
      * @param name The name of the handler to be stopped
      * @return true, if the handler was actually stopped, and false otherwise
      */
@@ -268,14 +272,14 @@ public class MvService implements MvApi {
                     + "{}\n"
                     + "----- END CONTEXT INFO -----", msg);
         }
-        if (! metadata.isValid()) {
+        if (!metadata.isValid()) {
             throw new IllegalStateException(
                     "Refusing to start due to configuration errors.");
         }
         for (String handlerName : parseActiveHandlerNames()) {
             try {
                 startHandler(handlerName);
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 LOG.error("Failed to activate the handler {}", handlerName, ex);
             }
         }
@@ -294,11 +298,11 @@ public class MvService implements MvApi {
 
     private List<String> parseActiveHandlerNames() {
         String v = ydb.getConfig().getProperties().getProperty(MvConfig.CONF_HANDLERS);
-        if (v==null) {
+        if (v == null) {
             return Collections.emptyList();
         }
         v = v.trim();
-        if (v.length()==0) {
+        if (v.length() == 0) {
             return Collections.emptyList();
         }
         return Arrays.asList(v.split("[,]"));
@@ -309,7 +313,7 @@ public class MvService implements MvApi {
     }
 
     private void refreshMetadata() {
-        if (! metadata.isValid()) {
+        if (!metadata.isValid()) {
             LOG.warn("Parser produced errors, metadata retrieval skipped.");
         } else {
             LOG.info("Loading metadata and performing validation...");
@@ -318,26 +322,28 @@ public class MvService implements MvApi {
     }
 
     private void sleepSome() {
-        for (int i=0; i<3000; ++i) {
-            if (! isRunning()) {
+        for (int i = 0; i < 3000; ++i) {
+            if (!isRunning()) {
                 break;
             }
             YdbMisc.sleep(100L);
         }
     }
 
-    private void refreshSelectors() {
+    private void checkAndRunScheduledTasks() {
         for (MvJobController c : grabControllers()) {
             c.getApplyManager().refreshSelectors(ydb.getTableClient());
+            c.getApplyManager().pingTasks();
         }
     }
 
     private class SchedulerTask implements Runnable {
+
         @Override
         public void run() {
             sleepSome();
             while (isRunning()) {
-                refreshSelectors();
+                checkAndRunScheduledTasks();
                 sleepSome();
             }
         }
