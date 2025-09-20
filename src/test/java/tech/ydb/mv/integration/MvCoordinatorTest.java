@@ -28,8 +28,8 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
     public void mvCoordinationOneThread() {
         pause(10000);
 
-        final var queue = new ConcurrentLinkedQueue<>();
-        final var deque = new ConcurrentLinkedDeque<>();
+        final var queue = new ConcurrentLinkedQueue<Integer>();
+        final var deque = new ConcurrentLinkedDeque<String>();
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             pause(10000);
@@ -98,7 +98,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
     public void mvCoordinationMultiThread() {
         pause(10000);
 
-        final var queue = new ConcurrentLinkedQueue<>();
+        final var queue = new ConcurrentLinkedQueue<Integer>();
         final var deque = new ConcurrentLinkedDeque<String>();
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {

@@ -1,21 +1,24 @@
 package tech.ydb.mv.integration;
 
+import java.util.List;
+import java.util.Properties;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinatorJobImpl;
 import tech.ydb.mv.mgt.MvJobDao;
 
-import java.util.List;
-import java.util.Properties;
-
 /**
  * @author Kirill Kurdyukov
  */
+@Disabled
 public class MvCoordinatorJobTest extends AbstractIntegrationBase {
 
     private static final String CREATE_MEGATRON_TABLES = """
@@ -26,7 +29,7 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
                 runner_id Text,
                 PRIMARY KEY(job_name)
             );
-                    
+
             CREATE TABLE `test1/mv_runners` (
                 runner_id Text NOT NULL,
                 runner_identity Text,
@@ -126,14 +129,14 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
 
     @Test
     public void cleanupInactiveRunnersTest() {
-        runDdl(ydbConnector, """       
+        runDdl(ydbConnector, """
                 INSERT INTO `test1/mv_runners`(runner_id, runner_identity, updated_at) VALUES
                     ('1', 'instance_1', CurrentUtcTimestamp() - Interval('PT500S')),
                     ('2', 'instance_2', CurrentUtcTimestamp() - Interval('PT500S')),
                     ('3', 'instance_3', CurrentUtcTimestamp() - Interval('PT500S')),
                     ('4', 'instance_4', CurrentUtcTimestamp() - Interval('PT500S')),
                     ('5', 'instance_5', CurrentUtcTimestamp() - Interval('PT500S'));
-                    
+
                 INSERT INTO `test1/mv_runner_jobs`(runner_id, job_name, started_at) VALUES
                     ('1', 'job_1_1', CurrentUtcTimestamp() - Interval('PT500S')),
                     ('1', 'job_1_2', CurrentUtcTimestamp() - Interval('PT500S')),

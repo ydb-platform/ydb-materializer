@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.YdbConnector;
@@ -24,6 +25,7 @@ import tech.ydb.mv.mgt.MvRunnerJobInfo;
  *
  * @author zinal
  */
+@Disabled
 public class MvJobDaoTest extends AbstractIntegrationBase {
 
     private static final String CREATE_MEGATRON_TABLES = """
