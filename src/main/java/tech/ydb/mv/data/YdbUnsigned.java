@@ -7,6 +7,7 @@ import java.io.Serializable;
  * @author zinal
  */
 public class YdbUnsigned implements Comparable<YdbUnsigned>, Serializable {
+
     private static final long serialVersionUID = 20250817001L;
 
     private final long value;

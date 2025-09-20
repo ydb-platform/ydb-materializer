@@ -11,12 +11,14 @@ import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
- * The apply worker is an active object (thread) with the input queue to process.
- * It handles the changes from each MV being handled on the current application instance.
+ * The apply worker is an active object (thread) with the input queue to
+ * process. It handles the changes from each MV being handled on the current
+ * application instance.
  *
  * @author zinal
  */
 class MvApplyWorker implements Runnable {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyWorker.class);
 
     private final MvApplyManager owner;
@@ -37,7 +39,7 @@ class MvApplyWorker implements Runnable {
                 + "-" + String.valueOf(workerNumber));
         t.setDaemon(false);
         Thread old = thread.getAndSet(t);
-        if (old!=null && old.isAlive()) {
+        if (old != null && old.isAlive()) {
             thread.set(old);
         } else {
             locked.set(false);
@@ -47,7 +49,7 @@ class MvApplyWorker implements Runnable {
 
     public boolean isRunning() {
         Thread t = thread.get();
-        if (t==null) {
+        if (t == null) {
             return false;
         }
         return t.isAlive();
@@ -58,8 +60,7 @@ class MvApplyWorker implements Runnable {
     }
 
     /**
-     * Always adds the task to the queue.
-     * May overflow the expected size.
+     * Always adds the task to the queue. May overflow the expected size.
      *
      * @param task The task to be added
      */
@@ -72,7 +73,7 @@ class MvApplyWorker implements Runnable {
     @Override
     public void run() {
         while (owner.isRunning()) {
-            if ( action() == 0 ) {
+            if (action() == 0) {
                 // nothing has been done, so make some sleep
                 YdbMisc.randomSleep(10L, 30L);
             }
@@ -87,7 +88,7 @@ class MvApplyWorker implements Runnable {
         }
         owner.decrementQueueSize(activeTasks.size());
         PerAction retries = new PerAction().addItems(activeTasks).apply();
-        if (! processRetries(retries)) {
+        if (!processRetries(retries)) {
             // no commit unless no retries needed, or retries succeeded
             return -1;
         }
@@ -102,8 +103,8 @@ class MvApplyWorker implements Runnable {
         // we have retries pending, so switch to locked mode
         locked.set(true);
         int retryNumber = 0;
-        while (! retries.isEmpty()) {
-            if (! makeDelay(retryNumber)) {
+        while (!retries.isEmpty()) {
+            if (!makeDelay(retryNumber)) {
                 return false;
             }
             retries = retries.apply();
@@ -118,7 +119,7 @@ class MvApplyWorker implements Runnable {
         long sleepTime = 250 << Math.min(retryNumber, 8);
         long tvFinish = System.currentTimeMillis() + sleepTime;
         do {
-            if (! owner.isRunning()) {
+            if (!owner.isRunning()) {
                 return false;
             }
             YdbMisc.sleep(50L);
@@ -129,10 +130,10 @@ class MvApplyWorker implements Runnable {
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
         try {
             action.apply(tasks);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             retries.addItems(tasks, action);
             String lastSql = ActionBase.getLastSqlStatement();
-            if (lastSql!=null) {
+            if (lastSql != null) {
                 LOG.error("Execution failed for action {}, scheduling for retry. Last SQL:\n{}\n",
                         action, lastSql, ex);
             } else {
@@ -143,6 +144,7 @@ class MvApplyWorker implements Runnable {
     }
 
     private class PerAction {
+
         final HashMap<MvApplyAction, List<MvApplyTask>> items = new HashMap<>();
 
         boolean isEmpty() {
@@ -159,7 +161,7 @@ class MvApplyWorker implements Runnable {
         }
 
         PerAction addItems(List<MvApplyTask> input, MvApplyAction cur) {
-            if (cur==null) {
+            if (cur == null) {
                 return addItems(input);
             }
             for (MvApplyTask task : input) {
@@ -186,12 +188,13 @@ class MvApplyWorker implements Runnable {
     }
 
     private class PerCommit {
+
         final HashMap<MvCommitHandler, Integer> items = new HashMap<>();
 
         PerCommit(ArrayList<MvApplyTask> input) {
             for (MvApplyTask task : input) {
                 Integer numTasks = items.get(task.getCommit());
-                if (numTasks==null) {
+                if (numTasks == null) {
                     items.put(task.getCommit(), 1);
                 } else {
                     items.put(task.getCommit(), 1 + numTasks);

@@ -4,7 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * Information about the dictionary changes that happened since the last refresh.
+ * Information about the dictionary changes that happened since the last
+ * refresh.
  *
  * @author zinal
  */

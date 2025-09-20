@@ -3,7 +3,6 @@ package tech.ydb.mv.feeder;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-
 import tech.ydb.mv.data.MvKey;
 
 /**
@@ -12,6 +11,7 @@ import tech.ydb.mv.data.MvKey;
  * @author zinal
  */
 class MvScanCommitHandler implements MvCommitHandler {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
@@ -49,7 +49,7 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     private void initPredecessor(MvScanCommitHandler predecessor) {
-        if (predecessor!=null) {
+        if (predecessor != null) {
             predecessor.next.set(this);
         }
     }
@@ -59,7 +59,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         if (committed || counter < 0) {
             return;
         }
-        if (! context.isRunning()) {
+        if (!context.isRunning()) {
             // no commits for an already stopped scan feeder
             committed = true;
             resetNextChain();
@@ -79,7 +79,7 @@ class MvScanCommitHandler implements MvCommitHandler {
                 } else {
                     context.getScanDao().saveScan(key);
                 }
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
                         context.getTarget().getName(), context.getHandler().getName(), ex);
             }
@@ -97,9 +97,9 @@ class MvScanCommitHandler implements MvCommitHandler {
 
     private MvScanCommitHandler resetNext() {
         MvScanCommitHandler n = next.getAndSet(null);
-        if (n!=null) {
+        if (n != null) {
             MvScanCommitHandler p = n.previous.getAndSet(null);
-            if (p!=this) {
+            if (p != this) {
                 LOG.warn("Commit handler chain mismatched: expected {}, got {}",
                         instance, p.instance);
             }
@@ -110,14 +110,14 @@ class MvScanCommitHandler implements MvCommitHandler {
 
     private void resetNextChain() {
         MvScanCommitHandler n = this;
-        while (n!=null) {
+        while (n != null) {
             n = n.resetNext();
         }
     }
 
     private boolean isReady() {
         MvScanCommitHandler p = this;
-        while (p!=null) {
+        while (p != null) {
             if (p.getCounter() > 0) {
                 return false;
             }

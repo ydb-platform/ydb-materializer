@@ -25,6 +25,7 @@ import tech.ydb.mv.parser.MvSqlGen;
  * @author zinal
  */
 abstract class ActionBase {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
@@ -124,16 +125,17 @@ abstract class ActionBase {
     }
 
     /**
-     * Group the input records by commit handlers.
-     * This enables more efficient per-commit-handler behavior.
+     * Group the input records by commit handlers. This enables more efficient
+     * per-commit-handler behavior.
      */
     protected static class PerCommit {
+
         final HashMap<MvCommitHandler, ArrayList<MvApplyTask>> items = new HashMap<>();
 
         PerCommit(List<MvApplyTask> tasks) {
             for (MvApplyTask task : tasks) {
                 ArrayList<MvApplyTask> cur = items.get(task.getCommit());
-                if (cur==null) {
+                if (cur == null) {
                     cur = new ArrayList<>();
                     items.put(task.getCommit(), cur);
                 }

@@ -23,23 +23,23 @@ public abstract class YdbConv {
     public static OptionalValue makeEmpty(Type t) {
         switch (t.getKind()) {
             case OPTIONAL:
-                return ((OptionalType)t).emptyValue();
+                return ((OptionalType) t).emptyValue();
             default:
                 return t.makeOptional().emptyValue();
         }
     }
 
     public static Value<?> fromPojo(Object v, Type t) {
-        if (v==null) {
+        if (v == null) {
             return makeEmpty(t);
         }
         switch (t.getKind()) {
             case OPTIONAL:
                 return fromPojo(v, t.unwrapOptional()).makeOptional();
             case DECIMAL:
-                return decimalFromPojo(v, (DecimalType)t);
+                return decimalFromPojo(v, (DecimalType) t);
             case PRIMITIVE:
-                return fromPojo(v, (PrimitiveType)t);
+                return fromPojo(v, (PrimitiveType) t);
             case NULL:
                 return NullValue.of();
             default:
@@ -48,52 +48,76 @@ public abstract class YdbConv {
     }
 
     public static Value<?> fromPojo(Object v, PrimitiveType t) {
-        if (v==null) {
+        if (v == null) {
             return makeEmpty(t);
         }
         switch (t) {
-            case Bool:         return boolFromPojo(v);
-            case Bytes:        return bytesFromPojo(v);
-            case Date:         return dateFromPojo(v);
-            case Date32:       return date32FromPojo(v);
-            case Datetime:     return datetimeFromPojo(v);
-            case Datetime64:   return datetimeFromPojo(v);
-            case Double:       return doubleFromPojo(v);
-            case Float:        return floatFromPojo(v);
-            case Int16:        return int16FromPojo(v);
-            case Int32:        return int32FromPojo(v);
-            case Int64:        return int64FromPojo(v);
-            case Int8:         return int8FromPojo(v);
-            case Interval:     return intervalFromPojo(v);
-            case Interval64:   return interval64FromPojo(v);
-            case Json:         return jsonFromPojo(v);
-            case JsonDocument: return jsonDocumentFromPojo(v);
-            case Text:         return textFromPojo(v);
-            case Timestamp:    return timestampFromPojo(v);
-            case Timestamp64:  return timestamp64FromPojo(v);
-            case Uint16:       return uint16FromPojo(v);
-            case Uint32:       return uint32FromPojo(v);
-            case Uint64:       return uint64FromPojo(v);
-            case Uint8:        return uint8FromPojo(v);
-            case Uuid:         return uuidFromPojo(v);
+            case Bool:
+                return boolFromPojo(v);
+            case Bytes:
+                return bytesFromPojo(v);
+            case Date:
+                return dateFromPojo(v);
+            case Date32:
+                return date32FromPojo(v);
+            case Datetime:
+                return datetimeFromPojo(v);
+            case Datetime64:
+                return datetimeFromPojo(v);
+            case Double:
+                return doubleFromPojo(v);
+            case Float:
+                return floatFromPojo(v);
+            case Int16:
+                return int16FromPojo(v);
+            case Int32:
+                return int32FromPojo(v);
+            case Int64:
+                return int64FromPojo(v);
+            case Int8:
+                return int8FromPojo(v);
+            case Interval:
+                return intervalFromPojo(v);
+            case Interval64:
+                return interval64FromPojo(v);
+            case Json:
+                return jsonFromPojo(v);
+            case JsonDocument:
+                return jsonDocumentFromPojo(v);
+            case Text:
+                return textFromPojo(v);
+            case Timestamp:
+                return timestampFromPojo(v);
+            case Timestamp64:
+                return timestamp64FromPojo(v);
+            case Uint16:
+                return uint16FromPojo(v);
+            case Uint32:
+                return uint32FromPojo(v);
+            case Uint64:
+                return uint64FromPojo(v);
+            case Uint8:
+                return uint8FromPojo(v);
+            case Uuid:
+                return uuidFromPojo(v);
             default:
                 throw new IllegalArgumentException("Unsupported data type: " + t);
         }
     }
 
     public static Comparable<?> toPojo(Value<?> v) {
-        if (v==null) {
+        if (v == null) {
             return null;
         }
         switch (v.getType().getKind()) {
             case OPTIONAL:
-                if ( v.asOptional().isPresent() ) {
+                if (v.asOptional().isPresent()) {
                     return toPojo(v.asOptional().get());
                 } else {
                     return null;
                 }
             case DECIMAL:
-                return ((DecimalValue)v).toBigDecimal();
+                return ((DecimalValue) v).toBigDecimal();
             case PRIMITIVE:
                 return toPojo(v.asData());
             case NULL:
@@ -105,40 +129,64 @@ public abstract class YdbConv {
 
     public static Comparable<?> toPojo(PrimitiveValue v) {
         switch (v.getType()) {
-            case Bool:          return v.getBool();
-            case Bytes:         return new YdbBytes(v.getBytes());
-            case Date:          return v.getDate();
-            case Date32:        return v.getDate32();
-            case Datetime:      return v.getDatetime();
-            case Datetime64:    return v.getDatetime64();
-            case Double:        return v.getDouble();
-            case Float:         return v.getFloat();
-            case Int16:         return v.getInt16();
-            case Int32:         return v.getInt32();
-            case Int64:         return v.getInt64();
-            case Int8:          return v.getInt8();
-            case Interval:      return v.getInterval();
-            case Interval64:    return v.getInterval64();
-            case Json:          return v.getJson();
-            case JsonDocument:  return v.getJsonDocument();
-            case Text:          return v.getText();
-            case Timestamp:     return v.getTimestamp();
-            case Timestamp64:   return v.getTimestamp64();
-            case Uint16:        return v.getUint16();
-            case Uint32:        return v.getUint32();
-            case Uint64:        return new YdbUnsigned(v.getUint64());
-            case Uint8:         return v.getUint8();
-            case Uuid:          return v.getUuidString();
+            case Bool:
+                return v.getBool();
+            case Bytes:
+                return new YdbBytes(v.getBytes());
+            case Date:
+                return v.getDate();
+            case Date32:
+                return v.getDate32();
+            case Datetime:
+                return v.getDatetime();
+            case Datetime64:
+                return v.getDatetime64();
+            case Double:
+                return v.getDouble();
+            case Float:
+                return v.getFloat();
+            case Int16:
+                return v.getInt16();
+            case Int32:
+                return v.getInt32();
+            case Int64:
+                return v.getInt64();
+            case Int8:
+                return v.getInt8();
+            case Interval:
+                return v.getInterval();
+            case Interval64:
+                return v.getInterval64();
+            case Json:
+                return v.getJson();
+            case JsonDocument:
+                return v.getJsonDocument();
+            case Text:
+                return v.getText();
+            case Timestamp:
+                return v.getTimestamp();
+            case Timestamp64:
+                return v.getTimestamp64();
+            case Uint16:
+                return v.getUint16();
+            case Uint32:
+                return v.getUint32();
+            case Uint64:
+                return new YdbUnsigned(v.getUint64());
+            case Uint8:
+                return v.getUint8();
+            case Uuid:
+                return v.getUuidString();
             default:
                 throw new IllegalArgumentException("Unsupported data type: " + v.getType());
         }
     }
 
     public static Value<?> convert(Value<?> input, Type type) {
-        if (input==null) {
+        if (input == null) {
             return null;
         }
-        if (type==null) {
+        if (type == null) {
             return input;
         }
         if (type.equals(input.getType())) {
@@ -149,7 +197,7 @@ public abstract class YdbConv {
             if (ov.isPresent()) {
                 return convert(ov.get(), type);
             } else if (type instanceof OptionalType) {
-                return ((OptionalType)type).emptyValue();
+                return ((OptionalType) type).emptyValue();
             } else {
                 throw new IllegalArgumentException("Cannot convert "
                         + "empty value of type " + input.getType()
@@ -164,11 +212,11 @@ public abstract class YdbConv {
                 case OPTIONAL:
                     return convert(input, type.unwrapOptional()).makeOptional();
                 case DECIMAL:
-                    return decimalFromPojo(v, (DecimalType)type);
+                    return decimalFromPojo(v, (DecimalType) type);
                 case PRIMITIVE:
-                    return fromPojo(v, (PrimitiveType)type);
+                    return fromPojo(v, (PrimitiveType) type);
             }
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             reason = ex;
         }
         throw new IllegalArgumentException("Cannot convert "
@@ -185,17 +233,17 @@ public abstract class YdbConv {
     }
 
     private static Value<?> decimalFromPojo(Object v, DecimalType dt) {
-        if (v==null) {
+        if (v == null) {
             return makeEmpty(dt);
         }
         if (v instanceof BigDecimal) {
             return dt.newValue((BigDecimal) v);
         }
         if (v instanceof Integer) {
-            return dt.newValue(((Integer)v));
+            return dt.newValue(((Integer) v));
         }
         if (v instanceof Long) {
-            return dt.newValue(((Long)v));
+            return dt.newValue(((Long) v));
         }
         return dt.newValue(v.toString());
     }

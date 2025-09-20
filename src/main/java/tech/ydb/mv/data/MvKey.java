@@ -35,7 +35,7 @@ public class MvKey extends MvKeyPrefix {
 
     public boolean isEmpty() {
         for (Comparable c : values) {
-            if (c!=null) {
+            if (c != null) {
                 return false;
             }
         }

@@ -215,7 +215,7 @@ public class MvApplyManager implements MvCdcSink {
     public boolean submitRefresh(MvTarget target,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
         var targetConfig = targetConfigs.get(target.getName());
-        if (targetConfig==null) {
+        if (targetConfig == null) {
             return submitCustom(null, changes, handler);
         }
         return submitCustom(targetConfig.getRefreshActions(), changes, handler);

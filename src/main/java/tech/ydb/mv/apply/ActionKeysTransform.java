@@ -11,11 +11,13 @@ import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
 
 /**
- * Single-step input key transformation to the keys of the main table for a specific MV.
+ * Single-step input key transformation to the keys of the main table for a
+ * specific MV.
  *
  * @author zinal
  */
 class ActionKeysTransform extends ActionKeysAbstract {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysTransform.class);
 
     private final boolean keysTransform;
@@ -57,20 +59,20 @@ class ActionKeysTransform extends ActionKeysAbstract {
             if (keysTransform) {
                 key = buildKey(cr, (name) -> cr.getKey().getValue(name));
             } else {
-                if (cr.getImageBefore()!=null && cr.getImageBefore().isFilled()) {
+                if (cr.getImageBefore() != null && cr.getImageBefore().isFilled()) {
                     key = buildKey(cr, (name) -> cr.getImageBefore().get(name));
                 }
-                if (cr.getImageAfter()!=null && cr.getImageAfter().isFilled()) {
+                if (cr.getImageAfter() != null && cr.getImageAfter().isFilled()) {
                     key = buildKey(cr, (name) -> cr.getImageAfter().get(name));
                 }
             }
-            if (key!=null) {
+            if (key != null) {
                 LOG.debug("Result key: {}", key);
                 output.add(new MvChangeRecord(key,
                         task.getData().getTv(), MvChangeRecord.OpType.UPSERT));
             }
         }
-        if (! output.isEmpty()) {
+        if (!output.isEmpty()) {
             // extra records to be committed
             handler.reserve(output.size());
             // submit the extracted keys for processing
@@ -90,7 +92,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
                 column = col.getComputation().getLiteral().getValue();
                 values[i] = col.getComputation().getLiteral().getPojo();
             }
-            if (values[i]==null) {
+            if (values[i] == null) {
                 LOG.warn(" [{}] Missing value for column {}, source {}", instance, column, cr);
                 return null;
             }
@@ -99,6 +101,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
     }
 
     private static interface Grabber {
+
         Comparable<?> getValue(String name);
     }
 }

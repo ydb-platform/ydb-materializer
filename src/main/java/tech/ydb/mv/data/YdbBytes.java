@@ -10,6 +10,7 @@ import java.util.Base64;
  * @author zinal
  */
 public class YdbBytes implements Comparable<YdbBytes>, Serializable {
+
     private static final long serialVersionUID = 20250817001L;
 
     private final byte[] value;
@@ -61,7 +62,7 @@ public class YdbBytes implements Comparable<YdbBytes>, Serializable {
     public String toString() {
         try {
             return new String(value, StandardCharsets.UTF_8);
-        } catch(Exception e) {
+        } catch (Exception e) {
             return Base64.getUrlEncoder().encodeToString(value);
         }
     }

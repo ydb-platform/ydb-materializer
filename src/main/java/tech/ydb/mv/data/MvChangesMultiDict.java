@@ -18,6 +18,7 @@ import tech.ydb.mv.parser.MvPathGenerator;
  * @author zinal
  */
 public class MvChangesMultiDict {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvChangesMultiDict.class);
 
     private final HashMap<String, MvChangesSingleDict> items = new HashMap<>();
@@ -98,8 +99,9 @@ public class MvChangesMultiDict {
     }
 
     /**
-     * table alias -> columns being used as output or in relations.
-     * // TODO: move to MvTarget to be collected after parsing
+     * table alias -> columns being used as output or in relations. // TODO:
+     * move to MvTarget to be collected after parsing
+     *
      * @param target
      * @return the column usage map
      */
@@ -116,7 +118,7 @@ public class MvChangesMultiDict {
             }
         }
         for (var column : target.getColumns()) {
-            if ( column.isReference() ) {
+            if (column.isReference()) {
                 useColumn(columnUsage, column.getSourceAlias(), column.getSourceColumn());
             } else if (column.isComputation()) {
                 for (var src : column.getComputation().getSources()) {
@@ -139,7 +141,7 @@ public class MvChangesMultiDict {
             return;
         }
         Set<String> columns = columnUsage.get(tableAlias);
-        if (columns==null) {
+        if (columns == null) {
             columns = new HashSet<>();
             columnUsage.put(tableAlias, columns);
         }

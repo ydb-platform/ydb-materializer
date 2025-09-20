@@ -24,6 +24,7 @@ import tech.ydb.mv.support.YdbMisc;
  * @author zinal
  */
 public class MvScanFeeder {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanFeeder.class);
 
     private final MvJobContext job;
@@ -120,7 +121,7 @@ public class MvScanFeeder {
 
     private void run() {
         MvScanContext ctx = context.get();
-        if (ctx==null) {
+        if (ctx == null) {
             LOG.error("Exiting the scanner due to missing context - PROGRAM DEFECT!");
             return;
         } else {
@@ -154,7 +155,7 @@ public class MvScanFeeder {
             String sql;
             Params params;
             key = ctx.getCurrentKey();
-            if (key==null || key.isEmpty()) {
+            if (key == null || key.isEmpty()) {
                 sql = ctx.getSqlSelectStart();
                 params = Params.of("$limit", PrimitiveValue.newUint64(1000L));
             } else {

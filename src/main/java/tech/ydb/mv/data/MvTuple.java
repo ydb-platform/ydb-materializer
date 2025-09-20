@@ -10,6 +10,8 @@ import java.util.Arrays;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class MvTuple implements Comparable<MvTuple>, Serializable {
 
+    private static final long serialVersionUID = 20250920001L;
+
     protected final Comparable[] values;
 
     public MvTuple(Comparable[] values) {
@@ -28,16 +30,16 @@ public class MvTuple implements Comparable<MvTuple>, Serializable {
     public int compareTo(MvTuple other) {
         int keyLen = Math.min(this.values.length, other.values.length);
         for (int pos = 0; pos < keyLen; ++pos) {
-            if (this.values[pos]==null) {
-                if (other.values[pos]==null) {
+            if (this.values[pos] == null) {
+                if (other.values[pos] == null) {
                     continue;
                 }
                 return -1;
-            } else if (other.values[pos]==null) {
+            } else if (other.values[pos] == null) {
                 return 1;
             }
             int cmp = this.values[pos].compareTo(other.values[pos]);
-            if (cmp!=0) {
+            if (cmp != 0) {
                 return cmp;
             }
         }

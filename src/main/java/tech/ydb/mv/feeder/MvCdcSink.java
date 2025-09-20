@@ -21,8 +21,8 @@ public interface MvCdcSink {
     /**
      * Insert the input data to the queues of the proper workers.
      *
-     * In case some of the queues are full, wait until the capacity
-     * becomes available, or until the update manager is stopped.
+     * In case some of the queues are full, wait until the capacity becomes
+     * available, or until the update manager is stopped.
      *
      * @param records The change records to be submitted for processing.
      * @param handler The commit processing handler
@@ -31,9 +31,11 @@ public interface MvCdcSink {
     boolean submit(Collection<MvChangeRecord> records, MvCommitHandler handler);
 
     /**
-     * Same as submit(), but only activates the refresh actions for the specific target.
+     * Same as submit(), but only activates the refresh actions for the specific
+     * target.
      *
-     * @param target Perform refresh of the specified target only. null otherwise
+     * @param target Perform refresh of the specified target only. null
+     * otherwise
      * @param records The change records to be submitted for processing.
      * @param handler The commit processing handler
      * @return true, if all keys went to the queue, and false otherwise.
@@ -45,8 +47,8 @@ public interface MvCdcSink {
     /**
      * Same as submit(), but only activates the specified actions.
      *
-     * In case some of the queues are full, wait until the capacity
-     * becomes available, or until the update manager is stopped.
+     * In case some of the queues are full, wait until the capacity becomes
+     * available, or until the update manager is stopped.
      *
      * @param actions The explicit list of actions to be executed.
      * @param records The change records to be submitted for processing.

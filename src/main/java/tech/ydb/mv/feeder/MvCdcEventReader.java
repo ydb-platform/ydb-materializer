@@ -17,6 +17,7 @@ import tech.ydb.mv.data.MvChangeRecord;
  * @author zinal
  */
 class MvCdcEventReader extends AbstractReadEventHandler {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcEventReader.class);
 
     private final MvCdcFeeder owner;

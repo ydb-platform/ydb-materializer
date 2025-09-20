@@ -16,6 +16,7 @@ import tech.ydb.mv.parser.MvPathGenerator;
  * @author zinal
  */
 class MvApply {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApply.class);
 
     static SourceBuilder newSource(MvTableInfo table, MvWorkerSelector selector) {
@@ -27,6 +28,7 @@ class MvApply {
     }
 
     static class Source {
+
         private final MvTableInfo tableInfo;
         private final MvWorkerSelector selector;
         private final MvApplyActionList actions;
@@ -51,6 +53,7 @@ class MvApply {
     }
 
     static class SourceBuilder {
+
         private final MvTableInfo table;
         private final MvWorkerSelector selector;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
@@ -71,6 +74,7 @@ class MvApply {
     }
 
     static class Target {
+
         private final MvTarget target;
         private final MvApplyActionList refreshActions;
         private final MvTarget dictTrans;
@@ -95,6 +99,7 @@ class MvApply {
     }
 
     static class TargetBuilder {
+
         private final MvTarget target;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
         private final MvTarget dictTrans;
@@ -115,6 +120,7 @@ class MvApply {
     }
 
     static class Configurator {
+
         final MvActionContext context;
         final MvHandler metadata;
         final int workersCount;
@@ -166,7 +172,7 @@ class MvApply {
             }
             MvJoinSource source = target.getTopMostSource();
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
-            if (cf==null) {
+            if (cf == null) {
                 LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
                         source.getTableName(), target.getName(), metadata.getName());
                 return;
@@ -186,17 +192,17 @@ class MvApply {
         }
 
         void configureSource(MvPathGenerator pg, MvJoinSource source) {
-            if (source.getInput()==null || source.getInput().isBatchMode()) {
+            if (source.getInput() == null || source.getInput().isBatchMode()) {
                 return;
             }
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
-            if (cf==null) {
+            if (cf == null) {
                 LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
                         source.getTableName(), pg.getTarget().getName());
                 return;
             }
             MvTarget transformation = pg.extractKeysReverse(source);
-            if (transformation==null) {
+            if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
                         + "to keys for table `{}`, skipping for target `{}`",
                         source.getTableName(), pg.getTopSourceTableName(),

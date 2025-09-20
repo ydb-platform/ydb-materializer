@@ -19,6 +19,7 @@ import tech.ydb.mv.parser.MvSqlGen;
  * @author zinal
  */
 class ActionKeysGrab extends ActionKeysAbstract {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysGrab.class);
 
     private final String sqlSelect;
@@ -52,7 +53,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
     protected void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
         Instant tvNow = Instant.now();
         ResultSetReader rows = readTaskRows(tasks);
-        if (rows.getRowCount()==0) {
+        if (rows.getRowCount() == 0) {
             return;
         }
         if (rows.getColumnCount() < keyInfo.size()) {

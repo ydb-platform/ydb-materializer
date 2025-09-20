@@ -31,6 +31,7 @@ import tech.ydb.mv.parser.MvSqlGen;
  * @author zinal
  */
 class ActionSync extends ActionBase implements MvApplyAction {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionSync.class);
 
     private final String targetTableName;
@@ -44,8 +45,8 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     public ActionSync(MvTarget target, MvActionContext context) {
         super(context);
-        if (target==null || target.getSources().isEmpty()
-                || target.getTopMostSource().getChangefeedInfo()==null) {
+        if (target == null || target.getSources().isEmpty()
+                || target.getTopMostSource().getChangefeedInfo() == null) {
             throw new IllegalArgumentException("Missing input");
         }
         this.targetTableName = target.getName();
@@ -79,7 +80,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     @Override
     public void apply(List<MvApplyTask> input) {
-        if (input==null || input.isEmpty()) {
+        if (input == null || input.isEmpty()) {
             return;
         }
         // exclude duplicate keys before the db query
@@ -166,7 +167,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     private void finishStatement() {
         var statement = currentStatement.get();
-        if (statement!=null) {
+        if (statement != null) {
             currentStatement.remove();
             statement.join().getStatus().expectSuccess();
         }
@@ -176,7 +177,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private void readRows(List<MvKey> items, ArrayList<StructValue> output) {
         // perform the db query
         ResultSetReader result = readRows(items);
-        if (result.getRowCount()==0) {
+        if (result.getRowCount() == 0) {
             return;
         }
         // map the positions of columns
@@ -191,7 +192,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 Type type = rowType.getMemberType(ix);
                 int pos = positions[ix];
                 if (pos < 0) {
-                    members[ix] = ((OptionalType)type).emptyValue();
+                    members[ix] = ((OptionalType) type).emptyValue();
                 } else {
                     members[ix] = YdbConv.convert(result.getColumn(pos).getValue(), type);
                 }

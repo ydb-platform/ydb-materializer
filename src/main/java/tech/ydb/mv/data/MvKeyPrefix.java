@@ -9,8 +9,8 @@ import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTableInfo;
 
 /**
- * Key prefix in the comparable form.
- * Includes the link to the key information, which is linked to the specific table.
+ * Key prefix in the comparable form. Includes the link to the key information,
+ * which is linked to the specific table.
  *
  * @author zinal
  */
@@ -118,7 +118,7 @@ public class MvKeyPrefix extends MvTuple {
                 }
                 return new Comparable[0];
             case TUPLE:
-                return makePrefix((TupleValue)value, info);
+                return makePrefix((TupleValue) value, info);
             case DECIMAL:
             case PRIMITIVE: {
                 Comparable[] output = new Comparable[1];
@@ -139,7 +139,7 @@ public class MvKeyPrefix extends MvTuple {
         Comparable[] output = new Comparable[prefixLen];
         for (int pos = 0; pos < prefixLen; ++pos) {
             output[pos] = YdbConv.toPojo(value.get(pos));
-            if (output[pos]==null) { // can reduce tuple until first null
+            if (output[pos] == null) { // can reduce tuple until first null
                 Comparable[] reduced = new Comparable[pos];
                 System.arraycopy(output, 0, reduced, 0, pos);
                 return reduced;
@@ -155,7 +155,7 @@ public class MvKeyPrefix extends MvTuple {
     public static Comparable[] makePrefix(YdbStruct ys, MvKeyInfo info) {
         int prefixLen = 0;
         for (int pos = 0; pos < info.size(); ++pos) {
-            if ( ys.get(info.getName(pos)) != null ) {
+            if (ys.get(info.getName(pos)) != null) {
                 prefixLen += 1;
             } else {
                 break;

@@ -14,12 +14,13 @@ import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
- * Keys filter is used to skip the full refresh of unchanged records
- * during the dictionary-initiated scan.
+ * Keys filter is used to skip the full refresh of unchanged records during the
+ * dictionary-initiated scan.
  *
  * @author zinal
  */
 class ActionKeysFilter extends ActionBase implements MvApplyAction {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysFilter.class);
 
     private final MvTarget target;
@@ -61,7 +62,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
                 records.add(convert(row, tv));
             }
         }
-        if (! records.isEmpty()) {
+        if (!records.isEmpty()) {
             handler.reserve(records.size());
             applyManager.submitForce(target, records, handler);
         }

@@ -2,7 +2,6 @@ package tech.ydb.mv.data;
 
 import java.time.Instant;
 
-
 /**
  *
  * @author zinal

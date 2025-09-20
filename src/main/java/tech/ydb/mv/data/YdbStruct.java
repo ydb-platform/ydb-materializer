@@ -24,12 +24,14 @@ import com.google.gson.JsonParser;
  * @author zinal
  */
 public class YdbStruct implements Serializable {
+
     private static final long serialVersionUID = 20250817001L;
 
     public static final YdbStruct EMPTY = new YdbStruct(0);
 
     public static Map<Class<?>, TypeInfo<?>> CLS2INFO;
     public static Map<String, TypeInfo<?>> CODE2INFO;
+
     static {
         ArrayList<TypeInfo<?>> types = new ArrayList<>();
         types.add(typeInfo(Boolean.class, "a",
@@ -39,7 +41,7 @@ public class YdbStruct implements Serializable {
                 v -> v.toString(),
                 v -> v));
         types.add(typeInfo(YdbBytes.class, "c",
-                v -> ((YdbBytes)v).encode(),
+                v -> ((YdbBytes) v).encode(),
                 v -> new YdbBytes(v)));
         types.add(typeInfo(YdbUnsigned.class, "d",
                 v -> v.toString(),
@@ -66,13 +68,13 @@ public class YdbStruct implements Serializable {
                 v -> v.toString(),
                 v -> LocalDate.parse(v)));
         types.add(typeInfo(LocalDateTime.class, "l",
-                v -> ((LocalDateTime)v).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                v -> ((LocalDateTime) v).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 v -> LocalDateTime.parse(v)));
         types.add(typeInfo(Instant.class, "m",
                 v -> v.toString(),
                 v -> Instant.parse(v)));
         types.add(typeInfo(Duration.class, "n",
-                v -> String.valueOf(((Duration)v).toSeconds()),
+                v -> String.valueOf(((Duration) v).toSeconds()),
                 v -> Duration.ofSeconds(Integer.parseInt(v))));
 
         HashMap<Class<?>, TypeInfo<?>> m0 = new HashMap<>();
@@ -115,8 +117,8 @@ public class YdbStruct implements Serializable {
     }
 
     public Comparable<?> put(String name, Comparable<?> v) {
-        if (v!=null) {
-            if (CLS2INFO.get(v.getClass())==null) {
+        if (v != null) {
+            if (CLS2INFO.get(v.getClass()) == null) {
                 throw new IllegalArgumentException("Unsupported data type for YdbStruct: "
                         + v.getClass());
             }
@@ -185,8 +187,8 @@ public class YdbStruct implements Serializable {
     }
 
     public YdbStruct add(String name, Comparable<?> v) {
-        if (v!=null) {
-            if (CLS2INFO.get(v.getClass())==null) {
+        if (v != null) {
+            if (CLS2INFO.get(v.getClass()) == null) {
                 throw new IllegalArgumentException("Unsupported data type for YdbStruct: "
                         + v.getClass());
             }
@@ -298,12 +300,12 @@ public class YdbStruct implements Serializable {
 
     public JsonObject appendJson(JsonObject root) {
         for (Map.Entry<String, Comparable<?>> me : values.entrySet()) {
-            if (me.getValue()==null) {
+            if (me.getValue() == null) {
                 continue; // skipping null values
             }
             JsonObject jme = new JsonObject();
             TypeInfo<?> ti = CLS2INFO.get(me.getValue().getClass());
-            if (ti==null) {
+            if (ti == null) {
                 throw new IllegalStateException("Unsupported value of type "
                         + me.getValue().getClass());
             }
@@ -321,26 +323,26 @@ public class YdbStruct implements Serializable {
 
     public static YdbStruct fromJson(String json) {
         JsonElement root = JsonParser.parseString(json);
-        if (! root.isJsonObject()) {
+        if (!root.isJsonObject()) {
             return new YdbStruct();
         }
         YdbStruct ret = new YdbStruct();
         for (Map.Entry<String, JsonElement> me : root.getAsJsonObject().entrySet()) {
-            if (! me.getValue().isJsonObject()) {
+            if (!me.getValue().isJsonObject()) {
                 continue;
             }
             JsonObject jme = me.getValue().getAsJsonObject();
             String typeCode = jme.get("t").getAsString();
             String value = jme.get("v").getAsString();
-            if (typeCode==null || value==null) {
+            if (typeCode == null || value == null) {
                 continue;
             }
             TypeInfo<?> ti = CODE2INFO.get(typeCode);
-            if (ti==null) {
+            if (ti == null) {
                 throw new RuntimeException("Unexpected type code: " + typeCode);
             }
             Comparable<?> parsedValue = ti.fnIn.apply(value);
-            if (parsedValue!=null) {
+            if (parsedValue != null) {
                 ret.put(me.getKey(), parsedValue);
             }
         }
@@ -349,21 +351,22 @@ public class YdbStruct implements Serializable {
 
     @SuppressWarnings("rawtypes")
     private static <T> TypeInfo<T> typeInfo(Class<T> clazz, String typeCode,
-                 Function<Comparable, String> fnOut,
-                 Function<String, Comparable> fnIn) {
+            Function<Comparable, String> fnOut,
+            Function<String, Comparable> fnIn) {
         return new TypeInfo<>(clazz, typeCode, fnOut, fnIn);
     }
 
     @SuppressWarnings("rawtypes")
     public static class TypeInfo<T> {
+
         public final String typeCode;
         public final Class<T> clazz;
         public final Function<Comparable, String> fnOut;
         public final Function<String, Comparable> fnIn;
 
         private TypeInfo(Class<T> clazz, String typeCode,
-                 Function<Comparable, String> fnOut,
-                 Function<String, Comparable> fnIn) {
+                Function<Comparable, String> fnOut,
+                Function<String, Comparable> fnIn) {
             this.typeCode = typeCode;
             this.clazz = clazz;
             this.fnOut = fnOut;

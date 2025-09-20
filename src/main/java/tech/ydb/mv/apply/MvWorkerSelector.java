@@ -16,11 +16,13 @@ import tech.ydb.mv.data.MvKeyPrefix;
 import tech.ydb.mv.model.MvTableInfo;
 
 /**
- * The utility algorithm which can choose the proper worker based on the record key.
+ * The utility algorithm which can choose the proper worker based on the record
+ * key.
  *
  * @author zinal
  */
 class MvWorkerSelector {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvWorkerSelector.class);
 
     private final MvTableInfo tableInfo;
@@ -47,6 +49,7 @@ class MvWorkerSelector {
 
     /**
      * For test purposes only.
+     *
      * @return The current chooser instance.
      */
     public Chooser getChooser() {
@@ -61,7 +64,7 @@ class MvWorkerSelector {
         Chooser newChooser;
         try {
             newChooser = load(tableClient);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.error("Failed to refresh the partitioning setup for table {}",
                     tableInfo.getPath(), ex);
             return;
@@ -81,7 +84,7 @@ class MvWorkerSelector {
         if (pcount + 1 < workerCount) {
             // we can assign a distinct worker to each prefix
             for (int i = 0; i < pcount; ++i) {
-                c.items.put(prefixes[i], i+1);
+                c.items.put(prefixes[i], i + 1);
             }
         } else {
             for (int i = 0; i < pcount; ++i) {
@@ -123,7 +126,7 @@ class MvWorkerSelector {
 
         public int choose(MvKey key) {
             Map.Entry<MvKeyPrefix, Integer> item = items.higherEntry(key);
-            if (item==null) {
+            if (item == null) {
                 return workerCount - 1;
             }
             return item.getValue();

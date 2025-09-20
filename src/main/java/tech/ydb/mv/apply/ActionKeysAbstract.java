@@ -22,8 +22,8 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
     public ActionKeysAbstract(MvTarget target, MvJoinSource src,
             MvTarget transformation, MvActionContext context) {
         super(context);
-        if (target==null || src==null || src.getChangefeedInfo()==null
-                || transformation==null) {
+        if (target == null || src == null || src.getChangefeedInfo() == null
+                || transformation == null) {
             throw new IllegalArgumentException("Missing input");
         }
         this.target = target;

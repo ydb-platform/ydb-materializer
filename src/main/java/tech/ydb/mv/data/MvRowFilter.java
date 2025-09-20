@@ -39,7 +39,7 @@ public class MvRowFilter {
 
     public boolean matches(Comparable<?>[] row) {
         for (Block block : blocks) {
-            if (! block.matches(row)) {
+            if (!block.matches(row)) {
                 return false;
             }
         }
@@ -65,6 +65,7 @@ public class MvRowFilter {
     }
 
     public static class Block {
+
         private final HashSet<MvTuple> tuples = new HashSet<>();
         private final int startPos;
         private final int length;

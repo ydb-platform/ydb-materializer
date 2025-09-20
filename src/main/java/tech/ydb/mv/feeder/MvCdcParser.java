@@ -31,6 +31,7 @@ import tech.ydb.mv.model.MvTableInfo;
  * @author zinal
  */
 class MvCdcParser {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcParser.class);
 
     private final MvTableInfo tableInfo;
@@ -42,9 +43,9 @@ class MvCdcParser {
     public MvChangeRecord parse(byte[] jsonData, Instant tv) {
         String jsonText = new String(jsonData, StandardCharsets.UTF_8);
         JsonElement rootElement = JsonParser.parseString(jsonText);
-        JsonObject root = rootElement.isJsonObject() ?
-                rootElement.getAsJsonObject() : null;
-        if ((root==null) || !root.has("key")) {
+        JsonObject root = rootElement.isJsonObject()
+                ? rootElement.getAsJsonObject() : null;
+        if ((root == null) || !root.has("key")) {
             LOG.error("unsupported cdc message {}", jsonText);
             return null;
         }
@@ -55,29 +56,29 @@ class MvCdcParser {
             JsonObject oldImage = getObjectIf(root, "oldImage");
             JsonObject newImage = getObjectIf(root, "newImage");
             boolean updateMode = false;
-            if (newImage==null && update!=null && update.isJsonObject()) {
+            if (newImage == null && update != null && update.isJsonObject()) {
                 newImage = update.getAsJsonObject();
                 updateMode = true;
             }
             MvKey theKey = parseKey(key);
             return new MvChangeRecord(
                     theKey, tv,
-                    (erase==null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
+                    (erase == null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
                     parseImage(updateMode ? null : theKey, oldImage),
                     parseImage(updateMode ? null : theKey, newImage)
             );
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.error("error parsing cdc message {}", jsonText, ex);
             return null;
         }
     }
 
     private static JsonObject getObjectIf(JsonObject parent, String name) {
-        if (parent==null) {
+        if (parent == null) {
             return null;
         }
         JsonElement e = parent.get(name);
-        if (e==null) {
+        if (e == null) {
             return null;
         }
         return e.getAsJsonObject();
@@ -96,14 +97,14 @@ class MvCdcParser {
     }
 
     private YdbStruct parseImage(MvKey theKey, JsonObject image) {
-        if (image==null || image.isEmpty()) {
+        if (image == null || image.isEmpty()) {
             return YdbStruct.EMPTY;
         }
         YdbStruct ret = new YdbStruct(tableInfo.getColumns().size());
         for (Map.Entry<String, Type> me : tableInfo.getColumns().entrySet()) {
             ret.put(me.getKey(), readValue(image.get(me.getKey()), me.getValue()));
         }
-        if (theKey!=null) {
+        if (theKey != null) {
             for (int pos = 0; pos < theKey.size(); ++pos) {
                 ret.put(theKey.getName(pos), theKey.getValue(pos));
             }
@@ -129,33 +130,57 @@ class MvCdcParser {
         if (type.getKind() == Type.Kind.PRIMITIVE) {
             PrimitiveType primitive = (PrimitiveType) type;
             switch (primitive) {
-                case Bool:     return node.getAsBoolean();
-                case Int8:     return (byte) node.getAsInt();
-                case Int16:    return (short) node.getAsInt();
-                case Int32:    return node.getAsInt();
-                case Int64:    return node.getAsLong();
-                case Uint8:    return node.getAsInt();
-                case Uint16:   return node.getAsInt();
-                case Uint32:   return node.getAsLong();
-                case Uint64:   return new YdbUnsigned(node.getAsLong());
-                case Float:    return Double.valueOf(node.getAsDouble()).floatValue();
-                case Double:   return node.getAsDouble();
-                case Text:     return node.getAsString();
-                case Bytes:    return new YdbBytes(Base64.getDecoder().decode(node.getAsString()));
+                case Bool:
+                    return node.getAsBoolean();
+                case Int8:
+                    return (byte) node.getAsInt();
+                case Int16:
+                    return (short) node.getAsInt();
+                case Int32:
+                    return node.getAsInt();
+                case Int64:
+                    return node.getAsLong();
+                case Uint8:
+                    return node.getAsInt();
+                case Uint16:
+                    return node.getAsInt();
+                case Uint32:
+                    return node.getAsLong();
+                case Uint64:
+                    return new YdbUnsigned(node.getAsLong());
+                case Float:
+                    return Double.valueOf(node.getAsDouble()).floatValue();
+                case Double:
+                    return node.getAsDouble();
+                case Text:
+                    return node.getAsString();
+                case Bytes:
+                    return new YdbBytes(Base64.getDecoder().decode(node.getAsString()));
                 case Yson:
                     LOG.warn("type YSON is not supported, ignored value {}", node.toString());
                     return new YdbBytes("{}".getBytes());
-                case Json:           return node.toString();
-                case JsonDocument:   return node.toString();
-                case Uuid:           return node.getAsString();
-                case Date:           return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDate();
-                case Datetime:       return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDateTime();
-                case Timestamp:      return Instant.parse(node.getAsString());
-                case Interval:       return Duration.ofSeconds(node.getAsLong());
-                case Date32:         return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDate();
-                case Datetime64:     return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDateTime();
-                case Timestamp64:    return Instant.parse(node.getAsString());
-                case Interval64:     return Duration.ofSeconds(node.getAsLong());
+                case Json:
+                    return node.toString();
+                case JsonDocument:
+                    return node.toString();
+                case Uuid:
+                    return node.getAsString();
+                case Date:
+                    return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDate();
+                case Datetime:
+                    return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDateTime();
+                case Timestamp:
+                    return Instant.parse(node.getAsString());
+                case Interval:
+                    return Duration.ofSeconds(node.getAsLong());
+                case Date32:
+                    return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDate();
+                case Datetime64:
+                    return Instant.parse(node.getAsString()).atOffset(ZoneOffset.UTC).toLocalDateTime();
+                case Timestamp64:
+                    return Instant.parse(node.getAsString());
+                case Interval64:
+                    return Duration.ofSeconds(node.getAsLong());
                 default:
                     break;
             }
