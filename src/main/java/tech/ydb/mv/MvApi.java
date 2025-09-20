@@ -31,6 +31,7 @@ public interface MvApi extends AutoCloseable {
 
     /**
      * Apply default settings being read from properties.
+     *
      * @param props Input properties object
      */
     void applyDefaults(Properties props);
@@ -42,17 +43,19 @@ public interface MvApi extends AutoCloseable {
 
     /**
      * Set the new defaults for handler settings.
+     *
      * @param defaultSettings
      */
     void setHandlerSettings(MvHandlerSettings defaultSettings);
 
     /**
-    * @return The copy of current dictionary processing settings.
+     * @return The copy of current dictionary processing settings.
      */
     MvDictionarySettings getDictionarySettings();
 
     /**
      * Set the new defaults for dictionary processing settings.
+     *
      * @param defaultSettings
      */
     void setDictionarySettings(MvDictionarySettings defaultSettings);
@@ -64,6 +67,7 @@ public interface MvApi extends AutoCloseable {
 
     /**
      * Set the new defaults for scan settings.
+     *
      * @param defaultSettings
      */
     void setScanSettings(MvScanSettings defaultSettings);
@@ -80,6 +84,7 @@ public interface MvApi extends AutoCloseable {
 
     /**
      * Start the specified handler.
+     *
      * @param handlerName The handler to be started
      * @return true, if the handler was started, false if it was already running
      */
@@ -87,8 +92,10 @@ public interface MvApi extends AutoCloseable {
 
     /**
      * Stop the specified handler.
+     *
      * @param handlerName The handler to be stopped
-     * @return true, if the handler was stopped, and false, if it was not actually started
+     * @return true, if the handler was stopped, and false, if it was not
+     * actually started
      */
     boolean stopHandler(String handlerName);
 
@@ -107,7 +114,8 @@ public interface MvApi extends AutoCloseable {
      *
      * @param handlerName Name of the handler
      * @param targetName Name of the target
-     * @return true, if the scan was stopped, and false, if it was not actually started
+     * @return true, if the scan was stopped, and false, if it was not actually
+     * started
      */
     boolean stopScan(String handlerName, String targetName);
 
@@ -131,8 +139,8 @@ public interface MvApi extends AutoCloseable {
     void startDefaultHandlers();
 
     /**
-     * Start the default handlers (as listed in the properties) and continue
-     * to run until the termination is requested via shutdown().
+     * Start the default handlers (as listed in the properties) and continue to
+     * run until the termination is requested via shutdown().
      */
     void runDefaultHandlers();
 

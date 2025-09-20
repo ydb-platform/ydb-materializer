@@ -17,7 +17,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public class MvJobContext implements MvCdcAdapter  {
+public class MvJobContext implements MvCdcAdapter {
 
     private final MvService service;
     private final MvHandler metadata;
@@ -84,12 +84,12 @@ public class MvJobContext implements MvCdcAdapter  {
 
     public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
             MvApplyManager applyManager) {
-        if ( target == null ||
-                metadata.getTargets().get(target.getName()) != target) {
+        if (target == null
+                || metadata.getTargets().get(target.getName()) != target) {
             throw new IllegalArgumentException("Illegal target `" + target
                     + "` for handler `" + metadata.getName() + "`");
         }
-        if (! isRunning()) {
+        if (!isRunning()) {
             throw new IllegalStateException("Scan start refused on stopped handler `"
                     + metadata.getName() + "`");
         }
@@ -102,8 +102,8 @@ public class MvJobContext implements MvCdcAdapter  {
     }
 
     public synchronized boolean stopScan(MvTarget target) {
-        if ( target == null ||
-                metadata.getTargets().get(target.getName()) != target) {
+        if (target == null
+                || metadata.getTargets().get(target.getName()) != target) {
             return false;
         }
         MvScanFeeder sf = scanFeeders.remove(target.getName());
@@ -114,7 +114,7 @@ public class MvJobContext implements MvCdcAdapter  {
     }
 
     public synchronized void forgetScan(MvTarget target) {
-        if (target!=null) {
+        if (target != null) {
             scanFeeders.remove(target.getName());
         }
     }

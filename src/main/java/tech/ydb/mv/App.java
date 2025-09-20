@@ -6,10 +6,11 @@ package tech.ydb.mv;
  * @author zinal
  */
 public class App {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(App.class);
 
     public static void main(String[] args) {
-        if (args.length != 2 || MvConfig.parseMode(args[1])==null) {
+        if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
             System.out.println("USAGE: tech.ydb.mv.App job.xml CHECK|SQL|RUN");
             System.exit(1);
         }
@@ -38,7 +39,7 @@ public class App {
                 }
             }
             LOG.info("Completed successfully.");
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.error("Execution failed", ex);
             System.exit(1);
         }

@@ -18,17 +18,22 @@ import tech.ydb.mv.parser.MvSqlParser;
  * @author zinal
  */
 public class MvConfigReader extends MvConfig {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConfigReader.class);
 
     public static MvMetadata read(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
         MvMetadata context;
         switch (MvConfig.parseInput(mode)) {
-            case FILE -> { context = readFile(ydb, props); }
-            case TABLE -> { context = readTable(ydb, props); }
+            case FILE -> {
+                context = readFile(ydb, props);
+            }
+            case TABLE -> {
+                context = readTable(ydb, props);
+            }
             default -> {
                 throw new IllegalArgumentException("Illegal value [" + mode + "] for "
-                + "property " + MvConfig.CONF_INPUT_MODE);
+                        + "property " + MvConfig.CONF_INPUT_MODE);
             }
         }
         context.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, HANDLER_DICTIONARY));
@@ -40,7 +45,7 @@ public class MvConfigReader extends MvConfig {
         LOG.info("Reading MV script from file {}", fname);
         try (FileInputStream fis = new FileInputStream(fname)) {
             return new MvSqlParser(fis, StandardCharsets.UTF_8).fill();
-        } catch(IOException ix) {
+        } catch (IOException ix) {
             throw new RuntimeException("Failed to read file [" + fname + "]", ix);
         }
     }

@@ -13,6 +13,7 @@ import tech.ydb.table.settings.DescribeTableSettings;
  * @author zinal
  */
 public class MvDescriberYdb implements MvDescriber {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDescriberYdb.class);
 
     private final YdbConnector ydb;
@@ -42,9 +43,9 @@ public class MvDescriberYdb implements MvDescriber {
             desc = ydb.getTableRetryCtx()
                     .supplyResult(sess -> sess.describeTable(path, dts))
                     .join().getValue();
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             if (ex instanceof UnexpectedResultException) {
-                Status status = ((UnexpectedResultException)ex).getStatus();
+                Status status = ((UnexpectedResultException) ex).getStatus();
                 if (StatusCode.SCHEME_ERROR.equals(status.getCode())) {
                     LOG.warn("Failed to obtain description for `{}` - table is missing or no access", path);
                     return null;
@@ -63,7 +64,7 @@ public class MvDescriberYdb implements MvDescriber {
         for (MvTableInfo.Changefeed cf : ti.getChangefeeds().values()) {
             String topicPath = ydb.fullCdcTopicName(ti.getName(), cf.getName());
             var topicDesc = ydb.getTopicClient().describeTopic(topicPath).join().getValue();
-            for ( var consumer : topicDesc.getConsumers() ) {
+            for (var consumer : topicDesc.getConsumers()) {
                 cf.getConsumers().add(consumer.getName());
             }
         }

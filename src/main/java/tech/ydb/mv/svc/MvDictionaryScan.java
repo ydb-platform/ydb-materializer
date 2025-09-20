@@ -76,11 +76,11 @@ public class MvDictionaryScan {
         while (rsr.next()) {
             result.setScanPosition(new MvKey(rsr, historyTableInfo.getKeyInfo()));
             String diffStr = rsr.getColumn(5).getText();
-            if (diffStr==null) {
+            if (diffStr == null) {
                 continue;
             }
             JsonElement diffObj = JsonParser.parseString(diffStr);
-            if (! diffObj.isJsonObject()) {
+            if (!diffObj.isJsonObject()) {
                 continue;
             }
             MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),

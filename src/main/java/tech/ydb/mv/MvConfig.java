@@ -18,8 +18,8 @@ public class MvConfig {
     public static final String HANDLER_COORDINATOR = "sys$coordinator";
 
     /**
-     * FILE        read input statements from file
-     * TABLE       read input statements from database table
+     * FILE read input statements from file TABLE read input statements from
+     * database table
      */
     public static final String CONF_INPUT_MODE = "job.input.mode";
 
@@ -93,7 +93,6 @@ public class MvConfig {
      */
     public static final String CONF_DEF_BATCH_UPSERT = "job.default.batch.upsert";
 
-
     /**
      * Default input SQL file name.
      */
@@ -119,9 +118,8 @@ public class MvConfig {
      */
     public static final String DEF_COORD_PATH = "mv/coordination";
 
-
     public static Mode parseMode(String v) {
-        if (v==null) {
+        if (v == null) {
             return null;
         }
         v = v.trim();
@@ -134,7 +132,7 @@ public class MvConfig {
     }
 
     public static Input parseInput(String v) {
-        if (v==null) {
+        if (v == null) {
             return null;
         }
         v = v.trim();

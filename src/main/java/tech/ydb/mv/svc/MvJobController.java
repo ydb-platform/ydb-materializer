@@ -8,12 +8,13 @@ import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 
 /**
- * The controller logic for a single handler.
- * Combines the topic reader, apply manager and the required settings.
+ * The controller logic for a single handler. Combines the topic reader, apply
+ * manager and the required settings.
  *
  * @author zinal
  */
 public class MvJobController {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvJobController.class);
 
     private final MvJobContext context;
@@ -73,7 +74,7 @@ public class MvJobController {
     }
 
     public synchronized boolean stop() {
-        if (! context.isRunning()) {
+        if (!context.isRunning()) {
             LOG.warn("Ignored stop call for an already stopped controller `{}`", getName());
             return false;
         }
@@ -87,7 +88,7 @@ public class MvJobController {
 
     public boolean startScan(String name, MvScanSettings settings) {
         MvTarget target = context.getMetadata().getTarget(name);
-        if (target==null) {
+        if (target == null) {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getMetadata().getName() + "`");
         }
@@ -96,7 +97,7 @@ public class MvJobController {
 
     public boolean stopScan(String name) {
         MvTarget target = context.getMetadata().getTarget(name);
-        if (target==null) {
+        if (target == null) {
             return false;
         }
         return context.stopScan(target);

@@ -33,6 +33,7 @@ import tech.ydb.mv.model.MvTarget;
 
 /**
  * Parsing, linking and minimal logical checks for input SQL script.
+ *
  * @author zinal
  */
 public class MvSqlParser {
@@ -62,14 +63,14 @@ public class MvSqlParser {
         MvMetadata ctx = new MvMetadata();
         ctx.addIssues(parseTimeIssues);
         // first pass: add MV definitions as MvTarget objects
-        for ( var stmt : root.sql_stmt() ) {
-            if (stmt.create_mat_view_stmt()!=null) {
+        for (var stmt : root.sql_stmt()) {
+            if (stmt.create_mat_view_stmt() != null) {
                 fillTarget(ctx, stmt.create_mat_view_stmt());
             }
         }
         // second pass: add handler definitions
-        for ( var stmt : root.sql_stmt() ) {
-            if (stmt.create_handler_stmt()!=null) {
+        for (var stmt : root.sql_stmt()) {
+            if (stmt.create_handler_stmt() != null) {
                 fillHandler(ctx, stmt.create_handler_stmt());
             }
         }
@@ -78,11 +79,11 @@ public class MvSqlParser {
     }
 
     private static MvSqlPos toSqlPos(ParserRuleContext ctx) {
-        if (ctx==null) {
+        if (ctx == null) {
             return null;
         }
         var p = ctx.getStart();
-        if (p!=null) {
+        if (p != null) {
             return new MvSqlPos(p.getLine(), p.getCharPositionInLine());
         }
         return null;
@@ -102,11 +103,11 @@ public class MvSqlParser {
         for (var cc : sel.result_column()) {
             fillColumn(mt, cc);
         }
-        if (sel.opaque_expression()!=null) {
+        if (sel.opaque_expression() != null) {
             fillCondition(mt, sel.opaque_expression());
         }
         var prev = mc.addTarget(mt);
-        if (prev!=null) {
+        if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateTarget(mt, prev));
         }
     }
@@ -116,13 +117,13 @@ public class MvSqlParser {
         if (retval.startsWith("#[")) {
             if (retval.endsWith("]#")) {
                 // happy path
-                retval = retval.substring(2, retval.length()-2);
+                retval = retval.substring(2, retval.length() - 2);
             } else {
                 retval = retval.substring(2, retval.length());
             }
         } else {
             if (retval.endsWith("]#")) {
-                retval = retval.substring(0, retval.length()-2);
+                retval = retval.substring(0, retval.length() - 2);
             }
         }
         return retval.trim();
@@ -131,13 +132,13 @@ public class MvSqlParser {
     private void fillJoinSource(MvTarget mt, YdbMatViewV1Parser.Simple_join_partContext part) {
         MvJoinSource src = new MvJoinSource(toSqlPos(part));
         mt.getSources().add(src);
-        if (part.join_table_ref()!=null) {
+        if (part.join_table_ref() != null) {
             src.setTableName(unquote(part.join_table_ref().identifier()));
         }
-        if (part.table_alias()!=null) {
+        if (part.table_alias() != null) {
             src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
         }
-        if (part.LEFT()!=null) {
+        if (part.LEFT() != null) {
             src.setMode(MvJoinMode.LEFT);
         } else {
             src.setMode(MvJoinMode.INNER);
@@ -150,20 +151,20 @@ public class MvSqlParser {
     private void fillJoinCondition(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toSqlPos(cond));
         src.getConditions().add(mjc);
-        if (cond.column_reference_first()!=null) {
+        if (cond.column_reference_first() != null) {
             var v = cond.column_reference_first().column_reference();
             mjc.setFirstAlias(unquote(v.table_alias().ID_PLAIN()));
             mjc.setFirstColumn(unquote(v.column_name().identifier()));
         }
-        if (cond.column_reference_second()!=null) {
+        if (cond.column_reference_second() != null) {
             var v = cond.column_reference_second().column_reference();
             mjc.setSecondAlias(unquote(v.table_alias().ID_PLAIN()));
             mjc.setSecondColumn(unquote(v.column_name().identifier()));
         }
-        if (cond.constant_first()!=null) {
+        if (cond.constant_first() != null) {
             mjc.setFirstLiteral(mt.addLiteral(cond.constant_first().getText()));
         }
-        if (cond.constant_second()!=null) {
+        if (cond.constant_second() != null) {
             mjc.setSecondLiteral(mt.addLiteral(cond.constant_second().getText()));
         }
     }
@@ -174,7 +175,7 @@ public class MvSqlParser {
     }
 
     private MvComputation fillComputationColumns(YdbMatViewV1Parser.Opaque_expressionContext input) {
-        if (input==null || input.opaque_expression_body()==null) {
+        if (input == null || input.opaque_expression_body() == null) {
             return null;
         }
         MvComputation expr = new MvComputation(
@@ -182,7 +183,7 @@ public class MvSqlParser {
                 toSqlPos(input)
         );
         for (var colref : input.column_reference()) {
-            if (colref.table_alias()==null || colref.column_name()==null) {
+            if (colref.table_alias() == null || colref.column_name() == null) {
                 continue;
             }
             var src = new MvComputation.Source(
@@ -214,19 +215,19 @@ public class MvSqlParser {
 
     private void fillHandler(MvMetadata mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
         var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
-        if (stmt.consumer_name()!=null) {
+        if (stmt.consumer_name() != null) {
             mh.setConsumerName(unquote(stmt.consumer_name().identifier()));
         }
         for (var part : stmt.handler_part()) {
-            if (part.handler_input_part()!=null) {
+            if (part.handler_input_part() != null) {
                 fillHandlerInput(mc, mh, part.handler_input_part());
             }
-            if (part.handler_process_part()!=null) {
+            if (part.handler_process_part() != null) {
                 fillHandlerProcess(mc, mh, part.handler_process_part());
             }
         }
         var prev = mc.addHandler(mh);
-        if (prev!=null) {
+        if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateHandler(mh, prev));
         }
         if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(mh.getName())) {
@@ -239,13 +240,13 @@ public class MvSqlParser {
                 unquote(part.main_table_ref().identifier()),
                 unquote(part.changefeed_name().identifier()),
                 toSqlPos(part));
-        if (part.STREAM()!=null) {
+        if (part.STREAM() != null) {
             mi.setBatchMode(false);
         } else {
             mi.setBatchMode(true);
         }
         MvInput prev = mh.addInput(mi);
-        if (prev!=null) {
+        if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateInput(mi, prev));
         }
     }
@@ -253,7 +254,7 @@ public class MvSqlParser {
     private void fillHandlerProcess(MvMetadata mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
         String mvName = unquote(part.mat_view_ref().identifier());
         MvTarget target = mc.getTargets().get(mvName);
-        if (target==null) {
+        if (target == null) {
             mc.addIssue(new MvIssue.UnknownTarget(mh, mvName));
         } else {
             mh.addTarget(target);
@@ -263,7 +264,7 @@ public class MvSqlParser {
     private static String unquote(ParseTree node) {
         String v = node.getText();
         if (v.length() > 2 && v.startsWith("`") && v.endsWith("`")) {
-            v = v.substring(1, v.length()-1);
+            v = v.substring(1, v.length() - 1);
         }
         return v;
     }
@@ -295,7 +296,7 @@ public class MvSqlParser {
         } else {
             var ref = t.getSourceByAlias(c.getSourceAlias());
             c.setSourceRef(ref);
-            if (ref==null) {
+            if (ref == null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getSourceAlias(), c));
             }
         }
@@ -305,7 +306,7 @@ public class MvSqlParser {
         for (var src : c.getSources()) {
             var ref = t.getSourceByAlias(src.getAlias());
             src.setReference(ref);
-            if (ref==null) {
+            if (ref == null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, src.getAlias(), c));
             }
         }
@@ -316,17 +317,17 @@ public class MvSqlParser {
     }
 
     private static void linkJoinCondition(MvJoinCondition c, MvTarget t, MvMetadata mc) {
-        if (c.getFirstAlias()!=null) {
+        if (c.getFirstAlias() != null) {
             var ref = t.getSourceByAlias(c.getFirstAlias());
             c.setFirstRef(ref);
-            if (ref==null) {
+            if (ref == null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getFirstAlias(), c));
             }
         }
-        if (c.getSecondAlias()!=null) {
+        if (c.getSecondAlias() != null) {
             var ref = t.getSourceByAlias(c.getSecondAlias());
             c.setSecondRef(ref);
-            if (ref==null) {
+            if (ref == null) {
                 mc.addIssue(new MvIssue.UnknownAlias(t, c.getSecondAlias(), c));
             }
         }
@@ -341,6 +342,7 @@ public class MvSqlParser {
     }
 
     private class LexerListener extends BaseErrorListener {
+
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
                 int line, int charPositionInLine, String msg, RecognitionException e) {
@@ -349,10 +351,11 @@ public class MvSqlParser {
     }
 
     private class ParserListener extends DefaultErrorStrategy {
+
         @Override
         public void recover(Parser recognizer, RecognitionException e) {
             String msg = e.getMessage();
-            if (msg==null) {
+            if (msg == null) {
                 if (e.getOffendingToken() != null) {
                     msg = "Offending token: [" + e.getOffendingToken().getText() + "]";
                 }

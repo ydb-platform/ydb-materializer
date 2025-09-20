@@ -71,7 +71,7 @@ public class MvValidateBasic {
     }
 
     private void checkTarget(MvTarget mt) {
-        if (mt.getTableInfo()==null) {
+        if (mt.getTableInfo() == null) {
             context.addIssue(new MvIssue.MissingTargetTable(mt));
         }
         context.addIssues(mt.getSources()
@@ -113,7 +113,7 @@ public class MvValidateBasic {
                     && src.getReference().getTableInfo() != null) {
                 boolean exists = src.getReference().getTableInfo()
                         .getColumns().containsKey(src.getColumn());
-                if (! exists) {
+                if (!exists) {
                     context.addIssue(new MvIssue.UnknownColumn(
                             mt, src.getAlias(), src.getColumn(), filter));
                 }
@@ -142,19 +142,19 @@ public class MvValidateBasic {
     }
 
     private void checkJoinColumns(MvTarget mt, MvJoinCondition cond) {
-        if (cond.getFirstAlias()!=null) {
+        if (cond.getFirstAlias() != null) {
             MvJoinSource ref = mt.getSourceByAlias(cond.getFirstAlias());
-            if (ref!=null && ref.getTableInfo()!=null) {
-                if (ref.getTableInfo().getColumns().get(cond.getFirstColumn())==null) {
+            if (ref != null && ref.getTableInfo() != null) {
+                if (ref.getTableInfo().getColumns().get(cond.getFirstColumn()) == null) {
                     context.addIssue(new MvIssue.UnknownColumnInCondition(
                             mt, cond, cond.getFirstAlias(), cond.getFirstColumn()));
                 }
             }
         }
-        if (cond.getSecondAlias()!=null) {
+        if (cond.getSecondAlias() != null) {
             MvJoinSource ref = mt.getSourceByAlias(cond.getSecondAlias());
-            if (ref!=null && ref.getTableInfo()!=null) {
-                if (ref.getTableInfo().getColumns().get(cond.getSecondColumn())==null) {
+            if (ref != null && ref.getTableInfo() != null) {
+                if (ref.getTableInfo().getColumns().get(cond.getSecondColumn()) == null) {
                     context.addIssue(new MvIssue.UnknownColumnInCondition(
                             mt, cond, cond.getSecondAlias(), cond.getSecondColumn()));
                 }
@@ -170,7 +170,7 @@ public class MvValidateBasic {
                         && src.getReference().getTableInfo() != null) {
                     boolean exists = src.getReference().getTableInfo()
                             .getColumns().containsKey(src.getColumn());
-                    if (! exists) {
+                    if (!exists) {
                         context.addIssue(new MvIssue.UnknownColumn(
                                 mt, src.getAlias(), src.getColumn(), comp));
                     }
@@ -178,14 +178,14 @@ public class MvValidateBasic {
             }
         } else {
             MvJoinSource src = mt.getSourceByAlias(column.getSourceAlias());
-            if (src==null || src.getTableInfo()==null
-                    || src.getTableInfo().getColumns().get(column.getSourceColumn())==null) {
+            if (src == null || src.getTableInfo() == null
+                    || src.getTableInfo().getColumns().get(column.getSourceColumn()) == null) {
                 context.addIssue(new MvIssue.IllegalOutputReference(mt, column));
             }
-            if (mt.getTableInfo()==null) {
+            if (mt.getTableInfo() == null) {
                 return;
             }
-            if (mt.getTableInfo().getColumns().get(column.getName())==null) {
+            if (mt.getTableInfo().getColumns().get(column.getName()) == null) {
                 context.addIssue(new MvIssue.UnknownOutputColumn(mt, column));
             }
         }
@@ -210,7 +210,7 @@ public class MvValidateBasic {
             // Find the proper index
             String indexName = src.getTableInfo().findProperIndex(joinColumns);
             // If no covering index found, add warning
-            if (indexName==null) {
+            if (indexName == null) {
                 context.addIssue(new MvIssue.MissingJoinIndex(mt, src, joinColumns));
             }
         }
@@ -220,14 +220,14 @@ public class MvValidateBasic {
         MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
-            if (!js.isTableKnown() || js.getInput()==null) {
+            if (!js.isTableKnown() || js.getInput() == null) {
                 continue;
             }
             if (js.getInput().isBatchMode()) {
                 continue;
             }
             MvTarget temp = pathGenerator.extractKeysReverse(js);
-            if (temp==null) {
+            if (temp == null) {
                 context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
             } else {
                 checkJoinIndexes(temp);
@@ -257,7 +257,7 @@ public class MvValidateBasic {
                 } else {
                     desiredConsumer = mh.getConsumerNameAlways();
                 }
-                if (! mi.getChangefeedInfo().getConsumers().contains(desiredConsumer)) {
+                if (!mi.getChangefeedInfo().getConsumers().contains(desiredConsumer)) {
                     context.addIssue(new MvIssue.MissingConsumer(mi, desiredConsumer));
                 }
             }

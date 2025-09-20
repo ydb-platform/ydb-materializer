@@ -34,11 +34,13 @@ import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
 
 /**
- * Write the changelog of the particular "dictionary" table to the journal table.
+ * Write the changelog of the particular "dictionary" table to the journal
+ * table.
  *
  * @author zinal
  */
 public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryLogger.class);
 
     private static final Value<?> NULL_JSON = PrimitiveType.JsonDocument.makeOptional().emptyValue();
@@ -100,7 +102,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     }
 
     public synchronized void stop() {
-        if (! isRunning()) {
+        if (!isRunning()) {
             LOG.info("Ignoring request to stop an already-stopped dictionary manager.");
             return;
         }
@@ -143,7 +145,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
                 .toArray(StructValue[]::new);
         try {
             conn.sqlWrite(sqlUpsert, Params.of("$input", ListValue.of(values)));
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.error("Failed to write dictionary batch, will raise for re-processing", ex);
             throw new RuntimeException(ex.toString());
         }
@@ -172,7 +174,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     }
 
     private Value<?> convertData(YdbStruct before, YdbStruct after) {
-        if (after==null || after.isEmpty()) {
+        if (after == null || after.isEmpty()) {
             return NULL_JSON;
         }
         if (before == null) {
@@ -195,16 +197,16 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
     private Collection<String> calcDiffNames(YdbStruct before, YdbStruct after) {
         HashSet<String> output = new HashSet<>();
         for (String name : after.keySet()) {
-            var va = after.get(name);
+            var va  = after.get(name);
             var vb = before.get(name);
-            if (! Objects.equals(va, vb)) {
+            if (!Objects.equals(va, vb)) {
                 output.add(name);
             }
         }
         for (String name : before.keySet()) {
-            var va = after.get(name);
+            var va  = after.get(name);
             var vb = before.get(name);
-            if (! Objects.equals(va, vb)) {
+            if (!Objects.equals(va, vb)) {
                 output.add(name);
             }
         }

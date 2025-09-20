@@ -25,7 +25,7 @@ import tech.ydb.mv.support.MvSqlPrinter;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
- * Work context for YDB Materializer activities.
+ * Local management for YDB Materializer activities.
  *
  * @author zinal
  */
@@ -206,6 +206,9 @@ public class MvService implements MvApi {
      */
     @Override
     public synchronized boolean stopHandler(String name) {
+        if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(name)) {
+            return stopDictionaryHandler();
+        }
         MvJobController c = handlers.remove(name);
         if (c == null) {
             return false;

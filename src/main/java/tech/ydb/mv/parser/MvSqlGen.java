@@ -39,7 +39,7 @@ public class MvSqlGen implements AutoCloseable {
     private final HashSet<MvComputation> excludedComputations;
 
     public MvSqlGen(MvTarget target) {
-        if (target==null) {
+        if (target == null) {
             throw new NullPointerException("target argument cannot be null");
         }
         this.target = target;
@@ -72,8 +72,9 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     /**
-     * The create table variant grabs data types from the input tables,
-     * and combines them into the definition of the output MV table.
+     * The create table variant grabs data types from the input tables, and
+     * combines them into the definition of the output MV table.
+     *
      * @return CREATE TABLE statement
      */
     public String makeCreateTable() {
@@ -95,14 +96,14 @@ public class MvSqlGen implements AutoCloseable {
             } else {
                 type = obtainReferenceType(column);
             }
-            if (type.getKind()==Type.Kind.OPTIONAL) {
+            if (type.getKind() == Type.Kind.OPTIONAL) {
                 sb.append(type.unwrapOptional().toString());
             } else {
                 sb.append(type.toString()).append(" NOT NULL");
             }
         }
         ArrayList<String> primaryKey = findMappedKeyColumns();
-        if (primaryKey!=null && !primaryKey.isEmpty()) {
+        if (primaryKey != null && !primaryKey.isEmpty()) {
             if (index++ > 0) {
                 sb.append(",").append(EOL);
             }
@@ -237,7 +238,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     private void genDeclareTargetFields(StringBuilder sb) {
-        if (target.getTableInfo()==null) {
+        if (target.getTableInfo() == null) {
             throw new IllegalStateException("No table definition for target `" + target.getName() + "`");
         }
         sb.append("DECLARE ").append(SYS_INPUT_VAR).append(" AS ");
@@ -508,7 +509,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     private Type detectComputationType(MvComputation comp) {
-        if (comp==null || comp.isEmpty()) {
+        if (comp == null || comp.isEmpty()) {
             return PrimitiveType.Text;
         }
         if (comp.isLiteral()) {
@@ -530,11 +531,11 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     private Type obtainReferenceType(MvColumn column) {
-        if (column==null || column.getSourceAlias()==null) {
+        if (column == null || column.getSourceAlias() == null) {
             return PrimitiveType.Text;
         }
         MvJoinSource src = target.getSourceByAlias(column.getSourceAlias());
-        if (src==null || src.getTableInfo()==null) {
+        if (src == null || src.getTableInfo() == null) {
             return PrimitiveType.Text;
         }
         return src.getTableInfo().getColumns().get(column.getSourceColumn());
@@ -542,7 +543,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private ArrayList<String> findMappedKeyColumns() {
         MvJoinSource topmost = target.getTopMostSource();
-        if (topmost==null || topmost.getTableInfo()==null) {
+        if (topmost == null || topmost.getTableInfo() == null) {
             return null;
         }
         ArrayList<String> output = new ArrayList<>(topmost.getTableInfo().getKey().size());
@@ -560,7 +561,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public static StructType toKeyType(MvTarget target) {
-        if (target==null || target.getSources().isEmpty()) {
+        if (target == null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException();
         }
         return toKeyType(target.getTopMostSource().getTableInfo());
@@ -575,7 +576,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public static StructType toRowType(MvTarget target) {
-        if (target==null) {
+        if (target == null) {
             throw new NullPointerException();
         }
         if (target.getColumns().isEmpty()) {
@@ -591,27 +592,27 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public static String formatType(Type t) {
-        if (t==null) {
+        if (t == null) {
             throw new NullPointerException();
         }
         if (t instanceof StructType st) {
-             return formatType(new StringBuilder(), st).toString();
+            return formatType(new StringBuilder(), st).toString();
         }
         return t.toString();
     }
 
     public static StringBuilder formatType(StringBuilder sb, StructType st) {
-        if (st==null) {
+        if (st == null) {
             throw new NullPointerException();
         }
-        if (sb==null) {
+        if (sb == null) {
             sb = new StringBuilder();
         }
         sb.append("Struct<");
-        for (int i=0; i<st.getMembersCount(); ++i) {
+        for (int i = 0; i < st.getMembersCount(); ++i) {
             String name = st.getMemberName(i);
             String type = MvSqlGen.formatType(st.getMemberType(i));
-            if (i>0) {
+            if (i > 0) {
                 sb.append(",");
             }
             safeId(sb, name).append(":").append(type);
@@ -621,10 +622,10 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public static StringBuilder structForTable(StringBuilder sb, MvTableInfo ti) {
-        if (ti==null) {
+        if (ti == null) {
             throw new NullPointerException();
         }
-        if (sb==null) {
+        if (sb == null) {
             sb = new StringBuilder();
         }
         sb.append("Struct<");

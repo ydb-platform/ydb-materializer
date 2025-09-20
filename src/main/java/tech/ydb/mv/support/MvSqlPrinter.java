@@ -50,7 +50,7 @@ public class MvSqlPrinter {
         pw.println(sg.makeSelect());
         pw.println("  ** Upsert statement:");
         pw.println();
-        if (mt.getTableInfo()==null) {
+        if (mt.getTableInfo() == null) {
             pw.println("  ** Skipped - no target table information.");
             pw.println();
         } else {
@@ -68,7 +68,7 @@ public class MvSqlPrinter {
         MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
-            if (!js.isTableKnown() || js.getInput()==null) {
+            if (!js.isTableKnown() || js.getInput() == null) {
                 pw.println("  ** Skipped key extraction for incomplete "
                         + "join source " + js.getTableName() + " as " + js.getTableAlias());
                 continue;
@@ -80,7 +80,7 @@ public class MvSqlPrinter {
             MvTarget temp = pathGenerator.extractKeysReverse(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
-            if (temp!=null) {
+            if (temp != null) {
                 pw.println(new MvSqlGen(temp).makeSelect());
             } else {
                 pw.println("<mapping is not possible>");

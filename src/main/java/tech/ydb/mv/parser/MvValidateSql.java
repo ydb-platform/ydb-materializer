@@ -31,7 +31,7 @@ public class MvValidateSql {
     }
 
     public boolean validate() {
-        if (! context.isValid()) {
+        if (!context.isValid()) {
             return false;
         }
         for (MvTarget target : context.getTargets().values()) {
@@ -143,7 +143,7 @@ public class MvValidateSql {
         }
         // TODO: debugging code, remove
         if (exclude != null) {
-            if ( sg.getExcludedComputations().contains(exclude.getComputation()) ) {
+            if (sg.getExcludedComputations().contains(exclude.getComputation())) {
                 throw new IllegalStateException("Internal error, current column expression got excluded");
             }
         }
@@ -151,7 +151,7 @@ public class MvValidateSql {
             if (column == exclude) {
                 continue;
             }
-            if (! sg.getExcludedComputations().contains(column.getComputation())) {
+            if (!sg.getExcludedComputations().contains(column.getComputation())) {
                 throw new IllegalStateException("Internal error, other column expression got included");
             }
         }

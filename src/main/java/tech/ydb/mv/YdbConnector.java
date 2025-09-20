@@ -165,7 +165,7 @@ public class YdbConnector implements AutoCloseable {
 
     public String fullTableName(String tableName) {
         while (tableName.endsWith("/")) {
-            tableName = tableName.substring(0, tableName.length()-1);
+            tableName = tableName.substring(0, tableName.length() - 1);
         }
         if (tableName.startsWith("/")) {
             return tableName;
@@ -259,14 +259,14 @@ public class YdbConnector implements AutoCloseable {
     }
 
     /**
-    * Configuration class for YDB database connections.
-    * It holds various properties for connection strings, authentication settings,
-    * TLS certificate files, connection pool size, and a prefix used for property lookups.
-    * The configuration can be initialized with or without a set of Java Properties,
-    * optionally using a custom prefix for property names.
-    * A static method provided by the class allows loading configuration
-    * from an external XML properties file.
-    */
+     * Configuration class for YDB database connections. It holds various
+     * properties for connection strings, authentication settings, TLS
+     * certificate files, connection pool size, and a prefix used for property
+     * lookups. The configuration can be initialized with or without a set of
+     * Java Properties, optionally using a custom prefix for property names. A
+     * static method provided by the class allows loading configuration from an
+     * external XML properties file.
+     */
     public static final class Config {
 
         private String connectionString;
@@ -309,25 +309,28 @@ public class YdbConnector implements AutoCloseable {
         }
 
         /**
-        * Loads a configuration from the specified file.
-        * This is a convenience method that delegates to the overloaded version
-        * without an explicit property name prefix parameter.
-        *
-        * @param fname the file path to load the configuration from
-        * @return the parsed configuration object
-        */
+         * Loads a configuration from the specified file. This is a convenience
+         * method that delegates to the overloaded version without an explicit
+         * property name prefix parameter.
+         *
+         * @param fname the file path to load the configuration from
+         * @return the parsed configuration object
+         */
         public static Config fromFile(String fname) {
             return fromFile(fname, null);
         }
 
         /**
          * Reads and parses a configuration file into a {@link Config} object.
-         * The file is read as bytes, then parsed as XML properties.
-         * A custom prefix for property names can be applied during configuration processing.
+         * The file is read as bytes, then parsed as XML properties. A custom
+         * prefix for property names can be applied during configuration
+         * processing.
          *
          * @param fname the path to the configuration file
-         * @param prefix the custom prefix for property names to be read when constructing the Config object
-         * @return a new {@link Config} object loaded with the specified properties
+         * @param prefix the custom prefix for property names to be read when
+         * constructing the Config object
+         * @return a new {@link Config} object loaded with the specified
+         * properties
          * @throws RuntimeException if the file cannot be read or parsed
          */
         public static Config fromFile(String fname, String prefix) {
