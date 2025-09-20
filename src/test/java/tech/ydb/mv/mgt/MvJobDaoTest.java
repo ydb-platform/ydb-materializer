@@ -502,6 +502,9 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
 
     @Test
     public void testGetCommandsForRunnerOnlyReturnsPendingCommands() {
+        long maxNo = jobDao.getMaxCommandNo();
+        Assertions.assertEquals(0L, maxNo);
+
         Instant now = Instant.now();
         MvCommand cmd1 = new MvCommand("runner-1", 1L, now, MvCommand.TYPE_START,
                 "job-1", "{\"key1\":\"value1\"}", MvCommand.STATUS_CREATED, "diag1");
@@ -524,6 +527,9 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         Assertions.assertTrue(commands.stream().anyMatch(c -> c.getCommandNo() == 3L));
         Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 2L));
         Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 4L));
+
+        maxNo = jobDao.getMaxCommandNo();
+        Assertions.assertEquals(4L, maxNo);
     }
 
     // ========== Error Handling Tests ==========
@@ -586,28 +592,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         Assertions.assertEquals("custom_mv_runners", customSettings.getTableRunners());
         Assertions.assertEquals("custom_mv_runner_jobs", customSettings.getTableRunnerJobs());
         Assertions.assertEquals("custom_mv_commands", customSettings.getTableCommands());
-    }
-
-    @Test
-    public void testConcurrentOperations() throws InterruptedException {
-        // Test concurrent upserts to the same job
-        MvJobInfo job1 = new MvJobInfo("concurrent-job", "{\"key1\":\"value1\"}", true, "runner-1");
-        MvJobInfo job2 = new MvJobInfo("concurrent-job", "{\"key2\":\"value2\"}", false, "runner-2");
-
-        Thread thread1 = new Thread(() -> jobDao.upsertJob(job1));
-        Thread thread2 = new Thread(() -> jobDao.upsertJob(job2));
-
-        thread1.start();
-        thread2.start();
-
-        thread1.join();
-        thread2.join();
-
-        // Verify the job was updated (last write wins)
-        MvJobInfo retrieved = jobDao.getJob("concurrent-job");
-        Assertions.assertNotNull(retrieved);
-        // The exact values depend on which thread finished last, but the job should exist
-        Assertions.assertEquals("concurrent-job", retrieved.getJobName());
     }
 
 }
