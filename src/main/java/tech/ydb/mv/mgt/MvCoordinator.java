@@ -1,145 +1,131 @@
 package tech.ydb.mv.mgt;
 
+import java.time.Duration;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import tech.ydb.common.transaction.TxMode;
-import tech.ydb.query.tools.QueryReader;
-import tech.ydb.query.tools.SessionRetryContext;
-import tech.ydb.table.query.Params;
-import tech.ydb.table.values.PrimitiveValue;
+import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.YdbConnector;
 
 /**
- * CREATE TABLE mv_jobs ( -- в девичестве desired_state job_name Text NOT NULL,
- * -- MvHandler.getName() job_settings JsonDocument, -- сериализованный
- * MvHandlerSettings / MvDictionarySettings should_run Boolean, -- должен ли
- * работать runner_id Text, PRIMARY KEY(job_name) );
+ * Coordinator controls and manages the actual state of the jobs. In case the
+ * desired and the actual state differs, it transitions from the actual to the
+ * desired state by generating the commands to the runners.
  *
  * @author Kirill Kurdyukov
  */
 public class MvCoordinator {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MvCoordinator.class);
-    private static final String SEMAPHORE_NAME = "mv-coordinator-semaphore";
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinator.class);
 
-    private final MvLocker mvLocker;
+    private final MvLocker locker;
+    private final MvJobDao jobDao;
     private final ScheduledExecutorService scheduler;
-    private final SessionRetryContext sessionRetryContext;
-    private final MvCoordinatorSettings settings;
-    private final String instanceId;
-    private final MvCoordinatorJob mvCoordinatorJob;
+    private final MvBatchSettings settings;
+    private final MvCoordinatorActions job;
+    private final String runnerId;
 
     private final AtomicReference<ScheduledFuture<?>> leaderFuture = new AtomicReference<>();
 
     public MvCoordinator(
-            MvLocker mvLocker,
-            ScheduledExecutorService scheduler,
-            SessionRetryContext sessionRetryContext,
-            MvCoordinatorSettings settings,
-            String instanceId,
-            MvCoordinatorJob mvCoordinatorJob
+            YdbConnector ydb,
+            MvBatchSettings settings,
+            String runnerId,
+            MvCoordinatorActions job
     ) {
-        this.mvLocker = mvLocker;
-        this.scheduler = scheduler;
-        this.sessionRetryContext = sessionRetryContext;
+        this.locker = new MvLocker(ydb);
+        this.jobDao = new MvJobDao(ydb, settings);
+        this.scheduler = Executors.newScheduledThreadPool(1);
         this.settings = settings;
-        this.instanceId = instanceId;
-        this.mvCoordinatorJob = mvCoordinatorJob;
+        this.runnerId = runnerId;
+        this.job = job;
+    }
+
+    public MvCoordinator(
+            YdbConnector ydb,
+            MvBatchSettings settings,
+            String runnerId
+    ) {
+        this.locker = new MvLocker(ydb);
+        this.jobDao = new MvJobDao(ydb, settings);
+        this.scheduler = Executors.newScheduledThreadPool(1);
+        this.settings = settings;
+        this.runnerId = runnerId;
+        this.job = new MvCoordinatorImpl(jobDao, settings);
     }
 
     public void start() {
-        scheduleAttempt(0);
+        scheduleAttempt();
     }
 
-    private void scheduleAttempt(long delaySec) {
-        LOG.debug("Scheduling leadership attempt in {}s, instanceId={}", delaySec, instanceId);
-
-        scheduler.schedule(this::attemptLeadership, delaySec, TimeUnit.SECONDS);
+    private void scheduleAttempt() {
+        long delayMsec = settings.getScanPeriodMs();
+        LOG.debug("Scheduling leadership attempt in {}ms, instanceId={}", delayMsec, runnerId);
+        scheduler.schedule(this::attemptLeadership, delayMsec, TimeUnit.MILLISECONDS);
     }
 
     private void attemptLeadership() {
         try {
-            LOG.trace("Attempting leadership, instanceId={}", instanceId);
-
-            if (leaderFuture.get() != null) {
-                return;
-            }
-
-            boolean acquired = mvLocker.lock(SEMAPHORE_NAME);
-            if (!acquired) {
-                scheduleAttempt(settings.getWatchStateDelaySeconds());
-                return;
-            }
-
-            LOG.info("Semaphore '{}' acquired, instanceId={} — candidate for leader", SEMAPHORE_NAME, instanceId);
-
-            if (IsStoppedRun()) {
-                LOG.warn("Coordinator desired state = STOPPED (should_run=false), instanceId={}. Not starting leader loop",
-                        instanceId);
-                safeRelease();
-                scheduleAttempt(settings.getWatchStateDelaySeconds());
-                return;
-            }
-
-            sessionRetryContext.supplyResult(session -> session.createQuery(
-                    """
-                            DECLARE $runner_id AS Text;
-                            UPDATE mv_jobs SET runner_id = $runner_id WHERE job_name = 'sys$coordinator'
-                            """,
-                    TxMode.SERIALIZABLE_RW, Params.of("$runner_id", PrimitiveValue.newText(instanceId))).execute()
-            ).join().getStatus().expectSuccess();
-
-            startLeaderLoop();
+            doAttemptLeadership();
         } catch (Exception ex) {
-            LOG.error("Error during attemptLeadership, instanceId={}", instanceId, ex);
-
-            scheduleAttempt(settings.getWatchStateDelaySeconds());
+            LOG.error("Error during attemptLeadership, instanceId={}", runnerId, ex);
+            scheduleAttempt();
         }
     }
 
-    private void startLeaderLoop() {
-        LOG.info("Becoming leader, starting leader loop, tick={}s, instanceId={}",
-                settings.getWatchStateDelaySeconds(), instanceId);
+    private void doAttemptLeadership() {
+        LOG.trace("Attempting leadership, instanceId={}", runnerId);
+        if (leaderFuture.get() != null) {
+            LOG.trace("Leader future is already set, instanceId={}", runnerId);
+            return;
+        }
 
-        mvCoordinatorJob.start();
+        boolean acquired = locker.lock(MvConfig.HANDLER_COORDINATOR, Duration.ofSeconds(1));
+        if (!acquired) {
+            scheduleAttempt();
+            return;
+        }
+
+        LOG.info("Semaphore '{}' acquired, instanceId={}",
+                MvConfig.HANDLER_COORDINATOR, runnerId);
+
+        MvJobInfo info = new MvJobInfo(MvConfig.HANDLER_COORDINATOR, null, true, runnerId);
+        jobDao.upsertJob(info);
+
+        startLeaderLoop();
+    }
+
+    private void startLeaderLoop() {
+        LOG.info("Becoming leader, starting leader loop, tick={}ms, instanceId={}",
+                settings.getScanPeriodMs(), runnerId);
+
+        job.onStart();
+
         ScheduledFuture<?> f = scheduler.scheduleWithFixedDelay(
                 this::leaderTick,
                 0,
-                settings.getWatchStateDelaySeconds(),
-                TimeUnit.SECONDS
+                settings.getScanPeriodMs(),
+                TimeUnit.MILLISECONDS
         );
         ScheduledFuture<?> prev = leaderFuture.getAndSet(f);
         if (prev != null) {
-            LOG.debug("Cancelling previous leader loop future, instanceId={}", instanceId);
-
+            LOG.debug("Cancelling previous leader loop future, instanceId={}", runnerId);
             prev.cancel(true);
         }
     }
 
     private void leaderTick() {
         try {
-            if (!stillOwnsSemaphore()) {
-                LOG.info("Lost semaphore ownership or runner_id mismatch, demoting, instanceId={}", instanceId);
-
+            if (!stillActive()) {
+                LOG.info("Lost ownership or runner_id mismatch, demoting, instanceId={}", runnerId);
                 demote();
                 return;
             }
 
-            if (IsStoppedRun()) {
-                LOG.info("Coordinator received state is STOP, demoting leader, instanceId={}", instanceId);
-
-                mvCoordinatorJob.stop();
-                demote();
-
-                return;
-            }
-
-            mvCoordinatorJob.performCoordinationTask();
+            job.onUpdate();
         } catch (Throwable t) {
             demote();
         }
@@ -148,14 +134,13 @@ public class MvCoordinator {
     private void demote() {
         cancelLeader();
         safeRelease();
-        scheduleAttempt(settings.getWatchStateDelaySeconds());
+        scheduleAttempt();
     }
 
     private void safeRelease() {
         try {
-            LOG.debug("Releasing semaphore '{}', instanceId={}", SEMAPHORE_NAME, instanceId);
-
-            mvLocker.release(SEMAPHORE_NAME);
+            LOG.debug("Releasing semaphore '{}', instanceId={}", MvConfig.HANDLER_COORDINATOR, runnerId);
+            locker.release(MvConfig.HANDLER_COORDINATOR);
         } catch (Exception e) {
             LOG.trace("Fail release", e);
         }
@@ -168,24 +153,12 @@ public class MvCoordinator {
         }
     }
 
-    private boolean stillOwnsSemaphore() {
-        var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
-                """
-                        DECLARE $runner_id AS Text;
-                        SELECT * FROM mv_jobs WHERE job_name = 'sys$coordinator' AND runner_id = $runner_id;
-                        """,
-                TxMode.SERIALIZABLE_RW,
-                Params.of("$runner_id", PrimitiveValue.newText(instanceId))))
-        ).join().getValue().getResultSet(0);
-
-        return resultSet.next();
+    private boolean stillActive() {
+        MvJobInfo info = jobDao.getJob(MvConfig.HANDLER_COORDINATOR);
+        if (info == null) {
+            return false;
+        }
+        return runnerId.equals(info.getRunnerId());
     }
 
-    private boolean IsStoppedRun() {
-        var resultSet = sessionRetryContext.supplyResult(session -> QueryReader.readFrom(session.createQuery(
-                "SELECT should_run FROM mv_jobs WHERE job_name = 'sys$coordinator'",
-                TxMode.SERIALIZABLE_RW))).join().getValue().getResultSet(0);
-
-        return resultSet.next() && !resultSet.getColumn(0).getBool();
-    }
 }

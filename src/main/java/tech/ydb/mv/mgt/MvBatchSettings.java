@@ -14,20 +14,21 @@ public class MvBatchSettings implements Serializable {
     private static final long serialVersionUID = 20250113001L;
 
     // Configuration property keys
-    public static final String CONF_TABLE_JOBS = "megatron.mv.jobs.table";
-    public static final String CONF_TABLE_RUNNERS = "megatron.mv.runners.table";
-    public static final String CONF_TABLE_RUNNER_JOBS = "megatron.mv.runner.jobs.table";
-    public static final String CONF_TABLE_COMMANDS = "megatron.mv.commands.table";
-    public static final String CONF_SCAN_PERIOD_MS = "megatron.scan.period.ms";
-    public static final String CONF_REPORT_PERIOD_MS = "megatron.report.period.ms";
-    public static final String CONF_RUNNER_TIMEOUT_MS = "megatron.runner.timeout.ms";
-    public static final String CONF_COORDINATOR_TIMEOUT_MS = "megatron.coordinator.timeout.ms";
+    public static final String CONF_TABLE_JOBS = "mv.jobs.table";
+    public static final String CONF_TABLE_RUNNERS = "mv.runners.table";
+    public static final String CONF_TABLE_RUNNER_JOBS = "mv.runner.jobs.table";
+    public static final String CONF_TABLE_COMMANDS = "mv.commands.table";
+    public static final String CONF_SCAN_PERIOD_MS = "mv.scan.period.ms";
+    public static final String CONF_REPORT_PERIOD_MS = "mv.report.period.ms";
+    public static final String CONF_RUNNER_TIMEOUT_MS = "mv.runner.timeout.ms";
+    public static final String CONF_COORDINATOR_TIMEOUT_MS = "mv.coordinator.timeout.ms";
 
     // Default values
     public static final String DEF_TABLE_JOBS = "mv_jobs";
     public static final String DEF_TABLE_RUNNERS = "mv_runners";
     public static final String DEF_TABLE_RUNNER_JOBS = "mv_runner_jobs";
     public static final String DEF_TABLE_COMMANDS = "mv_commands";
+
     public static final long DEF_SCAN_PERIOD_MS = 5000L; // 5 seconds
     public static final long DEF_REPORT_PERIOD_MS = 10000L; // 10 seconds
     public static final long DEF_RUNNER_TIMEOUT_MS = 30000L; // 30 seconds

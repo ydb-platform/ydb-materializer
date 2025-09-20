@@ -1,9 +1,8 @@
-package tech.ydb.mv.integration;
+package tech.ydb.mv.mgt;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Assertions;
@@ -14,10 +13,6 @@ import tech.ydb.common.transaction.TxMode;
 
 import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.mgt.MvCoordinator;
-import tech.ydb.mv.mgt.MvCoordinatorJob;
-import tech.ydb.mv.mgt.MvCoordinatorSettings;
-import tech.ydb.mv.mgt.MvLocker;
 
 /**
  * @author Kirill Kurdyukov
@@ -25,9 +20,15 @@ import tech.ydb.mv.mgt.MvLocker;
 @Disabled
 public class MvCoordinatorTest extends AbstractIntegrationBase {
 
+    private MvBatchSettings getSettings() {
+        MvBatchSettings v = new MvBatchSettings();
+        v.setScanPeriodMs(500L);
+        return v;
+    }
+
     @Test
-    public void mvCoordinationOneThread() {
-        pause(10000);
+    public void checkSingleThreaded() {
+        pause(1000);
 
         final var queue = new ConcurrentLinkedQueue<Integer>();
         final var deque = new ConcurrentLinkedDeque<String>();
@@ -45,18 +46,17 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                             );
                             """);
             runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-            var scheduler = Executors.newScheduledThreadPool(3);
-            new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1), "instance",
-                    new MvCoordinatorJob() {
+            new MvCoordinator(conn, getSettings(), "instance",
+                    new MvCoordinatorActions() {
                 private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
                 @Override
-                public void start() {
+                public void onStart() {
                     queue.add(1);
                 }
 
                 @Override
-                public void performCoordinationTask() {
+                public void onUpdate() {
                     var peekLast = deque.peekLast();
                     if (peekLast == null) {
                         deque.addLast(tick.get());
@@ -69,7 +69,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                 }
 
                 @Override
-                public void stop() {
+                public void onStop() {
                     tick.set(UUID.randomUUID().toString());
                 }
             }).start();
@@ -96,8 +96,8 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
     }
 
     @Test
-    public void mvCoordinationMultiThread() {
-        pause(10000);
+    public void checkMultiThreaded() {
+        pause(1000);
 
         final var queue = new ConcurrentLinkedQueue<Integer>();
         final var deque = new ConcurrentLinkedDeque<String>();
@@ -114,21 +114,19 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                     );
                     """);
             runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-            var scheduler = Executors.newScheduledThreadPool(20);
 
             for (int i = 0; i < 20; i++) {
-                new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(),
-                        new MvCoordinatorSettings(1), "instance_" + i,
-                        new MvCoordinatorJob() {
+                new MvCoordinator(conn, getSettings(), "instance_" + i,
+                        new MvCoordinatorActions() {
                     private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
                     @Override
-                    public void start() {
+                    public void onStart() {
                         queue.add(1);
                     }
 
                     @Override
-                    public void performCoordinationTask() {
+                    public void onUpdate() {
                         var peekLast = deque.peekLast();
 
                         if (peekLast == null) {
@@ -142,7 +140,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                     }
 
                     @Override
-                    public void stop() {
+                    public void onStop() {
                         tick.set(UUID.randomUUID().toString());
                     }
                 }).start();

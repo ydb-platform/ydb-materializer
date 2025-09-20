@@ -1,6 +1,7 @@
 package tech.ydb.mv.mgt;
 
 import java.util.Properties;
+
 import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.YdbConnector;
 

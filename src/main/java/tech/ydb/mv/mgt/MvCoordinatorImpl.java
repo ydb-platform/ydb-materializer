@@ -1,12 +1,7 @@
 package tech.ydb.mv.mgt;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,31 +10,32 @@ import java.util.stream.Collectors;
 /**
  * @author Kirill Kurdyukov
  */
-public class MvCoordinatorJobImpl implements MvCoordinatorJob {
-    private static final Logger LOG = LoggerFactory.getLogger(MvCoordinatorJobImpl.class);
+class MvCoordinatorImpl implements MvCoordinatorActions {
+
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinatorImpl.class);
 
     private final AtomicLong commandNo = new AtomicLong();
     private final MvJobDao mvJobDao;
     private final MvBatchSettings settings;
 
-    public MvCoordinatorJobImpl(MvJobDao mvJobDao, MvBatchSettings mvBatchSettings) {
+    public MvCoordinatorImpl(MvJobDao mvJobDao, MvBatchSettings mvBatchSettings) {
         this.mvJobDao = mvJobDao;
         this.settings = mvBatchSettings;
     }
 
     @Override
-    public void start() {
+    public void onStart() {
         commandNo.set(mvJobDao.getMaxCommandNo());
     }
 
     @Override
-    public void performCoordinationTask() {
+    public void onUpdate() {
         cleanupInactiveRunners();
         balanceJobs();
     }
 
     @Override
-    public void stop() {
+    public void onStop() {
 
     }
 

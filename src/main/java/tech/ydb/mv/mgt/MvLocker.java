@@ -17,6 +17,7 @@ import tech.ydb.mv.YdbConnector;
  * @author zinal
  */
 public class MvLocker {
+
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvLocker.class);
 
     private final CoordinationClient client;
@@ -70,13 +71,13 @@ public class MvLocker {
 
     public void releaseAll() {
         ArrayList<String> names = new ArrayList<>();
-        synchronized(leases) {
+        synchronized (leases) {
             names.addAll(leases.keySet());
         }
         names.forEach(name -> release(name));
         try {
             session.close();
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.warn("Failed to close the coordination session", ex);
         }
     }
@@ -89,22 +90,21 @@ public class MvLocker {
         LOG.debug("Ensuring the single `{}` job instance "
                 + "through lock with timeout {}...", name, timeout);
         SemaphoreLease lease;
-        synchronized(leases) {
+        synchronized (leases) {
             lease = leases.get(name);
         }
-        if (lease!=null) {
+        if (lease != null) {
             LOG.debug("Lock `{}` already obtained, moving forward.", name);
             return true;
         }
         try {
             lease = session.acquireEphemeralSemaphore(name, true, timeout)
                     .join().getValue();
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.debug("Failed to acquire the semaphore {}", name, ex);
-            LOG.info("Failed to obtain lock `{}`, concurrent job instance seems to be running.", name);
             return false;
         }
-        synchronized(leases) {
+        synchronized (leases) {
             leases.put(name, lease);
         }
         LOG.info("Lock `{}` obtained.", name);
@@ -113,15 +113,15 @@ public class MvLocker {
 
     public boolean release(String name) {
         SemaphoreLease lease;
-        synchronized(leases) {
+        synchronized (leases) {
             lease = leases.remove(name);
         }
-        if (lease==null) {
+        if (lease == null) {
             return false;
         }
         try {
             lease.release().join();
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             LOG.warn("Failed to release the semaphore {}: {}", name, ex);
         }
         return true;
