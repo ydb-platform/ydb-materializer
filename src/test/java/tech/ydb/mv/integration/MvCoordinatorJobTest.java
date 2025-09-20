@@ -88,10 +88,10 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
-        props.setProperty(MvBatchSettings.CONF_MV_JOBS_TABLE, "test1/mv_jobs");
-        props.setProperty(MvBatchSettings.CONF_MV_RUNNERS_TABLE, "test1/mv_runners");
-        props.setProperty(MvBatchSettings.CONF_MV_RUNNER_JOBS_TABLE, "test1/mv_runner_jobs");
-        props.setProperty(MvBatchSettings.CONF_MV_COMMANDS_TABLE, "test1/mv_commands");
+        props.setProperty(MvBatchSettings.CONF_TABLE_JOBS, "test1/mv_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "test1/mv_runners");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "test1/mv_runner_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "test1/mv_commands");
 
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", java.nio.charset.StandardCharsets.UTF_8);

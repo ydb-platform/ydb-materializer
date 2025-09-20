@@ -4,39 +4,40 @@ import java.io.Serializable;
 import java.util.Properties;
 
 /**
- * Configuration settings for the distributed job management system.
- * Provides customizable table names and database scan/reporting periods.
+ * Configuration settings for the distributed job management system. Provides
+ * customizable table names and database scan/reporting periods.
  *
  * @author zinal
  */
 public class MvBatchSettings implements Serializable {
+
     private static final long serialVersionUID = 20250113001L;
 
     // Configuration property keys
-    public static final String CONF_MV_JOBS_TABLE = "megatron.mv.jobs.table";
-    public static final String CONF_MV_RUNNERS_TABLE = "megatron.mv.runners.table";
-    public static final String CONF_MV_RUNNER_JOBS_TABLE = "megatron.mv.runner.jobs.table";
-    public static final String CONF_MV_COMMANDS_TABLE = "megatron.mv.commands.table";
+    public static final String CONF_TABLE_JOBS = "megatron.mv.jobs.table";
+    public static final String CONF_TABLE_RUNNERS = "megatron.mv.runners.table";
+    public static final String CONF_TABLE_RUNNER_JOBS = "megatron.mv.runner.jobs.table";
+    public static final String CONF_TABLE_COMMANDS = "megatron.mv.commands.table";
     public static final String CONF_SCAN_PERIOD_MS = "megatron.scan.period.ms";
     public static final String CONF_REPORT_PERIOD_MS = "megatron.report.period.ms";
     public static final String CONF_RUNNER_TIMEOUT_MS = "megatron.runner.timeout.ms";
     public static final String CONF_COORDINATOR_TIMEOUT_MS = "megatron.coordinator.timeout.ms";
 
     // Default values
-    public static final String DEF_MV_JOBS_TABLE = "mv_jobs";
-    public static final String DEF_MV_RUNNERS_TABLE = "mv_runners";
-    public static final String DEF_MV_RUNNER_JOBS_TABLE = "mv_runner_jobs";
-    public static final String DEF_MV_COMMANDS_TABLE = "mv_commands";
+    public static final String DEF_TABLE_JOBS = "mv_jobs";
+    public static final String DEF_TABLE_RUNNERS = "mv_runners";
+    public static final String DEF_TABLE_RUNNER_JOBS = "mv_runner_jobs";
+    public static final String DEF_TABLE_COMMANDS = "mv_commands";
     public static final long DEF_SCAN_PERIOD_MS = 5000L; // 5 seconds
     public static final long DEF_REPORT_PERIOD_MS = 10000L; // 10 seconds
     public static final long DEF_RUNNER_TIMEOUT_MS = 30000L; // 30 seconds
     public static final long DEF_COORDINATOR_TIMEOUT_MS = 60000L; // 60 seconds
 
     // Table names
-    private String mvJobsTable = DEF_MV_JOBS_TABLE;
-    private String mvRunnersTable = DEF_MV_RUNNERS_TABLE;
-    private String mvRunnerJobsTable = DEF_MV_RUNNER_JOBS_TABLE;
-    private String mvCommandsTable = DEF_MV_COMMANDS_TABLE;
+    private String tableJobs = DEF_TABLE_JOBS;
+    private String tableRunners = DEF_TABLE_RUNNERS;
+    private String tableRunnerJobs = DEF_TABLE_RUNNER_JOBS;
+    private String tableCommands = DEF_TABLE_COMMANDS;
 
     // Timing settings
     private long scanPeriodMs = DEF_SCAN_PERIOD_MS;
@@ -48,10 +49,10 @@ public class MvBatchSettings implements Serializable {
     }
 
     public MvBatchSettings(MvBatchSettings src) {
-        this.mvJobsTable = src.mvJobsTable;
-        this.mvRunnersTable = src.mvRunnersTable;
-        this.mvRunnerJobsTable = src.mvRunnerJobsTable;
-        this.mvCommandsTable = src.mvCommandsTable;
+        this.tableJobs = src.tableJobs;
+        this.tableRunners = src.tableRunners;
+        this.tableRunnerJobs = src.tableRunnerJobs;
+        this.tableCommands = src.tableCommands;
         this.scanPeriodMs = src.scanPeriodMs;
         this.reportPeriodMs = src.reportPeriodMs;
         this.runnerTimeoutMs = src.runnerTimeoutMs;
@@ -63,10 +64,10 @@ public class MvBatchSettings implements Serializable {
     }
 
     private void loadFromProperties(Properties props) {
-        this.mvJobsTable = props.getProperty(CONF_MV_JOBS_TABLE, DEF_MV_JOBS_TABLE);
-        this.mvRunnersTable = props.getProperty(CONF_MV_RUNNERS_TABLE, DEF_MV_RUNNERS_TABLE);
-        this.mvRunnerJobsTable = props.getProperty(CONF_MV_RUNNER_JOBS_TABLE, DEF_MV_RUNNER_JOBS_TABLE);
-        this.mvCommandsTable = props.getProperty(CONF_MV_COMMANDS_TABLE, DEF_MV_COMMANDS_TABLE);
+        this.tableJobs = props.getProperty(CONF_TABLE_JOBS, DEF_TABLE_JOBS);
+        this.tableRunners = props.getProperty(CONF_TABLE_RUNNERS, DEF_TABLE_RUNNERS);
+        this.tableRunnerJobs = props.getProperty(CONF_TABLE_RUNNER_JOBS, DEF_TABLE_RUNNER_JOBS);
+        this.tableCommands = props.getProperty(CONF_TABLE_COMMANDS, DEF_TABLE_COMMANDS);
 
         String v = props.getProperty(CONF_SCAN_PERIOD_MS, String.valueOf(DEF_SCAN_PERIOD_MS));
         this.scanPeriodMs = Long.parseLong(v);
@@ -81,37 +82,36 @@ public class MvBatchSettings implements Serializable {
         this.coordinatorTimeoutMs = Long.parseLong(v);
     }
 
-    // Getters and setters for table names
-    public String getMvJobsTable() {
-        return mvJobsTable;
+    public String getTableJobs() {
+        return tableJobs;
     }
 
-    public void setMvJobsTable(String mvJobsTable) {
-        this.mvJobsTable = mvJobsTable;
+    public void setTableJobs(String tableJobs) {
+        this.tableJobs = tableJobs;
     }
 
-    public String getMvRunnersTable() {
-        return mvRunnersTable;
+    public String getTableRunners() {
+        return tableRunners;
     }
 
-    public void setMvRunnersTable(String mvRunnersTable) {
-        this.mvRunnersTable = mvRunnersTable;
+    public void setTableRunners(String tableRunners) {
+        this.tableRunners = tableRunners;
     }
 
-    public String getMvRunnerJobsTable() {
-        return mvRunnerJobsTable;
+    public String getTableRunnerJobs() {
+        return tableRunnerJobs;
     }
 
-    public void setMvRunnerJobsTable(String mvRunnerJobsTable) {
-        this.mvRunnerJobsTable = mvRunnerJobsTable;
+    public void setTableRunnerJobs(String tableRunnerJobs) {
+        this.tableRunnerJobs = tableRunnerJobs;
     }
 
-    public String getMvCommandsTable() {
-        return mvCommandsTable;
+    public String getTableCommands() {
+        return tableCommands;
     }
 
-    public void setMvCommandsTable(String mvCommandsTable) {
-        this.mvCommandsTable = mvCommandsTable;
+    public void setTableCommands(String tableCommands) {
+        this.tableCommands = tableCommands;
     }
 
     // Getters and setters for timing settings
@@ -145,43 +145,5 @@ public class MvBatchSettings implements Serializable {
 
     public void setCoordinatorTimeoutMs(long coordinatorTimeoutMs) {
         this.coordinatorTimeoutMs = coordinatorTimeoutMs;
-    }
-
-    /**
-     * Get the full table name with database prefix.
-     */
-    public String getFullTableName(String tableName, String database) {
-        if (tableName.startsWith("/")) {
-            return tableName;
-        }
-        return database + "/" + tableName;
-    }
-
-    /**
-     * Get the full table name for mv_jobs table.
-     */
-    public String getFullMvJobsTable(String database) {
-        return getFullTableName(mvJobsTable, database);
-    }
-
-    /**
-     * Get the full table name for mv_runners table.
-     */
-    public String getFullMvRunnersTable(String database) {
-        return getFullTableName(mvRunnersTable, database);
-    }
-
-    /**
-     * Get the full table name for mv_runner_jobs table.
-     */
-    public String getFullMvRunnerJobsTable(String database) {
-        return getFullTableName(mvRunnerJobsTable, database);
-    }
-
-    /**
-     * Get the full table name for mv_commands table.
-     */
-    public String getFullMvCommandsTable(String database) {
-        return getFullTableName(mvCommandsTable, database);
     }
 }

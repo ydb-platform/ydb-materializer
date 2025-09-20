@@ -25,6 +25,46 @@ CREATE TABLE `mv/dict_hist` (
    PRIMARY KEY(src, tv, seqno, key_text)
 );
 
+-- Externally controlled job definitions
+CREATE TABLE `mv/jobs` (
+    job_name Text NOT NULL,
+    job_settings JsonDocument,
+    should_run Bool,
+    runner_id Text,
+    PRIMARY KEY(job_name)
+);
+
+-- Runner instances status
+CREATE TABLE `mv/runners` (
+    runner_id Text NOT NULL,
+    runner_identity Text,
+    updated_at Timestamp,
+    PRIMARY KEY(runner_id)
+);
+
+-- Jobs, per runner instance
+CREATE TABLE `mv/runner_jobs` (
+    runner_id Text NOT NULL,
+    job_name Text NOT NULL,
+    job_settings JsonDocument,
+    started_at Timestamp,
+    PRIMARY KEY(runner_id, job_name)
+);
+
+-- Command control table via controller and runners
+CREATE TABLE `mv/commands` (
+    runner_id Text NOT NULL,
+    command_no Uint64 NOT NULL,
+    created_at Timestamp,
+    command_type Text, -- START / STOP
+    job_name Text,
+    job_settings JsonDocument,
+    command_status Text, -- CREATED / TAKEN / SUCCESS / ERROR
+    command_diag Text,
+    INDEX ix_no GLOBAL SYNC ON (command_no),
+    PRIMARY KEY(runner_id, command_no)
+);
+
 -- ************
 
 -- An example schema for the source tables.

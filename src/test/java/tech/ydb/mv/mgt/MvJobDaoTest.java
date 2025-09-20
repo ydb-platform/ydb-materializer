@@ -1,4 +1,4 @@
-package tech.ydb.mv.integration;
+package tech.ydb.mv.mgt;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,24 +8,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.mgt.MvBatchSettings;
-import tech.ydb.mv.mgt.MvCommand;
-import tech.ydb.mv.mgt.MvJobDao;
-import tech.ydb.mv.mgt.MvJobInfo;
-import tech.ydb.mv.mgt.MvRunnerInfo;
-import tech.ydb.mv.mgt.MvRunnerJobInfo;
+import tech.ydb.mv.integration.AbstractIntegrationBase;
 
 /**
- * Comprehensive integration test for MvTableOperations class.
- * Tests all public methods using YDB testcontainer support.
+ * Comprehensive integration test for MvTableOperations class. Tests all public
+ * methods using YDB testcontainer support.
  *
  * @author zinal
  */
-@Disabled
 public class MvJobDaoTest extends AbstractIntegrationBase {
 
     private static final String CREATE_MEGATRON_TABLES = """
@@ -118,10 +111,10 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
-        props.setProperty(MvBatchSettings.CONF_MV_JOBS_TABLE, "test1/mv_jobs");
-        props.setProperty(MvBatchSettings.CONF_MV_RUNNERS_TABLE, "test1/mv_runners");
-        props.setProperty(MvBatchSettings.CONF_MV_RUNNER_JOBS_TABLE, "test1/mv_runner_jobs");
-        props.setProperty(MvBatchSettings.CONF_MV_COMMANDS_TABLE, "test1/mv_commands");
+        props.setProperty(MvBatchSettings.CONF_TABLE_JOBS, "test1/mv_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "test1/mv_runners");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "test1/mv_runner_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "test1/mv_commands");
 
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", java.nio.charset.StandardCharsets.UTF_8);
@@ -132,7 +125,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     }
 
     // ========== MV_JOBS Operations Tests ==========
-
     @Test
     public void testGetAllJobsEmpty() {
         List<MvJobInfo> jobs = jobDao.getAllJobs();
@@ -214,7 +206,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     }
 
     // ========== MV_RUNNERS Operations Tests ==========
-
     @Test
     public void testGetAllRunnersEmpty() {
         List<MvRunnerInfo> runners = jobDao.getAllRunners();
@@ -298,7 +289,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     }
 
     // ========== MV_RUNNER_JOBS Operations Tests ==========
-
     @Test
     public void testGetRunnerJobsEmpty() {
         List<MvRunnerJobInfo> jobs = jobDao.getRunnerJobs("runner-1");
@@ -388,7 +378,6 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     }
 
     // ========== MV_COMMANDS Operations Tests ==========
-
     @Test
     public void testGetCommandsForRunnerEmpty() {
         List<MvCommand> commands = jobDao.getCommandsForRunner("runner-1");
@@ -442,15 +431,18 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     public void testGetCommandsForRunnerWithMultipleCommands() {
         Instant now = Instant.now();
         MvCommand cmd1 = new MvCommand("runner-1", 1L, now, MvCommand.TYPE_START,
-                "job-1", "{\"key1\":\"value1\"}", MvCommand.STATUS_CREATED, "diag1");
+                "job-1", "{\"key1\":\"value1\"}", MvCommand.STATUS_CREATED, null);
         MvCommand cmd2 = new MvCommand("runner-1", 2L, now.plusSeconds(1), MvCommand.TYPE_STOP,
-                "job-1", null, MvCommand.STATUS_TAKEN, "diag2");
-        MvCommand cmd3 = new MvCommand("runner-2", 3L, now.plusSeconds(2), MvCommand.TYPE_START,
-                "job-2", "{\"key2\":\"value2\"}", MvCommand.STATUS_SUCCESS, "diag3");
+                "job-1", null, MvCommand.STATUS_TAKEN, null);
+        MvCommand cmd3 = new MvCommand("runner-1", 3L, now.plusSeconds(1), MvCommand.TYPE_STOP,
+                "job-2", null, MvCommand.STATUS_CREATED, null);
+        MvCommand cmd4 = new MvCommand("runner-2", 4L, now.plusSeconds(2), MvCommand.TYPE_START,
+                "job-3", "{\"key2\":\"value2\"}", MvCommand.STATUS_SUCCESS, "diag3");
 
         jobDao.createCommand(cmd1);
         jobDao.createCommand(cmd2);
         jobDao.createCommand(cmd3);
+        jobDao.createCommand(cmd4);
 
         List<MvCommand> runner1Commands = jobDao.getCommandsForRunner("runner-1");
         Assertions.assertEquals(2, runner1Commands.size());
@@ -461,7 +453,7 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
 
         // Verify commands are ordered by command_no
         Assertions.assertEquals(1L, runner1Commands.get(0).getCommandNo());
-        Assertions.assertEquals(2L, runner1Commands.get(1).getCommandNo());
+        Assertions.assertEquals(3L, runner1Commands.get(1).getCommandNo());
     }
 
     @Test
@@ -516,7 +508,7 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         MvCommand cmd2 = new MvCommand("runner-1", 2L, now.plusSeconds(1), MvCommand.TYPE_STOP,
                 "job-1", null, MvCommand.STATUS_TAKEN, "diag2");
         MvCommand cmd3 = new MvCommand("runner-1", 3L, now.plusSeconds(2), MvCommand.TYPE_START,
-                "job-2", "{\"key2\":\"value2\"}", MvCommand.STATUS_SUCCESS, "diag3");
+                "job-2", "{\"key2\":\"value2\"}", MvCommand.STATUS_CREATED, "diag3");
         MvCommand cmd4 = new MvCommand("runner-1", 4L, now.plusSeconds(3), MvCommand.TYPE_STOP,
                 "job-2", null, MvCommand.STATUS_ERROR, "diag4");
 
@@ -526,16 +518,15 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
         jobDao.createCommand(cmd4);
 
         List<MvCommand> commands = jobDao.getCommandsForRunner("runner-1");
-        // Only CREATED and TAKEN commands should be returned
+        // Only CREATED commands should be returned
         Assertions.assertEquals(2, commands.size());
         Assertions.assertTrue(commands.stream().anyMatch(c -> c.getCommandNo() == 1L));
-        Assertions.assertTrue(commands.stream().anyMatch(c -> c.getCommandNo() == 2L));
-        Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 3L));
+        Assertions.assertTrue(commands.stream().anyMatch(c -> c.getCommandNo() == 3L));
+        Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 2L));
         Assertions.assertFalse(commands.stream().anyMatch(c -> c.getCommandNo() == 4L));
     }
 
     // ========== Error Handling Tests ==========
-
     @Test
     public void testOperationsWithInvalidData() {
         // Test with empty job name - this should work as empty string is valid
@@ -585,19 +576,16 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
     public void testBatchSettingsIntegration() {
         // Test that MvBatchSettings works correctly with MvTableOperations
         Properties props = new Properties();
-        props.setProperty(MvBatchSettings.CONF_MV_JOBS_TABLE, "custom_mv_jobs");
-        props.setProperty(MvBatchSettings.CONF_MV_RUNNERS_TABLE, "custom_mv_runners");
+        props.setProperty(MvBatchSettings.CONF_TABLE_JOBS, "custom_mv_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "custom_mv_runners");
+        props.setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "custom_mv_runner_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "custom_mv_commands");
 
         MvBatchSettings customSettings = new MvBatchSettings(props);
-        Assertions.assertEquals("custom_mv_jobs", customSettings.getMvJobsTable());
-        Assertions.assertEquals("custom_mv_runners", customSettings.getMvRunnersTable());
-
-        // Test full table name generation
-        String fullJobsTable = customSettings.getFullMvJobsTable("/test1");
-        Assertions.assertEquals("/test1/custom_mv_jobs", fullJobsTable);
-
-        String fullRunnersTable = customSettings.getFullMvRunnersTable("/test1");
-        Assertions.assertEquals("/test1/custom_mv_runners", fullRunnersTable);
+        Assertions.assertEquals("custom_mv_jobs", customSettings.getTableJobs());
+        Assertions.assertEquals("custom_mv_runners", customSettings.getTableRunners());
+        Assertions.assertEquals("custom_mv_runner_jobs", customSettings.getTableRunnerJobs());
+        Assertions.assertEquals("custom_mv_commands", customSettings.getTableCommands());
     }
 
     @Test
