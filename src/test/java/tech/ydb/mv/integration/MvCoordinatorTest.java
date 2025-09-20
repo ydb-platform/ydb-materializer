@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import tech.ydb.common.transaction.TxMode;
 
+import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvCoordinatorJob;
@@ -47,31 +48,31 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
             var scheduler = Executors.newScheduledThreadPool(3);
             new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(), new MvCoordinatorSettings(1), "instance",
                     new MvCoordinatorJob() {
-                        private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
+                private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
-                        @Override
-                        public void start() {
-                            queue.add(1);
-                        }
+                @Override
+                public void start() {
+                    queue.add(1);
+                }
 
-                        @Override
-                        public void performCoordinationTask() {
-                            var peekLast = deque.peekLast();
-                            if (peekLast == null) {
-                                deque.addLast(tick.get());
-                                return;
-                            }
+                @Override
+                public void performCoordinationTask() {
+                    var peekLast = deque.peekLast();
+                    if (peekLast == null) {
+                        deque.addLast(tick.get());
+                        return;
+                    }
 
-                            if (!tick.get().equals(peekLast)) {
-                                deque.addLast(tick.get());
-                            }
-                        }
+                    if (!tick.get().equals(peekLast)) {
+                        deque.addLast(tick.get());
+                    }
+                }
 
-                        @Override
-                        public void stop() {
-                            tick.set(UUID.randomUUID().toString());
-                        }
-                    }).start();
+                @Override
+                public void stop() {
+                    tick.set(UUID.randomUUID().toString());
+                }
+            }).start();
 
             for (int i = 1; i <= 10; i++) {
                 pause(5_000);
@@ -119,32 +120,32 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                 new MvCoordinator(new MvLocker(conn), scheduler, conn.getQueryRetryCtx(),
                         new MvCoordinatorSettings(1), "instance_" + i,
                         new MvCoordinatorJob() {
-                            private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
+                    private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
-                            @Override
-                            public void start() {
-                                queue.add(1);
-                            }
+                    @Override
+                    public void start() {
+                        queue.add(1);
+                    }
 
-                            @Override
-                            public void performCoordinationTask() {
-                                var peekLast = deque.peekLast();
+                    @Override
+                    public void performCoordinationTask() {
+                        var peekLast = deque.peekLast();
 
-                                if (peekLast == null) {
-                                    deque.addLast(tick.get());
-                                    return;
-                                }
+                        if (peekLast == null) {
+                            deque.addLast(tick.get());
+                            return;
+                        }
 
-                                if (!tick.get().equals(peekLast)) {
-                                    deque.addLast(tick.get());
-                                }
-                            }
+                        if (!tick.get().equals(peekLast)) {
+                            deque.addLast(tick.get());
+                        }
+                    }
 
-                            @Override
-                            public void stop() {
-                                tick.set(UUID.randomUUID().toString());
-                            }
-                        }).start();
+                    @Override
+                    public void stop() {
+                        tick.set(UUID.randomUUID().toString());
+                    }
+                }).start();
             }
 
             for (int i = 1; i <= 10; i++) {

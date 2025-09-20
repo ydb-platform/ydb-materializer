@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 
+import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.parser.MvSqlGen;
 
@@ -62,7 +62,6 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 ,(59, 'Adieu! News'u)
 ;
 """;
-
 
     @BeforeAll
     public static void init() {
@@ -215,7 +214,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void checkConsumerPosition(YdbConnector conn, String tabName,
-                                       String feed, String consumer, long expected) {
+            String feed, String consumer, long expected) {
         var descMain = conn.getTopicClient().describeConsumer(
                 conn.fullCdcTopicName(tabName, feed),
                 consumer,
@@ -239,7 +238,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
     private void checkDictHist(YdbConnector conn) {
         var rs = conn.sqlRead("SELECT diff_val, key_text, tv "
-                        + "FROM `test1/dict_hist` "
+                + "FROM `test1/dict_hist` "
                 + "WHERE src='test1/sub_table3'u"
                 + "ORDER BY tv, key_text;",
                 Params.empty()).getResultSet(0);
@@ -248,7 +247,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
             System.out.println("  DICT: " + rs.getColumn(1).getText()
                     + " at " + rs.getColumn(2).getTimestamp().toString()
                     + ": " + rs.getColumn(0).getValue().asOptional()
-                    .get().asData().getJsonDocument());
+                            .get().asData().getJsonDocument());
         }
         System.out.println("--- dictionary comparison end ---");
     }

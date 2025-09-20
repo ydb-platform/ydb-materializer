@@ -1,4 +1,4 @@
-package tech.ydb.mv.integration;
+package tech.ydb.mv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -6,16 +6,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+
 import org.junit.jupiter.api.extension.RegisterExtension;
+
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
-import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.data.YdbConv;
-import tech.ydb.mv.support.YdbMisc;
 import tech.ydb.query.QuerySession;
 import tech.ydb.table.result.ResultSetReader;
+
 import tech.ydb.test.junit5.YdbHelperExtension;
+
+import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.support.YdbMisc;
 
 /**
  *
@@ -326,7 +328,6 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 .expectSuccess();
     }
 
-
     protected static HashMap<String, HashMap<String, String>> convertResultSet(ResultSetReader rsr, String keyName) {
         int indexColumn = rsr.getColumnIndex(keyName);
         HashMap<String, HashMap<String, String>> output = new HashMap<>();
@@ -336,7 +337,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
             for (int index = 0; index < rsr.getColumnCount(); ++index) {
                 String name = rsr.getColumnName(index);
                 Comparable<?> x = YdbConv.toPojo(rsr.getColumn(index).getValue());
-                if (x!=null) {
+                if (x != null) {
                     value.put(name, x.toString());
                 }
             }

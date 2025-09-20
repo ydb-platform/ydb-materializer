@@ -1,8 +1,13 @@
 package tech.ydb.mv.integration;
 
+import java.util.concurrent.Executors;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
@@ -13,9 +18,6 @@ import tech.ydb.mv.mgt.MvCoordinatorSettings;
 import tech.ydb.mv.mgt.MvJobDao;
 import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.mgt.MvRunner;
-
-import java.util.concurrent.Executors;
-import org.junit.jupiter.api.Disabled;
 
 /**
  * @author Kirill Kurdyukov
@@ -320,10 +322,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     }
 
     private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
-        try (YdbConnector conn = new YdbConnector(cfg);
-             var mvService = new MvService(conn);
-             var runner = new MvRunner(conn, new MvService(conn))
-        ) {
+        try (YdbConnector conn = new YdbConnector(cfg); var mvService = new MvService(conn); var runner = new MvRunner(conn, new MvService(conn))) {
             var mvLocker = new MvLocker(conn);
             new MvCoordinator(
                     mvLocker,

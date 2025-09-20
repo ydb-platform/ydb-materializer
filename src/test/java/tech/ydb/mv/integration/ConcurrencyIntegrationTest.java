@@ -6,6 +6,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
@@ -63,8 +65,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
     }
 
     private void handler(YdbConnector.Config cfg, String name) {
-        try (YdbConnector conn = new YdbConnector(cfg);
-                MvApi api = MvApi.newInstance(conn)) {
+        try (YdbConnector conn = new YdbConnector(cfg); MvApi api = MvApi.newInstance(conn)) {
             api.applyDefaults(conn.getConfig().getProperties());
 
             System.err.println("[" + name + "] Checking context...");
@@ -74,7 +75,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
             api.startHandler(name);
             reportSuccess(name);
             YdbMisc.sleep(10000L);
-       } catch (Exception ex) {
+        } catch (Exception ex) {
             ex.printStackTrace(System.err);
         }
     }

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinatorJobImpl;
@@ -195,8 +196,9 @@ public class MvCoordinatorJobTest extends AbstractIntegrationBase {
                 """);
         mvCoordinatorJob.start();
         mvCoordinatorJob.performCoordinationTask();
-        for (var instance : List.of("1", "2", "3", "4", "5"))
+        for (var instance : List.of("1", "2", "3", "4", "5")) {
             Assertions.assertTrue(mvJobDao.getCommandsForRunner(instance).size() <= 2);
+        }
         Assertions.assertEquals(9, mvJobDao.getMaxCommandNo());
     }
 

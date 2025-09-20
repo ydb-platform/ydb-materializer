@@ -11,17 +11,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.integration.AbstractIntegrationBase;
+import tech.ydb.mv.AbstractIntegrationBase;
 
 /**
- * Comprehensive integration test for MvTableOperations class. Tests all public
- * methods using YDB testcontainer support.
+ * Integration test for MvJobDao class.
  *
  * @author zinal
  */
 public class MvJobDaoTest extends AbstractIntegrationBase {
 
-    private static final String CREATE_MEGATRON_TABLES = """
+    private static final String CREATE_MGT_TABLES = """
         CREATE TABLE `test1/mv_jobs` (
             job_name Text NOT NULL,
             job_settings JsonDocument,
@@ -54,11 +53,12 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
             job_settings JsonDocument,
             command_status Text,
             command_diag Text,
+            INDEX ix_no GLOBAL SYNC ON (command_no),
             PRIMARY KEY(runner_id, command_no)
         );
         """;
 
-    private static final String DROP_MEGATRON_TABLES = """
+    private static final String DROP_MGT_TABLES = """
         DROP TABLE `test1/mv_jobs`;
         DROP TABLE `test1/mv_runners`;
         DROP TABLE `test1/mv_runner_jobs`;
@@ -70,12 +70,12 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
 
     @BeforeAll
     public static void setup() {
-        prepareMegatronDb();
+        prepareMgtDb();
     }
 
     @AfterAll
     public static void cleanup() {
-        clearMegatronDb();
+        clearMgtDb();
         if (ydbConnector != null) {
             ydbConnector.close();
         }
@@ -93,21 +93,21 @@ public class MvJobDaoTest extends AbstractIntegrationBase {
                 new MvBatchSettings(ydbConnector.getConfig().getProperties()));
     }
 
-    private static void prepareMegatronDb() {
+    private static void prepareMgtDb() {
         System.err.println("[MvTableOperationsTest] Setting up megatron tables...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getMegatronConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getMgtConfig(), "config.xml", null);
         ydbConnector = new YdbConnector(cfg);
-        runDdl(ydbConnector, CREATE_MEGATRON_TABLES);
+        runDdl(ydbConnector, CREATE_MGT_TABLES);
     }
 
-    private static void clearMegatronDb() {
+    private static void clearMgtDb() {
         System.err.println("[MvTableOperationsTest] Cleaning up megatron tables...");
         if (ydbConnector != null) {
-            runDdl(ydbConnector, DROP_MEGATRON_TABLES);
+            runDdl(ydbConnector, DROP_MGT_TABLES);
         }
     }
 
-    private static byte[] getMegatronConfig() {
+    private static byte[] getMgtConfig() {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
