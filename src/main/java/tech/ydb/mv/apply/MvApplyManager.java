@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import tech.ydb.table.TableClient;
 
-import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.svc.MvJobContext;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.feeder.MvCdcSink;

@@ -18,26 +18,23 @@ public class App {
             LOG.info("Starting the YDB Materializer...");
             try (YdbConnector conn = new YdbConnector(ycc)) {
                 LOG.info("Database connection established.");
-                MvService wc = new MvService(conn);
-                try {
-                    Runtime.getRuntime().addShutdownHook(new Thread(() -> wc.shutdown()));
-                    wc.applyDefaults();
+                try (MvApi api = MvApi.newInstance(conn)) {
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> api.shutdown()));
+                    api.applyDefaults(conn.getConfig().getProperties());
                     switch (MvConfig.parseMode(args[1])) {
                         case CHECK:
                             LOG.info("Issues output requested.");
-                            wc.printIssues();
+                            api.printIssues(System.out);
                             break;
                         case SQL:
                             LOG.info("SQL output requested.");
-                            wc.printSql();
+                            api.printSql(System.out);
                             break;
                         case RUN:
                             LOG.info("Handlers service requested.");
-                            wc.runHandlers();
+                            api.runDefaultHandlers();
                             break;
                     }
-                } finally {
-                    wc.shutdown();
                 }
             }
             LOG.info("Completed successfully.");

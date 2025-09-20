@@ -1,7 +1,8 @@
-package tech.ydb.mv;
+package tech.ydb.mv.svc;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import tech.ydb.mv.YdbConnector;
 
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcAdapter;
@@ -81,7 +82,7 @@ public class MvJobContext implements MvCdcAdapter  {
         return metadata.getConsumerNameAlways();
     }
 
-    public synchronized void startScan(MvTarget target, MvScanSettings settings,
+    public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
             MvApplyManager applyManager) {
         if ( target == null ||
                 metadata.getTargets().get(target.getName()) != target) {
@@ -97,7 +98,7 @@ public class MvJobContext implements MvCdcAdapter  {
             sf = new MvScanFeeder(this, applyManager, target, settings, null);
             scanFeeders.put(target.getName(), sf);
         }
-        sf.start();
+        return sf.start();
     }
 
     public synchronized boolean stopScan(MvTarget target) {
@@ -109,11 +110,10 @@ public class MvJobContext implements MvCdcAdapter  {
         if (sf == null) {
             return false;
         }
-        sf.stop();
-        return true;
+        return sf.stop();
     }
 
-    public synchronized void completeScan(MvTarget target) {
+    public synchronized void forgetScan(MvTarget target) {
         if (target!=null) {
             scanFeeders.remove(target.getName());
         }

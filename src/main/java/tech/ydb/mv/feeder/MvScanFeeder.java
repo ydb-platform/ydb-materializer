@@ -8,7 +8,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.svc.MvJobContext;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.data.MvChangeRecord;
@@ -54,19 +54,19 @@ public class MvScanFeeder {
         return ctx != null && ctx.isRunning() && job.isRunning();
     }
 
-    public synchronized void start() {
+    public synchronized boolean start() {
         if (!job.isRunning()) {
             throw new IllegalStateException("Refusing to start scan feeder "
                     + "for a stopped handler job " + job.getMetadata().getName());
         }
         if (context.get() != null) {
-            return;
+            return false;
         }
         MvScanContext ctx = context.getAndSet(
                 new MvScanContext(job.getMetadata(), target, job.getYdb(), controlTable));
         if (ctx != null) {
             context.set(ctx);
-            return;
+            return false;
         }
         Thread thread = new Thread(() -> safeRun());
         thread.setDaemon(true);
@@ -74,13 +74,16 @@ public class MvScanFeeder {
                 + job.getMetadata().getName()
                 + "-" + target.getName());
         thread.start();
+        return true;
     }
 
-    public synchronized void stop() {
+    public synchronized boolean stop() {
         MvScanContext ctx = context.getAndSet(null);
-        if (ctx != null) {
-            ctx.stop();
+        if (ctx == null) {
+            return false;
         }
+        ctx.stop();
+        return true;
     }
 
     public synchronized void stopAndUnregister() {
@@ -139,7 +142,7 @@ public class MvScanFeeder {
             rateLimiter(count);
         }
         ctx.getScanDao().unregisterScan();
-        job.completeScan(target);
+        job.forgetScan(target);
         LOG.info("Finished scan feeder for target {} in handler {}",
                 target.getName(), job.getMetadata().getName());
     }

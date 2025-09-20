@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 
-import tech.ydb.mv.MvService;
+import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
@@ -86,14 +86,14 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
         try (YdbConnector conn = new YdbConnector(cfg)) {
             MvService wc = new MvService(conn);
             try {
-                wc.applyDefaults();
+                wc.applyDefaults(conn.getConfig().getProperties());
 
                 System.err.println("[AAA] Checking context...");
-                wc.printIssues();
+                wc.printIssues(System.out);
                 Assertions.assertTrue(wc.getMetadata().isValid());
 
                 System.err.println("[AAA] Printing SQL...");
-                wc.printSql();
+                wc.printSql(System.out);
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
                 MvTarget mainTarget = wc.getMetadata().getHandlers()
@@ -104,7 +104,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
                 }
 
                 System.err.println("[AAA] Starting the services...");
-                wc.startHandlers();
+                wc.startDefaultHandlers();
                 wc.startDictionaryHandler();
                 standardPause();
                 System.err.println("[AAA] Checking the view output (should be empty)...");
@@ -234,8 +234,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     }
 
     private void refreshMV(MvService wc) {
-        wc.startScan("handler1", "test1/mv1",
-                new MvScanSettings(wc.getYdb().getConfig().getProperties()));
+        wc.startScan("handler1", "test1/mv1");
     }
 
     private void checkDictHist(YdbConnector conn) {

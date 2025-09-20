@@ -1,4 +1,4 @@
-package tech.ydb.mv.dict;
+package tech.ydb.mv.svc;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

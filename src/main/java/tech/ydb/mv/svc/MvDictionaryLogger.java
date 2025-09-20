@@ -1,4 +1,4 @@
-package tech.ydb.mv.dict;
+package tech.ydb.mv.svc;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,7 +69,7 @@ public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
 
     @Override
     public String getFeederName() {
-        return MvConfig.DICTINARY_HANDLER;
+        return MvConfig.HANDLER_DICTIONARY;
     }
 
     @Override

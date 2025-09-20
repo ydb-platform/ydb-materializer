@@ -19,7 +19,7 @@ import tech.ydb.mv.parser.MvValidateSql;
  */
 public class MvMetadata {
 
-    private String dictionaryConsumer = MvConfig.DICTINARY_HANDLER;
+    private String dictionaryConsumer = MvConfig.HANDLER_DICTIONARY;
 
     private final HashMap<String, MvTarget> targets = new HashMap<>();
     private final HashMap<String, MvHandler> handlers = new HashMap<>();

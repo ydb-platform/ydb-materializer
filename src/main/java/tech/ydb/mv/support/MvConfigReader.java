@@ -31,7 +31,7 @@ public class MvConfigReader extends MvConfig {
                 + "property " + MvConfig.CONF_INPUT_MODE);
             }
         }
-        context.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, DICTINARY_HANDLER));
+        context.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, HANDLER_DICTIONARY));
         return context;
     }
 

@@ -3,7 +3,7 @@ package tech.ydb.mv.apply;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.tools.SessionRetryContext;
 
-import tech.ydb.mv.MvJobContext;
+import tech.ydb.mv.svc.MvJobContext;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 

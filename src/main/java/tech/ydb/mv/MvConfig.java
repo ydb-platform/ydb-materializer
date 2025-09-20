@@ -7,7 +7,15 @@ package tech.ydb.mv;
  */
 public class MvConfig {
 
-    public static final String DICTINARY_HANDLER = "dictionary";
+    /**
+     * Name for the dictionary change logging handler.
+     */
+    public static final String HANDLER_DICTIONARY = "sys$dictionary";
+
+    /**
+     * Name for the global job coordinator handler.
+     */
+    public static final String HANDLER_COORDINATOR = "sys$coordinator";
 
     /**
      * FILE        read input statements from file

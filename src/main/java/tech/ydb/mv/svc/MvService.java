@@ -1,13 +1,17 @@
-package tech.ydb.mv;
+package tech.ydb.mv.svc;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.mv.dict.MvDictionaryLogger;
+import tech.ydb.mv.MvApi;
+import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
@@ -25,7 +29,7 @@ import tech.ydb.mv.support.YdbMisc;
  *
  * @author zinal
  */
-public class MvService implements AutoCloseable {
+public class MvService implements MvApi {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
@@ -33,10 +37,11 @@ public class MvService implements AutoCloseable {
     private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
+    private final AtomicReference<MvScanSettings> scanSettings;
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
-    private final RefreshTask refreshTask = new RefreshTask();
-    private volatile Thread refreshThread = null;
+    private final SchedulerTask schedulerTask = new SchedulerTask();
+    private volatile Thread schedulerThread = null;
 
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
@@ -44,13 +49,16 @@ public class MvService implements AutoCloseable {
         this.locker = new MvLocker(ydb);
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
+        this.scanSettings = new AtomicReference<>(new MvScanSettings());
         refreshMetadata();
     }
 
+    @Override
     public YdbConnector getYdb() {
         return ydb;
     }
 
+    @Override
     public MvMetadata getMetadata() {
         return metadata;
     }
@@ -59,10 +67,12 @@ public class MvService implements AutoCloseable {
         return locker;
     }
 
+    @Override
     public MvHandlerSettings getHandlerSettings() {
         return new MvHandlerSettings(handlerSettings.get());
     }
 
+    @Override
     public void setHandlerSettings(MvHandlerSettings defaultSettings) {
         if (defaultSettings==null) {
             defaultSettings = new MvHandlerSettings();
@@ -72,10 +82,12 @@ public class MvService implements AutoCloseable {
         this.handlerSettings.set(defaultSettings);
     }
 
+    @Override
     public MvDictionarySettings getDictionarySettings() {
         return new MvDictionarySettings(dictionarySettings.get());
     }
 
+    @Override
     public void setDictionarySettings(MvDictionarySettings defaultSettings) {
         if (defaultSettings==null) {
             defaultSettings = new MvDictionarySettings();
@@ -85,22 +97,37 @@ public class MvService implements AutoCloseable {
         this.dictionarySettings.set(defaultSettings);
     }
 
-    public void applyDefaults() {
-        var props = ydb.getConfig().getProperties();
-        setHandlerSettings(new MvHandlerSettings(props));
-        setDictionarySettings(new MvDictionarySettings(props));
+    @Override
+    public MvScanSettings getScanSettings() {
+        return new MvScanSettings(scanSettings.get());
     }
 
-    /**
-     * @return true, if at least one handler is active, and false otherwise.
-     */
+    @Override
+    public void setScanSettings(MvScanSettings defaultSettings) {
+        if (defaultSettings==null) {
+            defaultSettings = new MvScanSettings();
+        } else {
+            defaultSettings = new MvScanSettings(defaultSettings);
+        }
+        this.scanSettings.set(defaultSettings);
+    }
+
+    @Override
+    public void applyDefaults(Properties props) {
+        if (props == null) {
+            props = ydb.getConfig().getProperties();
+        }
+        setHandlerSettings(new MvHandlerSettings(props));
+        setDictionarySettings(new MvDictionarySettings(props));
+        setScanSettings(new MvScanSettings(props));
+    }
+
+    @Override
     public synchronized boolean isRunning() {
         return !handlers.isEmpty() || (dictionaryManager != null);
     }
 
-    /**
-     * Stop all the handlers which are running.
-     */
+    @Override
     public synchronized void shutdown() {
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
@@ -116,27 +143,33 @@ public class MvService implements AutoCloseable {
         shutdown();
     }
 
-    public synchronized void startDictionaryHandler() {
+    public synchronized boolean startDictionaryHandler() {
         if (dictionaryManager != null) {
-            return;
+            return false;
         }
         dictionaryManager = new MvDictionaryLogger(metadata, ydb, dictionarySettings.get());
         dictionaryManager.start();
+        return true;
     }
 
-    public synchronized void stopDictionaryHandler() {
-        if (dictionaryManager != null) {
-            dictionaryManager.stop();
-            dictionaryManager = null;
+    public synchronized boolean stopDictionaryHandler() {
+        if (dictionaryManager == null) {
+            return false;
         }
+        dictionaryManager.stop();
+        dictionaryManager = null;
+        return true;
     }
 
     /**
      * Start the handler with the specified name, using the current default settings.
      * @param name Name of the handler to be started
-     * @return true, if handler has been started, false otherwise
      */
+    @Override
     public boolean startHandler(String name) {
+        if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(name)) {
+            return startDictionaryHandler();
+        }
         return startHandler(name, getHandlerSettings());
     }
 
@@ -148,11 +181,11 @@ public class MvService implements AutoCloseable {
      * @return true, if handler has been started, false otherwise
      */
     public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
-        if (refreshThread==null || !refreshThread.isAlive()) {
-            refreshThread = new Thread(refreshTask);
-            refreshThread.setName("mv-refresh-partitions");
-            refreshThread.setDaemon(true);
-            refreshThread.start();
+        if (schedulerThread==null || !schedulerThread.isAlive()) {
+            schedulerThread = new Thread(schedulerTask);
+            schedulerThread.setName("mv-scheduler");
+            schedulerThread.setDaemon(true);
+            schedulerThread.start();
         }
         MvJobController c = handlers.get(name);
         if (c==null) {
@@ -171,6 +204,7 @@ public class MvService implements AutoCloseable {
      * @param name The name of the handler to be stopped
      * @return true, if the handler was actually stopped, and false otherwise
      */
+    @Override
     public synchronized boolean stopHandler(String name) {
         MvJobController c = handlers.remove(name);
         if (c == null) {
@@ -180,23 +214,13 @@ public class MvService implements AutoCloseable {
         return true;
     }
 
-    /**
-     * Start the full scan for the specified target in  the specified handler.For illegal arguments, exceptions are thrown.
-     *
-     * @param handlerName Name of the handler
-     * @param targetName Name of the target
-     * @param settings Settings for the specific scan
-     */
-    public synchronized void startScan(String handlerName, String targetName,
-            MvScanSettings settings) {
-        if (settings==null) {
-            settings = new MvScanSettings(ydb.getConfig().getProperties());
-        }
+    @Override
+    public synchronized boolean startScan(String handlerName, String targetName) {
         MvJobController c = handlers.get(handlerName);
         if (c == null) {
             throw new IllegalArgumentException("Unknown handler name: " + handlerName);
         }
-        c.startScan(targetName, settings);
+        return c.startScan(targetName, getScanSettings());
     }
 
     /**
@@ -207,6 +231,7 @@ public class MvService implements AutoCloseable {
      * @param targetName Name of the target
      * @return true, if the scan was started, false otherwise
      */
+    @Override
     public synchronized boolean stopScan(String handlerName, String targetName) {
         MvJobController c = handlers.get(handlerName);
         if (c == null) {
@@ -215,24 +240,24 @@ public class MvService implements AutoCloseable {
         return c.stopScan(targetName);
     }
 
-    /**
-     * Print the list of issues in the current context to stdout.
-     */
-    public void printIssues() {
-        new MvIssuePrinter(metadata).write(System.out);
+    @Override
+    public void printIssues(PrintStream pw) {
+        new MvIssuePrinter(metadata).write(pw);
     }
 
     /**
-     * Generate the set of SQL statements and print to stdout.
+     * Generate the set of SQL statements and print.
      */
-    public void printSql() {
-        new MvSqlPrinter(metadata).write(System.out);
+    @Override
+    public void printSql(PrintStream pw) {
+        new MvSqlPrinter(metadata).write(pw);
     }
 
     /**
      * Start the default handlers.
      */
-    public void startHandlers() {
+    @Override
+    public void startDefaultHandlers() {
         if (LOG.isInfoEnabled()) {
             String msg = new MvIssuePrinter(metadata).write();
             LOG.info("\n"
@@ -256,8 +281,9 @@ public class MvService implements AutoCloseable {
     /**
      * Start and run the set of default handlers.
      */
-    public void runHandlers() {
-        startHandlers();
+    @Override
+    public void runDefaultHandlers() {
+        startDefaultHandlers();
         while (isRunning()) {
             YdbMisc.sleep(100L);
         }
@@ -303,7 +329,7 @@ public class MvService implements AutoCloseable {
         }
     }
 
-    private class RefreshTask implements Runnable {
+    private class SchedulerTask implements Runnable {
         @Override
         public void run() {
             sleepSome();

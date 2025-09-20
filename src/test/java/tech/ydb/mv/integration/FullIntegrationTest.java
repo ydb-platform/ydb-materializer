@@ -4,7 +4,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.MvService;
+import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinator;

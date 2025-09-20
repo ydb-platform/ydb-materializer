@@ -7,9 +7,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import tech.ydb.mv.MvService;
+import tech.ydb.mv.MvApi;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -23,7 +22,7 @@ public class MvRunner implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvRunner.class);
 
-    private final MvService mvService;
+    private final MvApi api;
     private final MvBatchSettings settings;
     private final MvJobDao tableOps;
     private final String runnerId;
@@ -33,25 +32,26 @@ public class MvRunner implements AutoCloseable {
     private final Map<String, MvRunnerJobInfo> localJobs = new HashMap<>();
     private volatile Thread runnerThread = null;
 
-    public MvRunner(YdbConnector ydb, MvService mvService, MvBatchSettings settings) {
-        this.mvService = mvService;
+    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
+        this.api = api;
         this.settings = settings;
         this.tableOps = new MvJobDao(ydb, settings);
         this.runnerId = generateRunnerId();
         this.runnerIdentity = generateRunnerIdentity();
     }
 
-    public MvRunner(YdbConnector ydb, MvService mvService) {
-        this(ydb, mvService, new MvBatchSettings());
+    public MvRunner(YdbConnector ydb, MvApi api) {
+        this(ydb, api, new MvBatchSettings());
     }
 
     /**
      * Start the runner.
+     * @return true, if the runner has been just started, and false, if it was already running
      */
-    public synchronized void start() {
+    public synchronized boolean start() {
         if (running.get()) {
-            LOG.warn("MvRunner is already running");
-            return;
+            LOG.info("MvRunner is already running, ignored start attempt");
+            return false;
         }
 
         LOG.info("Starting MvRunner with ID: {}", runnerId);
@@ -63,15 +63,17 @@ public class MvRunner implements AutoCloseable {
         runnerThread.start();
 
         LOG.info("MvRunner started successfully");
+        return true;
     }
 
     /**
      * Stop the runner.
+     * @return true, if the runner has been just stopped, and false if it was stopped already
      */
-    public synchronized void stop() {
+    public synchronized boolean stop() {
         if (!running.get()) {
-            LOG.warn("MvRunner is not running");
-            return;
+            LOG.info("MvRunner is already stopped, ignored stop attempt");
+            return false;
         }
 
         LOG.info("Stopping MvRunner with ID: {}", runnerId);
@@ -101,6 +103,7 @@ public class MvRunner implements AutoCloseable {
         }
 
         LOG.info("MvRunner stopped");
+        return true;
     }
 
     @Override
@@ -134,7 +137,7 @@ public class MvRunner implements AutoCloseable {
                 }
 
                 // Sleep for a short time to avoid busy waiting
-                YdbMisc.sleep(1000);
+                YdbMisc.sleep(200L);
 
             } catch (Exception ex) {
                 LOG.error("Error in MvRunner main loop", ex);
@@ -164,7 +167,6 @@ public class MvRunner implements AutoCloseable {
     private void checkCommands() {
         try {
             List<MvCommand> commands = tableOps.getCommandsForRunner(runnerId);
-
             for (MvCommand command : commands) {
                 if (command.isCreated()) {
                     executeCommand(command);
@@ -211,21 +213,8 @@ public class MvRunner implements AutoCloseable {
      * Start a handler with the given name and settings.
      */
     private void startHandler(String jobName, String jobSettingsJson) {
-        // Handle special system handlers
-        if ("sys$dictionary".equals(jobName)) {
-            mvService.startDictionaryHandler();
-            synchronized (localJobs) {
-                localJobs.put(jobName, new MvRunnerJobInfo(
-                        runnerId, jobName, jobSettingsJson, Instant.now()
-                ));
-            }
-            return;
-        }
-
-        MvHandlerSettings settings = mvService.getHandlerSettings();
-
         // Start the handler
-        boolean started = mvService.startHandler(jobName, settings);
+        boolean started = api.startHandler(jobName);
 
         if (started) {
             // Record the job in local tracking and database
@@ -246,18 +235,13 @@ public class MvRunner implements AutoCloseable {
      * Stop a handler with the given name.
      */
     private void stopHandler(String jobName) {
-        // Handle special system handlers
-        if ("sys$dictionary".equals(jobName)) {
-            mvService.stopDictionaryHandler();
-        } else {
-            mvService.stopHandler(jobName);
-            // Remove from local tracking and database
-            synchronized (localJobs) {
-                localJobs.remove(jobName);
-            }
-            tableOps.deleteRunnerJob(runnerId, jobName);
-            LOG.info("Stopped handler: {}", jobName);
+        api.stopHandler(jobName);
+        // Remove from local tracking and database
+        synchronized (localJobs) {
+            localJobs.remove(jobName);
         }
+        tableOps.deleteRunnerJob(runnerId, jobName);
+        LOG.info("Stopped handler: {}", jobName);
     }
 
     /**

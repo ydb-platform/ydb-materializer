@@ -1,4 +1,4 @@
-package tech.ydb.mv;
+package tech.ydb.mv.svc;
 
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
@@ -85,13 +85,13 @@ public class MvJobController {
         return true;
     }
 
-    public void startScan(String name, MvScanSettings settings) {
+    public boolean startScan(String name, MvScanSettings settings) {
         MvTarget target = context.getMetadata().getTarget(name);
         if (target==null) {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getMetadata().getName() + "`");
         }
-        context.startScan(target, settings, applyManager);
+        return context.startScan(target, settings, applyManager);
     }
 
     public boolean stopScan(String name) {
