@@ -35,7 +35,7 @@ public class MvChangesMultiDict {
         ArrayList<MvRowFilter> filters = new ArrayList<>(handler.getTargets().size());
         for (var target : handler.getTargets().values()) {
             var filter = toFilter(handler, target);
-            if (! filter.isEmpty()) {
+            if (filter != null && !filter.isEmpty()) {
                 filters.add(filter);
             }
         }
