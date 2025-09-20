@@ -42,6 +42,10 @@ public class MvJoinSource implements MvSqlPosHolder {
         return tableInfo.getKey().toArray(String[]::new);
     }
 
+    /**
+     * @return true, if this join source depends on at least one
+     *   other join source through its conditions, and false otherwise
+     */
     public boolean isRelated() {
         for (var cond : conditions) {
             if ((cond.getFirstRef() == this)

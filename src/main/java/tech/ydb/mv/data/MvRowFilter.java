@@ -6,24 +6,34 @@ import java.util.HashSet;
 import tech.ydb.mv.model.MvTarget;
 
 /**
+ * Row filter for a single target's scan.
  *
  * @author zinal
  */
 public class MvRowFilter {
 
+    private final MvTarget target;
+    private MvTarget transformation;
     private final ArrayList<Block> blocks = new ArrayList<>();
-    private MvTarget scanTarget;
+
+    public MvRowFilter(MvTarget target) {
+        this.target = target;
+    }
 
     public ArrayList<Block> getBlocks() {
         return blocks;
     }
 
-    public MvTarget getScanTarget() {
-        return scanTarget;
+    public MvTarget getTarget() {
+        return target;
     }
 
-    public void setScanTarget(MvTarget scanTarget) {
-        this.scanTarget = scanTarget;
+    public MvTarget getTransformation() {
+        return transformation;
+    }
+
+    public void setTransformation(MvTarget transformation) {
+        this.transformation = transformation;
     }
 
     public boolean matches(Comparable<?>[] row) {
