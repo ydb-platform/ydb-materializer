@@ -88,12 +88,13 @@ public class MvPathGenerator {
     }
 
     /**
-     * Generates a transformation target to obtain specific fields from a target table,
-     * given the primary key of the top-most table.
+     * Generates a transformation target to obtain specific fields from a target
+     * table, given the primary key of the top-most table.
      *
      * @param point The alias of the table to retrieve fields from
      * @param fieldNames The names of the fields to retrieve
-     * @return A new MvTarget defining the minimal transformation, or null if no path exists
+     * @return A new MvTarget defining the minimal transformation, or null if no
+     * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
     public MvTarget extractFields(MvJoinSource point, List<String> fieldNames) {
@@ -133,11 +134,12 @@ public class MvPathGenerator {
     }
 
     /**
-     * Generates a transformation target to obtain all fields from a target table,
-     * given the primary key of the top-most table.
+     * Generates a transformation target to obtain all fields from a target
+     * table, given the primary key of the top-most table.
      *
      * @param point The alias of the table to retrieve fields from
-     * @return A new MvTarget defining the minimal transformation, or null if no path exists
+     * @return A new MvTarget defining the minimal transformation, or null if no
+     * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
     public MvTarget extractFields(MvJoinSource point) {
@@ -169,7 +171,7 @@ public class MvPathGenerator {
             }
             if (required.add(item.source)) {
                 var path = findPath(topMostSource, item.source);
-                if (path==null || path.isEmpty()) {
+                if (path == null || path.isEmpty()) {
                     throw new IllegalArgumentException("Filter contains join source "
                             + "`" + item.source.getTableAlias() + "` which is not "
                             + "a valid destination for the current target");
@@ -182,7 +184,7 @@ public class MvPathGenerator {
         // Add all sources
         int index = 0;
         for (MvJoinSource src : target.getSources()) {
-            if (! required.contains(src)) {
+            if (!required.contains(src)) {
                 continue;
             }
             MvJoinSource dst = cloneJoinSource(src);
@@ -199,7 +201,7 @@ public class MvPathGenerator {
         // Add relevant join conditions
         index = 0;
         for (MvJoinSource src : target.getSources()) {
-            if (! required.contains(src)) {
+            if (!required.contains(src)) {
                 continue;
             }
             MvJoinSource dst = result.getSources().get(index);
@@ -216,7 +218,7 @@ public class MvPathGenerator {
         index = 0;
         for (FilterItem item : filter.items) {
             MvJoinSource ref = result.getSourceByAlias(item.source.getTableAlias());
-            if (ref==null) {
+            if (ref == null) {
                 throw new IllegalStateException("Could not find reference by name: "
                         + item.source.getTableAlias());
             }
@@ -254,10 +256,9 @@ public class MvPathGenerator {
         return true;
     }
 
-
     /**
-     * Checks if a specific target key can be mapped directly from the input source
-     * by analyzing join conditions. Used by key path generator.
+     * Checks if a specific target key can be mapped directly from the input
+     * source by analyzing join conditions. Used by key path generator.
      */
     private boolean canMapTargetKey(MvJoinSource source, String fieldName) {
         if (source == topMostSource
@@ -304,8 +305,8 @@ public class MvPathGenerator {
     }
 
     /**
-     * Checks if the target fields can be directly mapped from the top-most source
-     * without joins by analyzing join conditions.
+     * Checks if the target fields can be directly mapped from the top-most
+     * source without joins by analyzing join conditions.
      */
     private boolean canDirectlyMapFields(MvJoinSource targetSource, List<String> fieldNames) {
         for (String fieldName : fieldNames) {
@@ -317,8 +318,9 @@ public class MvPathGenerator {
     }
 
     /**
-     * Checks if a specific target field can be mapped directly from the top-most source
-     * by analyzing join conditions. Used by field path generator.
+     * Checks if a specific target field can be mapped directly from the
+     * top-most source by analyzing join conditions. Used by field path
+     * generator.
      */
     private boolean canMapTargetField(MvJoinSource source, String fieldName) {
         if (source == topMostSource
@@ -336,10 +338,9 @@ public class MvPathGenerator {
         return false;
     }
 
-
     /**
-     * Creates a simple direct target for the case where target source
-     * is the top-most source.
+     * Creates a simple direct target for the case where target source is the
+     * top-most source.
      */
     private static MvTarget createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
         MvTarget result = new MvTarget(source.getTableName() + "_simple", source.getSqlPos());
@@ -407,7 +408,8 @@ public class MvPathGenerator {
     }
 
     /**
-     * Creates a transformation target based on the found path to retrieve specific fields.
+     * Creates a transformation target based on the found path to retrieve
+     * specific fields.
      */
     private static MvTarget createTarget(List<MvJoinSource> path,
             MvJoinSource point, List<String> fieldNames) {
@@ -510,8 +512,8 @@ public class MvPathGenerator {
     }
 
     /**
-     * Copy all literal conditions from the current level.
-     * These are the filtering conditions we need.
+     * Copy all literal conditions from the current level. These are the
+     * filtering conditions we need.
      */
     private static void copyLiteralConditions(MvTarget result,
             MvJoinSource src, MvJoinSource dst) {
@@ -537,9 +539,9 @@ public class MvPathGenerator {
     }
 
     /**
-     * Copy the relevant relational conditions from path components to dst.
-     * The relevant ones are linked to the src reference,
-     * and the other side must be linked below the src in the path.
+     * Copy the relevant relational conditions from path components to dst. The
+     * relevant ones are linked to the src reference, and the other side must be
+     * linked below the src in the path.
      */
     private static void copyRelationalConditions(List<MvJoinSource> path,
             MvJoinSource src, MvJoinSource dst, MvTarget result) {
@@ -551,18 +553,18 @@ public class MvPathGenerator {
         for (MvJoinSource cur : path) {
             for (MvJoinCondition cond : cur.getConditions()) {
                 MvJoinCondition copy = null;
-                if (cond.getFirstRef()==src && cond.getSecondRef()!=null) {
+                if (cond.getFirstRef() == src && cond.getSecondRef() != null) {
                     int refIndex = path.indexOf(cond.getSecondRef());
                     if (refIndex >= 0 && refIndex < baseIndex) {
                         copy = cond.cloneTo(result);
                     }
-                } else if (cond.getSecondRef()==src && cond.getFirstRef()!=null) {
+                } else if (cond.getSecondRef() == src && cond.getFirstRef() != null) {
                     int refIndex = path.indexOf(cond.getFirstRef());
                     if (refIndex >= 0 && refIndex < baseIndex) {
                         copy = cond.cloneTo(result);
                     }
                 }
-                if (copy!=null && !isDuplicateCondition(dst.getConditions(), copy)) {
+                if (copy != null && !isDuplicateCondition(dst.getConditions(), copy)) {
                     dst.getConditions().add(copy);
                 }
             }
@@ -637,7 +639,8 @@ public class MvPathGenerator {
     }
 
     /**
-     * Extracts the source column from a join condition if it maps to the target field.
+     * Extracts the source column from a join condition if it maps to the target
+     * field.
      */
     private static String getSourceColumn(MvJoinCondition condition,
             MvJoinSource source, MvJoinSource target, String fieldName) {
@@ -755,6 +758,7 @@ public class MvPathGenerator {
     }
 
     public static final class FilterItem {
+
         public final MvJoinSource source;
         public final String[] fieldNames;
 
@@ -762,14 +766,33 @@ public class MvPathGenerator {
             this.source = source;
             this.fieldNames = fieldNames;
         }
+
+        @Override
+        public String toString() {
+            return "{" + source + ": " + Arrays.toString(fieldNames) + '}';
+        }
     }
 
     public static final class Filter {
+
         private final ArrayList<FilterItem> items = new ArrayList<>();
+
+        public ArrayList<FilterItem> getItems() {
+            return items;
+        }
 
         public Filter add(MvJoinSource source, String... names) {
             items.add(new FilterItem(source, names));
             return this;
+        }
+
+        public Filter add(MvJoinSource source) {
+            return add(source, source.getKeyColumnNames());
+        }
+
+        @Override
+        public String toString() {
+            return items.toString();
         }
     }
 

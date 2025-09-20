@@ -1,6 +1,7 @@
 package tech.ydb.mv.data;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 
 import tech.ydb.mv.model.MvTarget;
@@ -53,6 +54,14 @@ public class MvRowFilter {
                 .mapToInt(b -> b.isEmpty() ? 0 : 1)
                 .sum();
         return (countNonEmpty == 0);
+    }
+
+    public void addBlock(int startPos, int length, Collection<? extends MvTuple> tuples) {
+        var block = new Block(startPos, length);
+        for (var tuple : tuples) {
+            block.tuples.add(new MvTuple(tuple.values));
+        }
+        blocks.add(block);
     }
 
     public static class Block {
