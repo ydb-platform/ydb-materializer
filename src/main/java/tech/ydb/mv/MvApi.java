@@ -3,10 +3,13 @@ package tech.ydb.mv;
 import tech.ydb.mv.svc.MvService;
 import java.io.PrintStream;
 import java.util.Properties;
+import java.util.concurrent.ScheduledExecutorService;
+
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
+import tech.ydb.mv.svc.MvLocker;
 
 /**
  * YDB Materializer controlling API.
@@ -20,9 +23,19 @@ public interface MvApi extends AutoCloseable {
     }
 
     /**
+     * @return The instance of the scheduler to run the tasks against.
+     */
+    ScheduledExecutorService getScheduler();
+
+    /**
      * @return YDB connector being used
      */
     YdbConnector getYdb();
+
+    /**
+     * @return The locker service enables the distributed concurrency control
+     */
+    MvLocker getLocker();
 
     /**
      * @return The complete metadata object being used

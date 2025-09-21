@@ -1,5 +1,6 @@
 package tech.ydb.mv.mgt;
 
+import tech.ydb.mv.svc.MvLocker;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -49,14 +50,24 @@ public class MvCoordinator implements AutoCloseable {
 
     public static MvCoordinator newInstance(YdbConnector ydb,
             MvBatchSettings settings, String runnerId) {
-        return newInstance(ydb, settings, runnerId, null);
+        return newInstance(ydb, settings, runnerId, null, null);
     }
 
     public static MvCoordinator newInstance(YdbConnector ydb,
-            MvBatchSettings settings, String runnerId, MvCoordinatorActions job) {
+            MvBatchSettings settings, String runnerId,
+            ScheduledExecutorService scheduler) {
+        return newInstance(ydb, settings, runnerId, scheduler, null);
+    }
+
+    public static MvCoordinator newInstance(YdbConnector ydb,
+            MvBatchSettings settings, String runnerId,
+            ScheduledExecutorService scheduler,
+            MvCoordinatorActions job) {
         MvLocker locker = new MvLocker(ydb);
         MvJobDao jobDao = new MvJobDao(ydb, settings);
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        if (scheduler == null) {
+            scheduler = Executors.newScheduledThreadPool(1);
+        }
         if (job == null) {
             job = new MvCoordinatorImpl(jobDao, settings);
         }

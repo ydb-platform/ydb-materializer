@@ -46,7 +46,9 @@ public class MvRunner implements AutoCloseable {
 
     /**
      * Start the runner.
-     * @return true, if the runner has been just started, and false, if it was already running
+     *
+     * @return true, if the runner has been just started, and false, if it was
+     * already running
      */
     public synchronized boolean start() {
         if (running.get()) {
@@ -68,7 +70,9 @@ public class MvRunner implements AutoCloseable {
 
     /**
      * Stop the runner.
-     * @return true, if the runner has been just stopped, and false if it was stopped already
+     *
+     * @return true, if the runner has been just stopped, and false if it was
+     * stopped already
      */
     public synchronized boolean stop() {
         if (!running.get()) {
@@ -249,16 +253,16 @@ public class MvRunner implements AutoCloseable {
      */
     private String generateRunnerId() {
         return "runner-" + UUID.randomUUID().toString().substring(0, 8)
-                + "-" + System.currentTimeMillis();
+                + "-" + Long.toHexString(System.currentTimeMillis());
     }
 
     /**
      * Generate runner identity information.
      */
     private String generateRunnerIdentity() {
-        return "host:" + getHostname() +
-                ",pid:" + getProcessId() +
-                ",start:" + System.currentTimeMillis();
+        return "host:" + getHostname()
+                + ",pid:" + getProcessId()
+                + ",start:" + System.currentTimeMillis();
     }
 
     private String getHostname() {

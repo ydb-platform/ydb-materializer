@@ -152,7 +152,8 @@ public class MvConfig {
     public static enum Mode {
         CHECK,
         SQL,
-        RUN
+        LOCAL,
+        JOB
     }
 
     public static enum Input {

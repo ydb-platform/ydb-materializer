@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.mgt.MvLocker;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
@@ -58,6 +57,7 @@ public class MvService implements MvApi {
         this.scheduler = Executors.newScheduledThreadPool(1);
     }
 
+    @Override
     public ScheduledExecutorService getScheduler() {
         return scheduler;
     }

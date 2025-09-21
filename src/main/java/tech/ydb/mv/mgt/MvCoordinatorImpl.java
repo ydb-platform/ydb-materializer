@@ -1,6 +1,7 @@
 package tech.ydb.mv.mgt;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +33,6 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     public void onTick() {
         cleanupInactiveRunners();
         balanceJobs();
-    }
-
-    @Override
-    public void onStop() {
-
     }
 
     /**
@@ -81,7 +77,9 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             }
 
             var runnerJobs = mvJobDao.getAllRunnerJobs();
-            var runnerNameJobs = runnerJobs.stream().map(MvRunnerJobInfo::getJobName).collect(Collectors.toSet());
+            var runnerNameJobs = runnerJobs.stream()
+                    .map(MvRunnerJobInfo::getJobName)
+                    .collect(Collectors.toSet());
 
             List<MvRunnerJobInfo> jobsForRemoval = runnerJobs.stream()
                     .filter(runnerJob -> !jobsToRun.containsKey(runnerJob.getJobName()))
@@ -97,6 +95,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             }
 
             // Create commands to start missing jobs
+            runnerJobs = new ArrayList<>(runnerJobs); // repack
             for (var missingJob : newJobs) {
                 createStartCommand(missingJob, allRunners, runnerJobs);
             }
@@ -113,14 +112,14 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     /**
      * Create a command to stop a job.
      */
-    private void createStopCommand(MvRunnerJobInfo mvRunnerJobInfo) {
+    private void createStopCommand(MvRunnerJobInfo job) {
         try {
             MvCommand command = new MvCommand(
-                    mvRunnerJobInfo.getRunnerId(),
+                    job.getRunnerId(),
                     commandNo.incrementAndGet(),
                     Instant.now(),
                     MvCommand.TYPE_STOP,
-                    mvRunnerJobInfo.getJobName(),
+                    job.getJobName(),
                     null,
                     MvCommand.STATUS_CREATED,
                     null
@@ -128,18 +127,18 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
 
             mvJobDao.createCommand(command);
             LOG.info("Created STOP command for job: {} on runner: {}",
-                    mvRunnerJobInfo.getJobName(), mvRunnerJobInfo.getRunnerId());
+                    job.getJobName(), job.getRunnerId());
         } catch (Exception ex) {
-            LOG.error("Failed to create STOP command for job: {}", mvRunnerJobInfo.getJobName(), ex);
+            LOG.error("Failed to create STOP command for job: {}", job.getJobName(), ex);
         }
     }
 
     /**
      * Create a command to start a job.
      */
-    private void createStartCommand(MvJobInfo job, List<MvRunnerInfo> runners, List<MvRunnerJobInfo> mvRunnerJobInfos) {
+    private void createStartCommand(MvJobInfo job, List<MvRunnerInfo> runners, List<MvRunnerJobInfo> jobs) {
         try {
-            var cmdCountByRunner = mvRunnerJobInfos.stream()
+            var cmdCountByRunner = jobs.stream()
                     .collect(Collectors.groupingBy(MvRunnerJobInfo::getRunnerId, Collectors.counting()));
 
             MvRunnerInfo runner = runners.stream().min(Comparator.comparing(
@@ -156,7 +155,8 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                     MvCommand.STATUS_CREATED,
                     null
             );
-            mvRunnerJobInfos.add(new MvRunnerJobInfo(runner.getRunnerId(), job.getJobName(), job.getJobSettings(), Instant.now()));
+            // Need to add one so that the new job will be accounted for when planning
+            jobs.add(new MvRunnerJobInfo(runner.getRunnerId(), job.getJobName(), job.getJobSettings(), Instant.now()));
 
             mvJobDao.createCommand(command);
             LOG.info("Created START command for job: {} on runner: {}", job.getJobName(), runner.getRunnerId());
