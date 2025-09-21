@@ -11,9 +11,11 @@ import java.util.HashSet;
  */
 public class MvChangesSingleDict {
 
+    // dictionary table name
     private final String tableName;
     // fieldName -> row keys where the field is modified
     private final HashMap<String, HashSet<MvKey>> fields = new HashMap<>();
+    // the last key in the dictionary log
     private MvKey scanPosition;
 
     public MvChangesSingleDict(String tableName) {
@@ -44,6 +46,15 @@ public class MvChangesSingleDict {
         }
         rowKeys.add(rowKey);
         return this;
+    }
+
+    public boolean isEmpty() {
+        for (var v : fields.values()) {
+            if (!v.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

@@ -2,15 +2,18 @@ package tech.ydb.mv.svc;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import tech.ydb.mv.YdbConnector;
 
+import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.parser.MvDescriberMeta;
 
 /**
  * Contextual data for running a job processing a single handler.
@@ -20,30 +23,33 @@ import tech.ydb.mv.model.MvTarget;
 public class MvJobContext implements MvCdcAdapter {
 
     private final MvService service;
-    private final MvHandler metadata;
+    private final MvHandler handler;
     private final MvHandlerSettings settings;
+    private final MvDescriberMeta describer;
     // initially stopped
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
     // target name -> scan feeder
     private final HashMap<String, MvScanFeeder> scanFeeders = new HashMap<>();
 
-    public MvJobContext(MvService service, MvHandler metadata, MvHandlerSettings settings) {
+    public MvJobContext(MvService service, MvMetadata metadata,
+            MvHandler handler, MvHandlerSettings settings) {
         this.service = service;
-        this.metadata = metadata;
+        this.handler = handler;
         this.settings = settings;
+        this.describer = new MvDescriberMeta(metadata);
     }
 
     @Override
     public String toString() {
-        return "MvJobContext{" + metadata.getName() + '}';
+        return "MvJobContext{" + handler.getName() + '}';
     }
 
     public MvService getService() {
         return service;
     }
 
-    public MvHandler getMetadata() {
-        return metadata;
+    public MvHandler getHandler() {
+        return handler;
     }
 
     public YdbConnector getYdb() {
@@ -52,6 +58,10 @@ public class MvJobContext implements MvCdcAdapter {
 
     public MvHandlerSettings getSettings() {
         return settings;
+    }
+
+    public MvDescriberMeta getDescriber() {
+        return describer;
     }
 
     @Override
@@ -69,7 +79,7 @@ public class MvJobContext implements MvCdcAdapter {
 
     @Override
     public String getFeederName() {
-        return metadata.getName();
+        return handler.getName();
     }
 
     @Override
@@ -79,7 +89,7 @@ public class MvJobContext implements MvCdcAdapter {
 
     @Override
     public String getConsumerName() {
-        return metadata.getConsumerNameAlways();
+        return handler.getConsumerNameAlways();
     }
 
     public synchronized boolean isAnyScanRunning() {
@@ -92,19 +102,19 @@ public class MvJobContext implements MvCdcAdapter {
     }
 
     public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
-            MvApplyManager applyManager) {
+            MvApplyManager applyManager, MvApplyActionList actions) {
         if (target == null
-                || metadata.getTargets().get(target.getName()) != target) {
+                || handler.getTargets().get(target.getName()) != target) {
             throw new IllegalArgumentException("Illegal target `" + target
-                    + "` for handler `" + metadata.getName() + "`");
+                    + "` for handler `" + handler.getName() + "`");
         }
         if (!isRunning()) {
             throw new IllegalStateException("Scan start refused on stopped handler `"
-                    + metadata.getName() + "`");
+                    + handler.getName() + "`");
         }
         MvScanFeeder sf = scanFeeders.get(target.getName());
         if (sf == null) {
-            sf = new MvScanFeeder(this, applyManager, target, settings, null);
+            sf = new MvScanFeeder(this, applyManager, target, settings, actions);
             scanFeeders.put(target.getName(), sf);
         }
         return sf.start();
@@ -112,7 +122,7 @@ public class MvJobContext implements MvCdcAdapter {
 
     public synchronized boolean stopScan(MvTarget target) {
         if (target == null
-                || metadata.getTargets().get(target.getName()) != target) {
+                || handler.getTargets().get(target.getName()) != target) {
             return false;
         }
         MvScanFeeder sf = scanFeeders.remove(target.getName());

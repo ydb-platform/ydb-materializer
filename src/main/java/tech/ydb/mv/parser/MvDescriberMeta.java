@@ -15,6 +15,10 @@ public class MvDescriberMeta implements MvDescriber {
         this.metadata = metadata;
     }
 
+    public MvMetadata getMetadata() {
+        return metadata;
+    }
+
     @Override
     public MvTableInfo describeTable(String tabname) {
         MvTableInfo ret = metadata.getTables().get(tabname);

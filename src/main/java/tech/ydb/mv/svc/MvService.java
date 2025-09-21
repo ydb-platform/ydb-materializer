@@ -183,6 +183,7 @@ public class MvService implements MvApi {
      * settings.
      *
      * @param name Name of the handler to be started
+     * @return true, if handler has been started, false otherwise
      */
     @Override
     public boolean startHandler(String name) {
@@ -213,7 +214,7 @@ public class MvService implements MvApi {
         if (handler == null) {
             throw new IllegalArgumentException("Unknown handler name: " + name);
         }
-        c = new MvJobController(this, handler, settings);
+        c = new MvJobController(this, m, handler, settings);
         handlers.put(name, c);
         return c.start();
     }

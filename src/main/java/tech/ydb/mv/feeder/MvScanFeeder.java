@@ -58,13 +58,13 @@ public class MvScanFeeder {
     public synchronized boolean start() {
         if (!job.isRunning()) {
             throw new IllegalStateException("Refusing to start scan feeder "
-                    + "for a stopped handler job " + job.getMetadata().getName());
+                    + "for a stopped handler job " + job.getHandler().getName());
         }
         if (context.get() != null) {
             return false;
         }
         MvScanContext ctx = context.getAndSet(
-                new MvScanContext(job.getMetadata(), target, job.getYdb(), controlTable));
+                new MvScanContext(job.getHandler(), target, job.getYdb(), controlTable));
         if (ctx != null) {
             context.set(ctx);
             return false;
@@ -72,7 +72,7 @@ public class MvScanFeeder {
         Thread thread = new Thread(() -> safeRun());
         thread.setDaemon(true);
         thread.setName("mv-scan-feeder-"
-                + job.getMetadata().getName()
+                + job.getHandler().getName()
                 + "-" + target.getName());
         thread.start();
         return true;
@@ -113,7 +113,7 @@ public class MvScanFeeder {
                 return;
             } catch (Exception ex) {
                 LOG.info("Failed scan feeder for target {} in handler {} - retry pending...",
-                        target.getName(), job.getMetadata().getName(), ex);
+                        target.getName(), job.getHandler().getName(), ex);
             }
             sleepSome();
         }
@@ -131,7 +131,7 @@ public class MvScanFeeder {
                 ctx.getScanDao().registerScan();
             }
             LOG.info("Started scan feeder for target {} in handler {}, position {}",
-                    target.getName(), job.getMetadata().getName(), key);
+                    target.getName(), job.getHandler().getName(), key);
         }
         rateLimiterCounter = 0;
         rateLimiterStamp = System.currentTimeMillis();
@@ -145,7 +145,7 @@ public class MvScanFeeder {
         ctx.getScanDao().unregisterScan();
         job.forgetScan(target);
         LOG.info("Finished scan feeder for target {} in handler {}",
-                target.getName(), job.getMetadata().getName());
+                target.getName(), job.getHandler().getName());
     }
 
     private int stepScan(MvScanContext ctx) {

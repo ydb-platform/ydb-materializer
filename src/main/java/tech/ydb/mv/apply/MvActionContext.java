@@ -36,7 +36,7 @@ class MvActionContext {
     }
 
     public MvHandler getMetadata() {
-        return base.getMetadata();
+        return base.getHandler();
     }
 
     public QueryClient getQueryClient() {

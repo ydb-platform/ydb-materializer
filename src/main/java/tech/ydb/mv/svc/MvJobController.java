@@ -1,9 +1,16 @@
 package tech.ydb.mv.svc;
 
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.apply.MvApplyActionList;
+
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTarget;
 
@@ -20,20 +27,23 @@ public class MvJobController {
     private final MvJobContext context;
     private final MvApplyManager applyManager;
     private final MvCdcFeeder cdcFeeder;
+    private final AtomicReference<ScheduledFuture<?>> dictCheckFuture = new AtomicReference<>();
+    private final AtomicLong dictCheckTime = new AtomicLong(0);
 
-    public MvJobController(MvService service, MvHandler metadata, MvHandlerSettings settings) {
-        this.context = new MvJobContext(service, metadata, settings);
+    public MvJobController(MvService service, MvMetadata metadata,
+            MvHandler handler, MvHandlerSettings settings) {
+        this.context = new MvJobContext(service, metadata, handler, settings);
         this.applyManager = new MvApplyManager(this.context);
         this.cdcFeeder = new MvCdcFeeder(this.context, service.getYdb(), this.applyManager);
     }
 
     @Override
     public String toString() {
-        return "MvController{" + context.getMetadata().getName() + '}';
+        return "MvController{" + context.getHandler().getName() + '}';
     }
 
     public String getName() {
-        return context.getMetadata().getName();
+        return context.getHandler().getName();
     }
 
     public MvJobContext getContext() {
@@ -61,7 +71,7 @@ public class MvJobController {
             LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
         }
-        if (!lockObtain()) {
+        if (!obtainLock()) {
             return false;
         }
         LOG.info("Starting the controller `{}`", getName());
@@ -69,6 +79,7 @@ public class MvJobController {
         applyManager.refreshSelectors(context.getYdb().getTableClient());
         applyManager.start();
         cdcFeeder.start();
+        scheduleDictionaryChecks();
         return true;
     }
 
@@ -79,31 +90,32 @@ public class MvJobController {
         }
         LOG.info("Stopping the controller `{}`", getName());
         context.setStopped();
+        cancelDictionaryChecks();
         cdcFeeder.stop();
         // no explicit stop for applyManager - threads are stopped by context flag
         applyManager.awaitTermination();
-        lockRelease();
+        releaseLock();
         return true;
     }
 
     public boolean startScan(String name, MvScanSettings settings) {
-        MvTarget target = context.getMetadata().getTarget(name);
+        MvTarget target = context.getHandler().getTarget(name);
         if (target == null) {
             throw new IllegalArgumentException("Illegal target name `" + name
-                    + "` for handler `" + context.getMetadata().getName() + "`");
+                    + "` for handler `" + context.getHandler().getName() + "`");
         }
-        return context.startScan(target, settings, applyManager);
+        return context.startScan(target, settings, applyManager, null);
     }
 
     public boolean stopScan(String name) {
-        MvTarget target = context.getMetadata().getTarget(name);
+        MvTarget target = context.getHandler().getTarget(name);
         if (target == null) {
             return false;
         }
         return context.stopScan(target);
     }
 
-    private boolean lockObtain() {
+    private boolean obtainLock() {
         if (!context.getService().getLocker().lock(getName())) {
             LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
             return false;
@@ -111,8 +123,74 @@ public class MvJobController {
         return true;
     }
 
-    private boolean lockRelease() {
+    private boolean releaseLock() {
         return context.getService().getLocker().release(getName());
+    }
+
+    private void scheduleDictionaryChecks() {
+        var f = context.getService().getScheduler().scheduleAtFixedRate(
+                this::analyzeDictionaryChecks,
+                30,
+                30,
+                TimeUnit.SECONDS
+        );
+        f = dictCheckFuture.getAndSet(f);
+        if (f != null) {
+            f.cancel(true);
+        }
+    }
+
+    private void cancelDictionaryChecks() {
+        var f = dictCheckFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(true);
+        }
+    }
+
+    private void analyzeDictionaryChecks() {
+        long tv = dictCheckTime.get();
+        long cur = System.currentTimeMillis();
+        long millis = 1000L * context.getSettings().getDictionaryScanSeconds();
+        if ((cur - tv) >= millis) {
+            dictCheckTime.set(cur);
+            try {
+                performDictionaryChecks();
+            } catch (Exception ex) {
+                LOG.error("Failed to perform dictionary checks on handler `{}`",
+                        context.getHandler().getName(), ex);
+            }
+        }
+    }
+
+    private void performDictionaryChecks() {
+        var settings = context.getService().getDictionarySettings();
+        var dictScan = new MvDictionaryScan(context.getYdb(),
+                context.getDescriber(), context.getHandler(), settings);
+        var changes = dictScan.scanAll();
+        if (changes.isEmpty()) {
+            dictScan.commitAll(changes);
+            return;
+        }
+        var filters = changes.toFilters(context.getHandler());
+        if (filters.isEmpty()) {
+            dictScan.commitAll(changes);
+            return;
+        }
+        if (context.isAnyScanRunning()) {
+            LOG.info("Dictionary refresh skipped on handler `{}` "
+                    + "due to already running scans", context.getHandler().getName());
+            return;
+        }
+        for (var filter : filters) {
+            var action = applyManager.createFilterAction(filter);
+            if (action == null) {
+                continue;
+            }
+            LOG.info("Initiating dictionary refresh scan for target `{}` in handler `{}`",
+                    filter.getTarget().getName(), context.getHandler().getName());
+            var actions = new MvApplyActionList(action);
+            context.startScan(filter.getTarget(), settings, applyManager, actions);
+        }
     }
 
 }

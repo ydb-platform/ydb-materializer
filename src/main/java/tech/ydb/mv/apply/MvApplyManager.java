@@ -276,7 +276,8 @@ public class MvApplyManager implements MvCdcSink {
         }
     }
 
-    public MvApplyAction createFilterAction(MvTarget target, MvRowFilter filter) {
+    public MvApplyAction createFilterAction(MvRowFilter filter) {
+        var target = filter.getTarget();
         var targetConfig = targetConfigs.get(target.getName());
         if (targetConfig == null) {
             throw new IllegalArgumentException("Cannot produce filter action "

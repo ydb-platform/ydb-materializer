@@ -27,6 +27,15 @@ public class MvChangesMultiDict {
         return Collections.unmodifiableCollection(items.values());
     }
 
+    public boolean isEmpty() {
+        for (var item : items.values()) {
+            if (!item.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public MvChangesMultiDict addItem(MvChangesSingleDict sd) {
         items.put(sd.getTableName(), sd);
         return this;

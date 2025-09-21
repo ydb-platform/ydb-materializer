@@ -39,11 +39,12 @@ public class MvRowFilter {
 
     public boolean matches(Comparable<?>[] row) {
         for (Block block : blocks) {
-            if (!block.matches(row)) {
-                return false;
+            if (block.matches(row)) {
+                // any matching block means that the row matches
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     public boolean isEmpty() {
