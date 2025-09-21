@@ -10,12 +10,12 @@ public class MvConfig {
     /**
      * Name for the dictionary change logging handler.
      */
-    public static final String HANDLER_DICTIONARY = "sys$dictionary";
+    public static final String HANDLER_DICTIONARY = "ydbmv$dictionary";
 
     /**
      * Name for the global job coordinator handler.
      */
-    public static final String HANDLER_COORDINATOR = "sys$coordinator";
+    public static final String HANDLER_COORDINATOR = "ydbmv$coordinator";
 
     /**
      * FILE read input statements from file TABLE read input statements from
@@ -71,27 +71,32 @@ public class MvConfig {
     /**
      * Handler setting: number of threads in the CDC reader pool.
      */
-    public static final String CONF_DEF_CDC_THREADS = "job.default.cdc.threads";
+    public static final String CONF_CDC_THREADS = "job.cdc.threads";
 
     /**
      * Handler setting: number of threads in the apply pool.
      */
-    public static final String CONF_DEF_APPLY_THREADS = "job.default.apply.threads";
+    public static final String CONF_APPLY_THREADS = "job.apply.threads";
 
     /**
      * Handler setting: max number of elements in the apply queue, per thread.
      */
-    public static final String CONF_DEF_APPLY_QUEUE = "job.default.apply.queue";
+    public static final String CONF_APPLY_QUEUE = "job.apply.queue";
 
     /**
      * Handler setting: number of rows to be selected for batch processing.
      */
-    public static final String CONF_DEF_BATCH_SELECT = "job.default.batch.select";
+    public static final String CONF_BATCH_SELECT = "job.batch.select";
 
     /**
      * Handler setting: number of rows to be applied in a batch.
      */
-    public static final String CONF_DEF_BATCH_UPSERT = "job.default.batch.upsert";
+    public static final String CONF_BATCH_UPSERT = "job.batch.upsert";
+
+    /**
+     * Handler setting: period between dictionary scans, seconds.
+     */
+    public static final String CONF_DICT_SCAN_SECONDS = "job.dict.scan.seconds";
 
     /**
      * Default input SQL file name.

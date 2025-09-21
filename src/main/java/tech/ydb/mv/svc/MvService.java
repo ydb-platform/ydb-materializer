@@ -7,6 +7,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.MvApi;
@@ -39,10 +43,10 @@ public class MvService implements MvApi {
     private final AtomicReference<MvHandlerSettings> handlerSettings;
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
     private final AtomicReference<MvScanSettings> scanSettings;
+    private final ScheduledExecutorService scheduler;
+    private final AtomicReference<ScheduledFuture<?>> refreshFuture = new AtomicReference<>();
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
-    private final SchedulerTask schedulerTask = new SchedulerTask();
-    private volatile Thread schedulerThread = null;
 
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
@@ -51,6 +55,11 @@ public class MvService implements MvApi {
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
+        this.scheduler = Executors.newScheduledThreadPool(1);
+    }
+
+    public ScheduledExecutorService getScheduler() {
+        return scheduler;
     }
 
     @Override
@@ -129,6 +138,7 @@ public class MvService implements MvApi {
 
     @Override
     public synchronized void shutdown() {
+        cancelPartitionsRefresh();
         handlers.values().forEach(h -> h.stop());
         handlers.clear();
         locker.releaseAll();
@@ -141,13 +151,20 @@ public class MvService implements MvApi {
     @Override
     public void close() {
         shutdown();
+        scheduler.shutdown();
+        try {
+            scheduler.awaitTermination(10L, TimeUnit.SECONDS);
+        } catch (InterruptedException ix) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public synchronized boolean startDictionaryHandler() {
         if (dictionaryManager != null) {
             return false;
         }
-        dictionaryManager = new MvDictionaryLogger(metadata, ydb, dictionarySettings.get());
+        MvMetadata m = loadMetadata(ydb, null);
+        dictionaryManager = new MvDictionaryLogger(m, ydb, dictionarySettings.get());
         dictionaryManager.start();
         return true;
     }
@@ -183,12 +200,7 @@ public class MvService implements MvApi {
      * @return true, if handler has been started, false otherwise
      */
     public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
-        if (schedulerThread == null || !schedulerThread.isAlive()) {
-            schedulerThread = new Thread(schedulerTask);
-            schedulerThread.setName("mv-scheduler");
-            schedulerThread.setDaemon(true);
-            schedulerThread.start();
-        }
+        ensurePartitionsRefresh();
         MvJobController c = handlers.get(name);
         if (c != null) {
             if (c.isRunning()) {
@@ -312,6 +324,35 @@ public class MvService implements MvApi {
         return Arrays.asList(v.split("[,]"));
     }
 
+    private void ensurePartitionsRefresh() {
+        if (refreshFuture.get() != null) {
+            return;
+        }
+        var f = scheduler.scheduleWithFixedDelay(
+                this::partitionsRefresh,
+                60,
+                60,
+                TimeUnit.SECONDS
+        );
+        f = refreshFuture.getAndSet(f);
+        if (f != null) {
+            f.cancel(false);
+        }
+    }
+
+    private void cancelPartitionsRefresh() {
+        var f = refreshFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(true);
+        }
+    }
+
+    private void partitionsRefresh() {
+        for (MvJobController c : grabControllers()) {
+            c.getApplyManager().refreshSelectors(ydb.getTableClient());
+        }
+    }
+
     private synchronized ArrayList<MvJobController> grabControllers() {
         return new ArrayList<>(handlers.values());
     }
@@ -332,33 +373,5 @@ public class MvService implements MvApi {
             m.linkAndValidate(new MvDescriberYdb(ydb));
         }
         return m;
-    }
-
-    private void sleepSome() {
-        for (int i = 0; i < 3000; ++i) {
-            if (!isRunning()) {
-                break;
-            }
-            YdbMisc.sleep(100L);
-        }
-    }
-
-    private void checkAndRunScheduledTasks() {
-        for (MvJobController c : grabControllers()) {
-            c.getApplyManager().refreshSelectors(ydb.getTableClient());
-            c.getApplyManager().pingTasks();
-        }
-    }
-
-    private class SchedulerTask implements Runnable {
-
-        @Override
-        public void run() {
-            sleepSome();
-            while (isRunning()) {
-                checkAndRunScheduledTasks();
-                sleepSome();
-            }
-        }
     }
 }

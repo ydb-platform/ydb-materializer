@@ -122,13 +122,6 @@ public class MvApplyManager implements MvCdcSink {
     }
 
     /**
-     * Check the extra tasks to be started, and start them.
-     */
-    public void pingTasks() {
-        // TODO
-    }
-
-    /**
      * Used by the controller to start the apply worker threads. No need for
      * explicit stop method here - the threads stop when the controller reports
      * itself as stopped via isRunning() method.

@@ -4,6 +4,7 @@ import java.util.List;
 
 /**
  * Logical check issues.
+ *
  * @author zinal
  */
 public interface MvIssue extends MvSqlPosHolder {
@@ -13,6 +14,7 @@ public interface MvIssue extends MvSqlPosHolder {
     String getMessage();
 
     public static abstract class Issue implements MvIssue {
+
         final MvSqlPos sqlPos;
 
         public Issue(MvSqlPos mip) {
@@ -31,6 +33,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static abstract class Error extends Issue {
+
         public Error(MvSqlPos mip) {
             super(mip);
         }
@@ -42,6 +45,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static abstract class Warning extends Issue {
+
         public Warning(MvSqlPos mip) {
             super(mip);
         }
@@ -53,6 +57,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class LexerError extends Error {
+
         private final String msg;
 
         public LexerError(int row, int column, String msg) {
@@ -67,6 +72,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class ParserError extends Error {
+
         private final String msg;
 
         public ParserError(int row, int column, String msg) {
@@ -81,6 +87,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownAlias extends Error {
+
         private final MvTarget target;
         private final String aliasName;
 
@@ -99,6 +106,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownColumn extends Error {
+
         private final MvTarget target;
         private final String aliasName;
         private final String columnName;
@@ -120,6 +128,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class IllegalJoinCondition extends Error {
+
         private final MvTarget target;
         private final MvJoinSource src;
         private final MvJoinCondition cond;
@@ -135,11 +144,12 @@ public interface MvIssue extends MvSqlPosHolder {
         public String getMessage() {
             return "Illegal join condition on source alias `" + src.getTableAlias()
                     + "` in target " + target
-                    + " at " + sqlPos;
+                    + " at " + cond.getSqlPos();
         }
     }
 
     public static class MissingTargetTable extends Error {
+
         private final MvTarget target;
 
         public MissingTargetTable(MvTarget target) {
@@ -155,6 +165,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownSourceTable extends Error {
+
         private final MvTarget target;
         private final String tableName;
 
@@ -173,6 +184,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class MismatchedSourceTable extends Error {
+
         private final MvTarget target;
         private final MvJoinSource js;
 
@@ -184,7 +196,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            if (js.getTableInfo()==null) {
+            if (js.getTableInfo() == null) {
                 return "Missing source table information `" + js.getTableName()
                         + "` in target " + target
                         + " at " + sqlPos;
@@ -198,6 +210,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownColumnInCondition extends Error {
+
         private final MvTarget target;
         private final MvJoinCondition cond;
         private final String tableAlias;
@@ -222,6 +235,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownOutputColumn extends Error {
+
         private final MvTarget target;
         private final MvColumn column;
 
@@ -240,6 +254,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class IllegalOutputReference extends Error {
+
         private final MvTarget target;
         private final MvColumn column;
 
@@ -260,6 +275,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownInputTable extends Error {
+
         private final MvInput input;
 
         public UnknownInputTable(MvInput input) {
@@ -275,6 +291,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownChangefeed extends Error {
+
         private final MvInput input;
 
         public UnknownChangefeed(MvInput input) {
@@ -291,6 +308,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class MissingConsumer extends Error {
+
         private final MvInput input;
         private final String consumerName;
 
@@ -310,6 +328,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class DuplicateTarget extends Error {
+
         private final MvTarget cur;
         private final MvTarget prev;
 
@@ -328,6 +347,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UnknownTarget extends Error {
+
         private final MvHandler handler;
         private final String name;
 
@@ -346,6 +366,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class DuplicateHandler extends Error {
+
         private final MvHandler cur;
         private final MvHandler prev;
 
@@ -364,6 +385,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class IllegalHandlerName extends Error {
+
         private final MvHandler cur;
 
         public IllegalHandlerName(MvHandler cur) {
@@ -379,6 +401,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class DuplicateInput extends Error {
+
         private final MvInput cur;
         private final MvInput prev;
 
@@ -397,6 +420,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UselessInput extends Warning {
+
         private final MvInput input;
 
         public UselessInput(MvInput input) {
@@ -412,6 +436,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class MissingInput extends Warning {
+
         private final MvHandler handler;
         private final MvTarget target;
         private final MvJoinSource source;
@@ -434,6 +459,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class EmptyHandler extends Error {
+
         private final MvHandler handler;
         private final EmptyHandlerType type;
 
@@ -445,9 +471,12 @@ public interface MvIssue extends MvSqlPosHolder {
 
         private String getTypeExplanation() {
             switch (type) {
-                case NO_TARGETS: return "no targets";
-                case NO_INPUTS: return "no inputs";
-                default: return "something";
+                case NO_TARGETS:
+                    return "no targets";
+                case NO_INPUTS:
+                    return "no inputs";
+                default:
+                    return "something";
             }
         }
 
@@ -460,6 +489,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class SqlCustomColumnError extends Error {
+
         private final MvTarget target;
         private final MvColumn column;
         private final String issues;
@@ -481,6 +511,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class SqlCustomFilterError extends Error {
+
         private final MvTarget target;
         private final MvComputation filter;
         private final String issues;
@@ -502,6 +533,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class SqlUnexpectedError extends Error {
+
         private final MvTarget target;
         private final String issues;
 
@@ -525,6 +557,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class TargetMultipleHandlers extends Error {
+
         private final MvTarget target;
         private final MvHandler handler1;
         private final MvHandler handler2;
@@ -547,6 +580,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class UselessTarget extends Warning {
+
         private final MvTarget target;
 
         public UselessTarget(MvTarget target) {
@@ -563,6 +597,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class KeyExtractionImpossible extends Warning {
+
         private final MvTarget target;
         private final MvJoinSource source;
 
@@ -583,6 +618,7 @@ public interface MvIssue extends MvSqlPosHolder {
     }
 
     public static class MissingJoinIndex extends Warning {
+
         private final MvTarget target;
         private final MvJoinSource source;
         private final List<String> columns;

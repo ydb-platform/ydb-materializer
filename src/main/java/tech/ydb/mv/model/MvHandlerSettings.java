@@ -2,6 +2,7 @@ package tech.ydb.mv.model;
 
 import java.io.Serializable;
 import java.util.Properties;
+
 import tech.ydb.mv.MvConfig;
 
 /**
@@ -10,13 +11,15 @@ import tech.ydb.mv.MvConfig;
  * @author zinal
  */
 public class MvHandlerSettings implements Serializable {
-    private static final long serialVersionUID = 20250822001L;
+
+    private static final long serialVersionUID = 20250921001L;
 
     private int cdcReaderThreads = 4;
     private int applyThreads = 4;
     private int applyQueueSize = 10000;
     private int selectBatchSize = 1000;
     private int upsertBatchSize = 500;
+    private int dictionaryScanSeconds = 28800; // 8h
 
     public MvHandlerSettings() {
     }
@@ -27,25 +30,29 @@ public class MvHandlerSettings implements Serializable {
         this.applyQueueSize = src.applyQueueSize;
         this.selectBatchSize = src.selectBatchSize;
         this.upsertBatchSize = src.upsertBatchSize;
+        this.dictionaryScanSeconds = src.dictionaryScanSeconds;
     }
 
     public MvHandlerSettings(Properties props) {
         String v;
 
-        v = props.getProperty(MvConfig.CONF_DEF_CDC_THREADS, "4");
+        v = props.getProperty(MvConfig.CONF_CDC_THREADS, "4");
         this.cdcReaderThreads = Integer.parseInt(v);
 
-        v = props.getProperty(MvConfig.CONF_DEF_APPLY_THREADS, "4");
+        v = props.getProperty(MvConfig.CONF_APPLY_THREADS, "4");
         this.applyThreads = Integer.parseInt(v);
 
-        v = props.getProperty(MvConfig.CONF_DEF_APPLY_QUEUE, "10000");
+        v = props.getProperty(MvConfig.CONF_APPLY_QUEUE, "10000");
         this.applyQueueSize = Integer.parseInt(v);
 
-        v = props.getProperty(MvConfig.CONF_DEF_BATCH_SELECT, "1000");
+        v = props.getProperty(MvConfig.CONF_BATCH_SELECT, "1000");
         this.selectBatchSize = Integer.parseInt(v);
 
-        v = props.getProperty(MvConfig.CONF_DEF_BATCH_UPSERT, "500");
+        v = props.getProperty(MvConfig.CONF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "28800");
+        this.dictionaryScanSeconds = Integer.parseInt(v);
     }
 
     public int getCdcReaderThreads() {
@@ -86,6 +93,14 @@ public class MvHandlerSettings implements Serializable {
 
     public void setUpsertBatchSize(int upsertBatchSize) {
         this.upsertBatchSize = upsertBatchSize;
+    }
+
+    public int getDictionaryScanSeconds() {
+        return dictionaryScanSeconds;
+    }
+
+    public void setDictionaryScanSeconds(int dictionaryScanSeconds) {
+        this.dictionaryScanSeconds = dictionaryScanSeconds;
     }
 
 }

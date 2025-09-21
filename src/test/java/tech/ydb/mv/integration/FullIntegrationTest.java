@@ -317,11 +317,8 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
 
     private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
         try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn); var runner = new MvRunner(conn, api)) {
-            new MvCoordinator(
-                    conn,
-                    batchSettings,
-                    instanceName
-            ).start();
+            MvCoordinator.newInstance(conn, batchSettings, instanceName)
+                    .start();
             runner.start();
 
             pause(40_000);

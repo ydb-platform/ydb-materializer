@@ -60,7 +60,7 @@ public class MvCoordinatorTest extends AbstractMgtTest {
 
         MvCoordinator coord = null;
         try {
-            coord = new MvCoordinator(conn, getSettings(), "instance",
+            coord = MvCoordinator.newInstance(conn, getSettings(), "instance",
                     new MvCoordinatorActions() {
                 private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
@@ -123,7 +123,7 @@ public class MvCoordinatorTest extends AbstractMgtTest {
         final ArrayList<MvCoordinator> coords = new ArrayList<>();
 
         for (int i = 0; i < 20; i++) {
-            MvCoordinator c = new MvCoordinator(conn, getSettings(), "instance_" + i,
+            MvCoordinator c = MvCoordinator.newInstance(conn, getSettings(), "instance_" + i,
                     new MvCoordinatorActions() {
                 private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 

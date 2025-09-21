@@ -261,8 +261,8 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
-        props.setProperty(MvConfig.CONF_DEF_APPLY_THREADS, "1");
-        props.setProperty(MvConfig.CONF_DEF_CDC_THREADS, "1");
+        props.setProperty(MvConfig.CONF_APPLY_THREADS, "1");
+        props.setProperty(MvConfig.CONF_CDC_THREADS, "1");
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");

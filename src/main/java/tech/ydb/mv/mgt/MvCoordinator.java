@@ -32,30 +32,35 @@ public class MvCoordinator implements AutoCloseable {
     private final AtomicReference<ScheduledFuture<?>> leaderFuture = new AtomicReference<>();
 
     public MvCoordinator(
-            YdbConnector ydb,
+            MvLocker locker,
+            MvJobDao jobDao,
+            ScheduledExecutorService scheduler,
             MvBatchSettings settings,
-            String runnerId,
-            MvCoordinatorActions job
-    ) {
-        this.locker = new MvLocker(ydb);
-        this.jobDao = new MvJobDao(ydb, settings);
-        this.scheduler = Executors.newScheduledThreadPool(1);
-        this.settings = settings;
-        this.runnerId = runnerId;
-        this.job = job;
-    }
-
-    public MvCoordinator(
-            YdbConnector ydb,
-            MvBatchSettings settings,
+            MvCoordinatorActions job,
             String runnerId
     ) {
-        this.locker = new MvLocker(ydb);
-        this.jobDao = new MvJobDao(ydb, settings);
-        this.scheduler = Executors.newScheduledThreadPool(1);
+        this.locker = locker;
+        this.jobDao = jobDao;
+        this.scheduler = scheduler;
         this.settings = settings;
+        this.job = job;
         this.runnerId = runnerId;
-        this.job = new MvCoordinatorImpl(jobDao, settings);
+    }
+
+    public static MvCoordinator newInstance(YdbConnector ydb,
+            MvBatchSettings settings, String runnerId) {
+        return newInstance(ydb, settings, runnerId, null);
+    }
+
+    public static MvCoordinator newInstance(YdbConnector ydb,
+            MvBatchSettings settings, String runnerId, MvCoordinatorActions job) {
+        MvLocker locker = new MvLocker(ydb);
+        MvJobDao jobDao = new MvJobDao(ydb, settings);
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        if (job == null) {
+            job = new MvCoordinatorImpl(jobDao, settings);
+        }
+        return new MvCoordinator(locker, jobDao, scheduler, settings, job, runnerId);
     }
 
     public String getRunnerId() {

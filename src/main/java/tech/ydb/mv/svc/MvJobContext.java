@@ -82,6 +82,15 @@ public class MvJobContext implements MvCdcAdapter {
         return metadata.getConsumerNameAlways();
     }
 
+    public synchronized boolean isAnyScanRunning() {
+        for (var sf : scanFeeders.values()) {
+            if (sf.isRunning()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
             MvApplyManager applyManager) {
         if (target == null

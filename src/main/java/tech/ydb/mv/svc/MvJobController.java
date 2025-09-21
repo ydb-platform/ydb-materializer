@@ -103,4 +103,14 @@ public class MvJobController {
         return context.stopScan(target);
     }
 
+    /**
+     * Check the extra tasks to be started, and start them.
+     */
+    public void pingTasks() {
+        if (context.isAnyScanRunning()) {
+            // There should be no active scans
+            return;
+        }
+    }
+
 }

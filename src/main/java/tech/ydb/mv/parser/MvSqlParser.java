@@ -18,7 +18,6 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvMetadata;
@@ -230,7 +229,7 @@ public class MvSqlParser {
         if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateHandler(mh, prev));
         }
-        if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(mh.getName())) {
+        if (mh.getName().toLowerCase().startsWith("ydbmv")) {
             mc.addIssue(new MvIssue.IllegalHandlerName(mh));
         }
     }
