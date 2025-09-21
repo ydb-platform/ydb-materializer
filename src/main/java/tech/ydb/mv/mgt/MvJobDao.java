@@ -31,6 +31,7 @@ public class MvJobDao {
     private final String sqlGetAllRunners;
     private final String sqlDeleteRunner;
     private final String sqlUpsertRunnerJob;
+    private final String sqlGetRunnerJobs;
     private final String sqlGetAllRunnerJobs;
     private final String sqlDeleteRunnerJob;
     private final String sqlDeleteRunnerJobs;
@@ -95,10 +96,15 @@ public class MvJobDao {
             VALUES ($runner_id, $job_name, $job_settings, $started_at);
             """, tabRunnerJobs
         );
-        this.sqlGetAllRunnerJobs = String.format("""
+        this.sqlGetRunnerJobs = String.format("""
             DECLARE $runner_id AS Text;
             SELECT runner_id, job_name, job_settings, started_at FROM `%s`
                 WHERE runner_id = $runner_id;
+            """, tabRunnerJobs
+        );
+        this.sqlGetAllRunnerJobs = String.format("""
+            DECLARE $runner_id AS Text;
+            SELECT runner_id, job_name, job_settings, started_at FROM `%s`;
             """, tabRunnerJobs
         );
         this.sqlDeleteRunnerJob = String.format("""
@@ -227,7 +233,7 @@ public class MvJobDao {
     }
 
     public List<MvRunnerJobInfo> getRunnerJobs(String runnerId) {
-        var rs = ydb.sqlRead(sqlGetAllRunnerJobs, Params.of(
+        var rs = ydb.sqlRead(sqlGetRunnerJobs, Params.of(
                 "$runner_id", PrimitiveValue.newText(runnerId)
         )).getResultSet(0);
         List<MvRunnerJobInfo> jobs = new ArrayList<>();

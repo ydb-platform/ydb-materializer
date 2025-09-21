@@ -7,6 +7,8 @@ package tech.ydb.mv;
  */
 public class MvConfig {
 
+    public static final String SYS_PREFIX = "ydbmv";
+
     /**
      * Name for the dictionary change logging handler.
      */

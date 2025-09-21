@@ -2,7 +2,6 @@ package tech.ydb.mv.integration;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.AbstractIntegrationBase;
@@ -16,7 +15,6 @@ import tech.ydb.mv.mgt.MvRunner;
 /**
  * @author Kirill Kurdyukov
  */
-@Disabled
 public class FullIntegrationTest extends AbstractIntegrationBase {
 
     @BeforeAll
@@ -289,6 +287,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 job_settings JsonDocument,
                 command_status Text,
                 command_diag Text,
+                INDEX ix_no GLOBAL SYNC ON (command_no),
                 PRIMARY KEY(runner_id, command_no)
             );
                     """);
@@ -307,7 +306,6 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, """
                     INSERT INTO `mv_jobs` (job_name, should_run) VALUES
-                        ('sys$coordinator', true),
                         ('handler1', true),
                         ('handler2', true);
                         """);
@@ -317,6 +315,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
 
     private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
         try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn); var runner = new MvRunner(conn, api)) {
+            api.applyDefaults(conn.getConfig().getProperties());
             MvCoordinator.newInstance(conn, batchSettings, instanceName)
                     .start();
             runner.start();

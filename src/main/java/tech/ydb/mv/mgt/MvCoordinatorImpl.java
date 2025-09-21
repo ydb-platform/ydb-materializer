@@ -67,7 +67,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     private void balanceJobs() {
         try {
             Map<String, MvJobInfo> jobsToRun = mvJobDao.getAllJobs().stream()
-                    .filter(mvJobInfo -> !mvJobInfo.getJobName().equals("sys$coordinator") && mvJobInfo.isShouldRun())
+                    .filter(mvJobInfo -> mvJobInfo.isRegularJob() && mvJobInfo.isShouldRun())
                     .collect(Collectors.toMap(MvJobInfo::getJobName, job -> job));
             List<MvRunnerInfo> allRunners = mvJobDao.getAllRunners();
 

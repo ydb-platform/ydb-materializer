@@ -72,6 +72,7 @@ public class MvService implements MvApi {
         return metadata;
     }
 
+    @Override
     public MvLocker getLocker() {
         return locker;
     }
@@ -188,6 +189,10 @@ public class MvService implements MvApi {
      */
     @Override
     public boolean startHandler(String name) {
+        if (MvConfig.HANDLER_COORDINATOR.equalsIgnoreCase(name)) {
+            LOG.warn("Ignored start request for coordinator job");
+            return false;
+        }
         if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(name)) {
             return startDictionaryHandler();
         }
