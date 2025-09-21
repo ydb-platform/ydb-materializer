@@ -14,6 +14,8 @@ import tech.ydb.mv.data.YdbStruct;
  */
 public class MvScanDao {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanDao.class);
+
     private final YdbConnector conn;
     private final MvScanAdapter adapter;
     private final String sqlPosSelect;
@@ -29,6 +31,8 @@ public class MvScanDao {
     }
 
     public MvKey initScan() {
+        LOG.debug("Initiating scan, handler `{}`, table `{}`",
+                adapter.getHandlerName(), adapter.getTargetName());
         Params params = Params.of(
                 "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
                 "$table_name", PrimitiveValue.newText(adapter.getTargetName())
@@ -43,6 +47,8 @@ public class MvScanDao {
     }
 
     public void registerScan() {
+        LOG.debug("Registering scan, handler `{}`, table `{}`",
+                adapter.getHandlerName(), adapter.getTargetName());
         Params params = Params.of(
                 "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
                 "$table_name", PrimitiveValue.newText(adapter.getTargetName()),
@@ -52,6 +58,8 @@ public class MvScanDao {
     }
 
     public void unregisterScan() {
+        LOG.debug("Unregistering scan, handler `{}`, table `{}`",
+                adapter.getHandlerName(), adapter.getTargetName());
         Params params = Params.of(
                 "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
                 "$table_name", PrimitiveValue.newText(adapter.getTargetName())
@@ -60,12 +68,24 @@ public class MvScanDao {
     }
 
     public void saveScan(MvKey key) {
+        LOG.debug("Saving scan position, handler `{}`, table `{}`",
+                adapter.getHandlerName(), adapter.getTargetName());
         Params params = Params.of(
                 "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
                 "$table_name", PrimitiveValue.newText(adapter.getTargetName()),
                 "$key_position", PrimitiveValue.newJsonDocument(key.convertKeyToJson())
         );
         conn.sqlWrite(sqlPosUpsert, params);
+    }
+
+    public void unregisterSpecificScan(String tableName) {
+        LOG.debug("Unregistering scan, handler `{}`, table `{}`",
+                adapter.getHandlerName(), tableName);
+        Params params = Params.of(
+                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
+                "$table_name", PrimitiveValue.newText(tableName)
+        );
+        conn.sqlWrite(sqlPosDelete, params);
     }
 
     private static String makePosUpsert(MvScanAdapter adapter) {

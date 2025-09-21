@@ -15,7 +15,10 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
+import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.support.MvScanAdapter;
+import tech.ydb.mv.support.MvScanDao;
 
 /**
  * The controller logic for a single handler. Combines the topic reader, apply
@@ -75,11 +78,15 @@ public class MvJobController {
             return false;
         }
         if (!obtainLock()) {
-            return false;
+            throw new RuntimeException("Failed to obtain the lock for handler `"
+                    + getName() + "`, concurrent instance is probably running");
         }
         LOG.info("Starting the controller `{}`", getName());
         context.setStarted();
         applyManager.refreshSelectors(context.getYdb().getTableClient());
+        // Temporary workaround: clear the scan positions for the targets,
+        // as we cannot resume any regular scans.
+        clearScanPositions();
         applyManager.start();
         cdcFeeder.start();
         scheduleDictionaryChecks();
@@ -128,6 +135,13 @@ public class MvJobController {
 
     private boolean releaseLock() {
         return context.getService().getLocker().release(getName());
+    }
+
+    private void clearScanPositions() {
+        var scanDao = new MvScanDao(context.getYdb(), new TempScanDaoAdapter());
+        for (var target : context.getHandler().getTargets().values()) {
+            scanDao.unregisterSpecificScan(target.getName());
+        }
     }
 
     private void scheduleDictionaryChecks() {
@@ -218,6 +232,37 @@ public class MvJobController {
                         dictScan.getHandler().getName());
                 dictScan.commitAll(changes);
             }
+        }
+
+    }
+
+    class TempScanDaoAdapter implements MvScanAdapter {
+
+        final String controlTable;
+
+        TempScanDaoAdapter() {
+            this.controlTable = context.getService()
+                    .getDictionarySettings().getControlTableName();
+        }
+
+        @Override
+        public MvTableInfo getTableInfo() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public String getControlTable() {
+            return controlTable;
+        }
+
+        @Override
+        public String getHandlerName() {
+            return getName();
+        }
+
+        @Override
+        public String getTargetName() {
+            throw new UnsupportedOperationException();
         }
 
     }
