@@ -48,57 +48,61 @@ public class MvCoordinatorTest extends AbstractMgtTest {
     public void checkSingleThreaded() {
         System.out.println("========= Start single-threaded coordination test");
 
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            runSingle(conn);
+        }
+    }
+
+    private void runSingle(YdbConnector conn) {
         final var queue = new ConcurrentLinkedQueue<Integer>();
         final var deque = new ConcurrentLinkedDeque<String>();
 
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            MvCoordinator coord = null;
-            try {
-                coord = new MvCoordinator(conn, getSettings(), "instance",
-                        new MvCoordinatorActions() {
-                    private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
+        MvCoordinator coord = null;
+        try {
+            coord = new MvCoordinator(conn, getSettings(), "instance",
+                    new MvCoordinatorActions() {
+                private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
-                    @Override
-                    public void onStart() {
-                        queue.add(1);
+                @Override
+                public void onStart() {
+                    queue.add(1);
+                }
+
+                @Override
+                public void onTick() {
+                    var peekLast = deque.peekLast();
+
+                    if (peekLast == null) {
+                        deque.addLast(tick.get());
+                        return;
                     }
 
-                    @Override
-                    public void onTick() {
-                        var peekLast = deque.peekLast();
-
-                        if (peekLast == null) {
-                            deque.addLast(tick.get());
-                            return;
-                        }
-
-                        if (!tick.get().equals(peekLast)) {
-                            deque.addLast(tick.get());
-                        }
+                    if (!tick.get().equals(peekLast)) {
+                        deque.addLast(tick.get());
                     }
+                }
 
-                    @Override
-                    public void onStop() {
-                        tick.set(UUID.randomUUID().toString());
-                    }
-                });
+                @Override
+                public void onStop() {
+                    tick.set(UUID.randomUUID().toString());
+                }
+            });
 
+            coord.start();
+
+            for (int i = 1; i <= 10; i++) {
+                pause(1_001);
+                coord.stop();
+                pause(1_002);
                 coord.start();
-
-                for (int i = 1; i <= 10; i++) {
-                    pause(1_001);
-                    coord.stop();
-                    pause(1_002);
-                    coord.start();
-                    pause(1_003);
-                    Assertions.assertEquals(i + 1, queue.size());
-                    Assertions.assertEquals(i + 1, deque.size());
-                }
-            } finally {
-                if (coord != null) {
-                    coord.close();
-                }
+                pause(1_003);
+                Assertions.assertEquals(i + 1, queue.size());
+                Assertions.assertEquals(i + 1, deque.size());
+            }
+        } finally {
+            if (coord != null) {
+                coord.close();
             }
         }
     }
@@ -160,9 +164,6 @@ public class MvCoordinatorTest extends AbstractMgtTest {
                 Assertions.assertEquals(i + 1, queue.size());
                 Assertions.assertEquals(i + 1, deque.size());
             }
-        } catch (Exception ex) {
-            System.err.println("GOPA! *********************");
-            ex.printStackTrace(System.err);
         } finally {
             for (var c : coords) {
                 c.close();
