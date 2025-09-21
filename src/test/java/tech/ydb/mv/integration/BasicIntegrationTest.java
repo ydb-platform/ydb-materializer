@@ -61,6 +61,10 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
  (58, 'Welcome! News'u)
 ,(59, 'Adieu! News'u)
 ;
+UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
+ (101, 'Eins - Bis'u)
+,(103, 'Drei - Bis'u)
+;
 """;
 
     @BeforeAll
@@ -165,6 +169,9 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
 
                 System.err.println("[AAA] Checking the dictionary history again...");
                 checkDictHist(conn);
+
+                System.err.println("[AAA] Waiting for dictionary refresh...");
+                pause(20_000L);
             } finally {
                 wc.shutdown();
             }
@@ -239,7 +246,7 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     private void checkDictHist(YdbConnector conn) {
         var rs = conn.sqlRead("SELECT diff_val, key_text, tv "
                 + "FROM `test1/dict_hist` "
-                + "WHERE src='test1/sub_table3'u"
+                + "WHERE src='test1/sub_table4'u"
                 + "ORDER BY tv, key_text;",
                 Params.empty()).getResultSet(0);
         System.out.println("--- dictionary comparison begin ---");

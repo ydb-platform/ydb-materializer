@@ -164,6 +164,7 @@ public class MvService implements MvApi {
             return false;
         }
         MvMetadata m = loadMetadata(ydb, null);
+        appendDictHist(m);
         dictionaryManager = new MvDictionaryLogger(m, ydb, dictionarySettings.get());
         dictionaryManager.start();
         return true;
@@ -201,7 +202,6 @@ public class MvService implements MvApi {
      * @return true, if handler has been started, false otherwise
      */
     public synchronized boolean startHandler(String name, MvHandlerSettings settings) {
-        ensurePartitionsRefresh();
         MvJobController c = handlers.get(name);
         if (c != null) {
             if (c.isRunning()) {
@@ -210,12 +210,14 @@ public class MvService implements MvApi {
             handlers.remove(name);
         }
         MvMetadata m = loadMetadata(ydb, name);
+        appendDictHist(m);
         MvHandler handler = m.getHandlers().get(name);
         if (handler == null) {
             throw new IllegalArgumentException("Unknown handler name: " + name);
         }
         c = new MvJobController(this, m, handler, settings);
         handlers.put(name, c);
+        ensurePartitionsRefresh();
         return c.start();
     }
 
@@ -356,6 +358,12 @@ public class MvService implements MvApi {
 
     private synchronized ArrayList<MvJobController> grabControllers() {
         return new ArrayList<>(handlers.values());
+    }
+
+    private void appendDictHist(MvMetadata m) {
+        var settings = getDictionarySettings();
+        var tableInfo = new MvDescriberYdb(ydb).describeTable(settings.getHistoryTableName());
+        m.getTables().put(tableInfo.getName(), tableInfo);
     }
 
     private static MvMetadata loadMetadata(YdbConnector ydb, String handlerName) {

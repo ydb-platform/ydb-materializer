@@ -72,9 +72,10 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
             api.printIssues(System.out);
             Assertions.assertTrue(api.getMetadata().isValid());
 
-            api.startHandler(name);
-            reportSuccess(name);
-            YdbMisc.sleep(10000L);
+            if (api.startHandler(name)) {
+                reportSuccess(name);
+            }
+            YdbMisc.sleep(10_000L);
         } catch (Exception ex) {
             ex.printStackTrace(System.err);
         }

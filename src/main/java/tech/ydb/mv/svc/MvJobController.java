@@ -133,8 +133,8 @@ public class MvJobController {
     private void scheduleDictionaryChecks() {
         var f = context.getService().getScheduler().scheduleAtFixedRate(
                 this::analyzeDictionaryChecks,
-                30,
-                30,
+                10,
+                10,
                 TimeUnit.SECONDS
         );
         f = dictCheckFuture.getAndSet(f);
