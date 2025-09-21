@@ -23,21 +23,21 @@ public class MvConfigReader extends MvConfig {
 
     public static MvMetadata read(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
-        MvMetadata context;
+        MvMetadata metadata;
         switch (MvConfig.parseInput(mode)) {
             case FILE -> {
-                context = readFile(ydb, props);
+                metadata = readFile(ydb, props);
             }
             case TABLE -> {
-                context = readTable(ydb, props);
+                metadata = readTable(ydb, props);
             }
             default -> {
                 throw new IllegalArgumentException("Illegal value [" + mode + "] for "
                         + "property " + MvConfig.CONF_INPUT_MODE);
             }
         }
-        context.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, HANDLER_DICTIONARY));
-        return context;
+        metadata.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, HANDLER_DICTIONARY));
+        return metadata;
     }
 
     private static MvMetadata readFile(YdbConnector ydb, Properties props) {

@@ -46,12 +46,11 @@ public class MvService implements MvApi {
 
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
-        this.metadata = MvConfigReader.read(ydb, ydb.getConfig().getProperties());
+        this.metadata = loadMetadata(ydb, null);
         this.locker = new MvLocker(ydb);
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
-        refreshMetadata();
     }
 
     @Override
@@ -191,14 +190,19 @@ public class MvService implements MvApi {
             schedulerThread.start();
         }
         MvJobController c = handlers.get(name);
-        if (c == null) {
-            MvHandler handler = metadata.getHandlers().get(name);
-            if (handler == null) {
-                throw new IllegalArgumentException("Unknown handler name: " + name);
+        if (c != null) {
+            if (c.isRunning()) {
+                return false;
             }
-            c = new MvJobController(this, handler, settings);
-            handlers.put(name, c);
+            handlers.remove(name);
         }
+        MvMetadata m = loadMetadata(ydb, name);
+        MvHandler handler = m.getHandlers().get(name);
+        if (handler == null) {
+            throw new IllegalArgumentException("Unknown handler name: " + name);
+        }
+        c = new MvJobController(this, handler, settings);
+        handlers.put(name, c);
         return c.start();
     }
 
@@ -312,13 +316,22 @@ public class MvService implements MvApi {
         return new ArrayList<>(handlers.values());
     }
 
-    private void refreshMetadata() {
-        if (!metadata.isValid()) {
+    private static MvMetadata loadMetadata(YdbConnector ydb, String handlerName) {
+        MvMetadata m = MvConfigReader.read(ydb, ydb.getConfig().getProperties());
+        if (handlerName != null) {
+            MvHandler h = m.getHandlers().get(handlerName);
+            if (h == null) {
+                throw new IllegalArgumentException("Unknown handler name: " + handlerName);
+            }
+            m = m.subset(h);
+        }
+        if (!m.isValid()) {
             LOG.warn("Parser produced errors, metadata retrieval skipped.");
         } else {
             LOG.info("Loading metadata and performing validation...");
-            metadata.linkAndValidate(new MvDescriberYdb(ydb));
+            m.linkAndValidate(new MvDescriberYdb(ydb));
         }
+        return m;
     }
 
     private void sleepSome() {
