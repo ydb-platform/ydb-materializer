@@ -11,7 +11,7 @@ import tech.ydb.mv.model.MvTarget;
  *
  * @author zinal
  */
-public interface MvCdcSink {
+public interface MvSink {
 
     /**
      * @return The input descriptions for the current sink.

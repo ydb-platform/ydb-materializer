@@ -2,12 +2,15 @@ package tech.ydb.mv.svc;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.mv.apply.MvApplyActionList;
 
 import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.feeder.MvCdcFeeder;
+import tech.ydb.mv.feeder.MvScanCompletion;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
@@ -104,7 +107,7 @@ public class MvJobController {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getHandler().getName() + "`");
         }
-        return context.startScan(target, settings, applyManager, null);
+        return context.startScan(target, settings, applyManager, null, null);
     }
 
     public boolean stopScan(String name) {
@@ -181,6 +184,7 @@ public class MvJobController {
                     + "due to already running scans", context.getHandler().getName());
             return;
         }
+        var completionHandler = new DictScanComplete(dictScan, changes, filters.size());
         for (var filter : filters) {
             var action = applyManager.createFilterAction(filter);
             if (action == null) {
@@ -189,8 +193,34 @@ public class MvJobController {
             LOG.info("Initiating dictionary refresh scan for target `{}` in handler `{}`",
                     filter.getTarget().getName(), context.getHandler().getName());
             var actions = new MvApplyActionList(action);
-            context.startScan(filter.getTarget(), settings, applyManager, actions);
+            context.startScan(filter.getTarget(), settings, applyManager,
+                    actions, completionHandler);
         }
+    }
+
+    static class DictScanComplete implements MvScanCompletion {
+
+        final MvDictionaryScan dictScan;
+        final MvChangesMultiDict changes;
+        final AtomicInteger counter;
+
+        public DictScanComplete(
+                MvDictionaryScan dictScan,
+                MvChangesMultiDict changes,
+                int counter
+        ) {
+            this.dictScan = dictScan;
+            this.changes = changes;
+            this.counter = new AtomicInteger(counter);
+        }
+
+        @Override
+        public void onScanComplete() {
+            if (counter.decrementAndGet() == 0) {
+                dictScan.commitAll(changes);
+            }
+        }
+
     }
 
 }

@@ -31,21 +31,29 @@ public class MvScanFeeder {
     private final MvTarget target;
     private final MvKeyInfo keyInfo;
     private final AtomicReference<MvScanContext> context;
-    private final MvCdcSink sink;
+    private final MvSink sink;
     private final MvApplyActionList actions;
+    private final MvScanCompletion completion;
     private final String controlTable;
     private final int rateLimiterLimit;
     private int rateLimiterCounter;
     private long rateLimiterStamp;
 
-    public MvScanFeeder(MvJobContext job, MvCdcSink sink,
-            MvTarget target, MvScanSettings settings, MvApplyActionList actions) {
+    public MvScanFeeder(
+            MvJobContext job,
+            MvSink sink,
+            MvTarget target,
+            MvScanSettings settings,
+            MvApplyActionList actions,
+            MvScanCompletion completion
+    ) {
         this.job = job;
         this.target = target;
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.context = new AtomicReference<>();
         this.sink = sink;
         this.actions = actions;
+        this.completion = completion;
         this.controlTable = YdbConnector.safe(settings.getControlTableName());
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
     }
@@ -144,6 +152,9 @@ public class MvScanFeeder {
         }
         ctx.getScanDao().unregisterScan();
         job.forgetScan(target);
+        if (completion != null) {
+            completion.onScanComplete();
+        }
         LOG.info("Finished scan feeder for target {} in handler {}",
                 target.getName(), job.getHandler().getName());
     }

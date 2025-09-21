@@ -26,13 +26,13 @@ public class MvCdcFeeder {
 
     private final MvCdcAdapter adapter;
     private final YdbConnector ydb;
-    private final MvCdcSink sink;
+    private final MvSink sink;
     private final Executor executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
-    public MvCdcFeeder(MvCdcAdapter adapter, YdbConnector ydb, MvCdcSink sink) {
+    public MvCdcFeeder(MvCdcAdapter adapter, YdbConnector ydb, MvSink sink) {
         this.adapter = adapter;
         this.ydb = ydb;
         this.sink = sink;
@@ -73,7 +73,7 @@ public class MvCdcFeeder {
         }
     }
 
-    public MvCdcSink getSink() {
+    public MvSink getSink() {
         return sink;
     }
 

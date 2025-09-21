@@ -10,12 +10,12 @@ import tech.ydb.table.TableClient;
 import tech.ydb.mv.svc.MvJobContext;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvRowFilter;
-import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.feeder.MvSink;
 
 /**
  * The apply manager processes the changes in the context of a single handler.
@@ -23,7 +23,7 @@ import tech.ydb.mv.support.YdbMisc;
  *
  * @author zinal
  */
-public class MvApplyManager implements MvCdcSink {
+public class MvApplyManager implements MvSink {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvApplyManager.class);
 

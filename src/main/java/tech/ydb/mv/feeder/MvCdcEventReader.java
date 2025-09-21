@@ -21,7 +21,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcEventReader.class);
 
     private final MvCdcFeeder owner;
-    private final MvCdcSink sink;
+    private final MvSink sink;
 
     MvCdcEventReader(MvCdcFeeder owner) {
         this.owner = owner;

@@ -7,6 +7,7 @@ import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcAdapter;
+import tech.ydb.mv.feeder.MvScanCompletion;
 import tech.ydb.mv.feeder.MvScanFeeder;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
@@ -102,7 +103,7 @@ public class MvJobContext implements MvCdcAdapter {
     }
 
     public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
-            MvApplyManager applyManager, MvApplyActionList actions) {
+            MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
         if (target == null
                 || handler.getTargets().get(target.getName()) != target) {
             throw new IllegalArgumentException("Illegal target `" + target
@@ -113,10 +114,11 @@ public class MvJobContext implements MvCdcAdapter {
                     + handler.getName() + "`");
         }
         MvScanFeeder sf = scanFeeders.get(target.getName());
-        if (sf == null) {
-            sf = new MvScanFeeder(this, applyManager, target, settings, actions);
-            scanFeeders.put(target.getName(), sf);
+        if (sf != null && sf.isRunning()) {
+            return false;
         }
+        sf = new MvScanFeeder(this, applyManager, target, settings, actions, completion);
+        scanFeeders.put(target.getName(), sf);
         return sf.start();
     }
 

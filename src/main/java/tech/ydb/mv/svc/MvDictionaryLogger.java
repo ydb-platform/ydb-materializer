@@ -27,11 +27,11 @@ import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbStruct;
 import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvCdcFeeder;
-import tech.ydb.mv.feeder.MvCdcSink;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.feeder.MvSink;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal
@@ -39,7 +39,7 @@ import tech.ydb.mv.model.MvInput;
  *
  * @author zinal
  */
-public class MvDictionaryLogger implements MvCdcSink, MvCdcAdapter {
+public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryLogger.class);
 
