@@ -15,6 +15,7 @@ public class MvBatchSettings implements Serializable {
 
     // Configuration property keys
     public static final String CONF_TABLE_JOBS = "mv.jobs.table";
+    public static final String CONF_TABLE_SCANS = "mv.scans.table";
     public static final String CONF_TABLE_RUNNERS = "mv.runners.table";
     public static final String CONF_TABLE_RUNNER_JOBS = "mv.runner.jobs.table";
     public static final String CONF_TABLE_COMMANDS = "mv.commands.table";
@@ -25,6 +26,7 @@ public class MvBatchSettings implements Serializable {
 
     // Default values
     public static final String DEF_TABLE_JOBS = "mv_jobs";
+    public static final String DEF_TABLE_SCANS = "mv_job_scans";
     public static final String DEF_TABLE_RUNNERS = "mv_runners";
     public static final String DEF_TABLE_RUNNER_JOBS = "mv_runner_jobs";
     public static final String DEF_TABLE_COMMANDS = "mv_commands";
@@ -36,6 +38,7 @@ public class MvBatchSettings implements Serializable {
 
     // Table names
     private String tableJobs = DEF_TABLE_JOBS;
+    private String tableScans = DEF_TABLE_SCANS;
     private String tableRunners = DEF_TABLE_RUNNERS;
     private String tableRunnerJobs = DEF_TABLE_RUNNER_JOBS;
     private String tableCommands = DEF_TABLE_COMMANDS;
@@ -51,6 +54,7 @@ public class MvBatchSettings implements Serializable {
 
     public MvBatchSettings(MvBatchSettings src) {
         this.tableJobs = src.tableJobs;
+        this.tableScans = src.tableScans;
         this.tableRunners = src.tableRunners;
         this.tableRunnerJobs = src.tableRunnerJobs;
         this.tableCommands = src.tableCommands;
@@ -66,6 +70,7 @@ public class MvBatchSettings implements Serializable {
 
     private void loadFromProperties(Properties props) {
         this.tableJobs = props.getProperty(CONF_TABLE_JOBS, DEF_TABLE_JOBS);
+        this.tableScans = props.getProperty(CONF_TABLE_SCANS, DEF_TABLE_SCANS);
         this.tableRunners = props.getProperty(CONF_TABLE_RUNNERS, DEF_TABLE_RUNNERS);
         this.tableRunnerJobs = props.getProperty(CONF_TABLE_RUNNER_JOBS, DEF_TABLE_RUNNER_JOBS);
         this.tableCommands = props.getProperty(CONF_TABLE_COMMANDS, DEF_TABLE_COMMANDS);
@@ -89,6 +94,14 @@ public class MvBatchSettings implements Serializable {
 
     public void setTableJobs(String tableJobs) {
         this.tableJobs = tableJobs;
+    }
+
+    public String getTableScans() {
+        return tableScans;
+    }
+
+    public void setTableScans(String tableScans) {
+        this.tableScans = tableScans;
     }
 
     public String getTableRunners() {

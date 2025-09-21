@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import tech.ydb.mv.MvConfig;
-
 /**
  * @author Kirill Kurdyukov
  */
@@ -18,23 +16,24 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinatorImpl.class);
 
     private final AtomicLong commandNo = new AtomicLong();
-    private final MvJobDao mvJobDao;
+    private final MvJobDao jobDao;
     private final MvBatchSettings settings;
 
-    public MvCoordinatorImpl(MvJobDao mvJobDao, MvBatchSettings mvBatchSettings) {
-        this.mvJobDao = mvJobDao;
-        this.settings = mvBatchSettings;
+    public MvCoordinatorImpl(MvJobDao jobDao, MvBatchSettings settings) {
+        this.jobDao = jobDao;
+        this.settings = settings;
     }
 
     @Override
     public void onStart() {
-        commandNo.set(mvJobDao.getMaxCommandNo());
+        commandNo.set(jobDao.getMaxCommandNo());
     }
 
     @Override
     public void onTick() {
         cleanupInactiveRunners();
         balanceJobs();
+        acceptScans();
     }
 
     /**
@@ -42,7 +41,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
      */
     private void cleanupInactiveRunners() {
         try {
-            List<MvRunnerInfo> allRunners = mvJobDao.getAllRunners();
+            List<MvRunnerInfo> allRunners = jobDao.getAllRunners();
             Instant cutoffTime = Instant.now().minusMillis(settings.getRunnerTimeoutMs());
 
             List<MvRunnerInfo> inactiveRunners = allRunners.stream()
@@ -52,8 +51,8 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             for (MvRunnerInfo inactiveRunner : inactiveRunners) {
                 LOG.info("Cleaning up inactive runner: {}", inactiveRunner.getRunnerId());
 
-                mvJobDao.deleteRunnerJobs(inactiveRunner.getRunnerId());
-                mvJobDao.deleteRunner(inactiveRunner.getRunnerId());
+                jobDao.deleteRunnerJobs(inactiveRunner.getRunnerId());
+                jobDao.deleteRunner(inactiveRunner.getRunnerId());
 
                 LOG.info("Cleaned up inactive runner: {}", inactiveRunner.getRunnerId());
             }
@@ -68,20 +67,20 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
      */
     private void balanceJobs() {
         try {
-            Map<String, MvJobInfo> jobsToRun = mvJobDao.getAllJobs().stream()
+            Map<String, MvJobInfo> jobsToRun = jobDao.getAllJobs().stream()
                     .filter(mvJobInfo -> mvJobInfo.isRegularJob() && mvJobInfo.isShouldRun())
                     .collect(Collectors.toMap(MvJobInfo::getJobName, job -> job));
-            List<MvRunnerInfo> allRunners = mvJobDao.getAllRunners();
+            List<MvRunnerInfo> allRunners = jobDao.getAllRunners();
 
             if (allRunners.isEmpty()) {
                 LOG.warn("No runners available to start jobs [{}]", String.join(", ", jobsToRun.keySet()));
                 return;
             }
 
-            var runnerJobs = mvJobDao.getAllRunnerJobs();
+            var runnerJobs = jobDao.getAllRunnerJobs();
             var runnerNameJobs = runnerJobs.stream()
+                    .filter(job -> job.isRegularJob())
                     .map(MvRunnerJobInfo::getJobName)
-                    .filter(name -> !name.startsWith(MvConfig.SYS_PREFIX))
                     .collect(Collectors.toSet());
 
             List<MvRunnerJobInfo> jobsForRemoval = runnerJobs.stream()
@@ -130,7 +129,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                     null
             );
 
-            mvJobDao.createCommand(command);
+            jobDao.createCommand(command);
             LOG.info("Created STOP command for job: {} on runner: {}",
                     job.getJobName(), job.getRunnerId());
         } catch (Exception ex) {
@@ -163,11 +162,61 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             // Need to add one so that the new job will be accounted for when planning
             jobs.add(new MvRunnerJobInfo(runner.getRunnerId(), job.getJobName(), job.getJobSettings(), Instant.now()));
 
-            mvJobDao.createCommand(command);
+            jobDao.createCommand(command);
             LOG.info("Created START command for job: {} on runner: {}", job.getJobName(), runner.getRunnerId());
         } catch (Exception ex) {
             LOG.error("Failed to create START command for job: {}", job.getJobName(), ex);
         }
+    }
+
+    private void acceptScans() {
+        try {
+            doAcceptScans();
+        } catch (Exception ex) {
+            LOG.error("Failed to process scans requests", ex);
+        }
+    }
+
+    private void doAcceptScans() {
+        var scans = jobDao.getAllScans();
+        if (scans.isEmpty()) {
+            return;
+        }
+
+        for (var scan : scans) {
+            createScanCommand(scan);
+        }
+    }
+
+    private void createScanCommand(MvJobScanInfo scan) {
+        if (scan.getAcceptedAt() != null) {
+            return;
+        }
+        var runners = jobDao.getJobRunners(scan.getJobName());
+        if (runners.size() != 1) {
+            LOG.warn("Cannot start the requested scan "
+                    + "for handler `{}`, target `{}` - runner was not found.");
+            return;
+        }
+        var runner = runners.get(0);
+
+        var command = new MvCommand(
+                runner.getRunnerId(),
+                commandNo.incrementAndGet(),
+                Instant.now(),
+                MvCommand.TYPE_SCAN,
+                scan.getJobName(),
+                scan.getTargetName(),
+                scan.getScanSettings(),
+                MvCommand.STATUS_CREATED,
+                null
+        );
+        jobDao.createCommand(command);
+
+        scan.setAcceptedAt(command.getCreatedAt());
+        scan.setRunnerId(command.getRunnerId());
+        scan.setCommandNo(command.getCommandNo());
+        jobDao.updateScan(scan);
     }
 
 }

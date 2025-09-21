@@ -1,5 +1,6 @@
 package tech.ydb.mv.mgt;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +8,7 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
+import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.YdbConnector;
 
@@ -19,14 +21,15 @@ import tech.ydb.mv.YdbConnector;
  */
 public class MvJobDao {
 
-    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvJobDao.class);
-
     private final YdbConnector ydb;
 
     // Pre-generated SQL statements
     private final String sqlGetAllJobs;
     private final String sqlGetJob;
     private final String sqlUpsertJob;
+    private final String sqlCreateScan;
+    private final String sqlGetAllScans;
+    private final String sqlUpdateScanStart;
     private final String sqlUpsertRunner;
     private final String sqlGetAllRunners;
     private final String sqlDeleteRunner;
@@ -45,6 +48,7 @@ public class MvJobDao {
         this.ydb = ydb;
 
         String tabJobs = settings.getTableJobs();
+        String tabScans = settings.getTableScans();
         String tabRunners = settings.getTableRunners();
         String tabRunnerJobs = settings.getTableRunnerJobs();
         String tabCommands = settings.getTableCommands();
@@ -66,6 +70,37 @@ public class MvJobDao {
             UPSERT INTO `%s` (job_name, job_settings, should_run)
             VALUES ($job_name, $job_settings, $should_run);
             """, tabJobs
+        );
+
+        // MV_JOB_SCANS SQL statements
+        this.sqlGetAllScans = String.format("""
+            SELECT job_name, target_name, scan_settings FROM `%s`
+            WHERE started_at IS NULL;
+            """, tabScans
+        );
+        this.sqlCreateScan = String.format("""
+            DECLARE $job_name AS Text; DECLARE $target_name AS Text;
+            DECLARE $requested_at AS Timestamp; DECLARE $scan_settings AS JsonDocument?;
+            DECLARE $accepted_at AS Timestamp;
+            DECLARE $runner_id AS Text;  DECLARE $command_no AS Uint64;
+            INSERT INTO `%s` (
+                job_name, target_name, scan_settings, requested_at,
+                accepted_at, runner_id, command_no
+            ) VALUES (
+                $job_name, $target_name, $scan_settings, $requested_at,
+                $accepted_at, $runner_id, $command_no
+            );
+            """, tabScans
+        );
+        this.sqlUpdateScanStart = String.format("""
+            DECLARE $job_name AS Text; DECLARE $target_name AS Text;
+            DECLARE $accepted_at AS Timestamp;
+            DECLARE $runner_id AS Text;  DECLARE $command_no AS Uint64;
+            UPDATE `%s` SET accepted_at = $accepted_at,
+                runner_id = $runner_id, command_no = $command_no
+              WHERE job_name = $job_name AND target_name = $target_name
+                AND started_at IS NULL;
+            """, tabScans
         );
 
         // MV_RUNNERS SQL statements
@@ -132,20 +167,21 @@ public class MvJobDao {
             DECLARE $command_no AS Uint64;
             DECLARE $created_at AS Timestamp;
             DECLARE $command_type AS Text;
-            DECLARE $job_name AS Text;
+            DECLARE $job_name AS Text?;
+            DECLARE $target_name AS Text?;
             DECLARE $job_settings AS JsonDocument?;
             DECLARE $command_status AS Text;
             DECLARE $command_diag AS Text?;
             INSERT INTO `%s` (runner_id, command_no, created_at, command_type,
-                job_name, job_settings, command_status, command_diag)
+                job_name, target_name, job_settings, command_status, command_diag)
             VALUES ($runner_id, $command_no, $created_at, $command_type,
-                $job_name, $job_settings, $command_status, $command_diag);
+                $job_name, $target_name, $job_settings, $command_status, $command_diag);
             """, tabCommands
         );
         this.sqlGetCommandsForRunner = String.format("""
             DECLARE $runner_id AS Text;
-            SELECT runner_id, command_no, created_at, command_type,
-                   job_name, job_settings, command_status, command_diag
+            SELECT runner_id, command_no, created_at, command_type, job_name,
+                   target_name, job_settings, command_status, command_diag
             FROM `%s`
             WHERE runner_id = $runner_id AND command_status = 'CREATED'u
             ORDER BY runner_id, command_no;
@@ -195,10 +231,39 @@ public class MvJobDao {
     public void upsertJob(MvJobInfo job) {
         ydb.sqlWrite(sqlUpsertJob, Params.of(
                 "$job_name", PrimitiveValue.newText(job.getJobName()),
-                "$job_settings", job.getJobSettings() != null
-                ? PrimitiveValue.newJsonDocument(job.getJobSettings()).makeOptional()
-                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$job_settings", jsonDocument(job.getJobSettings()),
                 "$should_run", PrimitiveValue.newBool(job.isShouldRun())
+        ));
+    }
+
+    public void createScan(MvJobScanInfo scan) {
+        ydb.sqlWrite(sqlCreateScan, Params.of(
+                "$job_name", PrimitiveValue.newText(scan.getJobName()),
+                "$target_name", PrimitiveValue.newText(scan.getJobName()),
+                "$scan_settings", jsonDocument(scan.getScanSettings()),
+                "$requested_at", PrimitiveValue.newTimestamp(scan.getRequestedAt()),
+                "$accepted_at", timestamp(scan.getAcceptedAt()),
+                "$runner_id", text(scan.getRunnerId()),
+                "$command_no", uint64(scan.getCommandNo())
+        ));
+    }
+
+    public List<MvJobScanInfo> getAllScans() {
+        var rs = ydb.sqlRead(sqlGetAllScans, Params.empty()).getResultSet(0);
+        List<MvJobScanInfo> scans = new ArrayList<>();
+        while (rs.next()) {
+            scans.add(parseScanInfo(rs));
+        }
+        return scans;
+    }
+
+    public void updateScan(MvJobScanInfo scan) {
+        ydb.sqlWrite(sqlUpdateScanStart, Params.of(
+                "$job_name", PrimitiveValue.newText(scan.getJobName()),
+                "$target_name", PrimitiveValue.newText(scan.getJobName()),
+                "$accepted_at", timestamp(scan.getAcceptedAt()),
+                "$runner_id", text(scan.getRunnerId()),
+                "$command_no", uint64(scan.getCommandNo())
         ));
     }
 
@@ -231,9 +296,7 @@ public class MvJobDao {
         ydb.sqlWrite(sqlUpsertRunnerJob, Params.of(
                 "$runner_id", PrimitiveValue.newText(jobInfo.getRunnerId()),
                 "$job_name", PrimitiveValue.newText(jobInfo.getJobName()),
-                "$job_settings", jobInfo.getJobSettings() != null
-                ? PrimitiveValue.newJsonDocument(jobInfo.getJobSettings()).makeOptional()
-                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$job_settings", jsonDocument(jobInfo.getJobSettings()),
                 "$started_at", PrimitiveValue.newTimestamp(jobInfo.getStartedAt())
         ));
     }
@@ -289,16 +352,11 @@ public class MvJobDao {
                 "$command_no", PrimitiveValue.newUint64(command.getCommandNo()),
                 "$created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
                 "$command_type", PrimitiveValue.newText(command.getCommandType()),
-                "$job_name", command.getJobName() != null
-                ? PrimitiveValue.newText(command.getJobName())
-                : PrimitiveValue.newText(""),
-                "$job_settings", command.getJobSettings() != null
-                ? PrimitiveValue.newJsonDocument(command.getJobSettings()).makeOptional()
-                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$job_name", text(command.getJobName()),
+                "$target_name", text(command.getTargetName()),
+                "$job_settings", jsonDocument(command.getJobSettings()),
                 "$command_status", PrimitiveValue.newText(command.getCommandStatus()),
-                "$command_diag", command.getCommandDiag() != null
-                ? PrimitiveValue.newText(command.getCommandDiag()).makeOptional()
-                : PrimitiveType.Text.makeOptional().emptyValue()
+                "$command_diag", text(command.getCommandDiag())
         ));
     }
 
@@ -332,6 +390,15 @@ public class MvJobDao {
         );
     }
 
+    private MvJobScanInfo parseScanInfo(ResultSetReader reader) {
+        return new MvJobScanInfo(
+                reader.getColumn("job_name").getText(),
+                reader.getColumn("target_name").getText(),
+                getJsonDocument(reader, "scan_settings"),
+                reader.getColumn("requested_at").getTimestamp()
+        );
+    }
+
     private MvRunnerInfo parseRunnerInfo(ResultSetReader reader) {
         return new MvRunnerInfo(
                 reader.getColumn("runner_id").getText(),
@@ -355,11 +422,40 @@ public class MvJobDao {
                 reader.getColumn("command_no").getUint64(),
                 reader.getColumn("created_at").getTimestamp(),
                 reader.getColumn("command_type").getText(),
-                reader.getColumn("job_name").getText(),
+                getText(reader, "job_name"),
+                getText(reader, "target_name"),
                 getJsonDocument(reader, "job_settings"),
                 reader.getColumn("command_status").getText(),
                 getText(reader, "command_diag")
         );
+    }
+
+    private static Value<?> uint64(Long value) {
+        if (value == null) {
+            return PrimitiveType.Uint64.makeOptional().emptyValue();
+        }
+        return PrimitiveValue.newUint64(value).makeOptional();
+    }
+
+    private static Value<?> timestamp(Instant value) {
+        if (value == null) {
+            return PrimitiveType.Timestamp.makeOptional().emptyValue();
+        }
+        return PrimitiveValue.newTimestamp(value).makeOptional();
+    }
+
+    private static Value<?> text(String value) {
+        if (value == null) {
+            return PrimitiveType.Text.makeOptional().emptyValue();
+        }
+        return PrimitiveValue.newText(value).makeOptional();
+    }
+
+    private static Value<?> jsonDocument(String value) {
+        if (value == null) {
+            return PrimitiveType.JsonDocument.makeOptional().emptyValue();
+        }
+        return PrimitiveValue.newJsonDocument(value).makeOptional();
     }
 
     private static String getText(ResultSetReader reader, String column) {

@@ -2,6 +2,7 @@ package tech.ydb.mv.mgt;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Information about a command in the mv_commands table.
@@ -9,10 +10,13 @@ import java.time.Instant;
  * @author zinal
  */
 public class MvCommand implements Serializable {
-    private static final long serialVersionUID = 20250113001L;
+
+    private static final long serialVersionUID = 20250921001L;
 
     public static final String TYPE_START = "START";
     public static final String TYPE_STOP = "STOP";
+    public static final String TYPE_SCAN = "SCAN";
+    public static final String TYPE_NOSCAN = "NOSCAN";
 
     public static final String STATUS_CREATED = "CREATED";
     public static final String STATUS_TAKEN = "TAKEN";
@@ -24,17 +28,26 @@ public class MvCommand implements Serializable {
     private final Instant createdAt;
     private final String commandType;
     private final String jobName;
+    private final String targetName;
     private final String jobSettings;
     private final String commandStatus;
     private final String commandDiag;
 
     public MvCommand(String runnerId, long commandNo, Instant createdAt, String commandType,
-                        String jobName, String jobSettings, String commandStatus, String commandDiag) {
+            String jobName, String jobSettings, String commandStatus, String commandDiag) {
+        this(runnerId, commandNo, createdAt, commandType, jobName,
+                null, jobSettings, commandStatus, commandDiag);
+    }
+
+    public MvCommand(String runnerId, long commandNo, Instant createdAt, String commandType,
+            String jobName, String targetName, String jobSettings,
+            String commandStatus, String commandDiag) {
         this.runnerId = runnerId;
         this.commandNo = commandNo;
         this.createdAt = createdAt;
         this.commandType = commandType;
         this.jobName = jobName;
+        this.targetName = targetName;
         this.jobSettings = jobSettings;
         this.commandStatus = commandStatus;
         this.commandDiag = commandDiag;
@@ -60,6 +73,10 @@ public class MvCommand implements Serializable {
         return jobName;
     }
 
+    public String getTargetName() {
+        return targetName;
+    }
+
     public String getJobSettings() {
         return jobSettings;
     }
@@ -80,6 +97,14 @@ public class MvCommand implements Serializable {
         return TYPE_STOP.equals(commandType);
     }
 
+    public boolean isScanCommand() {
+        return TYPE_SCAN.equals(commandType);
+    }
+
+    public boolean isNoScanCommand() {
+        return TYPE_NOSCAN.equals(commandType);
+    }
+
     public boolean isCreated() {
         return STATUS_CREATED.equals(commandStatus);
     }
@@ -98,34 +123,38 @@ public class MvCommand implements Serializable {
 
     @Override
     public String toString() {
-        return "MvCommandInfo{" +
-                "runnerId='" + runnerId + '\'' +
-                ", commandNo=" + commandNo +
-                ", commandType='" + commandType + '\'' +
-                ", jobName='" + jobName + '\'' +
-                ", commandStatus='" + commandStatus + '\'' +
-                '}';
+        return "MvCommandInfo{"
+                + "runnerId='" + runnerId + '\''
+                + ", no=" + commandNo
+                + ", type='" + commandType + '\''
+                + ", name='" + jobName + '\''
+                + ", target='" + targetName + '\''
+                + ", status='" + commandStatus + '\''
+                + '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         MvCommand that = (MvCommand) o;
-        return commandNo == that.commandNo &&
-                java.util.Objects.equals(runnerId, that.runnerId) &&
-                java.util.Objects.equals(createdAt, that.createdAt) &&
-                java.util.Objects.equals(commandType, that.commandType) &&
-                java.util.Objects.equals(jobName, that.jobName) &&
-                java.util.Objects.equals(jobSettings, that.jobSettings) &&
-                java.util.Objects.equals(commandStatus, that.commandStatus) &&
-                java.util.Objects.equals(commandDiag, that.commandDiag);
+        return commandNo == that.commandNo
+                && Objects.equals(runnerId, that.runnerId)
+                && Objects.equals(createdAt, that.createdAt)
+                && Objects.equals(commandType, that.commandType)
+                && Objects.equals(jobName, that.jobName)
+                && Objects.equals(targetName, that.targetName)
+                && Objects.equals(jobSettings, that.jobSettings)
+                && Objects.equals(commandStatus, that.commandStatus)
+                && Objects.equals(commandDiag, that.commandDiag);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(runnerId, commandNo, createdAt,
-                commandType, jobName, jobSettings,
-                commandStatus, commandDiag);
+        return Objects.hash(runnerId, commandNo);
     }
 }

@@ -40,7 +40,9 @@ CREATE TABLE `mv/job_scans` (
     target_name Text NOT NULL,
     scan_settings JsonDocument,
     requested_at Timestamp,
-    started_at Timestamp,
+    accepted_at Timestamp,
+    runner_id Text,
+    command_no Uint64,
     PRIMARY KEY(job_name, target_name)
 );
 
@@ -67,8 +69,9 @@ CREATE TABLE `mv/commands` (
     runner_id Text NOT NULL,
     command_no Uint64 NOT NULL,
     created_at Timestamp,
-    command_type Text, -- START / STOP
+    command_type Text, -- START / STOP / SCAN / NOSCAN
     job_name Text,
+    target_name Text,
     job_settings JsonDocument,
     command_status Text, -- CREATED / TAKEN / SUCCESS / ERROR
     command_diag Text,
