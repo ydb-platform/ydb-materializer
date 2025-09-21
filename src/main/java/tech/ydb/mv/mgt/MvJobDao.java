@@ -161,217 +161,146 @@ public class MvJobDao {
 
     // MV_JOBS operations
     public List<MvJobInfo> getAllJobs() {
-        try {
-            var rs = ydb.sqlRead(sqlGetAllJobs, Params.empty()).getResultSet(0);
-            List<MvJobInfo> jobs = new ArrayList<>();
-            while (rs.next()) {
-                jobs.add(parseJobInfo(rs));
-            }
-            return jobs;
-        } catch (Exception ex) {
-            LOG.error("Failed to get all jobs", ex);
-            throw new RuntimeException("Failed to get all jobs", ex);
+        var rs = ydb.sqlRead(sqlGetAllJobs, Params.empty()).getResultSet(0);
+        List<MvJobInfo> jobs = new ArrayList<>();
+        while (rs.next()) {
+            jobs.add(parseJobInfo(rs));
         }
+        return jobs;
     }
 
     public MvJobInfo getJob(String jobName) {
-        try {
-            var rs = ydb.sqlRead(sqlGetJob, Params.of(
-                    "$job_name", PrimitiveValue.newText(jobName))
-            ).getResultSet(0);
-            if (rs.next()) {
-                return parseJobInfo(rs);
-            }
-            return null;
-        } catch (Exception ex) {
-            LOG.error("Failed to get job {}", jobName, ex);
-            throw new RuntimeException("Failed to get job " + jobName, ex);
+        var rs = ydb.sqlRead(sqlGetJob, Params.of(
+                "$job_name", PrimitiveValue.newText(jobName))
+        ).getResultSet(0);
+        if (rs.next()) {
+            return parseJobInfo(rs);
         }
+        return null;
     }
 
     public void upsertJob(MvJobInfo job) {
-        try {
-            ydb.sqlWrite(sqlUpsertJob, Params.of(
-                    "$job_name", PrimitiveValue.newText(job.getJobName()),
-                    "$job_settings", job.getJobSettings() != null
-                    ? PrimitiveValue.newJsonDocument(job.getJobSettings()).makeOptional()
-                    : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                    "$should_run", PrimitiveValue.newBool(job.isShouldRun()),
-                    "$runner_id", PrimitiveValue.newText(job.getRunnerId())
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to upsert job {}", job.getJobName(), ex);
-            throw new RuntimeException("Failed to upsert job " + job.getJobName(), ex);
-        }
+        ydb.sqlWrite(sqlUpsertJob, Params.of(
+                "$job_name", PrimitiveValue.newText(job.getJobName()),
+                "$job_settings", job.getJobSettings() != null
+                ? PrimitiveValue.newJsonDocument(job.getJobSettings()).makeOptional()
+                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$should_run", PrimitiveValue.newBool(job.isShouldRun()),
+                "$runner_id", PrimitiveValue.newText(job.getRunnerId())
+        ));
     }
 
     // MV_RUNNERS operations
     public void upsertRunner(MvRunnerInfo runner) {
-        try {
-            ydb.sqlWrite(sqlUpsertRunner, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runner.getRunnerId()),
-                    "$runner_identity", PrimitiveValue.newText(runner.getIdentity()),
-                    "$updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to upsert runner {}", runner.getRunnerId(), ex);
-            throw new RuntimeException("Failed to upsert runner " + runner.getRunnerId(), ex);
-        }
+        ydb.sqlWrite(sqlUpsertRunner, Params.of(
+                "$runner_id", PrimitiveValue.newText(runner.getRunnerId()),
+                "$runner_identity", PrimitiveValue.newText(runner.getIdentity()),
+                "$updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
+        ));
     }
 
     public List<MvRunnerInfo> getAllRunners() {
-        try {
-            var rs = ydb.sqlRead(sqlGetAllRunners, Params.empty()).getResultSet(0);
-            List<MvRunnerInfo> runners = new ArrayList<>();
-            while (rs.next()) {
-                runners.add(parseRunnerInfo(rs));
-            }
-            return runners;
-        } catch (Exception ex) {
-            LOG.error("Failed to get all runners", ex);
-            throw new RuntimeException("Failed to get all runners", ex);
+        var rs = ydb.sqlRead(sqlGetAllRunners, Params.empty()).getResultSet(0);
+        List<MvRunnerInfo> runners = new ArrayList<>();
+        while (rs.next()) {
+            runners.add(parseRunnerInfo(rs));
         }
+        return runners;
     }
 
     public void deleteRunner(String runnerId) {
-        try {
-            ydb.sqlWrite(sqlDeleteRunner, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runnerId)
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to delete runner {}", runnerId, ex);
-            throw new RuntimeException("Failed to delete runner " + runnerId, ex);
-        }
+        ydb.sqlWrite(sqlDeleteRunner, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId)
+        ));
     }
 
     // MV_RUNNER_JOBS operations
     public void upsertRunnerJob(MvRunnerJobInfo jobInfo) {
-        try {
-            ydb.sqlWrite(sqlUpsertRunnerJob, Params.of(
-                    "$runner_id", PrimitiveValue.newText(jobInfo.getRunnerId()),
-                    "$job_name", PrimitiveValue.newText(jobInfo.getJobName()),
-                    "$job_settings", jobInfo.getJobSettings() != null
-                    ? PrimitiveValue.newJsonDocument(jobInfo.getJobSettings()).makeOptional()
-                    : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                    "$started_at", PrimitiveValue.newTimestamp(jobInfo.getStartedAt())
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to upsert runner job {}/{}", jobInfo.getRunnerId(), jobInfo.getJobName(), ex);
-            throw new RuntimeException("Failed to upsert runner job", ex);
-        }
+        ydb.sqlWrite(sqlUpsertRunnerJob, Params.of(
+                "$runner_id", PrimitiveValue.newText(jobInfo.getRunnerId()),
+                "$job_name", PrimitiveValue.newText(jobInfo.getJobName()),
+                "$job_settings", jobInfo.getJobSettings() != null
+                ? PrimitiveValue.newJsonDocument(jobInfo.getJobSettings()).makeOptional()
+                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$started_at", PrimitiveValue.newTimestamp(jobInfo.getStartedAt())
+        ));
     }
 
     public List<MvRunnerJobInfo> getRunnerJobs(String runnerId) {
-        try {
-            var rs = ydb.sqlRead(sqlGetAllRunnerJobs, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runnerId)
-            )).getResultSet(0);
-            List<MvRunnerJobInfo> jobs = new ArrayList<>();
-            while (rs.next()) {
-                jobs.add(parseRunnerJobInfo(rs));
-            }
-            return jobs;
-        } catch (Exception ex) {
-            LOG.error("Failed to get runner jobs for {}", runnerId, ex);
-            throw new RuntimeException("Failed to get runner jobs for " + runnerId, ex);
+        var rs = ydb.sqlRead(sqlGetAllRunnerJobs, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId)
+        )).getResultSet(0);
+        List<MvRunnerJobInfo> jobs = new ArrayList<>();
+        while (rs.next()) {
+            jobs.add(parseRunnerJobInfo(rs));
         }
+        return jobs;
     }
 
     public List<MvRunnerJobInfo> getAllRunnerJobs() {
-        try {
-            var rs = ydb.sqlRead(sqlGetAllRunnerJobs, Params.empty()).getResultSet(0);
-            List<MvRunnerJobInfo> jobs = new ArrayList<>();
-            while (rs.next()) {
-                jobs.add(parseRunnerJobInfo(rs));
-            }
-            return jobs;
-        } catch (Exception ex) {
-            LOG.error("Failed to get runner jobs", ex);
-            throw new RuntimeException("Failed to get runner jobs", ex);
+        var rs = ydb.sqlRead(sqlGetAllRunnerJobs, Params.empty()).getResultSet(0);
+        List<MvRunnerJobInfo> jobs = new ArrayList<>();
+        while (rs.next()) {
+            jobs.add(parseRunnerJobInfo(rs));
         }
+        return jobs;
     }
 
     public void deleteRunnerJob(String runnerId, String jobName) {
-        try {
-            ydb.sqlWrite(sqlDeleteRunnerJob, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runnerId),
-                    "$job_name", PrimitiveValue.newText(jobName)
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to delete runner job {}/{}", runnerId, jobName, ex);
-            throw new RuntimeException("Failed to delete runner job", ex);
-        }
+        ydb.sqlWrite(sqlDeleteRunnerJob, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId),
+                "$job_name", PrimitiveValue.newText(jobName)
+        ));
     }
 
     public void deleteRunnerJobs(String runnerId) {
-        try {
-            ydb.sqlWrite(sqlDeleteRunnerJobs, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runnerId)
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to delete runner jobs for {}", runnerId, ex);
-            throw new RuntimeException("Failed to delete runner jobs for " + runnerId, ex);
-        }
+        ydb.sqlWrite(sqlDeleteRunnerJobs, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId)
+        ));
     }
 
     // MV_COMMANDS operations
     public void createCommand(MvCommand command) {
-        try {
-            ydb.sqlWrite(sqlCreateCommand, Params.of(
-                    "$runner_id", PrimitiveValue.newText(command.getRunnerId()),
-                    "$command_no", PrimitiveValue.newUint64(command.getCommandNo()),
-                    "$created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
-                    "$command_type", PrimitiveValue.newText(command.getCommandType()),
-                    "$job_name", command.getJobName() != null
-                    ? PrimitiveValue.newText(command.getJobName())
-                    : PrimitiveValue.newText(""),
-                    "$job_settings", command.getJobSettings() != null
-                    ? PrimitiveValue.newJsonDocument(command.getJobSettings()).makeOptional()
-                    : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                    "$command_status", PrimitiveValue.newText(command.getCommandStatus()),
-                    "$command_diag", command.getCommandDiag() != null
-                    ? PrimitiveValue.newText(command.getCommandDiag()).makeOptional()
-                    : PrimitiveType.Text.makeOptional().emptyValue()
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to create command {}/{}", command.getRunnerId(), command.getCommandNo(), ex);
-            throw new RuntimeException("Failed to create command", ex);
-        }
+        ydb.sqlWrite(sqlCreateCommand, Params.of(
+                "$runner_id", PrimitiveValue.newText(command.getRunnerId()),
+                "$command_no", PrimitiveValue.newUint64(command.getCommandNo()),
+                "$created_at", PrimitiveValue.newTimestamp(command.getCreatedAt()),
+                "$command_type", PrimitiveValue.newText(command.getCommandType()),
+                "$job_name", command.getJobName() != null
+                ? PrimitiveValue.newText(command.getJobName())
+                : PrimitiveValue.newText(""),
+                "$job_settings", command.getJobSettings() != null
+                ? PrimitiveValue.newJsonDocument(command.getJobSettings()).makeOptional()
+                : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
+                "$command_status", PrimitiveValue.newText(command.getCommandStatus()),
+                "$command_diag", command.getCommandDiag() != null
+                ? PrimitiveValue.newText(command.getCommandDiag()).makeOptional()
+                : PrimitiveType.Text.makeOptional().emptyValue()
+        ));
     }
 
     public List<MvCommand> getCommandsForRunner(String runnerId) {
-        try {
-            var rs = ydb.sqlRead(sqlGetCommandsForRunner, Params.of(
-                    "$runner_id", PrimitiveValue.newText(runnerId)
-            )).getResultSet(0);
-            List<MvCommand> commands = new ArrayList<>();
-            while (rs.next()) {
-                commands.add(parseCommandInfo(rs));
-            }
-            return commands;
-        } catch (Exception ex) {
-            LOG.error("Failed to get commands for runner {}", runnerId, ex);
-            throw new RuntimeException("Failed to get commands for runner " + runnerId, ex);
+        var rs = ydb.sqlRead(sqlGetCommandsForRunner, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId)
+        )).getResultSet(0);
+        List<MvCommand> commands = new ArrayList<>();
+        while (rs.next()) {
+            commands.add(parseCommandInfo(rs));
         }
+        return commands;
     }
 
     public void updateCommandStatus(String runnerId, long commandNo, String status, String diag) {
-        try {
-            ydb.sqlWrite(sqlUpdateCommandStatus, Params.of(
-                    "$command_status", PrimitiveValue.newText(status),
-                    "$command_diag", diag != null
-                            ? PrimitiveValue.newText(diag).makeOptional()
-                            : PrimitiveType.Text.makeOptional().emptyValue(),
-                    "$runner_id", PrimitiveValue.newText(runnerId),
-                    "$command_no", PrimitiveValue.newUint64(commandNo)
-            ));
-        } catch (Exception ex) {
-            LOG.error("Failed to update command status {}/{}", runnerId, commandNo, ex);
-            throw new RuntimeException("Failed to update command status", ex);
-        }
+        ydb.sqlWrite(sqlUpdateCommandStatus, Params.of(
+                "$command_status", PrimitiveValue.newText(status),
+                "$command_diag", diag != null
+                        ? PrimitiveValue.newText(diag).makeOptional()
+                        : PrimitiveType.Text.makeOptional().emptyValue(),
+                "$runner_id", PrimitiveValue.newText(runnerId),
+                "$command_no", PrimitiveValue.newUint64(commandNo)
+        ));
     }
 
-    // Helper methods for parsing query results
     private MvJobInfo parseJobInfo(ResultSetReader reader) {
         return new MvJobInfo(
                 reader.getColumn("job_name").getText(),

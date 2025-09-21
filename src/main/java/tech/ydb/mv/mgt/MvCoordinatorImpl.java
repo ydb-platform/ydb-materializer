@@ -29,7 +29,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     }
 
     @Override
-    public void onUpdate() {
+    public void onTick() {
         cleanupInactiveRunners();
         balanceJobs();
     }

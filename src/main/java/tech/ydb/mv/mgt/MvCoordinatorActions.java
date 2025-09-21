@@ -15,7 +15,7 @@ public interface MvCoordinatorActions {
     /**
      * Executed regularly when coordinator is running.
      */
-    void onUpdate();
+    void onTick();
 
     /**
      * Executed on coordinator shutdown.

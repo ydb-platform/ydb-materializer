@@ -2,6 +2,7 @@ package tech.ydb.mv.mgt;
 
 import java.time.Duration;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -17,7 +18,7 @@ import tech.ydb.mv.YdbConnector;
  *
  * @author Kirill Kurdyukov
  */
-public class MvCoordinator {
+public class MvCoordinator implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinator.class);
 
@@ -27,7 +28,7 @@ public class MvCoordinator {
     private final MvBatchSettings settings;
     private final MvCoordinatorActions job;
     private final String runnerId;
-
+    private final AtomicReference<ScheduledFuture<?>> attemptFuture = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> leaderFuture = new AtomicReference<>();
 
     public MvCoordinator(
@@ -57,21 +58,79 @@ public class MvCoordinator {
         this.job = new MvCoordinatorImpl(jobDao, settings);
     }
 
-    public void start() {
+    public String getRunnerId() {
+        return runnerId;
+    }
+
+    public synchronized boolean start() {
+        if (isRunning()) {
+            return false;
+        }
+        LOG.info("Starting, instanceId={}", runnerId);
         scheduleAttempt();
+        return true;
+    }
+
+    public boolean stop() {
+        if (!isRunning()) {
+            return false;
+        }
+        LOG.info("Stopping, instanceId={}", runnerId);
+        demote();
+        return true;
+    }
+
+    @Override
+    public void close() {
+        LOG.info("Closing, instanceId={}", runnerId);
+        stop();
+        scheduler.shutdown();
+        try {
+            scheduler.awaitTermination(2L, TimeUnit.SECONDS);
+        } catch (InterruptedException ix) {
+            Thread.currentThread().interrupt();
+        }
+        locker.close();
+    }
+
+    public boolean isRunning() {
+        return isLeader() || (attemptFuture.get() != null);
+    }
+
+    public boolean isLeader() {
+        return leaderFuture.get() != null;
     }
 
     private void scheduleAttempt() {
         long delayMsec = settings.getScanPeriodMs();
         LOG.debug("Scheduling leadership attempt in {}ms, instanceId={}", delayMsec, runnerId);
-        scheduler.schedule(this::attemptLeadership, delayMsec, TimeUnit.MILLISECONDS);
+        ScheduledFuture<?> f;
+        try {
+            f = scheduler.schedule(
+                    this::attemptLeadership,
+                    delayMsec,
+                    TimeUnit.MILLISECONDS
+            );
+        } catch (RejectedExecutionException ex) {
+            if (scheduler.isShutdown()) {
+                // To avoid useless error traces in shutdown.
+                return;
+            } else {
+                throw ex;
+            }
+        }
+        f = attemptFuture.getAndSet(f);
+        if (f != null) {
+            f.cancel(false);
+        }
     }
 
     private void attemptLeadership() {
         try {
             doAttemptLeadership();
         } catch (Exception ex) {
-            LOG.error("Error during attemptLeadership, instanceId={}", runnerId, ex);
+            LOG.error("Error on leadership attempt, instanceId={}", runnerId, ex);
+            demote();
             scheduleAttempt();
         }
     }
@@ -88,68 +147,63 @@ public class MvCoordinator {
             scheduleAttempt();
             return;
         }
-
-        LOG.info("Semaphore '{}' acquired, instanceId={}",
-                MvConfig.HANDLER_COORDINATOR, runnerId);
-
-        MvJobInfo info = new MvJobInfo(MvConfig.HANDLER_COORDINATOR, null, true, runnerId);
-        jobDao.upsertJob(info);
+        LOG.info("Leadership acquired, instanceId={}", runnerId);
 
         startLeaderLoop();
     }
 
     private void startLeaderLoop() {
-        LOG.info("Becoming leader, starting leader loop, tick={}ms, instanceId={}",
-                settings.getScanPeriodMs(), runnerId);
-
+        jobDao.upsertJob(new MvJobInfo(MvConfig.HANDLER_COORDINATOR, null, true, runnerId));
         job.onStart();
 
-        ScheduledFuture<?> f = scheduler.scheduleWithFixedDelay(
-                this::leaderTick,
-                0,
-                settings.getScanPeriodMs(),
-                TimeUnit.MILLISECONDS
-        );
-        ScheduledFuture<?> prev = leaderFuture.getAndSet(f);
-        if (prev != null) {
-            LOG.debug("Cancelling previous leader loop future, instanceId={}", runnerId);
-            prev.cancel(true);
+        LOG.info("Became leader, starting leader loop, tick={}ms, instanceId={}",
+                settings.getScanPeriodMs(), runnerId);
+
+        ScheduledFuture<?> f;
+        try {
+            f = scheduler.scheduleWithFixedDelay(
+                    this::leaderTick,
+                    0,
+                    settings.getScanPeriodMs(),
+                    TimeUnit.MILLISECONDS
+            );
+        } catch (RejectedExecutionException ex) {
+            if (scheduler.isShutdown()) {
+                LOG.info("Shutdown in progress, demoting leadership");
+                demote();
+                return;
+            } else {
+                throw ex;
+            }
         }
+
+        f = leaderFuture.getAndSet(f);
+        if (f != null) {
+            LOG.debug("Cancelling previous leader loop future, instanceId={}", runnerId);
+            f.cancel(true);
+        }
+
+        f = attemptFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(false);
+        }
+
     }
 
     private void leaderTick() {
         try {
             if (!stillActive()) {
-                LOG.info("Lost ownership or runner_id mismatch, demoting, instanceId={}", runnerId);
+                LOG.info("Lost ownership, demoting, instanceId={}", runnerId);
                 demote();
+                scheduleAttempt();
                 return;
             }
 
-            job.onUpdate();
-        } catch (Throwable t) {
+            job.onTick();
+        } catch (Exception ex) {
+            LOG.error("Failed tick action in the coordinator - demoting", ex);
             demote();
-        }
-    }
-
-    private void demote() {
-        cancelLeader();
-        safeRelease();
-        scheduleAttempt();
-    }
-
-    private void safeRelease() {
-        try {
-            LOG.debug("Releasing semaphore '{}', instanceId={}", MvConfig.HANDLER_COORDINATOR, runnerId);
-            locker.release(MvConfig.HANDLER_COORDINATOR);
-        } catch (Exception e) {
-            LOG.trace("Fail release", e);
-        }
-    }
-
-    private void cancelLeader() {
-        ScheduledFuture<?> f = leaderFuture.getAndSet(null);
-        if (f != null) {
-            f.cancel(true);
+            scheduleAttempt();
         }
     }
 
@@ -159,6 +213,55 @@ public class MvCoordinator {
             return false;
         }
         return runnerId.equals(info.getRunnerId());
+    }
+
+    private synchronized void demote() {
+        if (leaderFuture.get() != null) {
+            LOG.info("Demoting leadership, instanceId={}", runnerId);
+            cancelLeader();
+            deleteJobRun();
+            safeRelease();
+            runStopHandler();
+        }
+    }
+
+    private void cancelLeader() {
+        var f = leaderFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(true);
+        }
+    }
+
+    private void deleteJobRun() {
+        try {
+            LOG.debug("Dropping job run '{}', instanceId={}",
+                    MvConfig.HANDLER_COORDINATOR, runnerId);
+            jobDao.deleteRunnerJob(runnerId, MvConfig.HANDLER_COORDINATOR);
+        } catch (Exception e) {
+            LOG.warn("Failed to delete the job run '{}', instanceId={}",
+                    MvConfig.HANDLER_COORDINATOR, runnerId, e);
+        }
+    }
+
+    private void safeRelease() {
+        try {
+            LOG.debug("Releasing semaphore '{}', instanceId={}",
+                    MvConfig.HANDLER_COORDINATOR, runnerId);
+            locker.release(MvConfig.HANDLER_COORDINATOR);
+        } catch (Exception e) {
+            LOG.warn("Failed to release the semaphore '{}', instanceId={}",
+                    MvConfig.HANDLER_COORDINATOR, runnerId, e);
+        }
+    }
+
+    private boolean runStopHandler() {
+        try {
+            job.onStop();
+            return true;
+        } catch (Exception ex) {
+            LOG.warn("Stop action failed", ex);
+            return false;
+        }
     }
 
 }

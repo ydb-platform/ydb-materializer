@@ -16,7 +16,7 @@ import tech.ydb.mv.YdbConnector;
  *
  * @author zinal
  */
-public class MvLocker {
+public class MvLocker implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvLocker.class);
 
@@ -36,6 +36,16 @@ public class MvLocker {
             seconds = 5;
         }
         this.timeout = Duration.ofSeconds(seconds);
+    }
+
+    @Override
+    public void close() {
+        releaseAll();
+        try {
+            session.close();
+        } catch (Exception ex) {
+            LOG.info("Exception on coordination session closure", ex);
+        }
     }
 
     private static void prepareNode(YdbConnector conn, String nodePath) {
@@ -87,6 +97,7 @@ public class MvLocker {
     }
 
     public boolean lock(String name, Duration timeout) {
+        name = YdbConnector.safe(name);
         LOG.debug("Ensuring the single `{}` job instance "
                 + "through lock with timeout {}...", name, timeout);
         SemaphoreLease lease;
@@ -112,6 +123,7 @@ public class MvLocker {
     }
 
     public boolean release(String name) {
+        name = YdbConnector.safe(name);
         SemaphoreLease lease;
         synchronized (leases) {
             lease = leases.remove(name);

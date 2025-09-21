@@ -1,122 +1,61 @@
 package tech.ydb.mv.mgt;
 
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
-
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import tech.ydb.common.transaction.TxMode;
-
-import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.YdbConnector;
 
 /**
  * @author Kirill Kurdyukov
  */
-@Disabled
-public class MvCoordinatorTest extends AbstractIntegrationBase {
+public class MvCoordinatorTest extends AbstractMgtTest {
+
+    @BeforeAll
+    public static void setup() {
+        prepareMgtDb();
+    }
+
+    @AfterAll
+    public static void cleanup() {
+        clearMgtDb();
+    }
+
+    @BeforeEach
+    public void prepareEach() {
+        refreshBeforeRun();
+    }
 
     private MvBatchSettings getSettings() {
         MvBatchSettings v = new MvBatchSettings();
-        v.setScanPeriodMs(500L);
+        v.setScanPeriodMs(200L);
+        v.setTableCommands("test1/mv_commands");
+        v.setTableJobs("test1/mv_jobs");
+        v.setTableRunners("test1/mv_runners");
+        v.setTableRunnerJobs("test1/mv_runner_jobs");
         return v;
     }
 
     @Test
     public void checkSingleThreaded() {
-        pause(1000);
+        System.out.println("========= Start single-threaded coordination test");
 
         final var queue = new ConcurrentLinkedQueue<Integer>();
         final var deque = new ConcurrentLinkedDeque<String>();
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
+
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
-            pause(10000);
-            runDdl(conn,
-                    """
-                            CREATE TABLE mv_jobs (
-                                job_name Text NOT NULL,
-                                job_settings JsonDocument,
-                                should_run Bool,
-                                runner_id Text,
-                                PRIMARY KEY(job_name)
-                            );
-                            """);
-            runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-            new MvCoordinator(conn, getSettings(), "instance",
-                    new MvCoordinatorActions() {
-                private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
-
-                @Override
-                public void onStart() {
-                    queue.add(1);
-                }
-
-                @Override
-                public void onUpdate() {
-                    var peekLast = deque.peekLast();
-                    if (peekLast == null) {
-                        deque.addLast(tick.get());
-                        return;
-                    }
-
-                    if (!tick.get().equals(peekLast)) {
-                        deque.addLast(tick.get());
-                    }
-                }
-
-                @Override
-                public void onStop() {
-                    tick.set(UUID.randomUUID().toString());
-                }
-            }).start();
-
-            for (int i = 1; i <= 10; i++) {
-                pause(5_000);
-                Assertions.assertEquals(i, queue.size());
-                Assertions.assertEquals(i, deque.size());
-
-                conn.getQueryRetryCtx().supplyResult(session -> session
-                        .createQuery("UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxMode.NONE).execute()
-                ).join().getStatus().expectSuccess();
-
-                pause(5_000);
-
-                conn.getQueryRetryCtx().supplyResult(session -> session
-                        .createQuery("UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxMode.NONE).execute()
-                ).join().getStatus().expectSuccess();
-                pause(5_000);
-            }
-
-            runDdl(conn, "DROP TABLE mv_jobs;");
-        }
-    }
-
-    @Test
-    public void checkMultiThreaded() {
-        pause(1000);
-
-        final var queue = new ConcurrentLinkedQueue<Integer>();
-        final var deque = new ConcurrentLinkedDeque<String>();
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "classpath:/config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            pause(10000);
-            runDdl(conn, """
-                    CREATE TABLE mv_jobs (
-                        job_name Text NOT NULL,
-                        job_settings JsonDocument,
-                        should_run Bool,
-                        runner_id Text,
-                        PRIMARY KEY(job_name)
-                    );
-                    """);
-            runDdl(conn, "INSERT INTO mv_jobs(job_name, should_run) VALUES ('sys$coordinator', true)");
-
-            for (int i = 0; i < 20; i++) {
-                new MvCoordinator(conn, getSettings(), "instance_" + i,
+            MvCoordinator coord = null;
+            try {
+                coord = new MvCoordinator(conn, getSettings(), "instance",
                         new MvCoordinatorActions() {
                     private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
 
@@ -126,7 +65,7 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                     }
 
                     @Override
-                    public void onUpdate() {
+                    public void onTick() {
                         var peekLast = deque.peekLast();
 
                         if (peekLast == null) {
@@ -143,27 +82,111 @@ public class MvCoordinatorTest extends AbstractIntegrationBase {
                     public void onStop() {
                         tick.set(UUID.randomUUID().toString());
                     }
-                }).start();
+                });
+
+                coord.start();
+
+                for (int i = 1; i <= 10; i++) {
+                    pause(1_001);
+                    coord.stop();
+                    pause(1_002);
+                    coord.start();
+                    pause(1_003);
+                    Assertions.assertEquals(i + 1, queue.size());
+                    Assertions.assertEquals(i + 1, deque.size());
+                }
+            } finally {
+                if (coord != null) {
+                    coord.close();
+                }
             }
-
-            for (int i = 1; i <= 10; i++) {
-                pause(15_000);
-                Assertions.assertEquals(i, queue.size());
-                Assertions.assertEquals(i, deque.size());
-
-                conn.getQueryRetryCtx().supplyResult(session -> session
-                        .createQuery("UPDATE mv_jobs SET should_run = false WHERE 1 = 1", TxMode.NONE).execute()
-                ).join().getStatus().expectSuccess();
-
-                pause(10_000);
-
-                conn.getQueryRetryCtx().supplyResult(session -> session
-                        .createQuery("UPDATE mv_jobs SET should_run = true WHERE 1 = 1", TxMode.NONE).execute()
-                ).join().getStatus().expectSuccess();
-                pause(15_000);
-            }
-
-            runDdl(conn, "DROP TABLE mv_jobs;");
         }
     }
+
+    @Test
+    public void checkMultiThreaded() {
+        System.out.println("========= Start multi-threaded coordination test");
+
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            runMulti(conn);
+        }
+    }
+
+    private void runMulti(YdbConnector conn) {
+        final var queue = new ConcurrentLinkedQueue<Integer>();
+        final var deque = new ConcurrentLinkedDeque<String>();
+        final ArrayList<MvCoordinator> coords = new ArrayList<>();
+
+        for (int i = 0; i < 20; i++) {
+            MvCoordinator c = new MvCoordinator(conn, getSettings(), "instance_" + i,
+                    new MvCoordinatorActions() {
+                private final AtomicReference<String> tick = new AtomicReference<>(UUID.randomUUID().toString());
+
+                @Override
+                public void onStart() {
+                    queue.add(1);
+                }
+
+                @Override
+                public void onTick() {
+                    var peekLast = deque.peekLast();
+
+                    if (peekLast == null) {
+                        deque.addLast(tick.get());
+                        return;
+                    }
+
+                    if (!tick.get().equals(peekLast)) {
+                        deque.addLast(tick.get());
+                    }
+                }
+
+                @Override
+                public void onStop() {
+                    tick.set(UUID.randomUUID().toString());
+                }
+            });
+
+            c.start();
+            coords.add(c);
+        }
+
+        try {
+            for (int i = 1; i <= 10; i++) {
+                pause(1_001);
+                stopActive(coords);
+                pause(1_002);
+                Assertions.assertEquals(i + 1, queue.size());
+                Assertions.assertEquals(i + 1, deque.size());
+            }
+        } catch (Exception ex) {
+            System.err.println("GOPA! *********************");
+            ex.printStackTrace(System.err);
+        } finally {
+            for (var c : coords) {
+                c.close();
+            }
+        }
+    }
+
+    private void stopActive(ArrayList<MvCoordinator> coords) {
+        MvCoordinator active = null;
+        for (var c : coords) {
+            if (c.isLeader()) {
+                if (active == null) {
+                    active = c;
+                } else {
+                    Assertions.assertFalse(true, "Multiple active coordinators: "
+                            + active.getRunnerId() + " vs " + c.getRunnerId());
+                }
+            }
+        }
+        if (active != null) {
+            System.out.println("Stopping instance " + active.getRunnerId());
+            active.stop();
+        }
+        Assertions.assertNotNull(active, "Missing active coordinator");
+    }
+
 }
