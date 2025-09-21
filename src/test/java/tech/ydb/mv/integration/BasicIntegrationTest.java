@@ -153,6 +153,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 System.err.println("[AAA] Starting the full refresh of MV...");
                 refreshMV(wc);
                 standardPause();
+                standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
                 if (diffCount > 0) {
@@ -172,6 +173,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 clearMV(conn);
                 System.err.println("[AAA] Starting the full refresh of MV...");
                 refreshMV(wc);
+                standardPause();
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);

@@ -2,6 +2,7 @@ package tech.ydb.mv.mgt;
 
 import tech.ydb.mv.svc.MvLocker;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -169,7 +170,8 @@ public class MvCoordinator implements AutoCloseable {
     }
 
     private void startLeaderLoop() {
-        jobDao.upsertJob(new MvJobInfo(MvConfig.HANDLER_COORDINATOR, null, true, runnerId));
+        jobDao.upsertRunnerJob(new MvRunnerJobInfo(
+                runnerId, MvConfig.HANDLER_COORDINATOR, null, Instant.now()));
         job.onStart();
 
         LOG.info("Became leader, starting leader loop, tick={}ms, instanceId={}",
@@ -224,11 +226,11 @@ public class MvCoordinator implements AutoCloseable {
     }
 
     private boolean stillActive() {
-        MvJobInfo info = jobDao.getJob(MvConfig.HANDLER_COORDINATOR);
-        if (info == null) {
+        var runners = jobDao.getJobRunners(MvConfig.HANDLER_COORDINATOR);
+        if (runners.size() != 1) {
             return false;
         }
-        return runnerId.equals(info.getRunnerId());
+        return runnerId.equals(runners.get(0).getRunnerId());
     }
 
     private synchronized void demote() {

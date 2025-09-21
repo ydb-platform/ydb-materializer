@@ -34,6 +34,16 @@ CREATE TABLE `mv/jobs` (
     PRIMARY KEY(job_name)
 );
 
+-- Externally controlled scan requests
+CREATE TABLE `mv/job_scans` (
+    job_name Text NOT NULL,
+    target_name Text NOT NULL,
+    scan_settings JsonDocument,
+    requested_at Timestamp,
+    started_at Timestamp,
+    PRIMARY KEY(job_name, target_name)
+);
+
 -- Runner instances status
 CREATE TABLE `mv/runners` (
     runner_id Text NOT NULL,
@@ -48,6 +58,7 @@ CREATE TABLE `mv/runner_jobs` (
     job_name Text NOT NULL,
     job_settings JsonDocument,
     started_at Timestamp,
+    INDEX ix_job_name GLOBAL SYNC ON (job_name),
     PRIMARY KEY(runner_id, job_name)
 );
 
@@ -61,7 +72,7 @@ CREATE TABLE `mv/commands` (
     job_settings JsonDocument,
     command_status Text, -- CREATED / TAKEN / SUCCESS / ERROR
     command_diag Text,
-    INDEX ix_no GLOBAL SYNC ON (command_no),
+    INDEX ix_command_no GLOBAL SYNC ON (command_no),
     PRIMARY KEY(runner_id, command_no)
 );
 

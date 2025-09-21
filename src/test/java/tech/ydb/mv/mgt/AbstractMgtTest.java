@@ -32,6 +32,7 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
             job_name Text NOT NULL,
             job_settings JsonDocument,
             started_at Timestamp,
+            INDEX ix_job_name GLOBAL SYNC ON (job_name),
             PRIMARY KEY(runner_id, job_name)
         );
 
@@ -44,7 +45,7 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
             job_settings JsonDocument,
             command_status Text,
             command_diag Text,
-            INDEX ix_no GLOBAL SYNC ON (command_no),
+            INDEX ix_command_no GLOBAL SYNC ON (command_no),
             PRIMARY KEY(runner_id, command_no)
         );
         """;

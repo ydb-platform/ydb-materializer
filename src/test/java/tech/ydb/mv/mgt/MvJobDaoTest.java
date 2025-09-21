@@ -42,7 +42,7 @@ public class MvJobDaoTest extends AbstractMgtTest {
 
     @Test
     public void testUpsertAndGetJob() {
-        MvJobInfo job = new MvJobInfo("test-job", "{\"key\":\"value\"}", true, "runner-1");
+        MvJobInfo job = new MvJobInfo("test-job", "{\"key\":\"value\"}", true);
 
         // Upsert job
         jobDao.upsertJob(job);
@@ -53,7 +53,6 @@ public class MvJobDaoTest extends AbstractMgtTest {
         Assertions.assertEquals(job.getJobName(), retrieved.getJobName());
         Assertions.assertEquals(job.getJobSettings(), retrieved.getJobSettings());
         Assertions.assertEquals(job.isShouldRun(), retrieved.isShouldRun());
-        Assertions.assertEquals(job.getRunnerId(), retrieved.getRunnerId());
     }
 
     @Test
@@ -64,7 +63,7 @@ public class MvJobDaoTest extends AbstractMgtTest {
 
     @Test
     public void testUpsertJobWithNullValues() {
-        MvJobInfo job = new MvJobInfo("test-job-null", null, false, "runner-99");
+        MvJobInfo job = new MvJobInfo("test-job-null", null, false);
 
         jobDao.upsertJob(job);
 
@@ -74,14 +73,13 @@ public class MvJobDaoTest extends AbstractMgtTest {
         // YDB returns empty strings or "null" string instead of actual null for optional fields
         Assertions.assertTrue(retrieved.getJobSettings() == null);
         Assertions.assertFalse(retrieved.isShouldRun());
-        Assertions.assertEquals(job.getRunnerId(), retrieved.getRunnerId());
     }
 
     @Test
     public void testGetAllJobsWithMultipleJobs() {
-        MvJobInfo job1 = new MvJobInfo("job1", "{\"key1\":\"value1\"}", true, "runner-1");
-        MvJobInfo job2 = new MvJobInfo("job2", "{\"key2\":\"value2\"}", false, "runner-2");
-        MvJobInfo job3 = new MvJobInfo("job3", null, true, "runner-1");
+        MvJobInfo job1 = new MvJobInfo("job1", "{\"key1\":\"value1\"}", true);
+        MvJobInfo job2 = new MvJobInfo("job2", "{\"key2\":\"value2\"}", false);
+        MvJobInfo job3 = new MvJobInfo("job3", null, true);
 
         jobDao.upsertJob(job1);
         jobDao.upsertJob(job2);
@@ -99,18 +97,17 @@ public class MvJobDaoTest extends AbstractMgtTest {
 
     @Test
     public void testUpdateJob() {
-        MvJobInfo job = new MvJobInfo("update-job", "{\"key\":\"value\"}", true, "runner-1");
+        MvJobInfo job = new MvJobInfo("update-job", "{\"key\":\"value\"}", true);
         jobDao.upsertJob(job);
 
         // Update the job
-        MvJobInfo updatedJob = new MvJobInfo("update-job", "{\"key\":\"updated\"}", false, "runner-2");
+        MvJobInfo updatedJob = new MvJobInfo("update-job", "{\"key\":\"updated\"}", false);
         jobDao.upsertJob(updatedJob);
 
         MvJobInfo retrieved = jobDao.getJob("update-job");
         Assertions.assertNotNull(retrieved);
         Assertions.assertEquals("{\"key\":\"updated\"}", retrieved.getJobSettings());
         Assertions.assertFalse(retrieved.isShouldRun());
-        Assertions.assertEquals("runner-2", retrieved.getRunnerId());
     }
 
     // ========== MV_RUNNERS Operations Tests ==========
@@ -444,7 +441,7 @@ public class MvJobDaoTest extends AbstractMgtTest {
     @Test
     public void testOperationsWithInvalidData() {
         // Test with empty job name - this should work as empty string is valid
-        MvJobInfo job1 = new MvJobInfo("", "{\"key\":\"value\"}", true, "runner-1");
+        MvJobInfo job1 = new MvJobInfo("", "{\"key\":\"value\"}", true);
         jobDao.upsertJob(job1);
         MvJobInfo retrieved1 = jobDao.getJob("");
         Assertions.assertNotNull(retrieved1);
@@ -452,7 +449,7 @@ public class MvJobDaoTest extends AbstractMgtTest {
 
         // Test with null job name - this should throw an exception
         Assertions.assertThrows(RuntimeException.class, () -> {
-            MvJobInfo job = new MvJobInfo(null, "{\"key\":\"value\"}", true, "runner-1");
+            MvJobInfo job = new MvJobInfo(null, "{\"key\":\"value\"}", true);
             jobDao.upsertJob(job);
         });
     }

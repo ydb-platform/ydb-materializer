@@ -32,6 +32,7 @@ public class MvJobDao {
     private final String sqlDeleteRunner;
     private final String sqlUpsertRunnerJob;
     private final String sqlGetRunnerJobs;
+    private final String sqlGetJobRunners;
     private final String sqlGetAllRunnerJobs;
     private final String sqlDeleteRunnerJob;
     private final String sqlDeleteRunnerJobs;
@@ -50,11 +51,11 @@ public class MvJobDao {
 
         // MV_JOBS SQL statements
         this.sqlGetAllJobs = String.format("""
-            SELECT job_name, job_settings, should_run, runner_id FROM `%s`;
+            SELECT job_name, job_settings, should_run FROM `%s`;
             """, tabJobs);
         this.sqlGetJob = String.format("""
             DECLARE $job_name AS Text;
-            SELECT job_name, job_settings, should_run, runner_id FROM `%s`
+            SELECT job_name, job_settings, should_run FROM `%s`
                 WHERE job_name = $job_name;
             """, tabJobs
         );
@@ -62,9 +63,8 @@ public class MvJobDao {
             DECLARE $job_name AS Text;
             DECLARE $job_settings AS JsonDocument?;
             DECLARE $should_run AS Bool;
-            DECLARE $runner_id AS Text;
-            UPSERT INTO `%s` (job_name, job_settings, should_run, runner_id)
-            VALUES ($job_name, $job_settings, $should_run, $runner_id);
+            UPSERT INTO `%s` (job_name, job_settings, should_run)
+            VALUES ($job_name, $job_settings, $should_run);
             """, tabJobs
         );
 
@@ -100,6 +100,13 @@ public class MvJobDao {
             DECLARE $runner_id AS Text;
             SELECT runner_id, job_name, job_settings, started_at FROM `%s`
                 WHERE runner_id = $runner_id;
+            """, tabRunnerJobs
+        );
+        this.sqlGetJobRunners = String.format("""
+            DECLARE $job_name AS Text;
+            SELECT runner_id, job_name, job_settings, started_at
+            FROM `%s` VIEW ix_job_name
+            WHERE job_name = $job_name;
             """, tabRunnerJobs
         );
         this.sqlGetAllRunnerJobs = String.format("""
@@ -155,7 +162,7 @@ public class MvJobDao {
             """, tabCommands
         );
         this.sqlMaxCommandNo = String.format("""
-            SELECT command_no FROM `%s` VIEW ix_no
+            SELECT command_no FROM `%s` VIEW ix_command_no
             ORDER BY command_no DESC LIMIT 1;
             """, tabCommands);
     }
@@ -191,8 +198,7 @@ public class MvJobDao {
                 "$job_settings", job.getJobSettings() != null
                 ? PrimitiveValue.newJsonDocument(job.getJobSettings()).makeOptional()
                 : PrimitiveType.JsonDocument.makeOptional().emptyValue(),
-                "$should_run", PrimitiveValue.newBool(job.isShouldRun()),
-                "$runner_id", PrimitiveValue.newText(job.getRunnerId())
+                "$should_run", PrimitiveValue.newBool(job.isShouldRun())
         ));
     }
 
@@ -235,6 +241,17 @@ public class MvJobDao {
     public List<MvRunnerJobInfo> getRunnerJobs(String runnerId) {
         var rs = ydb.sqlRead(sqlGetRunnerJobs, Params.of(
                 "$runner_id", PrimitiveValue.newText(runnerId)
+        )).getResultSet(0);
+        List<MvRunnerJobInfo> jobs = new ArrayList<>();
+        while (rs.next()) {
+            jobs.add(parseRunnerJobInfo(rs));
+        }
+        return jobs;
+    }
+
+    public List<MvRunnerJobInfo> getJobRunners(String jobName) {
+        var rs = ydb.sqlRead(sqlGetJobRunners, Params.of(
+                "$job_name", PrimitiveValue.newText(jobName)
         )).getResultSet(0);
         List<MvRunnerJobInfo> jobs = new ArrayList<>();
         while (rs.next()) {
@@ -311,8 +328,7 @@ public class MvJobDao {
         return new MvJobInfo(
                 reader.getColumn("job_name").getText(),
                 getJsonDocument(reader, "job_settings"),
-                reader.getColumn("should_run").getBool(),
-                reader.getColumn("runner_id").getText()
+                reader.getColumn("should_run").getBool()
         );
     }
 

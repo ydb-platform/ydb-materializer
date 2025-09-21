@@ -16,16 +16,14 @@ public class MvJobInfo implements Serializable {
     private final String jobName;
     private final String jobSettings;
     private final boolean shouldRun;
-    private final String runnerId;
 
-    public MvJobInfo(String jobName, String jobSettings, boolean shouldRun, String runnerId) {
-        if (jobName == null || runnerId == null) {
+    public MvJobInfo(String jobName, String jobSettings, boolean shouldRun) {
+        if (jobName == null) {
             throw new IllegalArgumentException();
         }
         this.jobName = jobName;
         this.jobSettings = jobSettings;
         this.shouldRun = shouldRun;
-        this.runnerId = runnerId;
     }
 
     public boolean isRegularJob() {
@@ -44,16 +42,11 @@ public class MvJobInfo implements Serializable {
         return shouldRun;
     }
 
-    public String getRunnerId() {
-        return runnerId;
-    }
-
     @Override
     public String toString() {
         return "MvJobInfo{"
                 + "jobName='" + jobName + '\''
                 + ", shouldRun=" + shouldRun
-                + ", runnerId='" + runnerId + '\''
                 + '}';
     }
 
@@ -68,12 +61,11 @@ public class MvJobInfo implements Serializable {
         MvJobInfo other = (MvJobInfo) o;
         return shouldRun == other.shouldRun
                 && java.util.Objects.equals(jobName, other.jobName)
-                && java.util.Objects.equals(jobSettings, other.jobSettings)
-                && java.util.Objects.equals(runnerId, other.runnerId);
+                && java.util.Objects.equals(jobSettings, other.jobSettings);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(jobName, jobSettings, shouldRun, runnerId);
+        return java.util.Objects.hash(jobName, jobSettings, shouldRun);
     }
 }
