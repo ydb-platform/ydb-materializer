@@ -43,6 +43,10 @@ public class MvDictionaryScan {
         this.historyTableInfo = describer.describeTable(settings.getHistoryTableName());
     }
 
+    public MvHandler getHandler() {
+        return handler;
+    }
+
     public MvChangesSingleDict scan(String tableName) {
         var adapter = new Adapter(tableName);
         MvKey startKey = new MvScanDao(conn, adapter).initScan();
@@ -54,7 +58,7 @@ public class MvDictionaryScan {
             sql = "DECLARE $src AS Text; "
                     + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
                     + YdbConnector.safe(settings.getHistoryTableName())
-                    + "` WHERE src=$src;"
+                    + "` WHERE src=$src "
                     + "ORDER BY src, tv, seqno, key_text;";
         } else {
             params = Params.of(
@@ -75,7 +79,7 @@ public class MvDictionaryScan {
         result.setScanPosition(startKey);
         while (rsr.next()) {
             result.setScanPosition(new MvKey(rsr, historyTableInfo.getKeyInfo()));
-            String diffStr = rsr.getColumn(5).getText();
+            String diffStr = rsr.getColumn(5).getJsonDocument();
             if (diffStr == null) {
                 continue;
             }

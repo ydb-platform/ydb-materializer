@@ -266,7 +266,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
-        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "40");
+        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);

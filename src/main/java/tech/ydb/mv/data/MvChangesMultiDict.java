@@ -100,9 +100,10 @@ public class MvChangesMultiDict {
             int length = item.source.getTableInfo().getKey().size();
             var keys = dictChecks.get(item.source.getTableAlias());
             if (keys != null) {
+                // processing just the relevant tables
                 filter.addBlock(position, length, keys);
+                position += length;
             }
-            position += length;
         }
         return filter;
     }

@@ -186,12 +186,9 @@ public class MvJobController {
         }
         var completionHandler = new DictScanComplete(dictScan, changes, filters.size());
         for (var filter : filters) {
-            var action = applyManager.createFilterAction(filter);
-            if (action == null) {
-                continue;
-            }
             LOG.info("Initiating dictionary refresh scan for target `{}` in handler `{}`",
                     filter.getTarget().getName(), context.getHandler().getName());
+            var action = applyManager.createFilterAction(filter);
             var actions = new MvApplyActionList(action);
             context.startScan(filter.getTarget(), settings, applyManager,
                     actions, completionHandler);
@@ -217,6 +214,8 @@ public class MvJobController {
         @Override
         public void onScanComplete() {
             if (counter.decrementAndGet() == 0) {
+                LOG.info("Updating dictionary scan positions for handler `{}`",
+                        dictScan.getHandler().getName());
                 dictScan.commitAll(changes);
             }
         }

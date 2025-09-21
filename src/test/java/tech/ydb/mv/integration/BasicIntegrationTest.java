@@ -48,19 +48,20 @@ DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val2'u
 ;
 DELETE FROM `test1/sub_table2` WHERE c3=Decimal('10002.567',22,9) AND c4='val1'u
 ;
-INSERT INTO `test1/sub_table3` (c5,c10) VALUES
-  (1, 'One'u),
-  (2, 'Two'u),
-  (3, 'Three'u)
-;
 """;
 
     private static final String WRITE_UP3
             = """
 UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
- (58, 'Welcome! News'u)
-,(59, 'Adieu! News'u)
-;
+  (1, 'One'u),
+  (2, 'Two'u),
+  (3, 'Three'u),
+  (58, 'Welcome! News'u),
+  (59, 'Adieu! News'u);
+""";
+
+    private static final String WRITE_UP4
+            = """
 UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
  (101, 'Eins - Bis'u)
 ,(103, 'Drei - Bis'u)
@@ -163,8 +164,25 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 System.err.println("[AAA] Checking the dictionary history...");
                 checkDictHist(conn);
 
-                System.err.println("[AAA] Updating just dictionary rows...");
+                System.err.println("[AAA] Updating some dictionary rows...");
                 runDml(conn, WRITE_UP3);
+                standardPause();
+
+                System.err.println("[AAA] Clearing MV...");
+                clearMV(conn);
+                System.err.println("[AAA] Starting the full refresh of MV...");
+                refreshMV(wc);
+                standardPause();
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery);
+                if (diffCount > 0) {
+                    System.out.println("********* dumping threads **********");
+                    System.out.println(generateThreadDump());
+                }
+                Assertions.assertEquals(0, diffCount);
+
+                System.err.println("[AAA] Updating more dictionary rows...");
+                runDml(conn, WRITE_UP4);
                 standardPause();
 
                 System.err.println("[AAA] Checking the dictionary history again...");
@@ -172,6 +190,13 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
                 System.err.println("[AAA] Waiting for dictionary refresh...");
                 pause(20_000L);
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery);
+                if (diffCount > 0) {
+                    System.out.println("********* dumping threads **********");
+                    System.out.println(generateThreadDump());
+                }
+                Assertions.assertEquals(0, diffCount);
             } finally {
                 wc.shutdown();
             }
@@ -216,7 +241,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
         checkConsumerPosition(conn, "test1/main_table", "cf0", consumerName, 6L);
         checkConsumerPosition(conn, "test1/sub_table1", "cf1", consumerName, 8L);
         checkConsumerPosition(conn, "test1/sub_table2", "cf2", consumerName, 9L);
-        checkConsumerPosition(conn, "test1/sub_table3", "cf3", "dictionary", 5L);
+        checkConsumerPosition(conn, "test1/sub_table3", "cf3", "dictionary", 2L);
         checkConsumerPosition(conn, "test1/sub_table4", "cf4", "dictionary", 4L);
     }
 

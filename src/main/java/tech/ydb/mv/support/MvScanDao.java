@@ -36,7 +36,7 @@ public class MvScanDao {
         ResultSetReader rsr = conn.sqlRead(sqlPosSelect, params).getResultSet(0);
         MvKey key = null;
         if (rsr.next()) {
-            YdbStruct ys = YdbStruct.fromJson(rsr.getColumn(0).getText());
+            YdbStruct ys = YdbStruct.fromJson(rsr.getColumn(0).getJsonDocument());
             key = new MvKey(ys, adapter.getTableInfo());
         }
         return key;
