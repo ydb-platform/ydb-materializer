@@ -134,6 +134,26 @@ public class MvApplyManager implements MvCdcSink {
                 workers.length, context.getMetadata().getName());
     }
 
+    public void awaitTermination() {
+        if (context.isRunning()) {
+            throw new IllegalStateException("Job should be stopped when "
+                    + "calling awaitTermination()");
+        }
+        boolean running;
+        do {
+            running = false;
+            for (MvApplyWorker w : workers) {
+                if (w.isRunning()) {
+                    running = true;
+                    break;
+                }
+            }
+            if (running) {
+                YdbMisc.sleep(50L);
+            }
+        } while (running);
+    }
+
     @Override
     public Collection<MvInput> getInputs() {
         return context.getMetadata().getInputs().values().stream()

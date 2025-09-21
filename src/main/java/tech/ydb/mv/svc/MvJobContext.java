@@ -59,11 +59,11 @@ public class MvJobContext implements MvCdcAdapter {
         return shouldRun.get();
     }
 
-    public void start() {
+    public void setStarted() {
         shouldRun.set(true);
     }
 
-    public void stop() {
+    public void setStopped() {
         shouldRun.set(false);
     }
 

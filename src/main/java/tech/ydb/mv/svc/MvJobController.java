@@ -61,12 +61,11 @@ public class MvJobController {
             LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
         }
-        if (!context.getService().getLocker().lock(getName())) {
-            LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
+        if (!lockObtain()) {
             return false;
         }
         LOG.info("Starting the controller `{}`", getName());
-        context.start();
+        context.setStarted();
         applyManager.refreshSelectors(context.getYdb().getTableClient());
         applyManager.start();
         cdcFeeder.start();
@@ -79,10 +78,11 @@ public class MvJobController {
             return false;
         }
         LOG.info("Stopping the controller `{}`", getName());
-        context.stop();
-        // no explicit stop for applyManager - threads are stopped by context
+        context.setStopped();
         cdcFeeder.stop();
-        context.getService().getLocker().release(getName());
+        // no explicit stop for applyManager - threads are stopped by context flag
+        applyManager.awaitTermination();
+        lockRelease();
         return true;
     }
 
@@ -103,14 +103,16 @@ public class MvJobController {
         return context.stopScan(target);
     }
 
-    /**
-     * Check the extra tasks to be started, and start them.
-     */
-    public void pingTasks() {
-        if (context.isAnyScanRunning()) {
-            // There should be no active scans
-            return;
+    private boolean lockObtain() {
+        if (!context.getService().getLocker().lock(getName())) {
+            LOG.warn("Failed to obtain the lock for `{}`, refusing to start", getName());
+            return false;
         }
+        return true;
+    }
+
+    private boolean lockRelease() {
+        return context.getService().getLocker().release(getName());
     }
 
 }
