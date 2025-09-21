@@ -252,7 +252,7 @@ public class MvRunner implements AutoCloseable {
      * Generate a unique runner ID.
      */
     private String generateRunnerId() {
-        return "runner-" + UUID.randomUUID().toString().substring(0, 8)
+        return UUID.randomUUID().toString().replace("-", "")
                 + "-" + Long.toHexString(System.currentTimeMillis());
     }
 

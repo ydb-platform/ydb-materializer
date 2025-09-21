@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import tech.ydb.mv.MvConfig;
+
 /**
  * @author Kirill Kurdyukov
  */
@@ -79,13 +81,16 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             var runnerJobs = mvJobDao.getAllRunnerJobs();
             var runnerNameJobs = runnerJobs.stream()
                     .map(MvRunnerJobInfo::getJobName)
+                    .filter(name -> !name.startsWith(MvConfig.SYS_PREFIX))
                     .collect(Collectors.toSet());
 
             List<MvRunnerJobInfo> jobsForRemoval = runnerJobs.stream()
+                    .filter(runnerJob -> runnerJob.isRegularJob())
                     .filter(runnerJob -> !jobsToRun.containsKey(runnerJob.getJobName()))
                     .toList();
 
             List<MvJobInfo> newJobs = jobsToRun.values().stream()
+                    .filter(job -> job.isRegularJob())
                     .filter(job -> !runnerNameJobs.contains(job.getJobName()))
                     .toList();
 

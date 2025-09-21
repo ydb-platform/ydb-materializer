@@ -218,6 +218,10 @@ public class MvCoordinator implements AutoCloseable {
             }
 
             job.onTick();
+        } catch (RejectedExecutionException ree) {
+            // shutdown is being performed
+            LOG.error("Detected shutdown on tick action in the coordinator - demoting");
+            demote();
         } catch (Exception ex) {
             LOG.error("Failed tick action in the coordinator - demoting", ex);
             demote();
