@@ -32,10 +32,10 @@ public class MvScanDao {
 
     public MvKey initScan() {
         LOG.debug("Initiating scan, handler `{}`, table `{}`",
-                adapter.getHandlerName(), adapter.getTargetName());
+                adapter.getJobName(), adapter.getTableName());
         Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
-                "$table_name", PrimitiveValue.newText(adapter.getTargetName())
+                "$job_name", PrimitiveValue.newText(adapter.getJobName()),
+                "$table_name", PrimitiveValue.newText(adapter.getTableName())
         );
         ResultSetReader rsr = conn.sqlRead(sqlPosSelect, params).getResultSet(0);
         MvKey key = null;
@@ -48,10 +48,10 @@ public class MvScanDao {
 
     public void registerScan() {
         LOG.debug("Registering scan, handler `{}`, table `{}`",
-                adapter.getHandlerName(), adapter.getTargetName());
+                adapter.getJobName(), adapter.getTableName());
         Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
-                "$table_name", PrimitiveValue.newText(adapter.getTargetName()),
+                "$job_name", PrimitiveValue.newText(adapter.getJobName()),
+                "$table_name", PrimitiveValue.newText(adapter.getTableName()),
                 "$key_position", PrimitiveValue.newJsonDocument("{}")
         );
         conn.sqlWrite(sqlPosUpsert, params);
@@ -59,20 +59,20 @@ public class MvScanDao {
 
     public void unregisterScan() {
         LOG.debug("Unregistering scan, handler `{}`, table `{}`",
-                adapter.getHandlerName(), adapter.getTargetName());
+                adapter.getJobName(), adapter.getTableName());
         Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
-                "$table_name", PrimitiveValue.newText(adapter.getTargetName())
+                "$job_name", PrimitiveValue.newText(adapter.getJobName()),
+                "$table_name", PrimitiveValue.newText(adapter.getTableName())
         );
         conn.sqlWrite(sqlPosDelete, params);
     }
 
     public void saveScan(MvKey key) {
         LOG.debug("Saving scan position, handler `{}`, table `{}`",
-                adapter.getHandlerName(), adapter.getTargetName());
+                adapter.getJobName(), adapter.getTableName());
         Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
-                "$table_name", PrimitiveValue.newText(adapter.getTargetName()),
+                "$job_name", PrimitiveValue.newText(adapter.getJobName()),
+                "$table_name", PrimitiveValue.newText(adapter.getTableName()),
                 "$key_position", PrimitiveValue.newJsonDocument(key.convertKeyToJson())
         );
         conn.sqlWrite(sqlPosUpsert, params);
@@ -80,35 +80,35 @@ public class MvScanDao {
 
     public void unregisterSpecificScan(String tableName) {
         LOG.debug("Unregistering scan, handler `{}`, table `{}`",
-                adapter.getHandlerName(), tableName);
+                adapter.getJobName(), tableName);
         Params params = Params.of(
-                "$handler_name", PrimitiveValue.newText(adapter.getHandlerName()),
+                "$job_name", PrimitiveValue.newText(adapter.getJobName()),
                 "$table_name", PrimitiveValue.newText(tableName)
         );
         conn.sqlWrite(sqlPosDelete, params);
     }
 
     private static String makePosUpsert(MvScanAdapter adapter) {
-        return "DECLARE $handler_name AS Text; "
+        return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
                 + "DECLARE $key_position AS JsonDocument; "
                 + "UPSERT INTO `" + YdbConnector.safe(adapter.getControlTable()) + "` "
-                + "(handler_name, table_name, updated_at, key_position) "
-                + "VALUES ($handler_name, $table_name, CurrentUtcTimestamp(), $key_position);";
+                + "(job_name, table_name, updated_at, key_position) "
+                + "VALUES ($job_name, $table_name, CurrentUtcTimestamp(), $key_position);";
     }
 
     private static String makePosDelete(MvScanAdapter adapter) {
-        return "DECLARE $handler_name AS Text; "
+        return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
                 + "DELETE FROM `" + YdbConnector.safe(adapter.getControlTable()) + "` "
-                + "WHERE handler_name=$handler_name AND table_name=$table_name;";
+                + "WHERE job_name=$job_name AND table_name=$table_name;";
     }
 
     private static String makePosSelect(MvScanAdapter adapter) {
-        return "DECLARE $handler_name AS Text; "
+        return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
                 + "SELECT key_position FROM `" + YdbConnector.safe(adapter.getControlTable()) + "` "
-                + "WHERE handler_name=$handler_name AND table_name=$table_name;";
+                + "WHERE job_name=$job_name AND table_name=$table_name;";
     }
 
 }

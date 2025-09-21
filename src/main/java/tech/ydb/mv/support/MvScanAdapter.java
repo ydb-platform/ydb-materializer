@@ -12,8 +12,8 @@ public interface MvScanAdapter {
 
     String getControlTable();
 
-    String getHandlerName();
+    String getJobName();
 
-    String getTargetName();
+    String getTableName();
 
 }

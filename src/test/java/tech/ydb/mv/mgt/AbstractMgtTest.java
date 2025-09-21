@@ -42,6 +42,7 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
             created_at Timestamp,
             command_type Text,
             job_name Text,
+            target_name Text,
             job_settings JsonDocument,
             command_status Text,
             command_diag Text,

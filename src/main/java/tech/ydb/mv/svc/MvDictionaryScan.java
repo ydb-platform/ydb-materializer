@@ -143,13 +143,13 @@ public class MvDictionaryScan {
         }
 
         @Override
-        public String getHandlerName() {
+        public String getJobName() {
             // Each handler has its own dictionary log scan context.
             return handler.getName();
         }
 
         @Override
-        public String getTargetName() {
+        public String getTableName() {
             // Here we report the source table name as the target, unlike regular scans.
             return sourceTableName;
         }

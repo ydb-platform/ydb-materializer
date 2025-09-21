@@ -34,11 +34,11 @@ CREATE TABLE `test1/statements` (
 );
 
 CREATE TABLE `test1/scans_state` (
-   handler_name Text NOT NULL,
+   job_name Text NOT NULL,
    table_name Text NOT NULL,
    updated_at Timestamp,
    key_position JsonDocument,
-   PRIMARY KEY(handler_name, table_name)
+   PRIMARY KEY(job_name, table_name)
 );
 
 CREATE TABLE `test1/dict_hist` (

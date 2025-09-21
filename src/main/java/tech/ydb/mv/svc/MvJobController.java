@@ -256,12 +256,12 @@ public class MvJobController {
         }
 
         @Override
-        public String getHandlerName() {
+        public String getJobName() {
             return getName();
         }
 
         @Override
-        public String getTargetName() {
+        public String getTableName() {
             throw new UnsupportedOperationException();
         }
 

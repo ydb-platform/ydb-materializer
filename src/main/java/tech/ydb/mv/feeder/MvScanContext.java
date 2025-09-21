@@ -99,12 +99,12 @@ class MvScanContext implements MvScanAdapter {
     }
 
     @Override
-    public String getHandlerName() {
+    public String getJobName() {
         return handler.getName();
     }
 
     @Override
-    public String getTargetName() {
+    public String getTableName() {
         return target.getName();
     }
 
