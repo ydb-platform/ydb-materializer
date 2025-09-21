@@ -1,5 +1,8 @@
 package tech.ydb.mv;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 /**
  * Configuration setting names.
  *
@@ -7,6 +10,14 @@ package tech.ydb.mv;
  */
 public class MvConfig {
 
+    /**
+     * Gson instance for basic conversions.
+     */
+    public static final Gson GSON = new GsonBuilder().create();
+
+    /**
+     * System-used prefix for job names / handler names.
+     */
     public static final String SYS_PREFIX = "ydbmv";
 
     /**

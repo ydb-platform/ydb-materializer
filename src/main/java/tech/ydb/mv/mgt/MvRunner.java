@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.MvApi;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.support.YdbMisc;
 
@@ -195,6 +196,10 @@ public class MvRunner implements AutoCloseable {
                 startHandler(command.getJobName(), command.getJobSettings());
             } else if (command.isStopCommand()) {
                 stopHandler(command.getJobName());
+            } else if (command.isScanCommand()) {
+                startScan(command.getJobName(), command.getTargetName(), command.getJobSettings());
+            } else if (command.isNoScanCommand()) {
+                stopScan(command.getJobName(), command.getTargetName());
             } else {
                 throw new IllegalArgumentException("Unknown command type: " + command.getCommandType());
             }
@@ -216,14 +221,37 @@ public class MvRunner implements AutoCloseable {
     /**
      * Start a handler with the given name and settings.
      */
-    private void startHandler(String jobName, String jobSettingsJson) {
+    private void startHandler(String jobName, String settingsJson) {
         // Start the handler
-        boolean started = api.startHandler(jobName);
+        boolean started;
+        if (MvConfig.HANDLER_DICTIONARY.equalsIgnoreCase(jobName)) {
+            var oldSettings = api.getDictionarySettings();
+            try {
+                if (settingsJson != null && settingsJson.length() > 2) {
+                    var newSettings = MvConfig.GSON.fromJson(settingsJson, oldSettings.getClass());
+                    api.setDictionarySettings(newSettings);
+                }
+                started = api.startHandler(jobName);
+            } finally {
+                api.setDictionarySettings(oldSettings);
+            }
+        } else {
+            var oldSettings = api.getHandlerSettings();
+            try {
+                if (settingsJson != null && settingsJson.length() > 2) {
+                    var newSettings = MvConfig.GSON.fromJson(settingsJson, oldSettings.getClass());
+                    api.setHandlerSettings(newSettings);
+                }
+                started = api.startHandler(jobName);
+            } finally {
+                api.setHandlerSettings(oldSettings);
+            }
+        }
 
         if (started) {
             // Record the job in local tracking and database
             MvRunnerJobInfo runnerJob = new MvRunnerJobInfo(
-                    runnerId, jobName, jobSettingsJson, Instant.now()
+                    runnerId, jobName, settingsJson, Instant.now()
             );
 
             synchronized (localJobs) {
@@ -231,7 +259,8 @@ public class MvRunner implements AutoCloseable {
             }
 
             tableOps.upsertRunnerJob(runnerJob);
-            LOG.info("Started handler: {}", jobName);
+
+            LOG.info("Started handler `{}`", jobName);
         }
     }
 
@@ -240,12 +269,41 @@ public class MvRunner implements AutoCloseable {
      */
     private void stopHandler(String jobName) {
         api.stopHandler(jobName);
+
         // Remove from local tracking and database
         synchronized (localJobs) {
             localJobs.remove(jobName);
         }
+
         tableOps.deleteRunnerJob(runnerId, jobName);
-        LOG.info("Stopped handler: {}", jobName);
+
+        LOG.info("Stopped handler `{}`", jobName);
+    }
+
+    private void startScan(String jobName, String targetName, String settingsJson) {
+        var oldSettings = api.getScanSettings();
+        try {
+            if (settingsJson != null && settingsJson.length() > 0) {
+                var newSettings = MvConfig.GSON.fromJson(settingsJson, oldSettings.getClass());
+                api.setScanSettings(newSettings);
+            }
+            if (!api.startScan(jobName, targetName)) {
+                throw new IllegalStateException("Scan was not started for handler `"
+                        + jobName + "`, table `" + targetName + "`");
+            }
+        } finally {
+            api.setScanSettings(oldSettings);
+        }
+
+        LOG.info("Started scan, handler `{}`, table `{}`", jobName, targetName);
+    }
+
+    private void stopScan(String jobName, String targetName) {
+        if (!api.stopScan(jobName, targetName)) {
+            throw new IllegalStateException("Scan was not stopped for handler `"
+                    + jobName + "`, table `" + targetName + "`");
+        }
+        LOG.info("Stopped scan, handler `{}`, table `{}`", jobName, targetName);
     }
 
     /**
