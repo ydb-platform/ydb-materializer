@@ -184,8 +184,14 @@ java -jar ydb-materializer-*.jar config.xml CHECK
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
 
-#### Режим RUN
-Запускает службу обработки материализованных представлений:
+#### Режим LOCAL
+Запускает локальную службу обработки материализованных представлений:
+```bash
+java -jar ydb-materializer-*.jar config.xml LOCAL
+```
+
+#### Режим JOB
+Запускает распределенную службу обработки материализованных представлений:
 ```bash
 java -jar ydb-materializer-*.jar config.xml RUN
 ```
