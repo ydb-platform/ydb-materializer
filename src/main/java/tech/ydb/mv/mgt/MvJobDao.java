@@ -11,6 +11,7 @@ import tech.ydb.table.values.PrimitiveValue;
 import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.support.MvDaoHelpers;
 
 /**
  * Database operations for the distributed job management system. Handles all
@@ -19,7 +20,7 @@ import tech.ydb.mv.YdbConnector;
  *
  * @author zinal
  */
-public class MvJobDao {
+public class MvJobDao extends MvDaoHelpers {
 
     private final YdbConnector ydb;
 
@@ -432,49 +433,5 @@ public class MvJobDao {
                 reader.getColumn("command_status").getText(),
                 getText(reader, "command_diag")
         );
-    }
-
-    private static Value<?> uint64(Long value) {
-        if (value == null) {
-            return PrimitiveType.Uint64.makeOptional().emptyValue();
-        }
-        return PrimitiveValue.newUint64(value).makeOptional();
-    }
-
-    private static Value<?> timestamp(Instant value) {
-        if (value == null) {
-            return PrimitiveType.Timestamp.makeOptional().emptyValue();
-        }
-        return PrimitiveValue.newTimestamp(value).makeOptional();
-    }
-
-    private static Value<?> text(String value) {
-        if (value == null) {
-            return PrimitiveType.Text.makeOptional().emptyValue();
-        }
-        return PrimitiveValue.newText(value).makeOptional();
-    }
-
-    private static Value<?> jsonDocument(String value) {
-        if (value == null) {
-            return PrimitiveType.JsonDocument.makeOptional().emptyValue();
-        }
-        return PrimitiveValue.newJsonDocument(value).makeOptional();
-    }
-
-    private static String getText(ResultSetReader reader, String column) {
-        var c = reader.getColumn(column);
-        if (c.isOptionalItemPresent()) {
-            return c.getText();
-        }
-        return null;
-    }
-
-    private static String getJsonDocument(ResultSetReader reader, String column) {
-        var c = reader.getColumn(column);
-        if (c.isOptionalItemPresent()) {
-            return c.getJsonDocument();
-        }
-        return null;
     }
 }

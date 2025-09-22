@@ -32,6 +32,7 @@ import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.feeder.MvSink;
+import tech.ydb.mv.support.MvDaoHelpers;
 
 /**
  * Write the changelog of the particular "dictionary" table to the journal
@@ -39,7 +40,7 @@ import tech.ydb.mv.feeder.MvSink;
  *
  * @author zinal
  */
-public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
+public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAdapter {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryLogger.class);
 
@@ -64,7 +65,7 @@ public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
         this.sqlUpsert = """
             DECLARE $input AS List<Struct<
                 src:Text, tv:Timestamp, seqno:Uint64, key_text:Text,
-                key_val:JsonDocument, diff_val:JsonDocument>>;
+                key_val:JsonDocument?, diff_val:JsonDocument?>>;
             UPSERT INTO `%s` SELECT * FROM AS_TABLE($input);
             """.formatted(this.historyTable);
     }
@@ -157,7 +158,7 @@ public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
         m.put("tv", PrimitiveValue.newTimestamp(cr.getTv()));
         m.put("seqno", PrimitiveValue.newUint64(seqno.incrementAndGet()));
         m.put("key_text", PrimitiveValue.newText(convertKey(cr.getKey())));
-        m.put("key_val", PrimitiveValue.newJsonDocument(cr.getKey().convertKeyToJson()));
+        m.put("key_val", jsonDocument(cr.getKey().convertKeyToJson()));
         m.put("diff_val", convertData(cr.getImageBefore(), cr.getImageAfter()));
         return StructValue.of(m);
     }
@@ -191,7 +192,7 @@ public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
         }
         JsonObject root = new JsonObject();
         root.add("f", array);
-        return PrimitiveValue.newJsonDocument(root.toString());
+        return PrimitiveValue.newJsonDocument(root.toString()).makeOptional();
     }
 
     private Collection<String> calcDiffNames(YdbStruct before, YdbStruct after) {
