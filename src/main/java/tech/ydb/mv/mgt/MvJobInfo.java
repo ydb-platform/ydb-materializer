@@ -27,7 +27,7 @@ public class MvJobInfo implements Serializable {
     }
 
     public boolean isRegularJob() {
-        return jobName != null && !jobName.startsWith(MvConfig.SYS_PREFIX);
+        return jobName != null && !jobName.equals(MvConfig.HANDLER_COORDINATOR);
     }
 
     public String getJobName() {

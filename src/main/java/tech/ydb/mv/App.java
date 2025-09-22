@@ -82,7 +82,7 @@ public class App {
                 coord = theCoord;
                 runner.start();
                 coord.start();
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> runner.stop()));
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> shutdown()));
                 while (runner.isRunning()) {
                     YdbMisc.sleep(200L);
                 }
@@ -92,6 +92,17 @@ public class App {
         } finally {
             runner = null;
         }
+    }
+
+    private void shutdown() {
+        if (coord != null) {
+            coord.stop();
+        }
+        if (runner != null) {
+            runner.stop();
+        }
+        api.shutdown();
+        conn.close();
     }
 
 }
