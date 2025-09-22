@@ -35,6 +35,20 @@ public class MvLiteral {
         return value;
     }
 
+    public String getSafeValue() {
+        if (isInteger()) {
+            return value;
+        }
+        if (value.startsWith("'")
+                && (value.endsWith("'u") || value.endsWith("'s"))) {
+            return value;
+        }
+        if (value.startsWith("'") && value.endsWith("'")) {
+            return value + "u";
+        }
+        return "'" + value + "'u";
+    }
+
     public String getIdentity() {
         return identity;
     }

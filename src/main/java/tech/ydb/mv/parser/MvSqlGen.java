@@ -323,7 +323,7 @@ public class MvSqlGen implements AutoCloseable {
                 sb.append("   ");
                 comma = true;
             }
-            sb.append(literal.getValue()).append(" AS ");
+            sb.append(literal.getSafeValue()).append(" AS ");
             safeId(sb, literal.getIdentity());
             sb.append(EOL);
         }
@@ -461,7 +461,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private void genExpression(StringBuilder sb, MvComputation c, Type type) {
         if (c.isLiteral()) {
-            sb.append(c.getLiteral().getValue());
+            sb.append(c.getLiteral().getSafeValue());
         } else {
             if (excludedComputations.contains(c)) {
                 genExpressionPlaceholder(sb, type);
