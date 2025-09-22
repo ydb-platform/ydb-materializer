@@ -25,6 +25,29 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     @AfterAll
     public static void cleanup() {
         clearDb();
+        dropExtraTables();
+    }
+
+    private static void dropExtraTables() {
+        System.err.println("[AAA] Database cleanup phase 2...");
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        try (YdbConnector conn = new YdbConnector(cfg)) {
+            try {
+                runDdl(conn, "DROP TABLE mv_jobs;");
+            } catch(Exception ex) {}
+            try {
+                runDdl(conn, "DROP TABLE mv_job_scans;");
+            } catch(Exception ex) {}
+            try {
+                runDdl(conn, "DROP TABLE mv_runners;");
+            } catch(Exception ex) {}
+            try {
+                runDdl(conn, "DROP TABLE mv_runner_jobs;");
+            } catch(Exception ex) {}
+            try {
+                runDdl(conn, "DROP TABLE mv_commands;");
+            } catch(Exception ex) {}
+        }
     }
 
     @Test

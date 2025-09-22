@@ -1,5 +1,7 @@
 package tech.ydb.mv.feeder;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -18,8 +20,8 @@ class MvScanCommitHandler implements MvCommitHandler {
     private final long instance;
     private final MvScanContext context;
     private final MvKey key;
-    private volatile int counter;
-    private volatile boolean committed;
+    private final AtomicInteger counter;
+    private final AtomicBoolean committed = new AtomicBoolean(false);
     private final AtomicReference<MvScanCommitHandler> previous;
     private final AtomicReference<MvScanCommitHandler> next;
     private final boolean terminal;
@@ -29,8 +31,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.key = key;
-        this.counter = initialCount;
-        this.committed = false;
+        this.counter = new AtomicInteger(initialCount);
         this.previous = new AtomicReference<>(predecessor);
         this.next = new AtomicReference<>();
         this.terminal = terminal;
@@ -44,8 +45,8 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     @Override
-    public synchronized int getCounter() {
-        return counter;
+    public int getCounter() {
+        return counter.get();
     }
 
     private void initPredecessor(MvScanCommitHandler predecessor) {
@@ -55,21 +56,21 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     @Override
-    public synchronized void commit(int count) {
-        if (committed || counter < 0) {
+    public void commit(int count) {
+        if (committed.get() || counter.get() < 0) {
             return;
         }
         if (!context.isRunning()) {
             // no commits for an already stopped scan feeder
-            committed = true;
+            committed.set(true);
             resetNextChain();
             LOG.debug("instance {} reset due to context stop", instance);
             return;
         }
-        counter -= Math.min(count, counter);
-        LOG.debug("instance {} commit {} -> {}", instance, count, counter);
+        int value = counter.updateAndGet(v -> (v > count) ? v - count : 0);
+        LOG.debug("instance {} commit {} -> {}", instance, count, value);
         if (isReady()) {
-            committed = true;
+            committed.set(true);
             LOG.debug("instance {} commit APPLY", instance);
             try {
                 if (terminal) {
@@ -88,10 +89,10 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     @Override
-    public synchronized void reserve(int count) {
-        if (count > 0 && !committed) {
-            counter += count;
-            LOG.debug("instance {} reserve {} -> {}", instance, count, counter);
+    public void reserve(int count) {
+        if (count > 0 && !committed.get()) {
+            int value = counter.addAndGet(count);
+            LOG.debug("instance {} reserve {} -> {}", instance, count, value);
         }
     }
 
