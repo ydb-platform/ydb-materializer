@@ -47,7 +47,6 @@ public class App {
     }
 
     public void run(MvConfig.Mode mode) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> api.shutdown()));
         api.applyDefaults(conn.getConfig().getProperties());
         switch (mode) {
             case CHECK -> {
@@ -60,6 +59,7 @@ public class App {
             }
             case LOCAL -> {
                 LOG.info("Local service requested.");
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> api.shutdown()));
                 api.runDefaultHandlers();
             }
             case JOB -> {
@@ -82,7 +82,8 @@ public class App {
                 coord = theCoord;
                 runner.start();
                 coord.start();
-                while (api.isRunning()) {
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> runner.stop()));
+                while (runner.isRunning()) {
                     YdbMisc.sleep(200L);
                 }
             } finally {
