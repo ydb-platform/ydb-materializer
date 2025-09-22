@@ -75,7 +75,7 @@ public class MvJobDao {
         // MV_JOB_SCANS SQL statements
         this.sqlGetAllScans = String.format("""
             SELECT job_name, target_name, scan_settings FROM `%s`
-            WHERE started_at IS NULL;
+            WHERE accepted_at IS NULL;
             """, tabScans
         );
         this.sqlCreateScan = String.format("""
@@ -99,7 +99,7 @@ public class MvJobDao {
             UPDATE `%s` SET accepted_at = $accepted_at,
                 runner_id = $runner_id, command_no = $command_no
               WHERE job_name = $job_name AND target_name = $target_name
-                AND started_at IS NULL;
+                AND accepted_at IS NULL;
             """, tabScans
         );
 
@@ -201,6 +201,10 @@ public class MvJobDao {
             SELECT command_no FROM `%s` VIEW ix_command_no
             ORDER BY command_no DESC LIMIT 1;
             """, tabCommands);
+    }
+
+    public boolean isConnectionOpen() {
+        return ydb.isOpen();
     }
 
     public long getMaxCommandNo() {

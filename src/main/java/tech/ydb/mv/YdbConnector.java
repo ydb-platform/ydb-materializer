@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.common.transaction.TxMode;
@@ -41,6 +42,7 @@ public class YdbConnector implements AutoCloseable {
     private final CoordinationClient coordinationClient;
     private final String database;
     private final Config config;
+    private final AtomicBoolean opened = new AtomicBoolean(false);
 
     public YdbConnector(Config config) {
         LOG.info("Connecting to {}...", config.getConnectionString());
@@ -109,6 +111,7 @@ public class YdbConnector implements AutoCloseable {
             }
         }
         this.config = config;
+        this.opened.set(true);
     }
 
     public YdbConnector(Properties props) {
@@ -204,6 +207,7 @@ public class YdbConnector implements AutoCloseable {
 
     @Override
     public void close() {
+        opened.set(false);
         LOG.info("Closing YDB connections...");
         if (tableClient != null) {
             try {
@@ -234,6 +238,10 @@ public class YdbConnector implements AutoCloseable {
             }
         }
         LOG.info("Disconnected from YDB.");
+    }
+
+    public boolean isOpen() {
+        return opened.get();
     }
 
     public String getProperty(String name) {

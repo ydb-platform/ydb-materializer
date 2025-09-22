@@ -170,15 +170,16 @@ public class MvCoordinator implements AutoCloseable {
     }
 
     private void startLeaderLoop() {
-        jobDao.upsertRunnerJob(new MvRunnerJobInfo(
-                runnerId, MvConfig.HANDLER_COORDINATOR, null, Instant.now()));
-        job.onStart();
-
-        LOG.info("Became leader, starting leader loop, tick={}ms, instanceId={}",
+        LOG.info("Became leader, tick={}ms, instanceId={}",
                 settings.getScanPeriodMs(), runnerId);
 
         ScheduledFuture<?> f;
         try {
+            jobDao.upsertRunnerJob(new MvRunnerJobInfo(
+                    runnerId, MvConfig.HANDLER_COORDINATOR, null, Instant.now()));
+
+            job.onStart();
+
             f = scheduler.scheduleWithFixedDelay(
                     this::leaderTick,
                     0,
@@ -186,7 +187,7 @@ public class MvCoordinator implements AutoCloseable {
                     TimeUnit.MILLISECONDS
             );
         } catch (RejectedExecutionException ex) {
-            if (scheduler.isShutdown()) {
+            if (scheduler.isShutdown() || !jobDao.isConnectionOpen()) {
                 LOG.info("Shutdown in progress, demoting leadership");
                 demote();
                 return;
@@ -205,7 +206,6 @@ public class MvCoordinator implements AutoCloseable {
         if (f != null) {
             f.cancel(false);
         }
-
     }
 
     private void leaderTick() {
@@ -241,7 +241,9 @@ public class MvCoordinator implements AutoCloseable {
         if (leaderFuture.get() != null) {
             LOG.info("Demoting leadership, instanceId={}", runnerId);
             cancelLeader();
-            deleteJobRun();
+            if (jobDao.isConnectionOpen()) {
+                deleteJobRun();
+            }
             safeRelease();
             runStopHandler();
         }

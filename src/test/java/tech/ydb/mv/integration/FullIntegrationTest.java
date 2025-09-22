@@ -45,6 +45,17 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(job_name)
             );
 
+            CREATE TABLE `mv_job_scans` (
+                job_name Text NOT NULL,
+                target_name Text NOT NULL,
+                scan_settings JsonDocument,
+                requested_at Timestamp,
+                accepted_at Timestamp,
+                runner_id Text,
+                command_no Uint64,
+                PRIMARY KEY(job_name, target_name)
+            );
+
             CREATE TABLE `mv_runners` (
                 runner_id Text NOT NULL,
                 runner_identity Text,
@@ -67,6 +78,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 created_at Timestamp,
                 command_type Text,
                 job_name Text,
+                target_name Text,
                 job_settings JsonDocument,
                 command_status Text,
                 command_diag Text,

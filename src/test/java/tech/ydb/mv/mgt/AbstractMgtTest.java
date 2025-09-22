@@ -20,6 +20,17 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
             PRIMARY KEY(job_name)
         );
 
+        CREATE TABLE `test1/mv_job_scans` (
+            job_name Text NOT NULL,
+            target_name Text NOT NULL,
+            scan_settings JsonDocument,
+            requested_at Timestamp,
+            accepted_at Timestamp,
+            runner_id Text,
+            command_no Uint64,
+            PRIMARY KEY(job_name, target_name)
+        );
+
         CREATE TABLE `test1/mv_runners` (
             runner_id Text NOT NULL,
             runner_identity Text,
@@ -82,6 +93,7 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvBatchSettings.CONF_TABLE_JOBS, "test1/mv_jobs");
+        props.setProperty(MvBatchSettings.CONF_TABLE_SCANS, "test1/mv_job_scans");
         props.setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "test1/mv_runners");
         props.setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "test1/mv_runner_jobs");
         props.setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "test1/mv_commands");
