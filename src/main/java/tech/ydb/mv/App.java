@@ -27,7 +27,7 @@ public class App {
 
     public static void main(String[] args) {
         if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
-            System.out.println("USAGE: tech.ydb.mv.App job.xml CHECK|SQL|RUN");
+            System.out.println("USAGE: tech.ydb.mv.App job.xml CHECK|SQL|LOCAL|JOB");
             System.exit(1);
         }
         try {
