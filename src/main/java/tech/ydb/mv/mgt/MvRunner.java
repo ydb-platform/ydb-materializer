@@ -261,6 +261,9 @@ public class MvRunner implements AutoCloseable {
             tableOps.upsertRunnerJob(runnerJob);
 
             LOG.info("Started handler `{}`", jobName);
+        } else {
+            throw new RuntimeException("Start request rejected for handler `"
+                    + jobName + "` - already running.");
         }
     }
 

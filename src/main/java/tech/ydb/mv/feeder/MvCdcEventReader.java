@@ -30,7 +30,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onStartPartitionSession(StartPartitionSessionEvent ev) {
-        LOG.info("Feeder `{}` topic `{}` session {} for partition {} "
+        LOG.debug("Feeder `{}` topic `{}` session {} for partition {} "
                 + "onStart with last committed offset {}",
                 owner.getName(), ev.getPartitionSession().getPath(),
                 ev.getPartitionSession().getId(), ev.getPartitionSession().getPartitionId(),
@@ -40,7 +40,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onStopPartitionSession(StopPartitionSessionEvent ev) {
-        LOG.info("Feeder `{}` topic `{}` session {} onStop with last committed offset {}",
+        LOG.debug("Feeder `{}` topic `{}` session {} onStop with last committed offset {}",
                 owner.getName(), ev.getPartitionSession().getPath(),
                 ev.getPartitionSession().getId(), ev.getCommittedOffset());
         ev.confirm();
@@ -48,7 +48,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onPartitionSessionClosed(PartitionSessionClosedEvent ev) {
-        LOG.info("Feeder `{}` topic `{}` session {} onClosed",
+        LOG.debug("Feeder `{}` topic `{}` session {} onClosed",
                 owner.getName(), ev.getPartitionSession().getPath(),
                 ev.getPartitionSession().getId());
     }
@@ -77,7 +77,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
                 records.add(cr);
             }
         }
-        LOG.debug("Topic {} input {}", topicPath, records);
+        LOG.trace("Topic {} input {}", topicPath, records);
         sink.submit(records, new MvCdcCommitHandler(event));
     }
 
