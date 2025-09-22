@@ -175,6 +175,13 @@ public class MvCoordinator implements AutoCloseable {
 
         ScheduledFuture<?> f;
         try {
+            var runners = jobDao.getJobRunners(MvConfig.HANDLER_COORDINATOR);
+            for (var runner : runners) {
+                LOG.info("Removing demoted coordinator record for runnerId={}, "
+                        + "which was started at {}", runner.getRunnerId(), runner.getStartedAt());
+                jobDao.deleteRunnerJob(runner.getRunnerId(), MvConfig.HANDLER_COORDINATOR);
+            }
+
             jobDao.upsertRunnerJob(new MvRunnerJobInfo(
                     runnerId, MvConfig.HANDLER_COORDINATOR, null, Instant.now()));
 
@@ -206,6 +213,8 @@ public class MvCoordinator implements AutoCloseable {
         if (f != null) {
             f.cancel(false);
         }
+
+        LOG.info("Leader loop started, instanceId={}", runnerId);
     }
 
     private void leaderTick() {

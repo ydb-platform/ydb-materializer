@@ -12,7 +12,6 @@ CREATE TABLE `mv/jobs` (
     job_name Text NOT NULL,
     job_settings JsonDocument,
     should_run Bool,
-    runner_id Text,
     PRIMARY KEY(job_name)
 );
 
