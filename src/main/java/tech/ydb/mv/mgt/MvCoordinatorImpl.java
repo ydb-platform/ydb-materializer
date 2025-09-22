@@ -194,8 +194,9 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         }
         var runners = jobDao.getJobRunners(scan.getJobName());
         if (runners.size() != 1) {
-            LOG.warn("Cannot start the requested scan "
-                    + "for handler `{}`, target `{}` - runner was not found.");
+            LOG.info("Cannot start the requested scan "
+                    + "for handler `{}`, target `{}` - runner was not found.",
+                    scan.getJobName(), scan.getTargetName());
             return;
         }
         var runner = runners.get(0);

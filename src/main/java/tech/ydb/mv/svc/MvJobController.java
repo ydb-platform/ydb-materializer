@@ -1,5 +1,6 @@
 package tech.ydb.mv.svc;
 
+import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,7 +73,7 @@ public class MvJobController {
         return applyManager.isLocked();
     }
 
-    public synchronized boolean start() {
+    public boolean start() {
         if (context.isRunning()) {
             LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
@@ -93,7 +94,7 @@ public class MvJobController {
         return true;
     }
 
-    public synchronized boolean stop() {
+    public boolean stop() {
         if (!context.isRunning()) {
             LOG.warn("Ignored stop call for an already stopped controller `{}`", getName());
             return false;
@@ -103,7 +104,7 @@ public class MvJobController {
         cancelDictionaryChecks();
         cdcFeeder.stop();
         // no explicit stop for applyManager - threads are stopped by context flag
-        applyManager.awaitTermination();
+        applyManager.awaitTermination(Duration.ofSeconds(10));
         releaseLock();
         return true;
     }

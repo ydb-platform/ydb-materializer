@@ -51,8 +51,8 @@ public class MvRunner implements AutoCloseable {
      * @return true, if the runner has been just started, and false, if it was
      * already running
      */
-    public synchronized boolean start() {
-        if (running.get()) {
+    public boolean start() {
+        if (running.getAndSet(true)) {
             LOG.info("MvRunner is already running, ignored start attempt");
             return false;
         }
@@ -60,7 +60,6 @@ public class MvRunner implements AutoCloseable {
         LOG.info("Starting MvRunner with ID: {}", runnerId);
 
         // Start the runner thread
-        running.set(true);
         runnerThread = new Thread(this::run, "mv-runner-" + runnerId);
         runnerThread.setDaemon(true);
         runnerThread.start();
@@ -75,25 +74,29 @@ public class MvRunner implements AutoCloseable {
      * @return true, if the runner has been just stopped, and false if it was
      * stopped already
      */
-    public synchronized boolean stop() {
-        if (!running.get()) {
+    public boolean stop() {
+        if (!running.getAndSet(false)) {
             LOG.info("MvRunner is already stopped, ignored stop attempt");
             return false;
         }
 
         LOG.info("Stopping MvRunner with ID: {}", runnerId);
 
-        running.set(false);
-
         // Stop all local jobs
+        List<String> jobNames;
         synchronized (localJobs) {
-            for (MvRunnerJobInfo job : localJobs.values()) {
-                try {
-                    stopHandler(job.getJobName());
-                } catch (Exception ex) {
-                    LOG.error("Failed to stop job {} during shutdown", job.getJobName(), ex);
-                }
+            jobNames = localJobs.values().stream()
+                    .map(v -> v.getJobName())
+                    .toList();
+        }
+        for (String jobName : jobNames) {
+            try {
+                stopHandler(jobName);
+            } catch (Exception ex) {
+                LOG.error("Failed to stop job {} during shutdown", jobName, ex);
             }
+        }
+        synchronized (localJobs) {
             localJobs.clear();
         }
 
@@ -173,6 +176,9 @@ public class MvRunner implements AutoCloseable {
         try {
             List<MvCommand> commands = tableOps.getCommandsForRunner(runnerId);
             for (MvCommand command : commands) {
+                if (!running.get()) {
+                    return;
+                }
                 if (command.isCreated()) {
                     executeCommand(command);
                 }

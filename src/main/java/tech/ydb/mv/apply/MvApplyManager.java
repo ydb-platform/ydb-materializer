@@ -1,5 +1,7 @@
 package tech.ydb.mv.apply;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -134,11 +136,12 @@ public class MvApplyManager implements MvSink {
                 workers.length, context.getMetadata().getName());
     }
 
-    public void awaitTermination() {
+    public void awaitTermination(Duration timeout) {
         if (context.isRunning()) {
             throw new IllegalStateException("Job should be stopped when "
                     + "calling awaitTermination()");
         }
+        Instant waitUntil = Instant.now().plus(timeout);
         boolean running;
         do {
             running = false;
@@ -150,6 +153,9 @@ public class MvApplyManager implements MvSink {
             }
             if (running) {
                 YdbMisc.sleep(50L);
+            }
+            if (Instant.now().isAfter(waitUntil)) {
+                break;
             }
         } while (running);
     }

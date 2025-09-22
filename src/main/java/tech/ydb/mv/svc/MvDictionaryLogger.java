@@ -89,7 +89,7 @@ public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
         return (feeder.get() != null);
     }
 
-    public synchronized void start() {
+    public void start() {
         if (isRunning()) {
             LOG.info("Ignoring request to start an already-running dictionary manager.");
             return;
@@ -101,7 +101,7 @@ public class MvDictionaryLogger implements MvSink, MvCdcAdapter {
         cf.start();
     }
 
-    public synchronized void stop() {
+    public void stop() {
         if (!isRunning()) {
             LOG.info("Ignoring request to stop an already-stopped dictionary manager.");
             return;

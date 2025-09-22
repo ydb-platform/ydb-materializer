@@ -138,15 +138,18 @@ public class MvService implements MvApi {
     }
 
     @Override
-    public synchronized void shutdown() {
+    public void shutdown() {
         cancelPartitionsRefresh();
-        handlers.values().forEach(h -> h.stop());
-        handlers.clear();
-        locker.releaseAll();
-        if (dictionaryManager != null) {
-            dictionaryManager.stop();
-            dictionaryManager = null;
+        List<MvJobController> currentJobs;
+        synchronized(this) {
+            currentJobs = new ArrayList<>(handlers.values());
         }
+        currentJobs.forEach(h -> h.stop());
+        stopDictionaryHandler();
+        synchronized(this) {
+            handlers.clear();
+        }
+        locker.releaseAll();
     }
 
     @Override

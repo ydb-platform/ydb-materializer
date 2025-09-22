@@ -74,7 +74,7 @@ public class MvJobDao {
 
         // MV_JOB_SCANS SQL statements
         this.sqlGetAllScans = String.format("""
-            SELECT job_name, target_name, scan_settings FROM `%s`
+            SELECT job_name, target_name, scan_settings, requested_at FROM `%s`
             WHERE accepted_at IS NULL;
             """, tabScans
         );
@@ -94,8 +94,8 @@ public class MvJobDao {
         );
         this.sqlUpdateScanStart = String.format("""
             DECLARE $job_name AS Text; DECLARE $target_name AS Text;
-            DECLARE $accepted_at AS Timestamp;
-            DECLARE $runner_id AS Text;  DECLARE $command_no AS Uint64;
+            DECLARE $accepted_at AS Timestamp?;
+            DECLARE $runner_id AS Text?;  DECLARE $command_no AS Uint64?;
             UPDATE `%s` SET accepted_at = $accepted_at,
                 runner_id = $runner_id, command_no = $command_no
               WHERE job_name = $job_name AND target_name = $target_name
@@ -264,7 +264,7 @@ public class MvJobDao {
     public void updateScan(MvJobScanInfo scan) {
         ydb.sqlWrite(sqlUpdateScanStart, Params.of(
                 "$job_name", PrimitiveValue.newText(scan.getJobName()),
-                "$target_name", PrimitiveValue.newText(scan.getJobName()),
+                "$target_name", PrimitiveValue.newText(scan.getTargetName()),
                 "$accepted_at", timestamp(scan.getAcceptedAt()),
                 "$runner_id", text(scan.getRunnerId()),
                 "$command_no", uint64(scan.getCommandNo())
