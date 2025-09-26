@@ -79,5 +79,6 @@ CREATE TABLE `mv/commands` (
     command_status Text, -- CREATED / TAKEN / SUCCESS / ERROR
     command_diag Text,
     INDEX ix_command_no GLOBAL SYNC ON (command_no),
+    INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
     PRIMARY KEY(runner_id, command_no)
 );

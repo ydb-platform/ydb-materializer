@@ -41,6 +41,7 @@ public class MvJobDao extends MvDaoHelpers {
     private final String sqlDeleteRunnerJob;
     private final String sqlDeleteRunnerJobs;
     private final String sqlCreateCommand;
+    private final String sqlGetPendingCommands;
     private final String sqlGetCommandsForRunner;
     private final String sqlUpdateCommandStatus;
     private final String sqlMaxCommandNo;
@@ -179,13 +180,19 @@ public class MvJobDao extends MvDaoHelpers {
                 $job_name, $target_name, $job_settings, $command_status, $command_diag);
             """, tabCommands
         );
+        this.sqlGetPendingCommands = String.format("""
+            SELECT runner_id, command_no, created_at, command_type, job_name,
+                   target_name, job_settings, command_status, command_diag
+            FROM `%s` VIEW ix_command_status
+            WHERE command_status = 'CREATED'u OR command_status = 'TAKEN'u;
+            """, tabCommands
+        );
         this.sqlGetCommandsForRunner = String.format("""
             DECLARE $runner_id AS Text;
             SELECT runner_id, command_no, created_at, command_type, job_name,
                    target_name, job_settings, command_status, command_diag
-            FROM `%s`
-            WHERE runner_id = $runner_id AND command_status = 'CREATED'u
-            ORDER BY runner_id, command_no;
+            FROM `%s` VIEW ix_command_status
+            WHERE runner_id = $runner_id AND command_status = 'CREATED'u;
             """, tabCommands
         );
         this.sqlUpdateCommandStatus = String.format("""
@@ -369,6 +376,15 @@ public class MvJobDao extends MvDaoHelpers {
         var rs = ydb.sqlRead(sqlGetCommandsForRunner, Params.of(
                 "$runner_id", PrimitiveValue.newText(runnerId)
         )).getResultSet(0);
+        List<MvCommand> commands = new ArrayList<>();
+        while (rs.next()) {
+            commands.add(parseCommandInfo(rs));
+        }
+        return commands;
+    }
+
+    public List<MvCommand> getPendingCommands() {
+        var rs = ydb.sqlRead(sqlGetPendingCommands, Params.empty()).getResultSet(0);
         List<MvCommand> commands = new ArrayList<>();
         while (rs.next()) {
             commands.add(parseCommandInfo(rs));

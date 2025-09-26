@@ -57,12 +57,14 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
             command_status Text,
             command_diag Text,
             INDEX ix_command_no GLOBAL SYNC ON (command_no),
+            INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
             PRIMARY KEY(runner_id, command_no)
         );
         """;
 
     private static final String DROP_MGT_TABLES = """
         DROP TABLE `test1/mv_jobs`;
+        DROP TABLE `test1/mv_job_scans`;
         DROP TABLE `test1/mv_runners`;
         DROP TABLE `test1/mv_runner_jobs`;
         DROP TABLE `test1/mv_commands`;
@@ -108,6 +110,7 @@ public abstract class AbstractMgtTest extends AbstractIntegrationBase {
     protected void refreshBeforeRun() {
         // Clear all tables before each test
         runDdl(ydbConnector, "DELETE FROM `test1/mv_jobs`");
+        runDdl(ydbConnector, "DELETE FROM `test1/mv_job_scans`");
         runDdl(ydbConnector, "DELETE FROM `test1/mv_runners`");
         runDdl(ydbConnector, "DELETE FROM `test1/mv_runner_jobs`");
         runDdl(ydbConnector, "DELETE FROM `test1/mv_commands`");

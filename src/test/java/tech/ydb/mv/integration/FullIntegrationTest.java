@@ -34,19 +34,29 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         try (YdbConnector conn = new YdbConnector(cfg)) {
             try {
                 runDdl(conn, "DROP TABLE mv_jobs;");
-            } catch(Exception ex) {}
+            } catch(Exception ex) {
+                System.err.println("Cannot drop MV_JOBS: " + ex.toString());
+            }
             try {
                 runDdl(conn, "DROP TABLE mv_job_scans;");
-            } catch(Exception ex) {}
+            } catch(Exception ex) {
+                System.err.println("Cannot drop MV_JOB_SCANS: " + ex.toString());
+            }
             try {
                 runDdl(conn, "DROP TABLE mv_runners;");
-            } catch(Exception ex) {}
+            } catch(Exception ex) {
+                System.err.println("Cannot drop MV_RUNNERS: " + ex.toString());
+            }
             try {
                 runDdl(conn, "DROP TABLE mv_runner_jobs;");
-            } catch(Exception ex) {}
+            } catch(Exception ex) {
+                System.err.println("Cannot drop MV_RUNNER_JOBS: " + ex.toString());
+            }
             try {
                 runDdl(conn, "DROP TABLE mv_commands;");
-            } catch(Exception ex) {}
+            } catch(Exception ex) {
+                System.err.println("Cannot drop MV_COMMANDS: " + ex.toString());
+            }
         }
     }
 
@@ -106,6 +116,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 command_status Text,
                 command_diag Text,
                 INDEX ix_command_no GLOBAL SYNC ON (command_no),
+                INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
                 PRIMARY KEY(runner_id, command_no)
             );
                     """);
