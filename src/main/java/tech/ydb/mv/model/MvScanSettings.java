@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Properties;
 
 import tech.ydb.mv.MvConfig;
@@ -43,6 +44,32 @@ public class MvScanSettings implements Serializable {
 
     public void setRowsPerSecondLimit(int rowsPerSecondLimit) {
         this.rowsPerSecondLimit = rowsPerSecondLimit;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 37 * hash + Objects.hashCode(this.controlTableName);
+        hash = 37 * hash + this.rowsPerSecondLimit;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvScanSettings other = (MvScanSettings) obj;
+        if (this.rowsPerSecondLimit != other.rowsPerSecondLimit) {
+            return false;
+        }
+        return Objects.equals(this.controlTableName, other.controlTableName);
     }
 
 }

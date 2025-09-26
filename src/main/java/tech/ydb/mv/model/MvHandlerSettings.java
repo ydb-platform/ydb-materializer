@@ -103,4 +103,46 @@ public class MvHandlerSettings implements Serializable {
         this.dictionaryScanSeconds = dictionaryScanSeconds;
     }
 
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 37 * hash + this.cdcReaderThreads;
+        hash = 37 * hash + this.applyThreads;
+        hash = 37 * hash + this.applyQueueSize;
+        hash = 37 * hash + this.selectBatchSize;
+        hash = 37 * hash + this.upsertBatchSize;
+        hash = 37 * hash + this.dictionaryScanSeconds;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvHandlerSettings other = (MvHandlerSettings) obj;
+        if (this.cdcReaderThreads != other.cdcReaderThreads) {
+            return false;
+        }
+        if (this.applyThreads != other.applyThreads) {
+            return false;
+        }
+        if (this.applyQueueSize != other.applyQueueSize) {
+            return false;
+        }
+        if (this.selectBatchSize != other.selectBatchSize) {
+            return false;
+        }
+        if (this.upsertBatchSize != other.upsertBatchSize) {
+            return false;
+        }
+        return this.dictionaryScanSeconds == other.dictionaryScanSeconds;
+    }
+
 }

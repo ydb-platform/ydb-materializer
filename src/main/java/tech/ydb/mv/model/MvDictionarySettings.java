@@ -1,5 +1,6 @@
 package tech.ydb.mv.model;
 
+import java.util.Objects;
 import java.util.Properties;
 import tech.ydb.mv.MvConfig;
 
@@ -9,12 +10,11 @@ import tech.ydb.mv.MvConfig;
  */
 public class MvDictionarySettings extends MvScanSettings {
 
-    private static final long serialVersionUID = 202500921001L;
+    private static final long serialVersionUID = 202500926001L;
 
     private String historyTableName;
     private int upsertBatchSize;
     private int threadCount;
-    private MvTableInfo historyTableInfo;
 
     public MvDictionarySettings() {
         this.historyTableName = MvConfig.DEF_DICT_HIST_TABLE;
@@ -63,12 +63,34 @@ public class MvDictionarySettings extends MvScanSettings {
         this.threadCount = threadCount;
     }
 
-    public MvTableInfo getHistoryTableInfo() {
-        return historyTableInfo;
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 89 * hash + Objects.hashCode(this.historyTableName);
+        hash = 89 * hash + this.upsertBatchSize;
+        hash = 89 * hash + this.threadCount;
+        return hash;
     }
 
-    public void setHistoryTableInfo(MvTableInfo historyTableInfo) {
-        this.historyTableInfo = historyTableInfo;
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvDictionarySettings other = (MvDictionarySettings) obj;
+        if (this.upsertBatchSize != other.upsertBatchSize) {
+            return false;
+        }
+        if (this.threadCount != other.threadCount) {
+            return false;
+        }
+        return Objects.equals(this.historyTableName, other.historyTableName);
     }
 
 }

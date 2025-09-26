@@ -1,0 +1,4 @@
+{
+    "controlTableName": "mv/scans_state",
+    "rowsPerSecondLimit": 10000
+}

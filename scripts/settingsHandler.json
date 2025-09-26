@@ -1,0 +1,8 @@
+{
+    "cdcReaderThreads": 4,
+    "applyThreads": 4,
+    "applyQueueSize": 10000,
+    "selectBatchSize": 1000,
+    "upsertBatchSize": 500,
+    "dictionaryScanSeconds": 28800
+}

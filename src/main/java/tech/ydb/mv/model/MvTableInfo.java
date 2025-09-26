@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import tech.ydb.table.description.TableDescription;
@@ -118,6 +119,46 @@ public class MvTableInfo {
         return changefeeds;
     }
 
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 53 * hash + Objects.hashCode(this.name);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MvTableInfo other = (MvTableInfo) obj;
+        if (!Objects.equals(this.name, other.name)) {
+            return false;
+        }
+        if (!Objects.equals(this.path, other.path)) {
+            return false;
+        }
+        if (!Objects.equals(this.columns, other.columns)) {
+            return false;
+        }
+        if (!Objects.equals(this.key, other.key)) {
+            return false;
+        }
+        if (!Objects.equals(this.keyInfo, other.keyInfo)) {
+            return false;
+        }
+        if (!Objects.equals(this.indexes, other.indexes)) {
+            return false;
+        }
+        return Objects.equals(this.changefeeds, other.changefeeds);
+    }
+
     /**
      * Find the index which covers the specified columns as a key prefix.
      * @param columns The columns to be handled
@@ -181,6 +222,32 @@ public class MvTableInfo {
         public List<String> getColumns() {
             return columns;
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 67 * hash + Objects.hashCode(this.name);
+            hash = 67 * hash + Objects.hashCode(this.columns);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Index other = (Index) obj;
+            if (!Objects.equals(this.name, other.name)) {
+                return false;
+            }
+            return Objects.equals(this.columns, other.columns);
+        }
     }
 
     public static final class Changefeed {
@@ -203,6 +270,36 @@ public class MvTableInfo {
 
         public Set<String> getConsumers() {
             return consumers;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 79 * hash + Objects.hashCode(this.name);
+            hash = 79 * hash + Objects.hashCode(this.mode);
+            hash = 79 * hash + Objects.hashCode(this.consumers);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Changefeed other = (Changefeed) obj;
+            if (!Objects.equals(this.name, other.name)) {
+                return false;
+            }
+            if (this.mode != other.mode) {
+                return false;
+            }
+            return Objects.equals(this.consumers, other.consumers);
         }
     }
 
