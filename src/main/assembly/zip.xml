@@ -48,7 +48,7 @@
             <exclude>*-real.xml</exclude>
             <exclude>*-real.txt</exclude>
             <exclude>*-real.csv</exclude>
-            <include>*-real.json</include>
+            <exclude>*-real.json</exclude>
         </excludes>
         <fileMode>640</fileMode>
     </fileSet>
