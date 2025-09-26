@@ -2,6 +2,7 @@ package tech.ydb.mv.apply;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import tech.ydb.mv.MvConfig;
 
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
@@ -124,6 +125,7 @@ class MvApply {
         final MvActionContext context;
         final MvHandler metadata;
         final int workersCount;
+        final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
         final HashMap<String, TargetBuilder> targets = new HashMap<>();
 
@@ -131,6 +133,7 @@ class MvApply {
             this.context = context;
             this.metadata = context.getMetadata();
             this.workersCount = context.getSettings().getApplyThreads();
+            this.partitioning = context.getPartitioning();
         }
 
         void build(HashMap<String, Source> src, HashMap<String, Target> trg) {
@@ -142,7 +145,7 @@ class MvApply {
         SourceBuilder makeSource(MvTableInfo ti) {
             var b = sources.get(ti.getName());
             if (b == null) {
-                MvWorkerSelector selector = new MvWorkerSelector(ti, workersCount);
+                var selector = new MvWorkerSelector(ti, workersCount, partitioning);
                 b = newSource(ti, selector);
                 sources.put(ti.getName(), b);
             }

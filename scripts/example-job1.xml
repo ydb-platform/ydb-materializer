@@ -36,6 +36,9 @@
 <entry key="job.input.table">mv/statements</entry>
 -->
 
+<!-- HASH or RANGE -->
+<entry key="job.apply.partitioning">HASH</entry>
+
 <!-- Path to scan feeder position table -->
 <entry key="job.scan.table">mv/scans_state</entry>
 <!-- Path to coordination service node -->

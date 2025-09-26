@@ -10,6 +10,7 @@ import tech.ydb.table.TableClient;
 import tech.ydb.table.description.TableDescription;
 import tech.ydb.table.settings.DescribeTableSettings;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.data.MvKeyPrefix;
@@ -28,11 +29,17 @@ class MvWorkerSelector {
     private final MvTableInfo tableInfo;
     private final int workerCount;
     private final AtomicReference<Chooser> chooser;
+    private final MvConfig.PartitioningStrategy partitioning;
 
-    public MvWorkerSelector(MvTableInfo tableInfo, int workerCount) {
+    public MvWorkerSelector(MvTableInfo tableInfo, int workerCount, MvConfig.PartitioningStrategy partitioning) {
         this.tableInfo = tableInfo;
         this.workerCount = (workerCount > 0) ? workerCount : 1;
-        this.chooser = new AtomicReference<>(new Chooser(this.workerCount));
+        this.chooser = new AtomicReference<>(
+                MvConfig.PartitioningStrategy.HASH.equals(partitioning) ?
+                new ChooserHash(this.workerCount) :
+                new ChooserRange(this.workerCount)
+        );
+        this.partitioning = partitioning;
     }
 
     public MvTableInfo getTableInfo() {
@@ -61,6 +68,10 @@ class MvWorkerSelector {
             // No need to describe anything: we have a single worker.
             return;
         }
+        if (MvConfig.PartitioningStrategy.HASH.equals(partitioning)) {
+            // Hash partitioning does not require any describes.
+            return;
+        }
         Chooser newChooser;
         try {
             newChooser = load(tableClient);
@@ -79,7 +90,7 @@ class MvWorkerSelector {
     private Chooser load(TableClient tableClient) {
         // Grab the prefixes for the table partitions.
         MvKeyPrefix[] prefixes = readPrefixes(tableClient);
-        Chooser c = new Chooser(workerCount);
+        ChooserRange c = new ChooserRange(workerCount);
         int pcount = prefixes.length;
         if (pcount + 1 < workerCount) {
             // we can assign a distinct worker to each prefix
@@ -111,12 +122,16 @@ class MvWorkerSelector {
                 .toArray(MvKeyPrefix[]::new);
     }
 
-    public static final class Chooser {
+    public interface Chooser {
+        int choose(MvKey key);
+    }
+
+    public static final class ChooserRange implements Chooser {
 
         private final int workerCount;
         private final TreeMap<MvKeyPrefix, Integer> items = new TreeMap<>();
 
-        public Chooser(int workerCount) {
+        public ChooserRange(int workerCount) {
             this.workerCount = workerCount;
         }
 
@@ -124,12 +139,28 @@ class MvWorkerSelector {
             return items;
         }
 
+        @Override
         public int choose(MvKey key) {
             Map.Entry<MvKeyPrefix, Integer> item = items.higherEntry(key);
             if (item == null) {
                 return workerCount - 1;
             }
             return item.getValue();
+        }
+
+    }
+
+    public static final class ChooserHash implements Chooser {
+
+        private final int workerCount;
+
+        public ChooserHash(int workerCount) {
+            this.workerCount = workerCount;
+        }
+
+        @Override
+        public int choose(MvKey key) {
+            return (int) (Integer.toUnsignedLong(key.hashCode()) % workerCount);
         }
 
     }

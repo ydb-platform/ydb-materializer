@@ -82,6 +82,11 @@ public class MvConfig {
     public static final String CONF_COORD_TIMEOUT = "job.coordination.timeout";
 
     /**
+     * Handler setting: partitioning strategy (default HASH, possible RANGE).
+     */
+    public static final String CONF_PARTITIONING = "job.apply.partitioning";
+
+    /**
      * Handler setting: number of threads in the CDC reader pool.
      */
     public static final String CONF_CDC_THREADS = "job.cdc.threads";
@@ -141,7 +146,7 @@ public class MvConfig {
             return null;
         }
         v = v.trim();
-        for (Mode m : Mode.values()) {
+        for (var m : Mode.values()) {
             if (m.name().equalsIgnoreCase(v)) {
                 return m;
             }
@@ -154,9 +159,22 @@ public class MvConfig {
             return null;
         }
         v = v.trim();
-        for (Input i : Input.values()) {
+        for (var i : Input.values()) {
             if (i.name().equalsIgnoreCase(v)) {
                 return i;
+            }
+        }
+        return null;
+    }
+
+    public static PartitioningStrategy parsePartitioning(String v) {
+        if (v == null) {
+            return null;
+        }
+        v = v.trim();
+        for (var s : PartitioningStrategy.values()) {
+            if (s.name().equalsIgnoreCase(v)) {
+                return s;
             }
         }
         return null;
@@ -172,6 +190,11 @@ public class MvConfig {
     public static enum Input {
         FILE,
         TABLE
+    }
+
+    public static enum PartitioningStrategy {
+        RANGE,
+        HASH
     }
 
 }

@@ -2,6 +2,7 @@ package tech.ydb.mv.apply;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.values.PrimitiveType;
 
@@ -35,7 +36,7 @@ public class MvWorkerSelectorTest {
         MvTableInfo tableInfo = makeTableInfo();
         MvKeyInfo keyInfo = tableInfo.getKeyInfo();
 
-        MvWorkerSelector.Chooser chooser = new MvWorkerSelector.Chooser(13);
+        var chooser = new MvWorkerSelector.ChooserRange(13);
         chooser.getItems().put(KP(YS().add("key1", 100), keyInfo), 0);
         chooser.getItems().put(KP(YS().add("key1", 200), keyInfo), 1);
         chooser.getItems().put(KP(YS().add("key1", 300), keyInfo), 2);
@@ -93,7 +94,7 @@ public class MvWorkerSelectorTest {
         MvWorkerSelector sw = new SW(10);
         sw.refresh(null);
 
-        MvWorkerSelector.Chooser chooser = sw.getChooser();
+        var chooser = (MvWorkerSelector.ChooserRange) sw.getChooser();
         Assertions.assertEquals(12, chooser.getItems().size());
         System.out.println("Chooser items: " + chooser.getItems());
     }
@@ -109,7 +110,7 @@ public class MvWorkerSelectorTest {
 
     private static class SW extends MvWorkerSelector {
         public SW(int workerCount) {
-            super(makeTableInfo(), workerCount);
+            super(makeTableInfo(), workerCount, MvConfig.PartitioningStrategy.RANGE);
         }
 
         @Override

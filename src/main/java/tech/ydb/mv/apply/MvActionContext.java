@@ -1,5 +1,6 @@
 package tech.ydb.mv.apply;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.tools.SessionRetryContext;
 
@@ -25,6 +26,15 @@ class MvActionContext {
         this.queryClient = base.getYdb().getQueryClient();
         this.retryCtx = SessionRetryContext.create(this.queryClient)
                 .idempotent(true).build();
+    }
+
+    public MvConfig.PartitioningStrategy getPartitioning() {
+        String v = base.getService().getYdb().getProperty(MvConfig.CONF_PARTITIONING);
+        MvConfig.PartitioningStrategy partitioning = MvConfig.parsePartitioning(v);
+        if (partitioning == null) {
+            return MvConfig.PartitioningStrategy.HASH;
+        }
+        return MvConfig.PartitioningStrategy.RANGE;
     }
 
     public MvApplyManager getApplyManager() {
