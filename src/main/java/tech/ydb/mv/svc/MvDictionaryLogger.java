@@ -60,7 +60,8 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
         this.context = context;
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
-        this.historyTable = YdbConnector.safe(settings.getHistoryTableName());
+        this.historyTable = conn.getProperty(
+                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         this.seqno = new AtomicLong(100L * System.currentTimeMillis());
         this.sqlUpsert = """
             DECLARE $input AS List<Struct<
@@ -77,7 +78,7 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
 
     @Override
     public int getCdcReaderThreads() {
-        return settings.getThreadCount();
+        return settings.getCdcReaderThreads();
     }
 
     @Override

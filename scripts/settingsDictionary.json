@@ -1,7 +1,5 @@
 {
-    "historyTableName": "mv/dict_hist",
     "upsertBatchSize": 500,
-    "threadCount": 4,
-    "controlTableName": "mv/scans_state",
+    "cdcReaderThreads": 4,
     "rowsPerSecondLimit": 10000
 }

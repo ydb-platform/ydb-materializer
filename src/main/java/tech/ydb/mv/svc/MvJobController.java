@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.apply.MvApplyActionList;
 
 import tech.ydb.mv.apply.MvApplyManager;
@@ -242,8 +243,8 @@ public class MvJobController {
         final String controlTable;
 
         TempScanDaoAdapter() {
-            this.controlTable = context.getService()
-                    .getDictionarySettings().getControlTableName();
+            this.controlTable = context.getService().getYdb().getProperty(
+                    MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         }
 
         @Override

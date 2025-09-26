@@ -3,6 +3,7 @@ package tech.ydb.mv.feeder;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
+import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
@@ -54,7 +55,8 @@ public class MvScanFeeder {
         this.sink = sink;
         this.actions = actions;
         this.completion = completion;
-        this.controlTable = YdbConnector.safe(settings.getControlTableName());
+        this.controlTable = job.getYdb().getProperty(
+                MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
     }
 

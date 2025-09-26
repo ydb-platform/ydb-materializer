@@ -15,10 +15,8 @@ public class SettingsTest {
         var src = new MvDictionarySettings();
         System.out.println("dictionarySettings: " + MvConfig.GSON.toJson(src));
 
-        src.setControlTableName("AAA");
-        src.setHistoryTableName("BBB");
         src.setRowsPerSecondLimit(600);
-        src.setThreadCount(51);
+        src.setCdcReaderThreads(51);
         src.setUpsertBatchSize(123);
 
         String temp = MvConfig.GSON.toJson(src);
@@ -52,7 +50,6 @@ public class SettingsTest {
         var src = new MvScanSettings();
         System.out.println("scanSettings: " + MvConfig.GSON.toJson(src));
 
-        src.setControlTableName("AAA");
         src.setRowsPerSecondLimit(500);
 
         String temp = MvConfig.GSON.toJson(src);

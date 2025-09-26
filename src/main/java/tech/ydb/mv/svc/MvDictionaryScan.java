@@ -3,6 +3,7 @@ package tech.ydb.mv.svc;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
@@ -32,6 +33,8 @@ public class MvDictionaryScan {
     private final MvHandler handler;
     private final MvDictionarySettings settings;
     private final MvDescriber describer;
+    private final String controlTableName;
+    private final String historyTableName;
     private final MvTableInfo historyTableInfo;
 
     public MvDictionaryScan(YdbConnector conn, MvDescriber describer,
@@ -40,7 +43,11 @@ public class MvDictionaryScan {
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
         this.describer = describer;
-        this.historyTableInfo = describer.describeTable(settings.getHistoryTableName());
+        this.controlTableName = conn.getProperty(
+                MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+        this.historyTableName = conn.getProperty(
+                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
+        this.historyTableInfo = describer.describeTable(this.historyTableName);
     }
 
     public MvHandler getHandler() {
@@ -57,7 +64,7 @@ public class MvDictionaryScan {
             params = Params.of("$src", PrimitiveValue.newText(tableName));
             sql = "DECLARE $src AS Text; "
                     + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
-                    + YdbConnector.safe(settings.getHistoryTableName())
+                    + historyTableName
                     + "` WHERE src=$src "
                     + "ORDER BY src, tv, seqno, key_text;";
         } else {
@@ -70,7 +77,7 @@ public class MvDictionaryScan {
             sql = "DECLARE $src AS Text; DECLARE $tv AS Timestamp; "
                     + "DECLARE $seqno AS Uint64; DECLARE $key_text AS Text; "
                     + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
-                    + YdbConnector.safe(settings.getHistoryTableName())
+                    + historyTableName
                     + "` WHERE src=$src AND (tv, seqno, key_text) > ($tv, $seqno, $key_text) "
                     + "ORDER BY src, tv, seqno, key_text;";
         }
@@ -139,7 +146,7 @@ public class MvDictionaryScan {
         @Override
         public String getControlTable() {
             // Normally there is a single control table per whole database.
-            return settings.getControlTableName();
+            return controlTableName;
         }
 
         @Override

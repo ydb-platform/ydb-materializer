@@ -1,6 +1,5 @@
 package tech.ydb.mv.model;
 
-import java.util.Objects;
 import java.util.Properties;
 import tech.ydb.mv.MvConfig;
 
@@ -12,39 +11,26 @@ public class MvDictionarySettings extends MvScanSettings {
 
     private static final long serialVersionUID = 202500926001L;
 
-    private String historyTableName;
     private int upsertBatchSize;
-    private int threadCount;
+    private int cdcReaderThreads;
 
     public MvDictionarySettings() {
-        this.historyTableName = MvConfig.DEF_DICT_HIST_TABLE;
         this.upsertBatchSize = 500;
-        this.threadCount = 4;
+        this.cdcReaderThreads = 4;
     }
 
     public MvDictionarySettings(MvDictionarySettings other) {
         super(other);
-        this.historyTableName = other.historyTableName;
         this.upsertBatchSize = other.upsertBatchSize;
-        this.threadCount = other.threadCount;
+        this.cdcReaderThreads = other.cdcReaderThreads;
     }
 
     public MvDictionarySettings(Properties props) {
         super(props);
-        this.historyTableName = props.getProperty(
-                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         String v = props.getProperty(MvConfig.CONF_BATCH_UPSERT, "500");
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_CDC_THREADS, "4");
-        this.threadCount = Integer.parseInt(v);
-    }
-
-    public String getHistoryTableName() {
-        return historyTableName;
-    }
-
-    public void setHistoryTableName(String historyTableName) {
-        this.historyTableName = historyTableName;
+        this.cdcReaderThreads = Integer.parseInt(v);
     }
 
     public int getUpsertBatchSize() {
@@ -55,20 +41,19 @@ public class MvDictionarySettings extends MvScanSettings {
         this.upsertBatchSize = upsertBatchSize;
     }
 
-    public int getThreadCount() {
-        return threadCount;
+    public int getCdcReaderThreads() {
+        return cdcReaderThreads;
     }
 
-    public void setThreadCount(int threadCount) {
-        this.threadCount = threadCount;
+    public void setCdcReaderThreads(int threadCount) {
+        this.cdcReaderThreads = threadCount;
     }
 
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 89 * hash + Objects.hashCode(this.historyTableName);
         hash = 89 * hash + this.upsertBatchSize;
-        hash = 89 * hash + this.threadCount;
+        hash = 89 * hash + this.cdcReaderThreads;
         return hash;
     }
 
@@ -87,10 +72,10 @@ public class MvDictionarySettings extends MvScanSettings {
         if (this.upsertBatchSize != other.upsertBatchSize) {
             return false;
         }
-        if (this.threadCount != other.threadCount) {
+        if (this.cdcReaderThreads != other.cdcReaderThreads) {
             return false;
         }
-        return Objects.equals(this.historyTableName, other.historyTableName);
+        return super.equals(obj);
     }
 
 }
