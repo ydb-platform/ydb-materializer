@@ -45,8 +45,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                     .toList();
 
             for (MvRunnerInfo inactiveRunner : inactiveRunners) {
-                LOG.info("Cleaning up inactive runner: {}", inactiveRunner.getRunnerId());
-
+                jobDao.deletePendingCommands(inactiveRunner.getRunnerId());
                 jobDao.deleteRunnerJobs(inactiveRunner.getRunnerId());
                 jobDao.deleteRunner(inactiveRunner.getRunnerId());
 

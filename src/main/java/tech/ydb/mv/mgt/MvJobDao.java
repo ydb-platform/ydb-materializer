@@ -42,6 +42,7 @@ public class MvJobDao extends MvDaoHelpers {
     private final String sqlDeleteRunnerJobs;
     private final String sqlCreateCommand;
     private final String sqlGetPendingCommands;
+    private final String sqlDeletePendingCommands;
     private final String sqlGetCommandsForRunner;
     private final String sqlUpdateCommandStatus;
     private final String sqlMaxCommandNo;
@@ -181,11 +182,20 @@ public class MvJobDao extends MvDaoHelpers {
             """, tabCommands
         );
         this.sqlGetPendingCommands = String.format("""
-            SELECT runner_id, command_no, created_at, command_type, job_name,
+            SELECT cmd.runner_id AS runner_id, command_no, created_at, command_type, job_name,
                    target_name, job_settings, command_status, command_diag
+            FROM `%s` VIEW ix_command_status AS cmd
+            INNER JOIN `%s` AS r ON r.runner_id = cmd.runner_id
+            WHERE cmd.command_status = 'CREATED'u OR cmd.command_status = 'TAKEN'u;
+            """, tabCommands, tabRunners
+        );
+        this.sqlDeletePendingCommands = String.format("""
+            DECLARE $runner_id AS Text;
+            DELETE FROM `%s` ON SELECT runner_id, command_no
             FROM `%s` VIEW ix_command_status
-            WHERE command_status = 'CREATED'u OR command_status = 'TAKEN'u;
-            """, tabCommands
+            WHERE runner_id = $runner_id
+              AND (command_status = 'CREATED'u OR command_status = 'TAKEN'u);
+            """, tabCommands, tabCommands
         );
         this.sqlGetCommandsForRunner = String.format("""
             DECLARE $runner_id AS Text;
@@ -390,6 +400,12 @@ public class MvJobDao extends MvDaoHelpers {
             commands.add(parseCommandInfo(rs));
         }
         return commands;
+    }
+
+    public void deletePendingCommands(String runnerId) {
+        ydb.sqlWrite(sqlDeletePendingCommands, Params.of(
+                "$runner_id", PrimitiveValue.newText(runnerId)
+        ));
     }
 
     public void updateCommandStatus(String runnerId, long commandNo, String status, String diag) {

@@ -65,7 +65,7 @@ class MvBalancer {
         var jobsForRemoval = runningJobs.values().stream()
                 .flatMap(v -> v.stream())
                 .filter(runnerJob -> runnerJob.isRegularJob())
-                .filter(runnerJob -> !jobsToRun.containsKey(runnerJob.getJobName()))
+                .filter(runnerJob -> !requiredJobs.containsKey(runnerJob.getJobName()))
                 .toList();
 
         // Create commands to stop extra jobs

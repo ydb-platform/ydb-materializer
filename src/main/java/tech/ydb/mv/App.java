@@ -95,11 +95,11 @@ public class App {
     }
 
     private void shutdown() {
-        if (coord != null) {
-            coord.stop();
-        }
         if (runner != null) {
             runner.stop();
+        }
+        if (coord != null) {
+            coord.stop();
         }
         api.shutdown();
         conn.close();
