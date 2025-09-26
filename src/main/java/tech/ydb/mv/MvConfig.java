@@ -52,6 +52,11 @@ public class MvConfig {
     public static final String CONF_HANDLERS = "job.handlers";
 
     /**
+     * Scan rate limiter, rows per second.
+     */
+    public static final String CONF_SCAN_RATE = "job.scan.rate";
+
+    /**
      * Path to scan feeder position table.
      */
     public static final String CONF_SCAN_TABLE = "job.scan.table";
@@ -67,9 +72,9 @@ public class MvConfig {
     public static final String CONF_DICT_CONSUMER = "job.dict.consumer";
 
     /**
-     * Scan rate limiter, rows per second.
+     * Handler setting: period between dictionary scans, seconds.
      */
-    public static final String CONF_SCAN_RATE = "job.scan.rate";
+    public static final String CONF_DICT_SCAN_SECONDS = "job.dict.scan.seconds";
 
     /**
      * Path to coordination service node.
@@ -110,11 +115,6 @@ public class MvConfig {
      * Handler setting: number of rows to be applied in a batch.
      */
     public static final String CONF_BATCH_UPSERT = "job.batch.upsert";
-
-    /**
-     * Handler setting: period between dictionary scans, seconds.
-     */
-    public static final String CONF_DICT_SCAN_SECONDS = "job.dict.scan.seconds";
 
     /**
      * Default input SQL file name.

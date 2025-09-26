@@ -8,12 +8,20 @@ YDB Materializer — это Java-приложение, которое обесп
 
 [Скачать приложение можно на странице релизов](https://github.com/zinal/ydb-materializer/releases).
 
-## Системные требования
+## Системные требования и порядок сборки
 
 - Java 21 или выше.
 - Кластер YDB 24.4+ с соответствующими разрешениями.
 - Сетевой доступ к кластеру YDB.
 - Необходимые системные таблицы, созданные в базе данных.
+- Для сборки из исходных кодов - [Maven](https://maven.apache.org/)
+
+Сборка:
+
+```bash
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
+mvn clean package -DskipTests=true
+```
 
 ## Использование
 
@@ -53,6 +61,7 @@ CREATE ASYNC MATERIALIZED VIEW <view_name> AS
 Каждый столбец в предложении SELECT может быть:
 - **Прямой ссылкой на столбец**: `table_alias.column_name AS column_alias`
 - **Вычисляемым выражением**: `#[<yql_expression>]# AS column_alias`
+- **Вычисляемым выражением со ссылками на колонки**: `COMPUTE ON table_alias.column_name, ... #[<yql_expression>]# AS column_alias`
 
 #### Условия JOIN
 
@@ -69,8 +78,10 @@ CREATE ASYNC MATERIALIZED VIEW <view_name> AS
 
 Предложение WHERE поддерживает непрозрачные (для приложения) YQL-выражения, подставляемые без изменений непосредственно в формируемые запросы:
 ```sql
-WHERE #[<yql_expression>]#
+WHERE COMPUTE ON table_alias.column_name, ... #[<yql_expression>]#
 ```
+
+Наличие ссылок на конкретные имена таблиц и колонки позволяет корректно формировать производные SQL-операторы с использованием непрозрачных выражений, опирающихся на конкретные колонки исходных таблиц.
 
 ### Определение обработчика
 
@@ -112,12 +123,12 @@ COMPUTE ON main, sub2 #[main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u)]#
 ```sql
 -- Определение материализованного представления
 CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
-  SELECT main.id AS id, 
-         main.c1 AS c1, 
-         main.c2 AS c2, 
+  SELECT main.id AS id,
+         main.c1 AS c1,
+         main.c2 AS c2,
          main.c3 AS c3,
-         sub1.c8 AS c8, 
-         sub2.c9 AS c9, 
+         sub1.c8 AS c8,
+         sub2.c9 AS c9,
          sub3.c10 AS c10,
          #[Substring(main.c20, 3, 5)]# AS c11,
          #[CAST(NULL AS Int32?)]# AS c12
@@ -193,7 +204,7 @@ java -jar ydb-materializer-*.jar config.xml LOCAL
 #### Режим JOB
 Запускает распределенную службу обработки материализованных представлений:
 ```bash
-java -jar ydb-materializer-*.jar config.xml RUN
+java -jar ydb-materializer-*.jar config.xml JOB
 ```
 
 ## Файл конфигурации
@@ -220,18 +231,35 @@ java -jar ydb-materializer-*.jar config.xml RUN
 <!-- Режим ввода: FILE или TABLE -->
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
+<entry key="job.input.table">mv/statements</entry>
 
-<!-- Конфигурация обработчика -->
-<entry key="job.handlers">h1</entry>
+x<!-- Конфигурация обработчика -->
+<entry key="job.handlers">h1,h2,h3</entry>
+<entry key="job.scan.rate">10000</entry>
 <entry key="job.scan.table">mv/scans_state</entry>
 <entry key="job.coordination.path">mv/coordination</entry>
+<entry key="job.coordination.timeout">10</entry>
+
+<!-- Dictionary scanner configuration -->
+<entry key="job.dict.hist.table">mv/dict_hist</entry>
 
 <!-- Настройка производительности -->
-<entry key="job.default.cdc.threads">4</entry>
-<entry key="job.default.apply.threads">4</entry>
-<entry key="job.default.apply.queue">10000</entry>
-<entry key="job.default.batch.select">1000</entry>
-<entry key="job.default.batch.upsert">500</entry>
+<entry key="job.cdc.threads">4</entry>
+<entry key="job.apply.threads">4</entry>
+<entry key="job.apply.queue">10000</entry>
+<entry key="job.batch.select">1000</entry>
+<entry key="job.batch.upsert">500</entry>
+
+<!-- Настройки средств управления -->
+<entry key="mv.jobs.table">mv_jobs</entry>
+<entry key="mv.scans.table">mv_job_scans</entry>
+<entry key="mv.runners.table">mv_runners</entry>
+<entry key="mv.runner.jobs.table">mv_runner_jobs</entry>
+<entry key="mv.commands.table">mv_commands</entry>
+<entry key="mv.scan.period.ms">5000</entry>
+<entry key="mv.report.period.ms">10000</entry>
+<entry key="mv.runner.timeout.ms">30000</entry>
+
 </properties>
 ```
 
@@ -259,12 +287,25 @@ java -jar ydb-materializer-*.jar config.xml RUN
 - `job.input.file` — путь к SQL-файлу (для режима FILE).
 - `job.input.table` — имя таблицы для инструкций (для режима TABLE).
 - `job.handlers` — список имён обработчиков для активации, разделённый запятыми.
-- `job.scan.table` — таблица управления позицией сканирования.
-- `job.coordination.path` — путь к узлу службы координации.
+- `job.scan.table` — имя таблицы для ведения позиций сканирования
+- `job.dict.hist.table` - имя таблицы для ведения истории изменения справочников
+- `job.coordination.path` — путь к узлу службы координации
+- `job.coordination.timeout` - таймаут распределенной блокировки, секунд
 
 #### Настройка производительности
-- `job.default.cdc.threads` — количество потоков чтения CDC.
-- `job.default.apply.threads` — количество рабочих потоков apply.
-- `job.default.apply.queue` — максимальное количество элементов в очереди apply на поток.
-- `job.default.batch.select` — размер пакета для операций SELECT.
-- `job.default.batch.upsert` — размер пакета для операций UPSERT.
+- `job.apply.partitioning` - HASH (по умолчанию) или RANGE стратегия партиционирования задач
+- `job.cdc.threads` — количество потоков чтения CDC
+- `job.apply.threads` — количество рабочих потоков apply
+- `job.apply.queue` — максимальное количество элементов в очереди apply на поток
+- `job.batch.select` — размер пакета для операций SELECT
+- `job.batch.upsert` — размер пакета для операций UPSERT или DELETE
+
+#### Настройки системы управления заданиями
+- `mv.jobs.table` - Альтернативное имя таблицы MV_JOBS
+- `mv.scans.table` - Альтернативное имя таблицы MV_JOB_SCANS
+- `mv.runners.table` - Альтернативное имя таблицы MV_RUNNERS
+- `mv.runner.jobs.table` - Альтернативное имя таблицы MV_RUNNER_JOBS
+- `mv.commands.table` - Альтернативное имя таблицы MV_COMMANDS
+- `mv.scan.period.ms` - Период сканирования Исполнителя и Координатора, миллисекунды
+- `mv.report.period.ms` - Период обновления состояния Исполнителя, миллисекунды
+- `mv.runner.timeout.ms` - Таймаут отсутствия обновлений Координатора и Исполнителя, миллисекунды

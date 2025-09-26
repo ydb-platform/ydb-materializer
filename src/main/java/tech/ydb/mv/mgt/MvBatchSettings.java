@@ -22,7 +22,6 @@ public class MvBatchSettings implements Serializable {
     public static final String CONF_SCAN_PERIOD_MS = "mv.scan.period.ms";
     public static final String CONF_REPORT_PERIOD_MS = "mv.report.period.ms";
     public static final String CONF_RUNNER_TIMEOUT_MS = "mv.runner.timeout.ms";
-    public static final String CONF_COORDINATOR_TIMEOUT_MS = "mv.coordinator.timeout.ms";
 
     // Default values
     public static final String DEF_TABLE_JOBS = "mv_jobs";

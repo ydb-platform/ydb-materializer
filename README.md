@@ -4,6 +4,21 @@ The YDB Materializer is a Java application that processes user-managed materiali
 
 [See the Releases page for downloads](https://github.com/zinal/ydb-materializer/releases).
 
+## Requirements and building
+
+- Java 21 or higher
+- YDB cluster with appropriate permissions
+- Network access to YDB cluster
+- Required system tables created in the database
+- [Maven](https://maven.apache.org/) for building from source code
+
+Building:
+
+```bash
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
+mvn clean package -DskipTests=true
+```
+
 ## Usage
 
 Each "materialized view" (MV) technically is a regular YDB table, which is updated using this application. The source information is retrieved from the set of the original tables, which are linked together through the SQL-style JOINs. To support the online sync of the source tables' changes into the MV, YDB Change Data Capture streams are used.
@@ -35,6 +50,7 @@ CREATE ASYNC MATERIALIZED VIEW <view_name> AS
 Each column in the SELECT clause can be:
 - **Direct column reference**: `table_alias.column_name AS column_alias`
 - **Computed expression**: `#[<yql_expression>]# AS column_alias`
+- **Computed expression with column references**: `COMPUTE ON table_alias.column_name, ... #[<yql_expression>]# AS column_alias`
 
 #### Join Clauses
 
@@ -196,18 +212,35 @@ The configuration file is an XML properties file that defines connection paramet
 <!-- Input mode: FILE or TABLE -->
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
+<entry key="job.input.table">mv/statements</entry>
 
 <!-- Handler configuration -->
-<entry key="job.handlers">h1</entry>
+<entry key="job.handlers">h1,h2,h3</entry>
+<entry key="job.scan.rate">10000</entry>
 <entry key="job.scan.table">mv/scans_state</entry>
 <entry key="job.coordination.path">mv/coordination</entry>
+<entry key="job.coordination.timeout">10</entry>
+
+<!-- Dictionary scanner configuration -->
+<entry key="job.dict.hist.table">mv/dict_hist</entry>
 
 <!-- Performance tuning -->
-<entry key="job.default.cdc.threads">4</entry>
-<entry key="job.default.apply.threads">4</entry>
-<entry key="job.default.apply.queue">10000</entry>
-<entry key="job.default.batch.select">1000</entry>
-<entry key="job.default.batch.upsert">500</entry>
+<entry key="job.cdc.threads">4</entry>
+<entry key="job.apply.threads">4</entry>
+<entry key="job.apply.queue">10000</entry>
+<entry key="job.batch.select">1000</entry>
+<entry key="job.batch.upsert">500</entry>
+
+<!-- Management settings -->
+<entry key="mv.jobs.table">mv_jobs</entry>
+<entry key="mv.scans.table">mv_job_scans</entry>
+<entry key="mv.runners.table">mv_runners</entry>
+<entry key="mv.runner.jobs.table">mv_runner_jobs</entry>
+<entry key="mv.commands.table">mv_commands</entry>
+<entry key="mv.scan.period.ms">5000</entry>
+<entry key="mv.report.period.ms">10000</entry>
+<entry key="mv.runner.timeout.ms">30000</entry>
+
 </properties>
 ```
 
@@ -235,24 +268,25 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.input.file` - Path to SQL file (for FILE mode)
 - `job.input.table` - Table name for statements (for TABLE mode)
 - `job.handlers` - Comma-separated list of handler names to activate
-- `job.scan.table` - Scan position control table
+- `job.scan.table` - Scan position control table name
+- `job.dict.hist.table` - Dictionary history table name
 - `job.coordination.path` - Coordination service node path
+- `job.coordination.timeout` - Lock timeout for job coordination in seconds
 
 #### Performance Tuning
-- `job.default.cdc.threads` - Number of CDC reader threads
-- `job.default.apply.threads` - Number of apply worker threads
-- `job.default.apply.queue` - Max elements in apply queue per thread
-- `job.default.batch.select` - Batch size for SELECT operations
-- `job.default.batch.upsert` - Batch size for UPSERT operations
+- `job.apply.partitioning` - HASH (default) or RANGE partitioning of apply tasks
+- `job.cdc.threads` - Number of CDC reader threads
+- `job.apply.threads` - Number of apply worker threads
+- `job.apply.queue` - Max elements in apply queue per thread
+- `job.batch.select` - Batch size for SELECT operations
+- `job.batch.upsert` - Batch size for UPSERT operations
 
-## Requirements
-
-- Java 21 or higher
-- YDB cluster with appropriate permissions
-- Network access to YDB cluster
-- Required system tables created in the database
-
-```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
-mvn clean package -DskipTests=true
-```
+#### Management Settings
+- `mv.jobs.table` - Custom MV_JOBS table name
+- `mv.scans.table` - Custom MV_JOB_SCANS table name
+- `mv.runners.table` - Custom MV_RUNNERS table name
+- `mv.runner.jobs.table` - Custom MV_RUNNER_JOBS table name
+- `mv.commands.table` - Custom MV_COMMANDS table name
+- `mv.scan.period.ms` - Runner and Coordinator re-scan period, in milliseconds
+- `mv.report.period.ms` - Runner status report period, in milliseconds
+- `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
