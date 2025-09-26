@@ -29,6 +29,8 @@
         <outputDirectory>.</outputDirectory>
         <includes>
             <include>*.sh</include>
+            <include>*.bat</include>
+            <include>*.cmd</include>
         </includes>
         <fileMode>750</fileMode>
     </fileSet>
@@ -36,17 +38,17 @@
         <directory>${basedir}/scripts</directory>
         <outputDirectory>.</outputDirectory>
         <includes>
-            <include>*.bat</include>
-            <include>*.cmd</include>
             <include>*.xml</include>
             <include>*.sql</include>
             <include>*.txt</include>
             <include>*.csv</include>
+            <include>*.json</include>
         </includes>
         <excludes>
             <exclude>*-real.xml</exclude>
             <exclude>*-real.txt</exclude>
             <exclude>*-real.csv</exclude>
+            <include>*-real.json</include>
         </excludes>
         <fileMode>640</fileMode>
     </fileSet>
