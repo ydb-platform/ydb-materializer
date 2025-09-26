@@ -290,3 +290,217 @@ The configuration file is an XML properties file that defines connection paramet
 - `mv.scan.period.ms` - Runner and Coordinator re-scan period, in milliseconds
 - `mv.report.period.ms` - Runner status report period, in milliseconds
 - `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
+
+## Distributed Job Management (JOB Mode)
+
+The JOB mode provides distributed job management capabilities, allowing to manage materialized view processing tasks across multiple instances. This mode is invoked using:
+
+```bash
+java -jar ydb-materializer.jar config.xml JOB
+```
+
+### Architecture Overview
+
+The distributed job management system consists of two main components:
+
+1. **MvRunner** - Executes jobs locally on each instance
+2. **MvCoordinator** - Manages job distribution and coordination across runners
+
+Each job is a running instance of the "handler" defined in the configuration.
+
+On job startup, the configuration is re-read and re-validated by the application, and used in the particular job.
+
+### Control Tables
+
+The system uses several YDB tables to manage distributed operations:
+
+#### Configuration Tables
+
+**`mv_jobs`** - Job definitions and desired state
+```sql
+CREATE TABLE `mv_jobs` (
+    job_name Text NOT NULL,           -- Handler name
+    job_settings JsonDocument,        -- Handler configuration
+    should_run Bool,                  -- Whether job should be running
+    PRIMARY KEY(job_name)
+);
+```
+
+**`mv_job_scans`** - Scan requests for specific targets
+```sql
+CREATE TABLE `mv_job_scans` (
+    job_name Text NOT NULL,           -- Handler name
+    target_name Text NOT NULL,        -- Target table name
+    scan_settings JsonDocument,       -- Scan configuration
+    requested_at Timestamp,           -- When scan was requested
+    accepted_at Timestamp,            -- When scan was accepted
+    runner_id Text,                   -- Assigned runner ID
+    command_no Uint64,                -- Command number
+    PRIMARY KEY(job_name, target_name)
+);
+```
+
+#### Working Tables
+
+**`mv_runners`** - Active runner instances
+```sql
+CREATE TABLE `mv_runners` (
+    runner_id Text NOT NULL,          -- Unique runner identifier
+    runner_identity Text,             -- Host, PID, start time info
+    updated_at Timestamp,             -- Last status update
+    PRIMARY KEY(runner_id)
+);
+```
+
+**`mv_runner_jobs`** - Currently running jobs per runner
+```sql
+CREATE TABLE `mv_runner_jobs` (
+    runner_id Text NOT NULL,          -- Runner identifier
+    job_name Text NOT NULL,           -- Job name
+    job_settings JsonDocument,        -- Job configuration
+    started_at Timestamp,             -- When job started
+    INDEX ix_job_name GLOBAL SYNC ON (job_name),
+    PRIMARY KEY(runner_id, job_name)
+);
+```
+
+**`mv_commands`** - Command queue for runners
+```sql
+CREATE TABLE `mv_commands` (
+    runner_id Text NOT NULL,          -- Target runner
+    command_no Uint64 NOT NULL,       -- Command sequence number
+    created_at Timestamp,             -- Command creation time
+    command_type Text,                -- START/STOP/SCAN/NOSCAN
+    job_name Text,                    -- Target job name
+    target_name Text,                 -- Target table (for scans)
+    job_settings JsonDocument,        -- Job configuration
+    command_status Text,              -- CREATED/TAKEN/SUCCESS/ERROR
+    command_diag Text,                -- Error diagnostics
+    INDEX ix_command_no GLOBAL SYNC ON (command_no),
+    INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
+    PRIMARY KEY(runner_id, command_no)
+);
+```
+
+### Job Management Operations
+
+#### Adding Jobs
+
+To add a new job, insert a record into the `mv_jobs` table:
+
+```sql
+INSERT INTO `mv_jobs` (job_name, job_settings, should_run)
+VALUES ('my_handler', NULL, true);
+```
+
+The coordinator will automatically detect the new job and assign it to an available runner.
+
+The `job_settings` can be specified as NULL (so that the default parameters will be used), or specified as a JSON document of the following format:
+
+```json
+{
+    "cdcReaderThreads": 4,
+    "applyThreads": 4,
+    "applyQueueSize": 10000,
+    "selectBatchSize": 1000,
+    "upsertBatchSize": 500,
+    "dictionaryScanSeconds": 28800
+}
+```
+
+The example above shows the defaults for regular jobs. For special dictionary scanner job the following settings can be specified:
+
+```json
+{
+    "upsertBatchSize": 500,
+    "cdcReaderThreads": 4,
+    "rowsPerSecondLimit": 10000
+}
+```
+
+#### Removing Jobs
+
+To stop and remove a job:
+
+```sql
+UPDATE `mv_jobs` SET should_run = false WHERE job_name = 'my_handler';
+-- or
+DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
+```
+
+#### Requesting Scans
+
+To request a scan of a specific target table:
+
+```sql
+INSERT INTO `mv_job_scans` (job_name, target_name, scan_settings, requested_at)
+VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtcTimestamp());
+```
+
+#### Monitoring Operations
+
+**Check running jobs:**
+```sql
+SELECT rj.runner_id, rj.job_name, rj.started_at, r.runner_identity
+FROM `mv_runner_jobs` rj
+JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
+```
+
+**Check job status:**
+```sql
+SELECT j.job_name, j.should_run,
+       CASE WHEN rj.job_name IS NOT NULL THEN 'RUNNING'u ELSE 'STOPPED'u END as status
+FROM `mv_jobs` j
+LEFT JOIN `mv_runner_jobs` rj ON j.job_name = rj.job_name;
+```
+
+**Check command queue:**
+```sql
+SELECT runner_id, command_no, command_type, job_name, command_status, created_at
+FROM `mv_commands`
+WHERE command_status IN ('CREATED'u, 'TAKEN'u)
+ORDER BY created_at;
+```
+
+**Check runner status:**
+```sql
+SELECT runner_id, runner_identity, updated_at
+FROM `mv_runners`
+ORDER BY updated_at DESC;
+```
+
+### Command Types
+
+The system supports four types of commands:
+
+- **START** - Start a job on a runner
+- **STOP** - Stop a job on a runner
+- **SCAN** - Start scanning a specific target table
+- **NOSCAN** - Stop the already running scan for a specific target table
+
+### Job Names
+
+Job name for regular jobs refer to the handler name. There are two special job names:
+
+- **`ydbmv$dictionary`** - Dictionary scanner (manually managed)
+- **`ydbmv$coordinator`** - Coordinator job (automatically managed)
+
+These special names cannot be used for regular handlers (in fact handler name cannot start with prefix "ydbmv").
+
+### Fault Tolerance
+
+The system provides automatic fault tolerance:
+
+1. **Runner Failure Detection** - Runners report status periodically; inactive runners are automatically cleaned up
+2. **Job Rebalancing** - When runners fail, their jobs are automatically reassigned to available runners
+3. **Command Retry** - Failed commands remain in the queue for retry
+4. **Leader Election** - Only one coordinator instance is active at a time
+
+### Deployment
+
+1. **Create Control Tables** - Use the provided `example-tables.sql` script. Table names can be customized as needed
+2. **Deploy Runners** - Start multiple instances with `JOB` mode
+3. **Configure Jobs** - Insert job definitions into `mv_jobs` table. Add the scan definitions to the `mv_job_scans` table
+4. **Monitor Operations** - Use the monitoring queries listed above
+
+The system will automatically distribute jobs across available runners and maintain the desired state.

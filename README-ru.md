@@ -309,3 +309,226 @@ x<!-- Конфигурация обработчика -->
 - `mv.scan.period.ms` - Период сканирования Исполнителя и Координатора, миллисекунды
 - `mv.report.period.ms` - Период обновления состояния Исполнителя, миллисекунды
 - `mv.runner.timeout.ms` - Таймаут отсутствия обновлений Координатора и Исполнителя, миллисекунды
+
+## Управление распределёнными задачами (режим JOB)
+
+Режим JOB предоставляет возможности для управления распределёнными задачами, позволяя управлять задачами обработки материализованных представлений на нескольких экземплярах. Этот режим запускается с помощью команды:
+
+```bash
+java -jar ydb-materializer.jar config.xml JOB
+```
+
+### Обзор архитектуры
+
+Система управления распределёнными задачами состоит из двух основных компонентов:
+
+- MvRunner — выполняет задачи локально на каждом экземпляре.
+- MvCoordinator — управляет распределением и координацией задач между исполнителями.
+
+Каждая задача — это работающий экземпляр «обработчика», определённого в конфигурации.
+
+При запуске задачи приложение заново считывает и проверяет конфигурацию, после чего использует её в конкретной задаче.
+
+### Управляющие таблицы
+
+Система использует несколько таблиц YDB для управления распределёнными операциями:
+
+#### Таблицы конфигурации
+
+**`mv_jobs`**  — определения задач и желаемое состояние:
+
+```sql
+CREATE TABLE `mv_jobs` (
+    job_name Text NOT NULL,           -- Имя обработчика
+    job_settings JsonDocument,        -- Конфигурация обработчика
+    should_run Bool,                  -- Должна ли задача выполняться
+    PRIMARY KEY(job_name)
+);
+```
+
+**`mv_job_scans`** - запросы на сканирование определённых целей:
+
+```sql
+CREATE TABLE `mv_job_scans` (
+    job_name Text NOT NULL,           -- Имя обработчика
+    target_name Text NOT NULL,        -- Имя целевой таблицы
+    scan_settings JsonDocument,       -- Конфигурация сканирования
+    requested_at Timestamp,           -- Когда был запрошен скан
+    accepted_at Timestamp,            -- Когда скан был принят
+    runner_id Text,                   -- Назначенный идентификатор исполнителя
+    command_no Uint64,                -- Номер команды
+    PRIMARY KEY(job_name, target_name)
+);
+```
+
+#### Рабочие таблицы
+
+**`mv_runners`** - активные экземпляры исполнителей:
+
+```sql
+CREATE TABLE `mv_runners` (
+    runner_id Text NOT NULL,          -- Уникальный идентификатор исполнителя
+    runner_identity Text,             -- Информация о хосте, PID, времени запуска
+    updated_at Timestamp,             -- Последнее обновление статуса
+    PRIMARY KEY(runner_id)
+);
+```
+
+**`mv_runner_jobs`** - задачи, выполняемые в данный момент каждым исполнителем:
+
+```sql
+CREATE TABLE `mv_runner_jobs` (
+    runner_id Text NOT NULL,          -- Идентификатор исполнителя
+    job_name Text NOT NULL,           -- Имя задачи
+    job_settings JsonDocument,        -- Конфигурация задачи
+    started_at Timestamp,             -- Когда задача началась
+    INDEX ix_job_name GLOBAL SYNC ON (job_name),
+    PRIMARY KEY(runner_id, job_name)
+);
+```
+
+**`mv_commands`** - очередь команд для исполнителей:
+
+```sql
+CREATE TABLE `mv_commands` (
+    runner_id Text NOT NULL,          -- Целевой исполнитель
+    command_no Uint64 NOT NULL,       -- Номер последовательности команды
+    created_at Timestamp,             -- Время создания команды
+    command_type Text,                -- START/STOP/SCAN/NOSCAN
+    job_name Text,                    -- Имя целевой задачи
+    target_name Text,                 -- Целевая таблица (для сканирования)
+    job_settings JsonDocument,        -- Конфигурация задачи
+    command_status Text,              -- CREATED/TAKEN/SUCCESS/ERROR
+    command_diag Text,                -- Диагностика ошибок
+    INDEX ix_command_no GLOBAL SYNC ON (command_no),
+    INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
+    PRIMARY KEY(runner_id, command_no)
+);
+```
+
+### Операции управления задачами
+
+#### Добавление задач
+
+Чтобы добавить новую задачу, вставьте запись в таблицу `mv_jobs`:
+
+```sql
+INSERT INTO `mv_jobs` (job_name, job_settings, should_run)
+VALUES ('my_handler', NULL, true);
+```
+
+Координатор автоматически обнаружит новую задачу и назначит её доступному исполнителю.
+
+Параметры в поле `job_settings` можно не указывать (будут использованы параметры по умолчанию) или указать в виде JSON-документа следующего формата:
+
+```json
+{
+    "cdcReaderThreads": 4,
+    "applyThreads": 4,
+    "applyQueueSize": 10000,
+    "selectBatchSize": 1000,
+    "upsertBatchSize": 500,
+    "dictionaryScanSeconds": 28800
+}
+```
+
+В примере выше показаны параметры по умолчанию для обычных задач. Для специальной задачи сканера словаря можно указать следующие параметры:
+
+```json
+{
+    "upsertBatchSize": 500,
+    "cdcReaderThreads": 4,
+    "rowsPerSecondLimit": 10000
+}
+```
+
+#### Удаление задач
+
+Чтобы остановить и удалить задачу:
+
+```sql
+UPDATE `mv_jobs` SET should_run = false WHERE job_name = 'my_handler';
+-- или
+DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
+```
+
+#### Запрос на сканирование
+
+Чтобы запросить сканирование определённой целевой таблицы:
+
+```sql
+INSERT INTO `mv_job_scans` (job_name, target_name, scan_settings, requested_at)
+VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtcTimestamp());
+```
+
+### Мониторинг операций
+
+#### Проверка выполняемых задач
+
+```sql
+SELECT rj.runner_id, rj.job_name, rj.started_at, r.runner_identity
+FROM `mv_runner_jobs` rj
+JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
+```
+
+#### Проверка состояния задачи
+
+```sql
+SELECT j.job_name, j.should_run,
+       CASE WHEN rj.job_name IS NOT NULL THEN 'RUNNING'u ELSE 'STOPPED'u END as status
+FROM `mv_jobs` j
+LEFT JOIN `mv_runner_jobs` rj ON j.job_name = rj.job_name;
+```
+
+#### Проверка очереди команд:
+
+```sql
+SELECT runner_id, command_no, command_type, job_name, command_status, created_at
+FROM `mv_commands`
+WHERE command_status IN ('CREATED'u, 'TAKEN'u)
+ORDER BY created_at;
+```
+
+#### Проверка состояния исполнителя
+
+```sql
+SELECT runner_id, runner_identity, updated_at
+FROM `mv_runners`
+ORDER BY updated_at DESC;
+```
+
+### Типы команд
+
+Система поддерживает четыре типа команд:
+
+- `START` — запустить задачу на исполнителе.
+- `STOP` — остановить задачу на исполнителе.
+- `SCAN` — начать сканирование определённой целевой таблицы.
+- `NOSCAN` — остановить уже запущенное сканирование для определённой целевой таблицы.
+
+### Имена задач
+
+Имя задачи для обычных задач соответствует имени обработчика. Есть два специальных имени задач:
+
+- `ydbmv$dictionary` — сканер словаря (управляется вручную)
+- `ydbmv$coordinator` — задача координатора (управляется автоматически)
+
+Эти специальные имена нельзя использовать для обычных обработчиков (на самом деле имя обработчика не может начинаться с префикса «ydbmv»).
+
+## Отказоустойчивость
+
+Система обеспечивает автоматическую отказоустойчивость:
+
+- Обнаружение сбоя исполнителя — исполнители периодически сообщают о своём состоянии; неактивные исполнители автоматически удаляются.
+- Перераспределение задач — при сбое исполнителей их задачи автоматически переназначаются доступным исполнителям.
+- Повтор команд — неудачные команды остаются в очереди для повторной попытки.
+- Выбор лидера — одновременно активен только один экземпляр координатора.
+
+## Развёртывание
+
+1. **Создание управляющих таблиц** — используйте предоставленный скрипт `example-tables.sql`. Имена таблиц можно настроить по мере необходимости.
+1. **Развёртывание исполнителей** — запустите несколько экземпляров в режиме JOB.
+1. **Настройка задач** — вставьте определения задач в таблицу `mv_jobs`. Добавьте определения сканирования в таблицу mv_job_scans.
+1. **Мониторинг операций** — используйте запросы для мониторинга, перечисленные выше.
+
+Система автоматически распределит задачи между доступными исполнителями и поддержит желаемое состояние.
