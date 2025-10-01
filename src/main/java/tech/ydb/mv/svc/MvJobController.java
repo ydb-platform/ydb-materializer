@@ -196,7 +196,7 @@ public class MvJobController {
             return;
         }
         if (context.isAnyScanRunning()) {
-            LOG.info("Dictionary refresh skipped on handler `{}` "
+            LOG.info("Dictionary refresh delayed on handler `{}` "
                     + "due to already running scans", context.getHandler().getName());
             return;
         }

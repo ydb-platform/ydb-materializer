@@ -3,12 +3,12 @@ package tech.ydb.mv.svc;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.data.MvChangesSingleDict;
@@ -28,6 +28,8 @@ import tech.ydb.mv.support.MvScanDao;
  * @author zinal
  */
 public class MvDictionaryScan {
+
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvDictionaryScan.class);
 
     private final YdbConnector conn;
     private final MvHandler handler;
@@ -57,6 +59,8 @@ public class MvDictionaryScan {
     public MvChangesSingleDict scan(String tableName) {
         var adapter = new Adapter(tableName);
         MvKey startKey = new MvScanDao(conn, adapter).initScan();
+
+        LOG.info("\t...dictionary `{}` at position {}", tableName, startKey);
 
         Params params;
         String sql;
@@ -114,12 +118,21 @@ public class MvDictionaryScan {
     }
 
     public MvChangesMultiDict scanAll() {
+        LOG.info("Performing regular dictionary changes scan.");
         MvChangesMultiDict ret = new MvChangesMultiDict();
         handler.getInputs().values().stream()
                 .filter(i -> i.isBatchMode())
                 .filter(i -> i.isTableKnown())
                 .map(i -> i.getTableName())
                 .forEach(tableName -> ret.addItem(scan(tableName)));
+        if (! ret.isEmpty()) {
+            var items = ret.getItems().stream()
+                    .filter(i -> !i.isEmpty())
+                    .map(i -> i.getTableName())
+                    .toList();
+            LOG.info("Relevant changes in the following dictionaries: {}", items);
+        }
+        LOG.info("Regular dictionary changes scan completed.");
         return ret;
     }
 

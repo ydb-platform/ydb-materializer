@@ -64,7 +64,6 @@ public class MvRunner implements AutoCloseable {
         runnerThread.setDaemon(true);
         runnerThread.start();
 
-        LOG.info("MvRunner started successfully");
         return true;
     }
 
