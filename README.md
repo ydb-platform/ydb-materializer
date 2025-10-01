@@ -2,7 +2,7 @@
 
 The YDB Materializer is a Java application that processes user-managed materialized views in YDB.
 
-[See the Releases page for downloads](https://github.com/zinal/ydb-materializer/releases).
+[See the Releases page for downloads](https://github.com/ydb-platform/ydb-materializer/releases).
 
 ## Requirements and building
 
