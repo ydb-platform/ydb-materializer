@@ -192,6 +192,7 @@ public class MvJobController {
         }
         var filters = changes.toFilters(context.getHandler());
         if (filters.isEmpty()) {
+            // No relevant changes in the dictionaries, so move out.
             dictScan.commitAll(changes);
             return;
         }
