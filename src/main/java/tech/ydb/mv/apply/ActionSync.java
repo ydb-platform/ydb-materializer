@@ -131,7 +131,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlDelete);
         var statement = retryCtx.supplyResult(
-                qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params).execute());
+                qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params, querySettings)
+                        .execute()
+        );
         currentStatement.set(statement);
     }
 
@@ -161,7 +163,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlUpsert);
         var statement = retryCtx.supplyResult(
-                qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params).execute());
+                qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params, querySettings)
+                        .execute()
+        );
         currentStatement.set(statement);
     }
 

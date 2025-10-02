@@ -280,6 +280,7 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.apply.queue` - Max elements in apply queue per thread
 - `job.batch.select` - Batch size for SELECT operations
 - `job.batch.upsert` - Batch size for UPSERT operations
+- `job.query.seconds` — Query timeout for SELECT, UPSERT or DELETE operations, seconds
 
 #### Management Settings
 - `mv.jobs.table` - Custom MV_JOBS table name

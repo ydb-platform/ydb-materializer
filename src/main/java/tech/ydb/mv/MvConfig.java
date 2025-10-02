@@ -77,6 +77,11 @@ public class MvConfig {
     public static final String CONF_DICT_SCAN_SECONDS = "job.dict.scan.seconds";
 
     /**
+     * Handler setting: query timeout, seconds.
+     */
+    public static final String CONF_QUERY_TIMEOUT = "job.query.seconds";
+
+    /**
      * Path to coordination service node.
      */
     public static final String CONF_COORD_PATH = "job.coordination.path";

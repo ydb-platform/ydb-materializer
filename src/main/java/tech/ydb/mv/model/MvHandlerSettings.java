@@ -12,7 +12,7 @@ import tech.ydb.mv.MvConfig;
  */
 public class MvHandlerSettings implements Serializable {
 
-    private static final long serialVersionUID = 20250921001L;
+    private static final long serialVersionUID = 20251002001L;
 
     private int cdcReaderThreads = 4;
     private int applyThreads = 4;
@@ -20,6 +20,7 @@ public class MvHandlerSettings implements Serializable {
     private int selectBatchSize = 1000;
     private int upsertBatchSize = 500;
     private int dictionaryScanSeconds = 28800; // 8h
+    private int queryTimeoutSeconds = 30;
 
     public MvHandlerSettings() {
     }
@@ -31,6 +32,7 @@ public class MvHandlerSettings implements Serializable {
         this.selectBatchSize = src.selectBatchSize;
         this.upsertBatchSize = src.upsertBatchSize;
         this.dictionaryScanSeconds = src.dictionaryScanSeconds;
+        this.queryTimeoutSeconds = src.queryTimeoutSeconds;
     }
 
     public MvHandlerSettings(Properties props) {
@@ -53,6 +55,9 @@ public class MvHandlerSettings implements Serializable {
 
         v = props.getProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "28800");
         this.dictionaryScanSeconds = Integer.parseInt(v);
+
+        v = props.getProperty(MvConfig.CONF_QUERY_TIMEOUT, "30");
+        this.queryTimeoutSeconds = Integer.parseInt(v);
     }
 
     public int getCdcReaderThreads() {
@@ -103,6 +108,14 @@ public class MvHandlerSettings implements Serializable {
         this.dictionaryScanSeconds = dictionaryScanSeconds;
     }
 
+    public int getQueryTimeoutSeconds() {
+        return queryTimeoutSeconds;
+    }
+
+    public void setQueryTimeoutSeconds(int queryTimeoutSeconds) {
+        this.queryTimeoutSeconds = queryTimeoutSeconds;
+    }
+
     @Override
     public int hashCode() {
         int hash = 3;
@@ -112,6 +125,7 @@ public class MvHandlerSettings implements Serializable {
         hash = 37 * hash + this.selectBatchSize;
         hash = 37 * hash + this.upsertBatchSize;
         hash = 37 * hash + this.dictionaryScanSeconds;
+        hash = 37 * hash + this.queryTimeoutSeconds;
         return hash;
     }
 
@@ -140,6 +154,9 @@ public class MvHandlerSettings implements Serializable {
             return false;
         }
         if (this.upsertBatchSize != other.upsertBatchSize) {
+            return false;
+        }
+        if (this.queryTimeoutSeconds != other.queryTimeoutSeconds) {
             return false;
         }
         return this.dictionaryScanSeconds == other.dictionaryScanSeconds;

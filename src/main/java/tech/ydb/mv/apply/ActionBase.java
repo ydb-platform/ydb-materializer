@@ -1,5 +1,6 @@
 package tech.ydb.mv.apply;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 import tech.ydb.common.transaction.TxMode;
+import tech.ydb.query.settings.ExecuteQuerySettings;
 import tech.ydb.query.tools.QueryReader;
 import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.query.Params;
@@ -34,12 +36,17 @@ abstract class ActionBase {
     protected final MvApplyManager applyManager;
     protected final SessionRetryContext retryCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
+    protected final ExecuteQuerySettings querySettings;
 
     protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.applyManager = context.getApplyManager();
         this.retryCtx = context.getRetryCtx();
+        var queryTimeout = context.getSettings().getQueryTimeoutSeconds();
+        this.querySettings = ExecuteQuerySettings.newBuilder()
+                .withRequestTimeout(Duration.ofSeconds(queryTimeout))
+                .build();
     }
 
     public static String getLastSqlStatement() {
@@ -88,7 +95,7 @@ abstract class ActionBase {
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
         ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
-                session.createQuery(statement, TxMode.ONLINE_RO, params)
+                session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
         lastSqlStatement.set(null);
         return rsr;
