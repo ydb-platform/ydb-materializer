@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>tech.ydb.samples</groupId>
     <artifactId>ydb-materializer</artifactId>
-    <version>1.2-SNAPSHOT</version>
+    <version>1.2</version>
     <name>YDB Materializer</name>
     <packaging>jar</packaging>
     <properties>
