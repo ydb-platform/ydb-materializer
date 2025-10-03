@@ -302,6 +302,8 @@ The configuration file is an XML properties file that defines connection paramet
 - `mv.scan.period.ms` - Runner and Coordinator re-scan period, in milliseconds
 - `mv.report.period.ms` - Runner status report period, in milliseconds
 - `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
+- `mv.coord.startup.ms` - The delay between the Coordinator startup and job distribution activation, milliseconds
+- `mv.coord.runners.count` - The minimal number of Runners for job distribution
 
 ## Distributed Job Management (JOB Mode)
 
