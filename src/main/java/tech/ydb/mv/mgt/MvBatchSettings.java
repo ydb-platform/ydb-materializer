@@ -11,7 +11,7 @@ import java.util.Properties;
  */
 public class MvBatchSettings implements Serializable {
 
-    private static final long serialVersionUID = 20250113001L;
+    private static final long serialVersionUID = 20251003001L;
 
     // Configuration property keys
     public static final String CONF_TABLE_JOBS = "mv.jobs.table";
@@ -22,6 +22,8 @@ public class MvBatchSettings implements Serializable {
     public static final String CONF_SCAN_PERIOD_MS = "mv.scan.period.ms";
     public static final String CONF_REPORT_PERIOD_MS = "mv.report.period.ms";
     public static final String CONF_RUNNER_TIMEOUT_MS = "mv.runner.timeout.ms";
+    public static final String CONF_COORD_STARTUP_MS = "mv.coord.startup.ms";
+    public static final String CONF_COORD_RUNNERS_COUNT = "mv.coord.runners.count";
 
     // Default values
     public static final String DEF_TABLE_JOBS = "mv_jobs";
@@ -33,6 +35,7 @@ public class MvBatchSettings implements Serializable {
     public static final long DEF_SCAN_PERIOD_MS = 5000L; // 5 seconds
     public static final long DEF_REPORT_PERIOD_MS = 10000L; // 10 seconds
     public static final long DEF_RUNNER_TIMEOUT_MS = 30000L; // 30 seconds
+    public static final long DEF_COORD_STARTUP_MS = 90000L; // 90 seconds
 
     // Table names
     private String tableJobs = DEF_TABLE_JOBS;
@@ -45,6 +48,10 @@ public class MvBatchSettings implements Serializable {
     private long scanPeriodMs = DEF_SCAN_PERIOD_MS;
     private long reportPeriodMs = DEF_REPORT_PERIOD_MS;
     private long runnerTimeoutMs = DEF_RUNNER_TIMEOUT_MS;
+    private long coordStartupMs = DEF_COORD_STARTUP_MS;
+
+    // Extra settings
+    private int runnersCount = 0;
 
     public MvBatchSettings() {
     }
@@ -58,6 +65,8 @@ public class MvBatchSettings implements Serializable {
         this.scanPeriodMs = src.scanPeriodMs;
         this.reportPeriodMs = src.reportPeriodMs;
         this.runnerTimeoutMs = src.runnerTimeoutMs;
+        this.coordStartupMs = src.coordStartupMs;
+        this.runnersCount = src.runnersCount;
     }
 
     public MvBatchSettings(Properties props) {
@@ -79,6 +88,12 @@ public class MvBatchSettings implements Serializable {
 
         v = props.getProperty(CONF_RUNNER_TIMEOUT_MS, String.valueOf(DEF_RUNNER_TIMEOUT_MS));
         this.runnerTimeoutMs = Long.parseLong(v);
+
+        v = props.getProperty(CONF_COORD_STARTUP_MS, String.valueOf(DEF_COORD_STARTUP_MS));
+        this.coordStartupMs = Long.parseLong(v);
+
+        v = props.getProperty(CONF_COORD_RUNNERS_COUNT, "0");
+        this.runnersCount = Integer.parseInt(v);
     }
 
     public String getTableJobs() {
@@ -144,5 +159,21 @@ public class MvBatchSettings implements Serializable {
 
     public void setRunnerTimeoutMs(long runnerTimeoutMs) {
         this.runnerTimeoutMs = runnerTimeoutMs;
+    }
+
+    public long getCoordStartupMs() {
+        return coordStartupMs;
+    }
+
+    public void setCoordStartupMs(long coordStartupMs) {
+        this.coordStartupMs = coordStartupMs;
+    }
+
+    public int getRunnersCount() {
+        return runnersCount;
+    }
+
+    public void setRunnersCount(int runnersCount) {
+        this.runnersCount = runnersCount;
     }
 }

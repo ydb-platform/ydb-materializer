@@ -20,6 +20,7 @@ class MvBalancer {
 
     final MvJobDao jobDao;
     final AtomicLong commandNo;
+    final int runnersCount;
     final List<MvRunnerInfo> allRunners = new ArrayList<>();
     // jobName
     final Map<String, MvJobInfo> requiredJobs = new HashMap<>();
@@ -27,9 +28,10 @@ class MvBalancer {
     final Map<String, List<MvRunnerJobInfo>> runningJobs = new HashMap<>();
     final Map<String, MvCommand> pendingJobs = new HashMap<>();
 
-    MvBalancer(MvJobDao jobDao, AtomicLong commandNo) {
+    MvBalancer(MvJobDao jobDao, AtomicLong commandNo, int runnersCount) {
         this.jobDao = jobDao;
-        this.commandNo  = commandNo;
+        this.commandNo = commandNo;
+        this.runnersCount = runnersCount;
         allRunners.addAll(jobDao.getAllRunners());
         jobDao.getAllJobs().forEach(
                 job -> requiredJobs.put(job.getJobName(), job));
@@ -59,6 +61,11 @@ class MvBalancer {
         if (allRunners.isEmpty()) {
             LOG.warn("No runners available to start jobs [{}]",
                     String.join(", ", jobsToRun.keySet()));
+            return;
+        }
+        if (runnersCount > allRunners.size()) {
+            LOG.warn("Insufficient runners ({} vs {}) available to start jobs [{}]",
+                    allRunners.size(), runnersCount, String.join(", ", jobsToRun.keySet()));
             return;
         }
 

@@ -233,22 +233,26 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.input.file">example-job1.sql</entry>
 <entry key="job.input.table">mv/statements</entry>
 
-x<!-- Конфигурация обработчика -->
+<!-- Конфигурация обработчика -->
 <entry key="job.handlers">h1,h2,h3</entry>
 <entry key="job.scan.rate">10000</entry>
 <entry key="job.scan.table">mv/scans_state</entry>
 <entry key="job.coordination.path">mv/coordination</entry>
 <entry key="job.coordination.timeout">10</entry>
 
-<!-- Dictionary scanner configuration -->
+<!-- Настройки сканера справочников -->
+<entry key="job.dict.consumer">dictionary</entry>
 <entry key="job.dict.hist.table">mv/dict_hist</entry>
+<entry key="job.dict.scan.seconds">28800</entry>
 
 <!-- Настройка производительности -->
+<entry key="job.apply.partitioning">HASH</entry>
 <entry key="job.cdc.threads">4</entry>
 <entry key="job.apply.threads">4</entry>
 <entry key="job.apply.queue">10000</entry>
 <entry key="job.batch.select">1000</entry>
 <entry key="job.batch.upsert">500</entry>
+<entry key="job.query.seconds">30</entry>
 
 <!-- Настройки средств управления -->
 <entry key="mv.jobs.table">mv_jobs</entry>
@@ -259,6 +263,8 @@ x<!-- Конфигурация обработчика -->
 <entry key="mv.scan.period.ms">5000</entry>
 <entry key="mv.report.period.ms">10000</entry>
 <entry key="mv.runner.timeout.ms">30000</entry>
+<entry key="mv.coord.startup.ms">90000</entry>
+<entry key="mv.coord.runners.count">1</entry>
 
 </properties>
 ```
@@ -291,6 +297,11 @@ x<!-- Конфигурация обработчика -->
 - `job.dict.hist.table` - имя таблицы для ведения истории изменения справочников
 - `job.coordination.path` — путь к узлу службы координации
 - `job.coordination.timeout` - таймаут распределенной блокировки, секунд
+
+#### Настройки сканера справочников
+- `job.dict.consumer` - имя консьюмера для сбора информации об изменениях справочников
+- `job.dict.hist.table` - альтернативное имя таблицы MV_DICT_HIST
+- `job.dict.scan.seconds` - период между проверками изменений справочников
 
 #### Настройка производительности
 - `job.apply.partitioning` - HASH (по умолчанию) или RANGE стратегия партиционирования задач

@@ -222,14 +222,18 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="job.coordination.timeout">10</entry>
 
 <!-- Dictionary scanner configuration -->
+<entry key="job.dict.consumer">dictionary</entry>
 <entry key="job.dict.hist.table">mv/dict_hist</entry>
+<entry key="job.dict.scan.seconds">28800</entry>
 
 <!-- Performance tuning -->
+<entry key="job.apply.partitioning">HASH</entry>
 <entry key="job.cdc.threads">4</entry>
 <entry key="job.apply.threads">4</entry>
 <entry key="job.apply.queue">10000</entry>
 <entry key="job.batch.select">1000</entry>
 <entry key="job.batch.upsert">500</entry>
+<entry key="job.query.seconds">30</entry>
 
 <!-- Management settings -->
 <entry key="mv.jobs.table">mv_jobs</entry>
@@ -240,6 +244,8 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="mv.scan.period.ms">5000</entry>
 <entry key="mv.report.period.ms">10000</entry>
 <entry key="mv.runner.timeout.ms">30000</entry>
+<entry key="mv.coord.startup.ms">90000</entry>
+<entry key="mv.coord.runners.count">1</entry>
 
 </properties>
 ```
@@ -272,6 +278,11 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.dict.hist.table` - Dictionary history table name
 - `job.coordination.path` - Coordination service node path
 - `job.coordination.timeout` - Lock timeout for job coordination in seconds
+
+#### Dictionary scanner configuration
+- `job.dict.consumer` - consumer name to be used for dictionary table changefeeds
+- `job.dict.hist.table` - alternative name for MV_DICT_HIST table
+- `job.dict.scan.seconds` - period between the dictionary changes checks
 
 #### Performance Tuning
 - `job.apply.partitioning` - HASH (default) or RANGE partitioning of apply tasks

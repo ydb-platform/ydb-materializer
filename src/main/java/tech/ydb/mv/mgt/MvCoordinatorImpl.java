@@ -14,10 +14,14 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
     private final AtomicLong commandNo = new AtomicLong();
     private final MvJobDao jobDao;
     private final MvBatchSettings settings;
+    private final Instant startupTv;
+    private volatile boolean balancing;
 
     public MvCoordinatorImpl(MvJobDao jobDao, MvBatchSettings settings) {
         this.jobDao = jobDao;
         this.settings = settings;
+        this.startupTv = Instant.now().plusMillis(settings.getCoordStartupMs());
+        this.balancing = false;
     }
 
     @Override
@@ -61,8 +65,16 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
      * Balance jobs - ensure running jobs match the mv_jobs table.
      */
     private void balanceJobs() {
+        if (Instant.now().isBefore(startupTv)) {
+            return;
+        }
+        if (!balancing) {
+            balancing = true;
+            LOG.info("Started job balancing...");
+        }
         try {
-            new MvBalancer(jobDao, commandNo).balanceJobs();
+            new MvBalancer(jobDao, commandNo, settings.getRunnersCount())
+                    .balanceJobs();
         } catch (Exception ex) {
             LOG.error("Failed to balance jobs", ex);
         }

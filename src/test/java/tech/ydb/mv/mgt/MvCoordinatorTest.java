@@ -36,6 +36,7 @@ public class MvCoordinatorTest extends AbstractMgtTest {
 
     private MvBatchSettings getSettings() {
         MvBatchSettings v = new MvBatchSettings();
+        v.setCoordStartupMs(0L);
         v.setScanPeriodMs(200L);
         v.setTableCommands("test1/mv_commands");
         v.setTableJobs("test1/mv_jobs");
