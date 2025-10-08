@@ -191,8 +191,8 @@ public class MvPathGenerator {
             if (index == 0) {
                 dst.setMode(MvJoinMode.MAIN);
             } else {
-                // Inner join, because we assume that the path exists
-                dst.setMode(MvJoinMode.INNER);
+                // Left join, because we should check all filter positions, and some may be missing
+                dst.setMode(MvJoinMode.LEFT);
             }
             result.getSources().add(dst);
             ++index;
