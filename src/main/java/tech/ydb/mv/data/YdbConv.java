@@ -63,7 +63,7 @@ public abstract class YdbConv {
             case Datetime:
                 return datetimeFromPojo(v);
             case Datetime64:
-                return datetimeFromPojo(v);
+                return datetime64FromPojo(v);
             case Double:
                 return doubleFromPojo(v);
             case Float:
@@ -296,6 +296,16 @@ public abstract class YdbConv {
             return PrimitiveValue.newDatetime(java.time.LocalDateTime.parse((String) v));
         }
         return PrimitiveValue.newDatetime(java.time.LocalDateTime.parse(v.toString()));
+    }
+
+    private static Value<?> datetime64FromPojo(Object v) {
+        if (v instanceof java.time.LocalDateTime) {
+            return PrimitiveValue.newDatetime64((java.time.LocalDateTime) v);
+        }
+        if (v instanceof String) {
+            return PrimitiveValue.newDatetime64(java.time.LocalDateTime.parse((String) v));
+        }
+        return PrimitiveValue.newDatetime64(java.time.LocalDateTime.parse(v.toString()));
     }
 
     private static Value<?> doubleFromPojo(Object v) {
