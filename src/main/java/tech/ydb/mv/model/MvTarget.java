@@ -42,6 +42,7 @@ public class MvTarget implements MvSqlPosHolder {
 
     public MvTarget(String name) {
         this(new MvView(name, MvSqlPos.EMPTY));
+        this.view.addTarget(this);
     }
 
     /**
