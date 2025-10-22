@@ -33,16 +33,24 @@ public class MvRunner implements AutoCloseable {
     private final Map<String, MvRunnerJobInfo> localJobs = new HashMap<>();
     private volatile Thread runnerThread = null;
 
-    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
+    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings, String runnerId) {
         this.api = api;
         this.settings = settings;
         this.tableOps = new MvJobDao(ydb, settings);
-        this.runnerId = generateRunnerId();
+        this.runnerId = (runnerId == null) ? generateRunnerId() : runnerId;
         this.runnerIdentity = generateRunnerIdentity();
     }
 
+    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
+        this(ydb, api, settings, null);
+    }
+
+    public MvRunner(YdbConnector ydb, MvApi api, String runnerId) {
+        this(ydb, api, new MvBatchSettings(), runnerId);
+    }
+
     public MvRunner(YdbConnector ydb, MvApi api) {
-        this(ydb, api, new MvBatchSettings());
+        this(ydb, api, new MvBatchSettings(), null);
     }
 
     /**

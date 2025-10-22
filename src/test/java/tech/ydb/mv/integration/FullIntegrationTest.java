@@ -159,13 +159,15 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     }
 
     private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
-        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn); var runner = new MvRunner(conn, api)) {
-            api.applyDefaults(conn.getConfig().getProperties());
-            MvCoordinator.newInstance(conn, batchSettings, instanceName)
-                    .start();
-            runner.start();
+        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn)) {
+            try (var runner = new MvRunner(conn, api, instanceName)) {
+                api.applyDefaults(conn.getConfig().getProperties());
+                MvCoordinator.newInstance(conn, batchSettings, instanceName)
+                        .start();
+                runner.start();
 
-            pause(400_000);
+                pause(40_000);
+            }
         } catch (Exception ex) {
             ex.printStackTrace(System.err);
         }
