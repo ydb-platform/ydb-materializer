@@ -22,10 +22,11 @@ public class SqlGenTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getTargets().values().iterator().next();
         // Set table information
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("main_table")
@@ -59,10 +60,11 @@ public class SqlGenTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getTargets().values().iterator().next();
         // Set table information
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("schema3/main_table")

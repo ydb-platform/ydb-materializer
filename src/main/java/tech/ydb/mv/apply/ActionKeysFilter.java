@@ -38,7 +38,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}`, total {} filter(s)",
-                instance, context.getMetadata().getName(), target.getName(),
+                instance, context.getMetadata().getName(), target.getViewName(),
                 filter.getBlocks().size());
     }
 

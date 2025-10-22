@@ -105,7 +105,7 @@ public class MvJobContext implements MvCdcAdapter {
     public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
             MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
         if (target == null
-                || handler.getTargets().get(target.getName()) != target) {
+                || handler.getViews().get(target.getViewName()) != target) {
             throw new IllegalArgumentException("Illegal target `" + target
                     + "` for handler `" + handler.getName() + "`");
         }
@@ -113,21 +113,21 @@ public class MvJobContext implements MvCdcAdapter {
             throw new IllegalStateException("Scan start refused on stopped handler `"
                     + handler.getName() + "`");
         }
-        MvScanFeeder sf = scanFeeders.get(target.getName());
+        MvScanFeeder sf = scanFeeders.get(target.getViewName());
         if (sf != null && sf.isRunning()) {
             return false;
         }
         sf = new MvScanFeeder(this, applyManager, target, settings, actions, completion);
-        scanFeeders.put(target.getName(), sf);
+        scanFeeders.put(target.getViewName(), sf);
         return sf.start();
     }
 
     public synchronized boolean stopScan(MvTarget target) {
         if (target == null
-                || handler.getTargets().get(target.getName()) != target) {
+                || handler.getViews().get(target.getViewName()) != target) {
             return false;
         }
-        MvScanFeeder sf = scanFeeders.remove(target.getName());
+        MvScanFeeder sf = scanFeeders.remove(target.getViewName());
         if (sf == null) {
             return false;
         }
@@ -136,7 +136,7 @@ public class MvJobContext implements MvCdcAdapter {
 
     public synchronized void forgetScan(MvTarget target) {
         if (target != null) {
-            scanFeeders.remove(target.getName());
+            scanFeeders.remove(target.getViewName());
         }
     }
 

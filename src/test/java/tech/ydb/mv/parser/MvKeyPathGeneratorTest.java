@@ -115,7 +115,7 @@ public class MvKeyPathGeneratorTest {
         sourceD.getConditions().add(conditionAD);
 
         // Create original target
-        originalTarget = new MvTarget("test_target", new MvSqlPos(1, 1));
+        originalTarget = new MvTarget("test_target");
         originalTarget.getSources().add(sourceA);
         originalTarget.getSources().add(sourceB);
         originalTarget.getSources().add(sourceC);
@@ -150,7 +150,7 @@ public class MvKeyPathGeneratorTest {
         columnD.setType(PrimitiveType.Text);
         originalTarget.getColumns().add(columnD);
 
-        if (PRINT_SQL && ! inputPrinted) {
+        if (PRINT_SQL && !inputPrinted) {
             System.out.println("*** Input SQL: " + new MvSqlGen(originalTarget).makeCreateView());
             inputPrinted = true;
         }

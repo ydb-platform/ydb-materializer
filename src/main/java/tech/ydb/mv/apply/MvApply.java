@@ -153,16 +153,16 @@ class MvApply {
         }
 
         TargetBuilder makeTarget(MvTarget target, MvTarget dictTrans) {
-            var b = targets.get(target.getName());
+            var b = targets.get(target.getViewName());
             if (b == null) {
                 b = newTarget(target, dictTrans);
-                targets.put(target.getName(), b);
+                targets.put(target.getViewName(), b);
             }
             return b;
         }
 
         void prepare() {
-            for (MvTarget target : metadata.getTargets().values()) {
+            for (MvTarget target : metadata.getViews().values()) {
                 configureTarget(target);
             }
         }
@@ -177,10 +177,10 @@ class MvApply {
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
                 LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
-                        source.getTableName(), target.getName(), metadata.getName());
+                        source.getTableName(), target.getViewName(), metadata.getName());
                 return;
             }
-            LOG.info("Configuring handler `{}`, target `{}` ...", metadata.getName(), target.getName());
+            LOG.info("Configuring handler `{}`, target `{}` ...", metadata.getName(), target.getViewName());
             // Add sync action for the current target
             ActionSync actionSync = new ActionSync(target, context);
             makeSource(source.getTableInfo()).addAction(actionSync);
@@ -201,7 +201,7 @@ class MvApply {
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
                 LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
-                        source.getTableName(), pg.getTarget().getName());
+                        source.getTableName(), pg.getTarget().getViewName());
                 return;
             }
             MvTarget transformation = pg.extractKeysReverse(source);
@@ -209,7 +209,7 @@ class MvApply {
                 LOG.info("Keys from input table `{}` cannot be transformed "
                         + "to keys for table `{}`, skipping for target `{}`",
                         source.getTableName(), pg.getTopSourceTableName(),
-                        pg.getTarget().getName());
+                        pg.getTarget().getViewName());
                 return;
             }
             MvApplyAction action;

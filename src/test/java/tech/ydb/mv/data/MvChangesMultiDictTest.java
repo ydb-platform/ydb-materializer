@@ -181,13 +181,13 @@ public class MvChangesMultiDictTest {
         targetMultiDict.getColumns().add(col6);
 
         // Create handler
-        handler = new MvHandler("test_handler", MvSqlPos.EMPTY);
+        handler = new MvHandler("test_handler");
         handler.addInput(mainInput);
         handler.addInput(dict1Input);
         handler.addInput(dict2Input);
         handler.addInput(dict3Input);
-        handler.addTarget(targetSingleDict);
-        handler.addTarget(targetMultiDict);
+        handler.addView(targetSingleDict.getView());
+        handler.addView(targetMultiDict.getView());
 
         changes = new MvChangesMultiDict();
     }

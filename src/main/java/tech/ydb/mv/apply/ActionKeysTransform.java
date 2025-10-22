@@ -36,7 +36,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
         LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getName(),
+                instance, context.getMetadata().getName(), target.getViewName(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
@@ -46,7 +46,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
     public String toString() {
         return "MvKeysTransform{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
-                + target.getName() + '}';
+                + target.getViewName() + '}';
     }
 
     @Override

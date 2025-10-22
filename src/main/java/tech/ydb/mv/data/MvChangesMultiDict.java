@@ -42,11 +42,13 @@ public class MvChangesMultiDict {
     }
 
     public ArrayList<MvRowFilter> toFilters(MvHandler handler) {
-        ArrayList<MvRowFilter> filters = new ArrayList<>(handler.getTargets().size());
-        for (var target : handler.getTargets().values()) {
-            var filter = toFilter(handler, target);
-            if (filter != null && !filter.isEmpty()) {
-                filters.add(filter);
+        ArrayList<MvRowFilter> filters = new ArrayList<>(handler.getViews().size());
+        for (var view : handler.getViews().values()) {
+            for (var target : view.getTargets().values()) {
+                var filter = toFilter(handler, target);
+                if (filter != null && !filter.isEmpty()) {
+                    filters.add(filter);
+                }
             }
         }
         return filters;

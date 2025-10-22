@@ -28,15 +28,26 @@ public class MvSqlPrinter {
     }
 
     private ArrayList<MvTarget> sortTargets() {
-        ArrayList<MvTarget> output = new ArrayList<>(ctx.getTargets().values());
-        output.sort((x, y) -> x.getName().compareToIgnoreCase(y.getName()));
+        ArrayList<MvTarget> output = new ArrayList<>();
+        for (var mv : ctx.getViews().values()) {
+            output.addAll(mv.getTargets().values());
+        }
+        output.sort((x, y) -> compareTargets(x, y));
         return output;
+    }
+
+    private int compareTargets(MvTarget x, MvTarget y) {
+        int cmp = x.getViewName().compareToIgnoreCase(y.getViewName());
+        if (cmp == 0) {
+            cmp = x.getAlias().compareToIgnoreCase(y.getAlias());
+        }
+        return cmp;
     }
 
     public void write(PrintStream pw, MvTarget mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");
-        pw.println("*** Target: " + mt.getName());
+        pw.println("*** Target: " + mt.getViewName() + " AS " + mt.getAlias());
         pw.println("-------------------------------------------------------");
         pw.println();
         pw.println("  ** Equivalent view DDL:");

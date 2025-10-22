@@ -30,6 +30,7 @@ import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvView;
 
 /**
  * Parsing, linking and minimal logical checks for input SQL script.
@@ -65,7 +66,7 @@ public class MvSqlParser {
         // first pass: add MV definitions as MvTarget objects
         for (var stmt : root.sql_stmt()) {
             if (stmt.create_mat_view_stmt() != null) {
-                fillTarget(ctx, stmt.create_mat_view_stmt());
+                fillView(ctx, stmt.create_mat_view_stmt());
             }
         }
         // second pass: add handler definitions
@@ -89,9 +90,30 @@ public class MvSqlParser {
         return null;
     }
 
-    private void fillTarget(MvMetadata mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        var mt = new MvTarget(unquote(stmt.identifier()), toSqlPos(stmt));
-        var sel = stmt.simple_select_stmt();
+    private void fillView(MvMetadata mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
+        var view = new MvView(unquote(stmt.identifier()), toSqlPos(stmt));
+        var expr = stmt.some_select_stmt();
+        if (expr.simple_select_stmt() != null) {
+            fillTarget(mc, view, MvTarget.ALIAS_DEFAULT, expr.simple_select_stmt());
+        }
+        var ua = expr.union_all_select_stmt();
+        while (ua != null) {
+            var sel = ua.aliased_select_stmt();
+            if (sel != null && sel.simple_select_stmt() != null) {
+                String alias = unquote(sel.table_alias().ID_PLAIN());
+                fillTarget(mc, view, alias, sel.simple_select_stmt());
+            }
+            ua = ua.union_all_select_stmt();
+        }
+        var prev = mc.addView(view);
+        if (prev != null) {
+            mc.addIssue(new MvIssue.DuplicateView(view, prev));
+        }
+    }
+
+    private void fillTarget(MvMetadata mc, MvView view, String alias,
+            YdbMatViewV1Parser.Simple_select_stmtContext sel) {
+        var mt = new MvTarget(view, alias, toSqlPos(sel));
         var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
         mt.getSources().add(src);
         src.setTableName(unquote(sel.main_table_ref().identifier()));
@@ -106,7 +128,7 @@ public class MvSqlParser {
         if (sel.opaque_expression() != null) {
             fillCondition(mt, sel.opaque_expression());
         }
-        var prev = mc.addTarget(mt);
+        var prev = view.addTarget(mt);
         if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateTarget(mt, prev));
         }
@@ -148,7 +170,8 @@ public class MvSqlParser {
         }
     }
 
-    private void fillJoinCondition(MvTarget mt, MvJoinSource src, YdbMatViewV1Parser.Join_conditionContext cond) {
+    private void fillJoinCondition(MvTarget mt, MvJoinSource src,
+            YdbMatViewV1Parser.Join_conditionContext cond) {
         MvJoinCondition mjc = new MvJoinCondition(toSqlPos(cond));
         src.getConditions().add(mjc);
         if (cond.column_reference_first() != null) {
@@ -235,7 +258,8 @@ public class MvSqlParser {
         }
     }
 
-    private void fillHandlerInput(MvMetadata mc, MvHandler mh, YdbMatViewV1Parser.Handler_input_partContext part) {
+    private void fillHandlerInput(MvMetadata mc, MvHandler mh,
+            YdbMatViewV1Parser.Handler_input_partContext part) {
         MvInput mi = new MvInput(
                 unquote(part.main_table_ref().identifier()),
                 unquote(part.changefeed_name().identifier()),
@@ -251,13 +275,14 @@ public class MvSqlParser {
         }
     }
 
-    private void fillHandlerProcess(MvMetadata mc, MvHandler mh, YdbMatViewV1Parser.Handler_process_partContext part) {
+    private void fillHandlerProcess(MvMetadata mc, MvHandler mh,
+            YdbMatViewV1Parser.Handler_process_partContext part) {
         String mvName = unquote(part.mat_view_ref().identifier());
-        MvTarget target = mc.getTargets().get(mvName);
-        if (target == null) {
-            mc.addIssue(new MvIssue.UnknownTarget(mh, mvName));
+        var view = mc.getViews().get(mvName);
+        if (view == null) {
+            mc.addIssue(new MvIssue.UnknownView(mh, mvName));
         } else {
-            mh.addTarget(target);
+            mh.addView(view);
         }
     }
 
@@ -270,8 +295,12 @@ public class MvSqlParser {
     }
 
     public static void link(MvMetadata mc) {
-        mc.getTargets().values().forEach(t -> linkTarget(t, mc));
+        mc.getViews().values().forEach(v -> linkView(v, mc));
         mc.getHandlers().values().forEach(h -> linkHandler(h, mc));
+    }
+
+    private static void linkView(MvView v, MvMetadata mc) {
+        v.getTargets().values().forEach(t -> linkTarget(t, mc));
     }
 
     private static void linkTarget(MvTarget t, MvMetadata mc) {
@@ -283,9 +312,11 @@ public class MvSqlParser {
     }
 
     private static void linkHandler(MvHandler mh, MvMetadata mc) {
-        for (MvTarget mt : mh.getTargets().values()) {
-            for (MvJoinSource mjs : mt.getSources()) {
-                linkHandlerJoinSource(mt, mjs, mh, mc);
+        for (MvView view : mh.getViews().values()) {
+            for (MvTarget mt : view.getTargets().values()) {
+                for (MvJoinSource mjs : mt.getSources()) {
+                    linkHandlerJoinSource(mt, mjs, mh, mc);
+                }
             }
         }
     }
@@ -333,7 +364,8 @@ public class MvSqlParser {
         }
     }
 
-    private static void linkHandlerJoinSource(MvTarget target, MvJoinSource mjs, MvHandler mh, MvMetadata mc) {
+    private static void linkHandlerJoinSource(MvTarget target,
+            MvJoinSource mjs, MvHandler mh, MvMetadata meta) {
         MvInput input = mh.getInput(mjs.getTableName());
         if (input != null) {
             mjs.setInput(input);

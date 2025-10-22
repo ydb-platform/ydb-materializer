@@ -159,7 +159,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Missing output table for target `" + target.getName()
+            return "Missing output table for target `" + target.getViewName()
                     + "` at " + sqlPos;
         }
     }
@@ -229,7 +229,7 @@ public interface MvIssue extends MvSqlPosHolder {
         public String getMessage() {
             return "Unknown column `" + columnName
                     + "` referenced for alias `" + tableAlias
-                    + "` in target `" + target.getName()
+                    + "` in target `" + target.getViewName()
                     + "` at " + cond.getSqlPos();
         }
     }
@@ -248,7 +248,7 @@ public interface MvIssue extends MvSqlPosHolder {
         @Override
         public String getMessage() {
             return "Unknown output column `" + column.getName()
-                    + "` in target `" + target.getName()
+                    + "` in target `" + target.getViewName()
                     + "` at " + sqlPos;
         }
     }
@@ -269,7 +269,7 @@ public interface MvIssue extends MvSqlPosHolder {
             return "Illegal column reference `" + column.getSourceColumn()
                     + "` by alias `" + column.getSourceAlias()
                     + "` for output column `" + column.getName()
-                    + "` in target `" + target.getName()
+                    + "` in target `" + target.getViewName()
                     + "` at " + sqlPos;
         }
     }
@@ -327,6 +327,25 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class DuplicateView extends Error {
+
+        private final MvView cur;
+        private final MvView prev;
+
+        public DuplicateView(MvView cur, MvView prev) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+            this.prev = prev;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Duplicate view `" + cur.getViewName()
+                    + "` at " + sqlPos + ", already defined at "
+                    + prev.getSqlPos();
+        }
+    }
+
     public static class DuplicateTarget extends Error {
 
         private final MvTarget cur;
@@ -340,18 +359,19 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Duplicate target `" + cur.getName()
+            return "Duplicate target alias " + cur.getAlias()
+                    + " in view `" + cur.getViewName()
                     + "` at " + sqlPos + ", already defined at "
                     + prev.getSqlPos();
         }
     }
 
-    public static class UnknownTarget extends Error {
+    public static class UnknownView extends Error {
 
         private final MvHandler handler;
         private final String name;
 
-        public UnknownTarget(MvHandler handler, String name) {
+        public UnknownView(MvHandler handler, String name) {
             super(handler.getSqlPos());
             this.handler = handler;
             this.name = name;
@@ -359,7 +379,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Reference to undefined target `" + name
+            return "Reference to undefined view `" + name
                     + "` in handler `" + handler.getName()
                     + "` at " + sqlPos;
         }
@@ -505,7 +525,7 @@ public interface MvIssue extends MvSqlPosHolder {
         public String getMessage() {
             return "Custom SQL expression at " + sqlPos
                     + " for output column `" + column.getName()
-                    + "` of target `" + target.getName()
+                    + "` of target `" + target.getViewName()
                     + "` cannot be executed: " + issues;
         }
     }
@@ -527,7 +547,7 @@ public interface MvIssue extends MvSqlPosHolder {
         public String getMessage() {
             return "Custom SQL expression at " + filter.getSqlPos()
                     + " for output filtering"
-                    + " of target `" + target.getName()
+                    + " of target `" + target.getViewName()
                     + "` cannot be executed: " + issues;
         }
     }
@@ -546,7 +566,7 @@ public interface MvIssue extends MvSqlPosHolder {
         @Override
         public String getMessage() {
             return "Unexpected SQL error at " + sqlPos
-                    + " for  target `" + target.getName()
+                    + " for  target `" + target.getViewName()
                     + "`: " + issues;
         }
     }
@@ -571,7 +591,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Target `" + target.getName()
+            return "Target `" + target.getViewName()
                     + "` referenced by handler `" + handler2.getName()
                     + "` at " + handler2.getSqlPos()
                     + "` is also referenced by handler `" + handler1.getName()
@@ -590,7 +610,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Target `" + target.getName()
+            return "Target `" + target.getViewName()
                     + "` at " + sqlPos
                     + "` is not used in any handler.";
         }
@@ -612,7 +632,7 @@ public interface MvIssue extends MvSqlPosHolder {
             return "Key extraction is not possible "
                     + " for table `" + source.getTableName()
                     + "` used as alias `" + source.getTableAlias()
-                    + "` in target `" + target.getName()
+                    + "` in target `" + target.getViewName()
                     + "` at " + sqlPos;
         }
     }
@@ -635,7 +655,7 @@ public interface MvIssue extends MvSqlPosHolder {
             return "Missing index on columns " + columns
                     + " for table `" + source.getTableName()
                     + "` used as alias `" + source.getTableAlias()
-                    + "` in target `" + target.getName()
+                    + "` in target `" + target.getViewName()
                     + "` at " + sqlPos;
         }
     }

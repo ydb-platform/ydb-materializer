@@ -6,7 +6,8 @@ sql_script: SEMICOLON* sql_stmt (SEMICOLON+ sql_stmt)* SEMICOLON* EOF;
 
 sql_stmt: create_mat_view_stmt | create_handler_stmt;
 
-create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier AS simple_select_stmt;
+create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier
+  AS some_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
   (CONSUMER consumer_name)? COMMA?
@@ -18,6 +19,14 @@ handler_process_part: PROCESS mat_view_ref;
 
 handler_input_part: INPUT main_table_ref
   CHANGEFEED changefeed_name AS (STREAM | BATCH);
+
+some_select_stmt: simple_select_stmt | union_all_select_stmt;
+
+union_all_select_stmt: aliased_select_stmt
+  | (aliased_select_stmt UNION ALL union_all_select_stmt);
+
+aliased_select_stmt: simple_select_stmt AS table_alias
+  | LPAREN simple_select_stmt RPAREN AS table_alias;
 
 simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
   FROM main_table_ref AS table_alias
@@ -42,6 +51,7 @@ column_reference_second: column_reference;
 constant_first: integer_constant | string_constant;
 constant_second: integer_constant | string_constant;
 
+ALL: A L L;
 AND: A N D;
 AS: A S;
 ASYNC: A S Y N C;
@@ -62,6 +72,7 @@ OUTER: O U T E R;
 PROCESS: P R O C E S S;
 SELECT:  S E L E C T;
 STREAM: S T R E A M;
+UNION: U N I O N;
 VIEW: V I E W;
 WHERE: W H E R E;
 
@@ -91,6 +102,8 @@ DOT: '.';
 MINUS: '-';
 EQUALS: '=';
 QUOTE_SINGLE: '\'';
+LPAREN: '(';
+RPAREN: ')';
 
 fragment DIGIT: '0'..'9';
 DIGITS: DIGIT+;

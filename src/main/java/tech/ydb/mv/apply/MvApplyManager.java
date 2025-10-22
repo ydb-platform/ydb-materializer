@@ -247,7 +247,7 @@ public class MvApplyManager implements MvSink {
     @Override
     public boolean submitRefresh(MvTarget target,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        var targetConfig = targetConfigs.get(target.getName());
+        var targetConfig = targetConfigs.get(target.getViewName());
         if (targetConfig == null) {
             return submitCustom(null, changes, handler);
         }
@@ -271,7 +271,7 @@ public class MvApplyManager implements MvSink {
             if (target == null) {
                 actions = sourceConfig.getActions();
             } else {
-                var targetConfig = targetConfigs.get(target.getName());
+                var targetConfig = targetConfigs.get(target.getViewName());
                 if (targetConfig != null) {
                     actions = targetConfig.getRefreshActions();
                 } else {
@@ -284,14 +284,14 @@ public class MvApplyManager implements MvSink {
 
     public MvApplyAction createFilterAction(MvRowFilter filter) {
         var target = filter.getTarget();
-        var targetConfig = targetConfigs.get(target.getName());
+        var targetConfig = targetConfigs.get(target.getViewName());
         if (targetConfig == null) {
             throw new IllegalArgumentException("Cannot produce filter action "
-                    + "for unknown target " + target.getName());
+                    + "for unknown target " + target.getViewName());
         }
         if (targetConfig.getDictTrans() == null) {
             throw new IllegalArgumentException("Cannot produce filter action "
-                    + "for non-dictionary target " + target.getName());
+                    + "for non-dictionary target " + target.getViewName());
         }
         return new ActionKeysFilter(context, target, targetConfig.getDictTrans(), filter);
     }

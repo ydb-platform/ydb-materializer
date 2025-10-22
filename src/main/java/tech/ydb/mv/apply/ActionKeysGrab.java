@@ -31,7 +31,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getName(),
+                instance, context.getMetadata().getName(), target.getViewName(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
@@ -46,7 +46,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
     public String toString() {
         return "MvKeysGrab{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
-                + target.getName() + '}';
+                + target.getViewName() + '}';
     }
 
     @Override

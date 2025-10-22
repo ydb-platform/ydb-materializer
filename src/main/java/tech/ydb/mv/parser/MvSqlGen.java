@@ -80,7 +80,7 @@ public class MvSqlGen implements AutoCloseable {
     public String makeCreateTable() {
         final StringBuilder sb = new StringBuilder();
         sb.append("CREATE TABLE ");
-        safeId(sb, target.getName());
+        safeId(sb, target.getViewName());
         sb.append(" (").append(EOL);
         int index = 0;
         for (MvColumn column : target.getColumns()) {
@@ -124,7 +124,7 @@ public class MvSqlGen implements AutoCloseable {
     public String makeCreateView() {
         final StringBuilder sb = new StringBuilder();
         sb.append("CREATE VIEW ");
-        safeId(sb, target.getName()).append(EOL);
+        safeId(sb, target.getViewName()).append(EOL);
         sb.append("  WITH (security_invoker=TRUE) AS").append(EOL);
         genFullSelect(sb, false);
         sb.append(";").append(EOL);
@@ -150,7 +150,7 @@ public class MvSqlGen implements AutoCloseable {
         final StringBuilder sb = new StringBuilder();
         genDeclareTargetFields(sb);
         sb.append("UPSERT INTO ");
-        safeId(sb, target.getName()).append(EOL);
+        safeId(sb, target.getViewName()).append(EOL);
         sb.append("SELECT * FROM AS_TABLE(").append(SYS_INPUT_VAR).append(")");
         sb.append(";").append(EOL);
         return sb.toString();
@@ -160,7 +160,7 @@ public class MvSqlGen implements AutoCloseable {
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeyFields(sb);
         sb.append("DELETE FROM ");
-        safeId(sb, target.getName()).append(EOL);
+        safeId(sb, target.getViewName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
         sb.append(";").append(EOL);
         return sb.toString();
@@ -229,7 +229,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private void genDeclareMainKeyFields(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
-            throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
+            throw new IllegalStateException("No source tables for target `" + target.getViewName() + "`");
         }
         sb.append("DECLARE ").append(SYS_KEYS_VAR).append(" AS ");
         sb.append("List<");
@@ -239,7 +239,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private void genDeclareTargetFields(StringBuilder sb) {
         if (target.getTableInfo() == null) {
-            throw new IllegalStateException("No table definition for target `" + target.getName() + "`");
+            throw new IllegalStateException("No table definition for target `" + target.getViewName() + "`");
         }
         sb.append("DECLARE ").append(SYS_INPUT_VAR).append(" AS ");
         sb.append("List<");
@@ -338,7 +338,7 @@ public class MvSqlGen implements AutoCloseable {
 
     private void genInputCondition(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
-            throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
+            throw new IllegalStateException("No source tables for target `" + target.getViewName() + "`");
         }
         var mainTable = target.getTopMostSource();
         var primaryKey = mainTable.getTableInfo().getKey();

@@ -30,19 +30,20 @@ public class BasicParserTest {
         Assertions.assertTrue(mc.isValid());
         Assertions.assertEquals(0, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
         Assertions.assertEquals(1, mc.getHandlers().size());
         Assertions.assertEquals(4, mc.getHandlers().values().iterator().next().getInputs().size());
 
         // Test MvTarget (view) structure
-        var target0 = mc.getTargets().values().iterator().next();
-        Assertions.assertEquals("m1", target0.getName());
+        var view0 = mc.getViews().values().iterator().next();
+        var target0 = view0.getTargets().values().iterator().next();
+        Assertions.assertEquals("m1", view0.getViewName());
+        Assertions.assertEquals("m1", target0.getViewName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
         Assertions.assertNotNull(target0.getFilter());
         Assertions.assertNotNull(target0.getLiterals());
         Assertions.assertEquals(2, target0.getLiterals().size());
-
 
         // Test MvTableRef sources
         var mainSource = target0.getSources().get(0);
@@ -190,13 +191,14 @@ public class BasicParserTest {
         Assertions.assertTrue(mc.isValid());
         Assertions.assertEquals(0, mc.getErrors().size());
         Assertions.assertEquals(0, mc.getWarnings().size());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
         Assertions.assertEquals(1, mc.getHandlers().size());
         Assertions.assertEquals(4, mc.getHandlers().values().iterator().next().getInputs().size());
 
         // Test MvTarget (view) structure
-        var target0 = mc.getTargets().values().iterator().next();
-        Assertions.assertEquals("schema3/mv1", target0.getName());
+        var view0 = mc.getViews().values().iterator().next();
+        var target0 = view0.getTargets().values().iterator().next();
+        Assertions.assertEquals("schema3/mv1", target0.getViewName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
         Assertions.assertNotNull(target0.getFilter());
@@ -385,13 +387,13 @@ public class BasicParserTest {
             new MvIssuePrinter(mc).write(System.out);
         }
 
-/*
+        /*
 ERROR: Cannot resolve column reference `main` . `c256` in target MV `schema3/mv99` at position [4:7]
 ERROR: Cannot resolve column reference `main` . `badcol` in target MV `schema3/mv99` at position [13:6]
 ERROR: Cannot resolve column reference `sub2` . `c77` in target MV `schema3/mv99` at position [13:6]
 WARNING: Missing index on columns [c1, c2] for table `schema3/main_table` used as alias `main` in target `schema3/sub_table1_full` at position [6:5]
 WARNING: Missing index on columns [c3, c4] for table `schema3/main_table` used as alias `main` in target `schema3/sub_table2_full` at position [6:5]
-*/
+         */
         Assertions.assertFalse(mc.isValid());
         Assertions.assertEquals(3, mc.getErrors().size());
         Assertions.assertEquals(2, mc.getWarnings().size());
@@ -400,7 +402,7 @@ WARNING: Missing index on columns [c3, c4] for table `schema3/main_table` used a
     private void checkJoinCondition(MvJoinCondition cond,
             String firstAlias, String firstColumn, String firstLiteral,
             String secondAlias, String secondColumn, String secondLiteral) {
-        if (firstLiteral==null) {
+        if (firstLiteral == null) {
             Assertions.assertNull(cond.getFirstLiteral());
             Assertions.assertEquals(firstAlias, cond.getFirstAlias());
             Assertions.assertEquals(firstColumn, cond.getFirstColumn());
@@ -413,7 +415,7 @@ WARNING: Missing index on columns [c3, c4] for table `schema3/main_table` used a
             Assertions.assertNull(cond.getFirstColumn());
             Assertions.assertNull(cond.getFirstRef());
         }
-        if (secondLiteral==null) {
+        if (secondLiteral == null) {
             Assertions.assertNull(cond.getSecondLiteral());
             Assertions.assertEquals(secondAlias, cond.getSecondAlias());
             Assertions.assertEquals(secondColumn, cond.getSecondColumn());

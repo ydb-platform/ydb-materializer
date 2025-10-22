@@ -101,7 +101,8 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
                 MvTarget mainTarget = wc.getMetadata().getHandlers()
-                        .get("handler1").getTarget("test1/mv1");
+                        .get("handler1").getView("test1/mv1").getTargets()
+                        .values().iterator().next();
                 String sqlQuery;
                 try (MvSqlGen sg = new MvSqlGen(mainTarget)) {
                     sqlQuery = sg.makeSelectAll();
