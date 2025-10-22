@@ -127,7 +127,7 @@ class MvApply {
         final int workersCount;
         final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
-        final HashMap<String, TargetBuilder> targets = new HashMap<>();
+        final HashMap<MvTarget, TargetBuilder> targets = new HashMap<>();
 
         public Configurator(MvActionContext context) {
             this.context = context;
@@ -136,7 +136,7 @@ class MvApply {
             this.partitioning = context.getPartitioning();
         }
 
-        void build(HashMap<String, Source> src, HashMap<String, Target> trg) {
+        void build(HashMap<String, Source> src, HashMap<MvTarget, Target> trg) {
             prepare();
             sources.forEach((k, v) -> src.put(k, v.build()));
             targets.forEach((k, v) -> trg.put(k, v.build()));
@@ -153,17 +153,19 @@ class MvApply {
         }
 
         TargetBuilder makeTarget(MvTarget target, MvTarget dictTrans) {
-            var b = targets.get(target.getViewName());
+            var b = targets.get(target);
             if (b == null) {
                 b = newTarget(target, dictTrans);
-                targets.put(target.getViewName(), b);
+                targets.put(target, b);
             }
             return b;
         }
 
         void prepare() {
-            for (MvTarget target : metadata.getViews().values()) {
-                configureTarget(target);
+            for (var view : metadata.getViews().values()) {
+                for (var target : view.getTargets().values()) {
+                    configureTarget(target);
+                }
             }
         }
 
@@ -176,11 +178,14 @@ class MvApply {
             MvJoinSource source = target.getTopMostSource();
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
-                LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
-                        source.getTableName(), target.getViewName(), metadata.getName());
+                LOG.warn("Missing changefeed for main input table `{}`, "
+                        + "skipping for target `{}` as {} in handler `{}`.",
+                        source.getTableName(), target.getName(), target.getAlias(),
+                        metadata.getName());
                 return;
             }
-            LOG.info("Configuring handler `{}`, target `{}` ...", metadata.getName(), target.getViewName());
+            LOG.info("Configuring handler `{}`, target `{}` as {} ...",
+                    metadata.getName(), target.getName(), target.getAlias());
             // Add sync action for the current target
             ActionSync actionSync = new ActionSync(target, context);
             makeSource(source.getTableInfo()).addAction(actionSync);
@@ -200,16 +205,17 @@ class MvApply {
             }
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
-                LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
-                        source.getTableName(), pg.getTarget().getViewName());
+                LOG.info("Missing changefeed for secondary input table `{}`, "
+                        + "skipping for target `{}` as {}.", source.getTableName(),
+                        pg.getTarget().getName(), pg.getTarget().getAlias());
                 return;
             }
             MvTarget transformation = pg.extractKeysReverse(source);
             if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
-                        + "to keys for table `{}`, skipping for target `{}`",
+                        + "to keys for table `{}`, skipping for target `{}` as {}",
                         source.getTableName(), pg.getTopSourceTableName(),
-                        pg.getTarget().getViewName());
+                        pg.getTarget().getName(), pg.getTarget().getAlias());
                 return;
             }
             MvApplyAction action;

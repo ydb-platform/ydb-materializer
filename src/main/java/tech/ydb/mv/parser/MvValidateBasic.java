@@ -91,7 +91,7 @@ public class MvValidateBasic {
         // Validate that the target is used in no more than one handler.
         MvHandler firstHandler = null;
         for (MvHandler mh : context.getHandlers().values()) {
-            if (mh.getView(mt.getViewName()) != null) {
+            if (mh.getView(mt.getName()) != null) {
                 if (firstHandler == null) {
                     firstHandler = mh;
                 } else {

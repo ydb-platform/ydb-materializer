@@ -13,7 +13,7 @@ import java.util.Objects;
  */
 public class MvTarget implements MvSqlPosHolder {
 
-    public static final String ALIAS_DEFAULT = "mv";
+    public static final String ALIAS_DEFAULT = "default";
 
     // fields grabbed from the SQL statement
     private final MvView view;
@@ -105,7 +105,8 @@ public class MvTarget implements MvSqlPosHolder {
 
     public MvJoinSource getTopMostSource() {
         if (sources.isEmpty()) {
-            throw new IllegalStateException("No join sources defined in target " + getViewName());
+            throw new IllegalStateException("No join sources defined in target "
+                    + getName() + " as " + getAlias());
         }
         return sources.get(0);
     }
@@ -114,8 +115,8 @@ public class MvTarget implements MvSqlPosHolder {
         return view;
     }
 
-    public String getViewName() {
-        return view.getViewName();
+    public String getName() {
+        return view.getName();
     }
 
     public String getAlias() {
@@ -188,13 +189,13 @@ public class MvTarget implements MvSqlPosHolder {
 
     @Override
     public String toString() {
-        return "MV `" + getViewName() + "` AS " + getAlias();
+        return "MV `" + getName() + "` AS " + getAlias();
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 13 * hash + Objects.hashCode(this.getViewName());
+        hash = 13 * hash + Objects.hashCode(this.getName());
         hash = 13 * hash + Objects.hashCode(alias);
         return hash;
     }
@@ -211,7 +212,7 @@ public class MvTarget implements MvSqlPosHolder {
             return false;
         }
         final MvTarget other = (MvTarget) obj;
-        if (!Objects.equals(this.getViewName(), other.getViewName())) {
+        if (!Objects.equals(this.getName(), other.getName())) {
             return false;
         }
         return Objects.equals(this.alias, other.alias);

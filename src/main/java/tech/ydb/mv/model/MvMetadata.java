@@ -64,7 +64,7 @@ public class MvMetadata {
     }
 
     public MvView addView(MvView v) {
-        return views.put(v.getViewName(), v);
+        return views.put(v.getName(), v);
     }
 
     public MvHandler addHandler(MvHandler h) {
@@ -133,7 +133,7 @@ public class MvMetadata {
         TreeSet<String> ret = new TreeSet<>();
         for (MvView v : views.values()) {
             // target table
-            ret.add(v.getViewName());
+            ret.add(v.getName());
             for (MvTarget t : v.getTargets().values()) {
                 // source tables
                 for (MvJoinSource r : t.getSources()) {
@@ -152,7 +152,7 @@ public class MvMetadata {
 
     private void linkTables() {
         for (MvView v : views.values()) {
-            v.setTableInfo(tables.get(v.getViewName()));
+            v.setTableInfo(tables.get(v.getName()));
             for (MvTarget t : v.getTargets().values()) {
                 for (MvJoinSource js : t.getSources()) {
                     js.setTableInfo(tables.get(js.getTableName()));

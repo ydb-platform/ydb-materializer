@@ -105,7 +105,7 @@ class MvScanContext implements MvScanAdapter {
 
     @Override
     public String getTableName() {
-        return target.getViewName();
+        return target.getName();
     }
 
     @Override

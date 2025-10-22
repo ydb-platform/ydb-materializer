@@ -49,7 +49,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 || target.getTopMostSource().getChangefeedInfo() == null) {
             throw new IllegalArgumentException("Missing input");
         }
-        this.targetTableName = target.getViewName();
+        this.targetTableName = target.getName();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
@@ -57,8 +57,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
             this.rowType = sg.toRowType();
         }
         MvJoinSource src = target.getTopMostSource();
-        LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getViewName(),
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
+                instance, context.getMetadata().getName(),
+                target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());

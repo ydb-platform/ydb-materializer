@@ -41,11 +41,26 @@ public class MvHandler implements MvSqlPosHolder {
     }
 
     public MvView addView(MvView v) {
-        return views.put(v.getViewName(), v);
+        return views.put(v.getName(), v);
     }
 
     public MvView getView(String name) {
         return views.get(name);
+    }
+
+    public MvTarget getTarget(String name, String alias) {
+        MvView v = getView(name);
+        if (v == null) {
+            return null;
+        }
+        return v.getTargets().get(alias);
+    }
+
+    public boolean containsTarget(MvTarget target) {
+        if (target == null) {
+            return false;
+        }
+        return target == getTarget(target.getName(), target.getAlias());
     }
 
     public MvInput addInput(MvInput input) {

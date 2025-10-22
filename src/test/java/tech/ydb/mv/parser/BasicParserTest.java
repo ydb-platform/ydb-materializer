@@ -37,8 +37,8 @@ public class BasicParserTest {
         // Test MvTarget (view) structure
         var view0 = mc.getViews().values().iterator().next();
         var target0 = view0.getTargets().values().iterator().next();
-        Assertions.assertEquals("m1", view0.getViewName());
-        Assertions.assertEquals("m1", target0.getViewName());
+        Assertions.assertEquals("m1", view0.getName());
+        Assertions.assertEquals("m1", target0.getName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
         Assertions.assertNotNull(target0.getFilter());
@@ -198,7 +198,7 @@ public class BasicParserTest {
         // Test MvTarget (view) structure
         var view0 = mc.getViews().values().iterator().next();
         var target0 = view0.getTargets().values().iterator().next();
-        Assertions.assertEquals("schema3/mv1", target0.getViewName());
+        Assertions.assertEquals("schema3/mv1", target0.getName());
         Assertions.assertEquals(4, target0.getSources().size());
         Assertions.assertEquals(9, target0.getColumns().size());
         Assertions.assertNotNull(target0.getFilter());

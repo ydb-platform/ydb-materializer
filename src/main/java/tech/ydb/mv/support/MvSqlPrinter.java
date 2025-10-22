@@ -37,7 +37,7 @@ public class MvSqlPrinter {
     }
 
     private int compareTargets(MvTarget x, MvTarget y) {
-        int cmp = x.getViewName().compareToIgnoreCase(y.getViewName());
+        int cmp = x.getName().compareToIgnoreCase(y.getName());
         if (cmp == 0) {
             cmp = x.getAlias().compareToIgnoreCase(y.getAlias());
         }
@@ -47,7 +47,7 @@ public class MvSqlPrinter {
     public void write(PrintStream pw, MvTarget mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");
-        pw.println("*** Target: " + mt.getViewName() + " AS " + mt.getAlias());
+        pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
         pw.println("-------------------------------------------------------");
         pw.println();
         pw.println("  ** Equivalent view DDL:");

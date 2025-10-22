@@ -74,15 +74,17 @@ class MvScanCommitHandler implements MvCommitHandler {
             LOG.debug("instance {} commit APPLY", instance);
             try {
                 if (terminal) {
-                    LOG.info("Performing final commit in scan feeder for target {}, handler {}",
-                            context.getTarget().getViewName(), context.getHandler().getName());
+                    LOG.info("Final commit for scan feeder of target `{}` as {} in handler `{}`",
+                            context.getTarget().getName(), context.getTarget().getAlias(),
+                            context.getHandler().getName());
                     context.getScanDao().unregisterScan();
                 } else {
                     context.getScanDao().saveScan(key);
                 }
             } catch (Exception ex) {
-                LOG.warn("Failed to commit the offset in scan feeder for target {}, handler {}",
-                        context.getTarget().getViewName(), context.getHandler().getName(), ex);
+                LOG.warn("Failed to commit the scan feeder for target `{}` as {} in handler `{}`",
+                        context.getTarget().getName(), context.getTarget().getAlias(),
+                        context.getHandler().getName(), ex);
             }
             resetNext();
         }

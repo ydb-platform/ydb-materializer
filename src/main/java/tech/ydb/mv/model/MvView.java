@@ -24,7 +24,7 @@ public class MvView implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
-    public String getViewName() {
+    public String getName() {
         return viewName;
     }
 
