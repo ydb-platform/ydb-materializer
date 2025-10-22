@@ -17,7 +17,7 @@ import tech.ydb.mv.YdbConnector;
 /**
  * @author Kirill Kurdyukov
  */
-public class MvCoordinatorTest extends AbstractMgtTest {
+public class MvCoordinatorTest extends MgmtTestBase {
 
     @BeforeAll
     public static void setup() {
