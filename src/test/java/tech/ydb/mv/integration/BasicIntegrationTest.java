@@ -3,9 +3,9 @@ package tech.ydb.mv.integration;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.query.Params;
@@ -68,13 +68,13 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
 ;
 """;
 
-    @BeforeAll
-    public static void init() {
+    @BeforeEach
+    public void init() {
         prepareDb();
     }
 
-    @AfterAll
-    public static void cleanup() {
+    @AfterEach
+    public void cleanup() {
         clearDb();
     }
 

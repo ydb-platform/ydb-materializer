@@ -17,6 +17,7 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
 import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -267,6 +268,8 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
         props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
+        props.setProperty(MvBatchSettings.CONF_COORD_STARTUP_MS, "2000");
+        props.setProperty(MvBatchSettings.CONF_SCAN_PERIOD_MS, "2000");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
