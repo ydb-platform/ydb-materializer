@@ -1,8 +1,5 @@
 package tech.ydb.mv.integration;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,7 +114,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
-                runDml(conn, WRITE_INITIAL);
+                runDml(conn, WRITE_INITIAL1);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
@@ -285,27 +282,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                             .get().asData().getJsonDocument());
         }
         System.out.println("--- dictionary comparison end ---");
-    }
-
-    public static String generateThreadDump() {
-        final StringBuilder dump = new StringBuilder();
-        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
-        for (ThreadInfo threadInfo : threadInfos) {
-            dump.append('"');
-            dump.append(threadInfo.getThreadName());
-            dump.append("\" ");
-            final Thread.State state = threadInfo.getThreadState();
-            dump.append("\n   java.lang.Thread.State: ");
-            dump.append(state);
-            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
-            for (final StackTraceElement stackTraceElement : stackTraceElements) {
-                dump.append("\n        at ");
-                dump.append(stackTraceElement);
-            }
-            dump.append("\n\n");
-        }
-        return dump.toString();
     }
 
 }
