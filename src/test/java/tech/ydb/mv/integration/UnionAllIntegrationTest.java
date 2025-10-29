@@ -167,6 +167,50 @@ INNER JOIN `test2/sub2` AS s
   ON m.c4=s.c4)
 """;
 
+    public static final String WRITE_INITIAL3_1
+            = """
+INSERT INTO `test2/main1` (id,c1,c2,c3,c4,c5,c6) VALUES
+ ('main1-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 101, 1, 'text message one'u)
+,('main1-002'u, Timestamp('2022-01-02T10:15:22Z'), 10002, Decimal('10002.567',22,9), 102, 3, 'text message two'u)
+,('main1-003'u, Timestamp('2023-01-02T10:15:23Z'), 10003, Decimal('10003.567',22,9), 103, 5, 'text message three'u)
+,('main1-004'u, Timestamp('2024-01-02T10:15:24Z'), 10004, Decimal('10004.567',22,9), 104, 7, 'text message four'u)
+;
+INSERT INTO `test2/sub1` (c4, c7) VALUES
+ (101, '101-aga'u)
+,(102, '102-aga'u)
+,(103, '103-aga'u)
+,(104, '104-aga'u)
+;
+""";
+
+    public static final String WRITE_INITIAL3_2
+            = """
+INSERT INTO `test2/main2` (id,c1,c2,c3,c4,c5,c6) VALUES
+ ('main0-001'u, Timestamp('2021-01-02T11:15:21Z'), 20001, Decimal('20001.567',22,9), 201, 2, 'text message one'u)
+,('main0-002'u, Timestamp('2022-01-02T11:15:22Z'), 20002, Decimal('20002.567',22,9), 202, 4, 'text message two'u)
+,('main0-003'u, Timestamp('2023-01-02T11:15:23Z'), 20003, Decimal('20003.567',22,9), 203, 6, 'text message three'u)
+,('main0-004'u, Timestamp('2024-01-02T11:15:24Z'), 20004, Decimal('20004.567',22,9), 204, 8, 'text message four'u)
+;
+INSERT INTO `test2/sub2` (c4, c7) VALUES
+ (201, '201-hehe'u)
+,(202, '202-hehe'u)
+,(203, '203-hehe'u)
+,(204, '204-hehe'u)
+;
+""";
+
+    public static final String WRITE_UPDATE3
+            = """
+UPSERT INTO `test2/main1` (id,c4,c6) VALUES
+ ('main1-002'u, 101, 'text message two-bis'u)
+,('main1-003'u, 101, 'text message three-bis'u)
+;
+UPSERT INTO `test2/main2` (id,c4,c6) VALUES
+ ('main0-001'u, 204, 'text message one-bis'u)
+,('main0-004'u, 201, 'text message four-bis'u)
+;
+""";
+
     @Override
     protected Properties getConfigProps() {
         var props = super.getConfigProps();
@@ -231,8 +275,30 @@ INNER JOIN `test2/sub2` AS s
         svc.startDefaultHandlers();
         svc.startDictionaryHandler();
         standardPause();
+
         System.err.println("[UUU] Checking the view output (should be empty)...");
         int diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
+
+        System.err.println("[UUU] Writing input data 1...");
+        runDml(svc.getYdb(), WRITE_INITIAL3_1);
+        standardPause();
+        System.err.println("[UUU] Checking the view output...");
+        diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
+
+        System.err.println("[UUU] Writing input data 2...");
+        runDml(svc.getYdb(), WRITE_INITIAL3_2);
+        standardPause();
+        System.err.println("[UUU] Checking the view output...");
+        diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
+
+        System.err.println("[UUU] Writing input data 3...");
+        runDml(svc.getYdb(), WRITE_UPDATE3);
+        standardPause();
+        System.err.println("[UUU] Checking the view output...");
+        diffCount = checkViewOutput(svc);
         Assertions.assertEquals(0, diffCount);
     }
 
