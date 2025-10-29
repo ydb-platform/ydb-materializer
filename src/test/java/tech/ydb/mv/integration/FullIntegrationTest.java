@@ -28,9 +28,9 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         dropExtraTables();
     }
 
-    private static void dropExtraTables() {
+    private void dropExtraTables() {
         System.err.println("[FFF] Database cleanup phase 2...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             try {
                 runDdl(conn, "DROP TABLE mv_jobs;");
@@ -63,7 +63,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     @Test
     public void concurrencyIntegrationTest() {
         System.err.println("[FFF] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         var batchSettings = new MvBatchSettings(cfg.getProperties());
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
         var instance1 = "instance_1";

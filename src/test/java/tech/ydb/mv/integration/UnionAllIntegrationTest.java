@@ -1,11 +1,13 @@
 package tech.ydb.mv.integration;
 
+import java.util.Properties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.AbstractIntegrationBase;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
 
@@ -137,13 +139,48 @@ INNER JOIN `test2/sub2` AS s
   INPUT `test2/sub2` CHANGEFEED cf3 AS STREAM;@@);
 """;
 
+    public static final String SELECT_ALL3 = """
+(SELECT
+    m.id AS id,
+    m.c1 AS c1,
+    m.c2 AS c2,
+    m.c3 AS c3,
+    m.c4 AS c4,
+    m.c5 AS c5,
+    m.c6 AS c6,
+    s.c7 AS c7
+FROM `test2/main1` AS m
+INNER JOIN `test2/sub1` AS s
+  ON m.c4=s.c4)
+UNION ALL
+(SELECT
+    m.id AS id,
+    m.c1 AS c1,
+    m.c2 AS c2,
+    m.c3 AS c3,
+    m.c4 AS c4,
+    m.c5 AS c5,
+    m.c6 AS c6,
+    s.c7 AS c7
+FROM `test2/main2` AS m
+INNER JOIN `test2/sub2` AS s
+  ON m.c4=s.c4)
+""";
+
+    @Override
+    protected Properties getConfigProps() {
+        var props = super.getConfigProps();
+        props.setProperty(MvConfig.CONF_HANDLERS, "handler3");
+        return props;
+    }
+
     @BeforeEach
     public void init() {
         // have to wait a bit here for YDB startup
         pause(5000L);
         // init database
         System.err.println("[UUU] Database setup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             System.err.println("[UUU] Preparation: creating tables...");
             runDdl(conn, CREATE_TABLES1);
@@ -158,7 +195,7 @@ INNER JOIN `test2/sub2` AS s
     @AfterEach
     public void cleanup() {
         System.err.println("[UUU] Database cleanup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, DROP_TABLES1);
             runDdl(conn, DROP_TABLES3);
@@ -168,28 +205,39 @@ INNER JOIN `test2/sub2` AS s
     @Test
     public void unionAllIntegrationTest() {
         System.err.println("[UUU] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
-            MvService wc = new MvService(conn);
+            MvService svc = new MvService(conn);
             try {
-                wc.applyDefaults(conn.getConfig().getProperties());
+                svc.applyDefaults(conn.getConfig().getProperties());
 
                 System.err.println("[UUU] Checking context...");
-                wc.printIssues(System.out);
-                Assertions.assertTrue(wc.getMetadata().isValid());
+                svc.printIssues(System.out);
+                Assertions.assertTrue(svc.getMetadata().isValid());
 
                 System.err.println("[UUU] Printing SQL...");
-                wc.printSql(System.out);
+                svc.printSql(System.out);
 
                 System.err.println("[UUU] Entering main test...");
-                testLogic();
+                testLogic(svc);
             } finally {
-                wc.shutdown();
+                svc.shutdown();
             }
         }
     }
 
-    private void testLogic() {
+    private void testLogic(MvService svc) {
+        System.err.println("[UUU] Starting the services...");
+        svc.startDefaultHandlers();
+        svc.startDictionaryHandler();
+        standardPause();
+        System.err.println("[UUU] Checking the view output (should be empty)...");
+        int diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
+    }
+
+    private int checkViewOutput(MvService svc) {
+        return checkViewOutput(svc, "test2/mv1", SELECT_ALL3);
     }
 
 }

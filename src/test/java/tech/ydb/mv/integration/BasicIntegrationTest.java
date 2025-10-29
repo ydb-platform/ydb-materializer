@@ -79,7 +79,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     public void basicIntegrationTest() {
         // now the work
         System.err.println("[AAA] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             MvService wc = new MvService(conn);
             try {
@@ -200,36 +200,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
-        String sqlMv = "SELECT * FROM `test1/mv1`";
-        var left = convertResultSet(
-                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
-        var right = convertResultSet(
-                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
-        System.out.println("*** comparing rowsets, size1="
-                + left.size() + ", size2=" + right.size());
-        int diffCount = 0;
-        for (var leftMe : left.entrySet()) {
-            var rightVal = right.get(leftMe.getKey());
-            if (rightVal == null) {
-                System.out.println("  missing key: " + leftMe.getKey());
-                ++diffCount;
-                continue;
-            }
-            if (!leftMe.getValue().equals(rightVal)) {
-                System.out.println("  unequal records: \n\t"
-                        + leftMe.getValue() + "\n\t"
-                        + rightVal);
-                ++diffCount;
-            }
-        }
-        for (var rightMe : right.entrySet()) {
-            var leftVal = left.get(rightMe.getKey());
-            if (leftVal == null) {
-                System.out.println("  extra key: " + rightMe.getKey());
-                ++diffCount;
-            }
-        }
-        return diffCount;
+        return checkViewOutput(conn, "test1/mv1", sqlMain);
     }
 
     private void checkConsumerPositions(YdbConnector conn) {

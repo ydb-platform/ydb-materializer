@@ -33,7 +33,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
     @Test
     public void concurrencyIntegrationTest() {
         System.err.println("[CCC] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
 
         Thread t1 = new Thread(() -> handler(cfg, "handler1"));

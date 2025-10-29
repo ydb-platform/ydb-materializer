@@ -49,7 +49,7 @@ public class MvCoordinatorTest extends MgmtTestBase {
     public void checkSingleThreaded() {
         System.out.println("========= Start single-threaded coordination test");
 
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runSingle(conn);
         }
@@ -112,7 +112,7 @@ public class MvCoordinatorTest extends MgmtTestBase {
     public void checkMultiThreaded() {
         System.out.println("========= Start multi-threaded coordination test");
 
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runMulti(conn);
         }
