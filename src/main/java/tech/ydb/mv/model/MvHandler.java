@@ -3,16 +3,16 @@ package tech.ydb.mv.model;
 import java.util.HashMap;
 
 /**
- * Handler is the context for processing multiple changefeed streams
- * to feed the materialized view targets.
+ * Handler is the context for processing multiple changefeed streams to feed the
+ * materialized view targets.
  *
  * @author zinal
  */
 public class MvHandler implements MvSqlPosHolder {
 
     private final String name;
-    // viewName -> MvTarget
-    private final HashMap<String, MvTarget> targets = new HashMap<>();
+    // viewName -> MvView
+    private final HashMap<String, MvView> views = new HashMap<>();
     // tableName -> MvInput
     private final HashMap<String, MvInput> inputs = new HashMap<>();
     private String consumerName;
@@ -24,24 +24,43 @@ public class MvHandler implements MvSqlPosHolder {
         this.sqlPos = sqlPos;
     }
 
+    public MvHandler(String name) {
+        this(name, MvSqlPos.EMPTY);
+    }
+
     public String getName() {
         return name;
     }
 
-    public HashMap<String, MvTarget> getTargets() {
-        return targets;
+    public HashMap<String, MvView> getViews() {
+        return views;
     }
 
     public HashMap<String, MvInput> getInputs() {
         return inputs;
     }
 
-    public MvTarget addTarget(MvTarget target) {
-        return targets.put(target.getName(), target);
+    public MvView addView(MvView v) {
+        return views.put(v.getName(), v);
     }
 
-    public MvTarget getTarget(String name) {
-        return targets.get(name);
+    public MvView getView(String name) {
+        return views.get(name);
+    }
+
+    public MvTarget getTarget(String name, String alias) {
+        MvView v = getView(name);
+        if (v == null) {
+            return null;
+        }
+        return v.getTargets().get(alias);
+    }
+
+    public boolean containsTarget(MvTarget target) {
+        if (target == null) {
+            return false;
+        }
+        return target == getTarget(target.getName(), target.getAlias());
     }
 
     public MvInput addInput(MvInput input) {
@@ -61,16 +80,16 @@ public class MvHandler implements MvSqlPosHolder {
     }
 
     public String getConsumerNameAlways() {
-        if (consumerName!=null && consumerName.length() > 0) {
+        if (consumerName != null && consumerName.length() > 0) {
             return consumerName;
         }
-        if (! name.contains("/")) {
+        if (!name.contains("/")) {
             return name;
         }
         String[] parts = name.split("[/]");
         for (int pos = parts.length; pos > 0; --pos) {
-            if (parts[pos-1].length() > 0) {
-                return parts[pos-1];
+            if (parts[pos - 1].length() > 0) {
+                return parts[pos - 1];
             }
         }
         return "ydb$mv";

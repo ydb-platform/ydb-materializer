@@ -343,7 +343,7 @@ public class MvPathGenerator {
      * top-most source.
      */
     private static MvTarget createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
-        MvTarget result = new MvTarget(source.getTableName() + "_simple", source.getSqlPos());
+        MvTarget result = new MvTarget(source.getTableName() + "_simple");
         result.setTableInfo(source.getTableInfo());
 
         // Add the source as the main source

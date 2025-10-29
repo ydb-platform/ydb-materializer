@@ -122,8 +122,8 @@ public class MvScanFeeder {
                 run();
                 return;
             } catch (Exception ex) {
-                LOG.info("Failed scan feeder for target {} in handler {} - retry pending...",
-                        target.getName(), job.getHandler().getName(), ex);
+                LOG.info("Failed scan feeder for target `{}` as {} in handler `{}` - retry pending...",
+                        target.getName(), target.getAlias(), job.getHandler().getName(), ex);
             }
             sleepSome();
         }
@@ -140,8 +140,8 @@ public class MvScanFeeder {
             if (key == null) {
                 ctx.getScanDao().registerScan();
             }
-            LOG.info("Started scan feeder for target {} in handler {}, position {}",
-                    target.getName(), job.getHandler().getName(), key);
+            LOG.info("Started scan feeder for target `{}` as {} in handler `{}`, position {}",
+                    target.getName(), target.getAlias(), job.getHandler().getName(), key);
         }
         rateLimiterCounter = 0;
         rateLimiterStamp = System.currentTimeMillis();
@@ -157,8 +157,8 @@ public class MvScanFeeder {
         if (completion != null) {
             completion.onScanComplete();
         }
-        LOG.info("Finished scan feeder for target {} in handler {}",
-                target.getName(), job.getHandler().getName());
+        LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
+                target.getName(), target.getAlias(), job.getHandler().getName());
     }
 
     private int stepScan(MvScanContext ctx) {

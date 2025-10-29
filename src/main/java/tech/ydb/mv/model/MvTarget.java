@@ -7,37 +7,52 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Materialized view defined as a target of the transformation.
+ * SQL expression used to grab the data to the materialized view.
  *
  * @author zinal
  */
 public class MvTarget implements MvSqlPosHolder {
 
-    private final String name;
+    public static final String ALIAS_DEFAULT = "default";
+
+    // fields grabbed from the SQL statement
+    private final MvView view;
+    private final String alias;
     private final ArrayList<MvJoinSource> sources = new ArrayList<>();
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private final LinkedHashMap<String, MvLiteral> literals = new LinkedHashMap<>();
     private MvComputation filter;
-    private MvTableInfo tableInfo;
-    private MvUsedColumns usedColumns;
     private final MvSqlPos sqlPos;
+    // fields computed later or added based on the database metadata
+    private MvUsedColumns usedColumns;
 
-    public MvTarget(String name, MvSqlPos sqlPos) {
-        this.name = name;
+    public MvTarget(MvView view, String alias, MvSqlPos sqlPos) {
+        this.view = view;
+        this.alias = alias;
         this.sqlPos = sqlPos;
     }
 
+    public MvTarget(MvView view, String alias) {
+        this(view, alias, MvSqlPos.EMPTY);
+    }
+
+    public MvTarget(MvView view) {
+        this(view, ALIAS_DEFAULT, MvSqlPos.EMPTY);
+    }
+
     public MvTarget(String name) {
-        this(name, MvSqlPos.EMPTY);
+        this(new MvView(name, MvSqlPos.EMPTY));
+        this.view.addTarget(this);
     }
 
     /**
-     * @return true, if the target uses non-literal computational output columns, and false otherwise
+     * @return true, if the target uses non-literal computational output
+     * columns, and false otherwise
      */
     public boolean hasComputationColumns() {
         for (MvColumn mc : columns) {
-            if (mc.isComputation() &&
-                    ! mc.getComputation().isLiteral()) {
+            if (mc.isComputation()
+                    && !mc.getComputation().isLiteral()) {
                 return true;
             }
         }
@@ -45,20 +60,21 @@ public class MvTarget implements MvSqlPosHolder {
     }
 
     /**
-     * @return true, if the transformation is a single-step operation
-     * without joins and complex computations, and false otherwise
+     * @return true, if the transformation is a single-step operation without
+     * joins and complex computations, and false otherwise
      */
     public boolean isSingleStepTransformation() {
         return (sources.size() == 1)
-                && (filter==null || filter.isEmpty())
+                && (filter == null || filter.isEmpty())
                 && !hasComputationColumns();
     }
 
     /**
-     * @return true, if a single-step transformation is based on just the primary key
+     * @return true, if a single-step transformation is based on just the
+     * primary key
      */
     public boolean isKeyOnlyTransformation() {
-        if (! isSingleStepTransformation()) {
+        if (!isSingleStepTransformation()) {
             return false;
         }
         if (sources.isEmpty()) {
@@ -66,10 +82,10 @@ public class MvTarget implements MvSqlPosHolder {
         }
         List<String> key = sources.get(0).getTableInfo().getKey();
         for (MvColumn mc : columns) {
-            if (! mc.isReference()) {
+            if (!mc.isReference()) {
                 continue;
             }
-            if (! key.contains(mc.getSourceColumn())) {
+            if (!key.contains(mc.getSourceColumn())) {
                 return false;
             }
         }
@@ -77,25 +93,35 @@ public class MvTarget implements MvSqlPosHolder {
     }
 
     public MvJoinSource getSourceByAlias(String name) {
-        if (name==null) {
+        if (name == null) {
             return null;
         }
         for (MvJoinSource tr : sources) {
-            if (name.equalsIgnoreCase(tr.getTableAlias()))
+            if (name.equalsIgnoreCase(tr.getTableAlias())) {
                 return tr;
+            }
         }
         return null;
     }
 
     public MvJoinSource getTopMostSource() {
         if (sources.isEmpty()) {
-            throw new IllegalStateException("No join sources defined in target " + name);
+            throw new IllegalStateException("No join sources defined in target "
+                    + getName() + " as " + getAlias());
         }
         return sources.get(0);
     }
 
+    public MvView getView() {
+        return view;
+    }
+
     public String getName() {
-        return name;
+        return view.getName();
+    }
+
+    public String getAlias() {
+        return alias;
     }
 
     public ArrayList<MvJoinSource> getSources() {
@@ -115,12 +141,12 @@ public class MvTarget implements MvSqlPosHolder {
     }
 
     public MvLiteral addLiteral(String value) {
-        if (value==null) {
+        if (value == null) {
             throw new NullPointerException();
         }
         value = value.trim();
         MvLiteral l = literals.get(value);
-        if (l==null) {
+        if (l == null) {
             l = new MvLiteral(value, literals.size());
             literals.put(value, l);
         }
@@ -136,11 +162,16 @@ public class MvTarget implements MvSqlPosHolder {
     }
 
     public MvTableInfo getTableInfo() {
-        return tableInfo;
+        return view.getTableInfo();
     }
 
-    public void setTableInfo(MvTableInfo tableInfo) {
-        this.tableInfo = tableInfo;
+    public void setTableInfo(MvTableInfo ti) {
+        if (view.getTableInfo() == null) {
+            view.setTableInfo(ti);
+        }
+        if (view.getTableInfo() != ti) {
+            throw new IllegalArgumentException("Incompatible table info set");
+        }
     }
 
     public void updateUsedColumns() {
@@ -159,13 +190,14 @@ public class MvTarget implements MvSqlPosHolder {
 
     @Override
     public String toString() {
-        return "MV `" + name + "`";
+        return "MV `" + getName() + "` AS " + getAlias();
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 13 * hash + Objects.hashCode(this.name);
+        hash = 13 * hash + Objects.hashCode(this.getName());
+        hash = 13 * hash + Objects.hashCode(alias);
         return hash;
     }
 
@@ -181,7 +213,10 @@ public class MvTarget implements MvSqlPosHolder {
             return false;
         }
         final MvTarget other = (MvTarget) obj;
-        return Objects.equals(this.name, other.name);
+        if (!Objects.equals(this.getName(), other.getName())) {
+            return false;
+        }
+        return Objects.equals(this.alias, other.alias);
     }
 
 }

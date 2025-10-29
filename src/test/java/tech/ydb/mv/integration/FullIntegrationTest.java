@@ -1,7 +1,7 @@
 package tech.ydb.mv.integration;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.AbstractIntegrationBase;
@@ -17,44 +17,44 @@ import tech.ydb.mv.mgt.MvRunner;
  */
 public class FullIntegrationTest extends AbstractIntegrationBase {
 
-    @BeforeAll
-    public static void init() {
+    @BeforeEach
+    public void init() {
         prepareDb();
     }
 
-    @AfterAll
-    public static void cleanup() {
+    @AfterEach
+    public void cleanup() {
         clearDb();
         dropExtraTables();
     }
 
-    private static void dropExtraTables() {
-        System.err.println("[AAA] Database cleanup phase 2...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+    private void dropExtraTables() {
+        System.err.println("[FFF] Database cleanup phase 2...");
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             try {
                 runDdl(conn, "DROP TABLE mv_jobs;");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.err.println("Cannot drop MV_JOBS: " + ex.toString());
             }
             try {
                 runDdl(conn, "DROP TABLE mv_job_scans;");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.err.println("Cannot drop MV_JOB_SCANS: " + ex.toString());
             }
             try {
                 runDdl(conn, "DROP TABLE mv_runners;");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.err.println("Cannot drop MV_RUNNERS: " + ex.toString());
             }
             try {
                 runDdl(conn, "DROP TABLE mv_runner_jobs;");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.err.println("Cannot drop MV_RUNNER_JOBS: " + ex.toString());
             }
             try {
                 runDdl(conn, "DROP TABLE mv_commands;");
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.err.println("Cannot drop MV_COMMANDS: " + ex.toString());
             }
         }
@@ -62,8 +62,8 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
 
     @Test
     public void concurrencyIntegrationTest() {
-        System.err.println("[AAA] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        System.err.println("[FFF] Starting up...");
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         var batchSettings = new MvBatchSettings(cfg.getProperties());
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
         var instance1 = "instance_1";
@@ -139,17 +139,35 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                         ('handler2', true);
                         """);
         }
-        pause(20_000);
+
+        System.err.println("[FFF] Waiting for thread completion...");
+
+        try {
+            t1.join();
+        } catch (InterruptedException ix) {
+        }
+        try {
+            t2.join();
+        } catch (InterruptedException ix) {
+        }
+        try {
+            t1dup.join();
+        } catch (InterruptedException ix) {
+        }
+
+        System.err.println("[FFF] All done!");
     }
 
     private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
-        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn); var runner = new MvRunner(conn, api)) {
-            api.applyDefaults(conn.getConfig().getProperties());
-            MvCoordinator.newInstance(conn, batchSettings, instanceName)
-                    .start();
-            runner.start();
+        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn)) {
+            try (var runner = new MvRunner(conn, api, instanceName)) {
+                api.applyDefaults(conn.getConfig().getProperties());
+                MvCoordinator.newInstance(conn, batchSettings, instanceName)
+                        .start();
+                runner.start();
 
-            pause(40_000);
+                pause(40_000);
+            }
         } catch (Exception ex) {
             ex.printStackTrace(System.err);
         }

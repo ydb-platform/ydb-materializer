@@ -12,6 +12,7 @@ import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvView;
 
 /**
  * MV configuration validation logic.
@@ -49,7 +50,7 @@ public class MvValidateBasic {
     }
 
     private void checkHandler(MvHandler h) {
-        if (h.getTargets().isEmpty()) {
+        if (h.getViews().isEmpty()) {
             context.addIssue(new MvIssue.EmptyHandler(h, MvIssue.EmptyHandlerType.NO_TARGETS));
         }
         if (h.getInputs().isEmpty()) {
@@ -63,10 +64,12 @@ public class MvValidateBasic {
     }
 
     private void checkTargets() {
-        for (MvTarget mt : context.getTargets().values()) {
-            checkTarget(mt);
-            checkJoinIndexes(mt);
-            checkKeyExtractionIndexes(mt);
+        for (MvView view : context.getViews().values()) {
+            for (MvTarget mt : view.getTargets().values()) {
+                checkTarget(mt);
+                checkJoinIndexes(mt);
+                checkKeyExtractionIndexes(mt);
+            }
         }
     }
 
@@ -88,7 +91,7 @@ public class MvValidateBasic {
         // Validate that the target is used in no more than one handler.
         MvHandler firstHandler = null;
         for (MvHandler mh : context.getHandlers().values()) {
-            if (mh.getTarget(mt.getName()) != null) {
+            if (mh.getView(mt.getName()) != null) {
                 if (firstHandler == null) {
                     firstHandler = mh;
                 } else {
@@ -266,8 +269,10 @@ public class MvValidateBasic {
 
     private void checkInputsVsTargets() {
         for (MvHandler mh : context.getHandlers().values()) {
-            for (MvTarget mt : mh.getTargets().values()) {
-                checkTargetVsInputs(mh, mt);
+            for (MvView mv : mh.getViews().values()) {
+                for (MvTarget mt : mv.getTargets().values()) {
+                    checkTargetVsInputs(mh, mt);
+                }
             }
             for (MvInput mi : mh.getInputs().values()) {
                 checkInputVsTargets(mh, mi);
@@ -285,10 +290,15 @@ public class MvValidateBasic {
 
     private void checkInputVsTargets(MvHandler mh, MvInput i) {
         boolean found = false;
-        for (var mt : mh.getTargets().values()) {
-            for (var s : mt.getSources()) {
-                if (i.getTableName().equals(s.getTableName())) {
-                    found = true;
+        for (var mv : mh.getViews().values()) {
+            for (var mt : mv.getTargets().values()) {
+                for (var s : mt.getSources()) {
+                    if (i.getTableName().equals(s.getTableName())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
                     break;
                 }
             }

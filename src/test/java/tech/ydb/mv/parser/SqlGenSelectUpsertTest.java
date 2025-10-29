@@ -22,10 +22,11 @@ public class SqlGenSelectUpsertTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getTargets().values().iterator().next();
         addTableInfoToTarget(target);
 
         // Generate SQL
@@ -48,10 +49,11 @@ public class SqlGenSelectUpsertTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target and add MvTableInfo instances
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getTargets().values().iterator().next();
         addTableInfoToTarget2(target);
 
         // Generate SQL

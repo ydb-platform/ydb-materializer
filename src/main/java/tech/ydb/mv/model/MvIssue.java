@@ -327,6 +327,25 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class DuplicateView extends Error {
+
+        private final MvView cur;
+        private final MvView prev;
+
+        public DuplicateView(MvView cur, MvView prev) {
+            super(cur.getSqlPos());
+            this.cur = cur;
+            this.prev = prev;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Duplicate view `" + cur.getName()
+                    + "` at " + sqlPos + ", already defined at "
+                    + prev.getSqlPos();
+        }
+    }
+
     public static class DuplicateTarget extends Error {
 
         private final MvTarget cur;
@@ -340,18 +359,19 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Duplicate target `" + cur.getName()
+            return "Duplicate target alias " + cur.getAlias()
+                    + " in view `" + cur.getName()
                     + "` at " + sqlPos + ", already defined at "
                     + prev.getSqlPos();
         }
     }
 
-    public static class UnknownTarget extends Error {
+    public static class UnknownView extends Error {
 
         private final MvHandler handler;
         private final String name;
 
-        public UnknownTarget(MvHandler handler, String name) {
+        public UnknownView(MvHandler handler, String name) {
             super(handler.getSqlPos());
             this.handler = handler;
             this.name = name;
@@ -359,7 +379,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Reference to undefined target `" + name
+            return "Reference to undefined view `" + name
                     + "` in handler `" + handler.getName()
                     + "` at " + sqlPos;
         }

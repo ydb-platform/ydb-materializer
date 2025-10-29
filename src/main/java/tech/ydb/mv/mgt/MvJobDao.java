@@ -1,6 +1,5 @@
 package tech.ydb.mv.mgt;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +7,6 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.support.MvDaoHelpers;

@@ -111,20 +111,32 @@ public class MvJobController {
     }
 
     public boolean startScan(String name, MvScanSettings settings) {
-        MvTarget target = context.getHandler().getTarget(name);
-        if (target == null) {
+        var view = context.getHandler().getView(name);
+        if (view == null) {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getHandler().getName() + "`");
         }
-        return context.startScan(target, settings, applyManager, null, null);
+        int counter = 0;
+        for (var target : view.getTargets().values()) {
+            if (context.startScan(target, settings, applyManager)) {
+                counter += 1;
+            }
+        }
+        return (counter > 0);
     }
 
     public boolean stopScan(String name) {
-        MvTarget target = context.getHandler().getTarget(name);
-        if (target == null) {
+        var view = context.getHandler().getView(name);
+        if (view == null) {
             return false;
         }
-        return context.stopScan(target);
+        int counter = 0;
+        for (var target : view.getTargets().values()) {
+            if (context.stopScan(target)) {
+                counter += 1;
+            }
+        }
+        return (counter > 0);
     }
 
     private boolean obtainLock() {
@@ -141,7 +153,7 @@ public class MvJobController {
 
     private void clearScanPositions() {
         var scanDao = new MvScanDao(context.getYdb(), new TempScanDaoAdapter());
-        for (var target : context.getHandler().getTargets().values()) {
+        for (var target : context.getHandler().getViews().values()) {
             scanDao.unregisterSpecificScan(target.getName());
         }
     }
@@ -203,8 +215,9 @@ public class MvJobController {
         }
         var completionHandler = new DictScanComplete(dictScan, changes, filters.size());
         for (var filter : filters) {
-            LOG.info("Initiating dictionary refresh scan for target `{}` in handler `{}`",
-                    filter.getTarget().getName(), context.getHandler().getName());
+            LOG.info("Initiating dictionary refresh scan for target `{}` as {} in handler `{}`",
+                    filter.getTarget().getName(), filter.getTarget().getAlias(),
+                    context.getHandler().getName());
             var action = applyManager.createFilterAction(filter);
             var actions = new MvApplyActionList(action);
             context.startScan(filter.getTarget(), settings, applyManager,

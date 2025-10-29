@@ -54,8 +54,12 @@ public class MvCdcFeeder {
         if (!adapter.isRunning()) {
             return;
         }
-        LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
         AsyncReader theReader = buildReader();
+        if (theReader == null) {
+            LOG.info("Empty topic list, refusing to start the CDC reader in feeder `{}`", adapter.getFeederName());
+            return;
+        }
+        LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
         theReader.init();
         reader.set(theReader);
     }
@@ -86,6 +90,7 @@ public class MvCdcFeeder {
                 .setDecompressionExecutor(Runnable::run) // CDC doesn't use compression, skip thread switching
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(adapter.getConsumerName());
+        int topicCount = 0;
         for (MvInput mi : sink.getInputs()) {
             String topicPath = ydb.fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             if (parsers.containsKey(topicPath)) {
@@ -99,6 +104,10 @@ public class MvCdcFeeder {
                     .build());
             LOG.debug("Topic `{}` reading configured for `{}` in consumer `{}`",
                     topicPath, adapter.getFeederName(), adapter.getConsumerName());
+            ++topicCount;
+        }
+        if (topicCount == 0) {
+            return null;
         }
         ReadEventHandlersSettings rehs = ReadEventHandlersSettings.newBuilder()
                 .setEventHandler(new MvCdcEventReader(this))

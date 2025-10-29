@@ -90,7 +90,7 @@ public class MvFieldPathGeneratorTest {
         sourceD.setTableInfo(tableInfoD);
 
         // Create original target
-        originalTarget = new MvTarget("test_target", new MvSqlPos(1, 1));
+        originalTarget = new MvTarget("test_target");
         originalTarget.setTableInfo(tableInfoA);
 
         // Add sources

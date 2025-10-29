@@ -14,6 +14,7 @@ import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvView;
 
 /**
  * SQL validation for MV context - used to detect errors in opaque expressions.
@@ -34,8 +35,10 @@ public class MvValidateSql {
         if (!context.isValid()) {
             return false;
         }
-        for (MvTarget target : context.getTargets().values()) {
-            validateTarget(target);
+        for (MvView mv : context.getViews().values()) {
+            for (MvTarget mt : mv.getTargets().values()) {
+                validateTarget(mt);
+            }
         }
         return context.isValid();
     }

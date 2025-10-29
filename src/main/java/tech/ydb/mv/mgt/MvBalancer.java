@@ -54,6 +54,7 @@ class MvBalancer {
 
     void balanceJobs() {
         Map<String, MvJobInfo> jobsToRun = requiredJobs.values().stream()
+                .filter(job -> job.isRegularJob())
                 .filter(job -> !runningJobs.containsKey(job.getJobName()))
                 .filter(job -> !pendingJobs.containsKey(job.getJobName()))
                 .collect(Collectors.toMap(MvJobInfo::getJobName, job -> job));
@@ -80,24 +81,14 @@ class MvBalancer {
             createStopCommand(extraJob);
         }
 
-        var runningJobNames = runningJobs.values().stream()
-                .flatMap(v -> v.stream())
-                .filter(job -> job.isRegularJob())
-                .map(MvRunnerJobInfo::getJobName)
-                .collect(Collectors.toSet());
-        var newJobs = jobsToRun.values().stream()
-                .filter(job -> job.isRegularJob())
-                .filter(job -> !runningJobNames.contains(job.getJobName()))
-                .toList();
-
         // Create commands to start missing jobs
-        for (var missingJob : newJobs) {
+        for (var missingJob : jobsToRun.values()) {
             createStartCommand(missingJob);
         }
 
-        if (!jobsForRemoval.isEmpty() || !newJobs.isEmpty()) {
+        if (!jobsForRemoval.isEmpty() || !jobsToRun.isEmpty()) {
             LOG.info("Balanced jobs - stopped {} extra, started {} missing",
-                    jobsForRemoval.size(), newJobs.size());
+                    jobsForRemoval.size(), jobsToRun.size());
         }
     }
 

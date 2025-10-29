@@ -2,6 +2,9 @@ package tech.ydb.mv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
@@ -17,7 +20,10 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.test.junit5.YdbHelperExtension;
 
 import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.svc.MvService;
+import tech.ydb.table.query.Params;
 
 /**
  *
@@ -25,7 +31,7 @@ import tech.ydb.mv.support.YdbMisc;
  */
 public abstract class AbstractIntegrationBase {
 
-    public static final String CREATE_TABLES
+    public static final String CREATE_TABLES1
             = """
 CREATE TABLE `test1/statements` (
     statement_no Int32 NOT NULL,
@@ -50,7 +56,10 @@ CREATE TABLE `test1/dict_hist` (
    diff_val JsonDocument,
    PRIMARY KEY(src, tv, seqno, key_text)
 );
+""";
 
+    public static final String CREATE_TABLES2
+            = """
 CREATE TABLE `test1/main_table` (
     id Text NOT NULL,
     c1 Timestamp,
@@ -131,11 +140,15 @@ ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table4` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 """;
 
-    public static final String DROP_TABLES
+    public static final String DROP_TABLES1
             = """
 DROP TABLE `test1/statements`;
 DROP TABLE `test1/scans_state`;
 DROP TABLE `test1/dict_hist`;
+""";
+
+    public static final String DROP_TABLES2
+            = """
 DROP TABLE `test1/main_table`;
 DROP TABLE `test1/sub_table1`;
 DROP TABLE `test1/sub_table2`;
@@ -161,7 +174,7 @@ ALTER TOPIC `test1/sub_table1/cf1` ADD CONSUMER `consumer2`;
 ALTER TOPIC `test1/sub_table2/cf2` ADD CONSUMER `consumer2`;
 """;
 
-    public static final String UPSERT_CONFIG
+    public static final String UPSERT_CONFIG1
             = """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
@@ -208,7 +221,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INPUT `test1/sub_table3` CHANGEFEED cf3 AS BATCH;@@);
 """;
 
-    public static final String WRITE_INITIAL
+    public static final String WRITE_INITIAL1
             = """
 INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20) VALUES
  ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u)
@@ -254,20 +267,26 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         return sb.toString();
     }
 
-    protected static byte[] getConfig() {
+    protected Properties getConfigProps() {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
-        props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
         props.setProperty(MvConfig.CONF_APPLY_THREADS, "1");
         props.setProperty(MvConfig.CONF_CDC_THREADS, "1");
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
         props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
+        props.setProperty(MvBatchSettings.CONF_COORD_STARTUP_MS, "2000");
+        props.setProperty(MvBatchSettings.CONF_SCAN_PERIOD_MS, "2000");
+        props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
+        return props;
+    }
 
+    protected byte[] getConfigBytes() {
+        Properties props = getConfigProps();
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);
             return baos.toByteArray();
@@ -276,23 +295,28 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         }
     }
 
-    protected static void prepareDb() {
+    protected void prepareDb() {
         // have to wait a bit here for YDB startup
         pause(5000L);
         // init database
         System.err.println("[AAA] Database setup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
         }
     }
 
-    protected static void clearDb() {
+    protected void clearDb() {
         System.err.println("[AAA] Database cleanup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
-            runDdl(conn, DROP_TABLES);
+            runDdl(conn, DROP_TABLES1);
+            runDdl(conn, DROP_TABLES2);
         }
+    }
+
+    protected static void standardPause() {
+        pause(2000L);
     }
 
     protected static void pause(long millis) {
@@ -302,12 +326,13 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     protected static void fillDatabase(YdbConnector conn) {
         System.err.println("[AAA] Preparation: creating tables...");
-        runDdl(conn, CREATE_TABLES);
+        runDdl(conn, CREATE_TABLES1);
+        runDdl(conn, CREATE_TABLES2);
         System.err.println("[AAA] Preparation: adding consumers...");
         runDdl(conn, CDC_CONSUMERS1);
         runDdl(conn, CDC_CONSUMERS2);
         System.err.println("[AAA] Preparation: adding config...");
-        runDdl(conn, UPSERT_CONFIG);
+        runDdl(conn, UPSERT_CONFIG1);
     }
 
     protected static CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {
@@ -347,4 +372,63 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         }
         return output;
     }
+
+    protected static String generateThreadDump() {
+        final StringBuilder dump = new StringBuilder();
+        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+        final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
+        for (ThreadInfo threadInfo : threadInfos) {
+            dump.append('"');
+            dump.append(threadInfo.getThreadName());
+            dump.append("\" ");
+            final Thread.State state = threadInfo.getThreadState();
+            dump.append("\n   java.lang.Thread.State: ");
+            dump.append(state);
+            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
+            for (final StackTraceElement stackTraceElement : stackTraceElements) {
+                dump.append("\n        at ");
+                dump.append(stackTraceElement);
+            }
+            dump.append("\n\n");
+        }
+        return dump.toString();
+    }
+
+    protected static int checkViewOutput(YdbConnector conn, String viewName, String sqlMain) {
+        String sqlMv = "SELECT * FROM `" + viewName + "`";
+        var left = convertResultSet(
+                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
+        var right = convertResultSet(
+                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
+        System.out.println("*** comparing rowsets, size1="
+                + left.size() + ", size2=" + right.size());
+        int diffCount = 0;
+        for (var leftMe : left.entrySet()) {
+            var rightVal = right.get(leftMe.getKey());
+            if (rightVal == null) {
+                System.out.println("  missing key: " + leftMe.getKey());
+                ++diffCount;
+                continue;
+            }
+            if (!leftMe.getValue().equals(rightVal)) {
+                System.out.println("  unequal records: \n\t"
+                        + leftMe.getValue() + "\n\t"
+                        + rightVal);
+                ++diffCount;
+            }
+        }
+        for (var rightMe : right.entrySet()) {
+            var leftVal = left.get(rightMe.getKey());
+            if (leftVal == null) {
+                System.out.println("  extra key: " + rightMe.getKey());
+                ++diffCount;
+            }
+        }
+        return diffCount;
+    }
+
+    protected static int checkViewOutput(MvService svc, String viewName, String sqlMain) {
+        return checkViewOutput(svc.getYdb(), viewName, sqlMain);
+    }
+
 }
