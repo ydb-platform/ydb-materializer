@@ -10,7 +10,7 @@ YDB Materializer — это Java-приложение, которое обесп
 
 ## Системные требования и порядок сборки
 
-- Java 21 или выше.
+- Java 17 или выше.
 - Кластер YDB 24.4+ с соответствующими разрешениями.
 - Сетевой доступ к кластеру YDB.
 - Необходимые системные таблицы, созданные в базе данных.
@@ -19,7 +19,7 @@ YDB Materializer — это Java-приложение, которое обесп
 Сборка:
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home
 mvn clean package -DskipTests=true
 ```
 

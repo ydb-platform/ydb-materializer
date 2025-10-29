@@ -6,7 +6,7 @@ The YDB Materializer is a Java application that processes user-managed materiali
 
 ## Requirements and building
 
-- Java 21 or higher
+- Java 17 or higher
 - YDB cluster with appropriate permissions
 - Network access to YDB cluster
 - Required system tables created in the database
@@ -15,7 +15,7 @@ The YDB Materializer is a Java application that processes user-managed materiali
 Building:
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home
 mvn clean package -DskipTests=true
 ```
 
