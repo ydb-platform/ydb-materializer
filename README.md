@@ -37,6 +37,8 @@ The language supports two main statement types:
 
 ### Materialized View Definition
 
+Basic materialized view:
+
 ```sql
 CREATE ASYNC MATERIALIZED VIEW <view_name> AS
   SELECT <column_definitions>
@@ -44,6 +46,26 @@ CREATE ASYNC MATERIALIZED VIEW <view_name> AS
   [<join_clauses>]
   [WHERE <filter_expression>];
 ```
+
+Composite materialized view:
+
+```sql
+CREATE ASYNC MATERIALIZED VIEW <view_name> AS
+  (SELECT <column_definitions>
+   FROM <main_table1> AS <alias>
+   [<join_clauses>]
+   [WHERE <filter_expression>]) AS <select_alias1>
+UNION ALL
+  (SELECT <column_definitions>
+   FROM <main_table2> AS <alias>
+   [<join_clauses>]
+   [WHERE <filter_expression>]) AS <select_alias2>
+UNION ALL
+   ...
+   ;
+```
+
+A composite materialized view definition consists of two or more subqueries, each with the same syntax as a basic materialized view query, combined using the `UNION ALL` operator. Each subquery must also contain an alias that is unique within the composite materialized view and used to identify the subquery during its processing.
 
 #### Column Definitions
 
