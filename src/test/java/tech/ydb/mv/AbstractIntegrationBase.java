@@ -309,6 +309,10 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         }
     }
 
+    protected static void standardPause() {
+        pause(2000L);
+    }
+
     protected static void pause(long millis) {
         System.err.println("\t...Sleeping for " + millis + "...");
         YdbMisc.sleep(millis);

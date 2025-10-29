@@ -75,10 +75,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
         clearDb();
     }
 
-    private void standardPause() {
-        pause(2000L);
-    }
-
     @Test
     public void basicIntegrationTest() {
         // now the work
