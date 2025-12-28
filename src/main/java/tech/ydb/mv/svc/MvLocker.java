@@ -41,11 +41,6 @@ public class MvLocker implements AutoCloseable {
     @Override
     public void close() {
         releaseAll();
-        try {
-            session.close();
-        } catch (Exception ex) {
-            LOG.info("Exception on coordination session closure", ex);
-        }
     }
 
     private static void prepareNode(YdbConnector conn, String nodePath) {

@@ -134,7 +134,7 @@ public class MvValidateBasic {
                     && !src.getTableAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() == null
+            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() != null
                     && cond.getFirstAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
