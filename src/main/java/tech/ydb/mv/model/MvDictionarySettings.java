@@ -9,14 +9,16 @@ import tech.ydb.mv.MvConfig;
  */
 public class MvDictionarySettings extends MvScanSettings {
 
-    private static final long serialVersionUID = 202500926001L;
+    private static final long serialVersionUID = 202501228001L;
 
     private int upsertBatchSize;
     private int cdcReaderThreads;
+    private int maxChangeRowsScanned;
 
     public MvDictionarySettings() {
         this.upsertBatchSize = 500;
         this.cdcReaderThreads = 4;
+        this.maxChangeRowsScanned = 100000;
     }
 
     public MvDictionarySettings(MvDictionarySettings other) {
@@ -31,6 +33,8 @@ public class MvDictionarySettings extends MvScanSettings {
         this.upsertBatchSize = Integer.parseInt(v);
         v = props.getProperty(MvConfig.CONF_CDC_THREADS, "4");
         this.cdcReaderThreads = Integer.parseInt(v);
+        v = props.getProperty(MvConfig.CONF_MAX_ROW_CHANGES, "100000");
+        this.maxChangeRowsScanned = Integer.parseInt(v);
     }
 
     public int getUpsertBatchSize() {
@@ -49,11 +53,20 @@ public class MvDictionarySettings extends MvScanSettings {
         this.cdcReaderThreads = threadCount;
     }
 
+    public int getMaxChangeRowsScanned() {
+        return maxChangeRowsScanned;
+    }
+
+    public void setMaxChangeRowsScanned(int maxChangeRowsScanned) {
+        this.maxChangeRowsScanned = maxChangeRowsScanned;
+    }
+
     @Override
     public int hashCode() {
         int hash = 3;
         hash = 89 * hash + this.upsertBatchSize;
         hash = 89 * hash + this.cdcReaderThreads;
+        hash = 89 * hash + this.maxChangeRowsScanned;
         return hash;
     }
 
@@ -73,6 +86,9 @@ public class MvDictionarySettings extends MvScanSettings {
             return false;
         }
         if (this.cdcReaderThreads != other.cdcReaderThreads) {
+            return false;
+        }
+        if (this.maxChangeRowsScanned != other.maxChangeRowsScanned) {
             return false;
         }
         return super.equals(obj);
