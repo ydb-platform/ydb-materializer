@@ -89,7 +89,10 @@ class MvApplyWorker implements Runnable {
         owner.decrementQueueSize(activeTasks.size());
         PerAction retries = new PerAction().addItems(activeTasks).apply();
         if (!processRetries(retries)) {
-            // no commit unless no retries needed, or retries succeeded
+            // No commit unless no retries needed, or retries succeeded.
+            // Tasks being retried are lost here, but that's not a problem,
+            // because the worker is shutting down anyway. The tasks will be
+            // re-processed after the next startup.
             return -1;
         }
         new PerCommit(activeTasks).apply();

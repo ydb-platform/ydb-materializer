@@ -249,10 +249,9 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
     @Test
     public void unionAllIntegrationTest() {
         System.err.println("[UUU] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            MvService svc = new MvService(conn);
-            try {
+        var cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        try (var conn = new YdbConnector(cfg)) {
+            try (var svc = new MvService(conn)) {
                 svc.applyDefaults(conn.getConfig().getProperties());
 
                 System.err.println("[UUU] Checking context...");
@@ -264,8 +263,6 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
 
                 System.err.println("[UUU] Entering main test...");
                 testLogic(svc);
-            } finally {
-                svc.shutdown();
             }
         }
     }

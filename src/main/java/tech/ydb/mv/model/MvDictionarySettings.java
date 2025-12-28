@@ -25,6 +25,7 @@ public class MvDictionarySettings extends MvScanSettings {
         super(other);
         this.upsertBatchSize = other.upsertBatchSize;
         this.cdcReaderThreads = other.cdcReaderThreads;
+        this.maxChangeRowsScanned = other.maxChangeRowsScanned;
     }
 
     public MvDictionarySettings(Properties props) {

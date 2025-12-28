@@ -17,9 +17,6 @@ public class App {
     private final YdbConnector conn;
     private final MvApi api;
 
-    private volatile MvRunner runner = null;
-    private volatile MvCoordinator coord = null;
-
     public App(YdbConnector conn, MvApi api) {
         this.conn = conn;
         this.api = api;
@@ -72,35 +69,25 @@ public class App {
     private void runJobService() {
         var batchSettings = new MvBatchSettings(api.getYdb().getConfig().getProperties());
         try (var theRunner = new MvRunner(api.getYdb(), api, batchSettings)) {
-            runner = theRunner;
             try (var theCoord = MvCoordinator.newInstance(
                     api.getYdb(),
                     batchSettings,
-                    runner.getRunnerId(),
+                    theRunner.getRunnerId(),
                     api.getScheduler()
             )) {
-                coord = theCoord;
-                runner.start();
-                coord.start();
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> shutdown()));
-                while (runner.isRunning()) {
+                theRunner.start();
+                theCoord.start();
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> shutdown(theRunner, theCoord)));
+                while (theRunner.isRunning()) {
                     YdbMisc.sleep(200L);
                 }
-            } finally {
-                coord = null;
             }
-        } finally {
-            runner = null;
         }
     }
 
-    private void shutdown() {
-        if (runner != null) {
-            runner.stop();
-        }
-        if (coord != null) {
-            coord.stop();
-        }
+    private void shutdown(MvRunner theRunner, MvCoordinator theCoord) {
+        theRunner.stop();
+        theCoord.stop();
         api.shutdown();
         conn.close();
     }

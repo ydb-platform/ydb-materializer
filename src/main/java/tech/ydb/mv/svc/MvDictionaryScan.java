@@ -80,6 +80,10 @@ public class MvDictionaryScan {
     }
 
     public MvChangesSingleDict scan(String tableName) {
+        long scanLimit = settings.getMaxChangeRowsScanned();
+        if (scanLimit <= 0) {
+            scanLimit = Long.MAX_VALUE;
+        }
         var adapter = new Adapter(tableName);
         MvKey startKey = new MvScanDao(conn, adapter).initScan();
         MvKey curKey = startKey;
@@ -89,7 +93,7 @@ public class MvDictionaryScan {
         var result = new MvChangesSingleDict(tableName);
         result.setScanPosition(startKey);
 
-        int changeRowsScanned = 0;
+        long changeRowsScanned = 0;
         boolean hasMissingDiffFieldRows = false;
         var pTableName = PrimitiveValue.newText(tableName);
         ResultSetReader rsr;
@@ -140,10 +144,10 @@ public class MvDictionaryScan {
                 }
                 ++changeRowsScanned;
             }
-            if (changeRowsScanned >= settings.getMaxChangeRowsScanned()) {
+            if (changeRowsScanned > scanLimit) {
                 LOG.warn("Dictionary changes scan for table `{}` stopped "
                         + "before reaching EOF because it got {} rows, limit is {} rows.",
-                        tableName, changeRowsScanned, settings.getMaxChangeRowsScanned());
+                        tableName, changeRowsScanned, scanLimit);
                 break;
             }
         } while (rsr.getRowCount() > 0);

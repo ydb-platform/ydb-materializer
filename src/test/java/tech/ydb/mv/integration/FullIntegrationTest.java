@@ -1,6 +1,8 @@
 package tech.ydb.mv.integration;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -64,7 +66,6 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     public void concurrencyIntegrationTest() {
         System.err.println("[FFF] Starting up...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        var batchSettings = new MvBatchSettings(cfg.getProperties());
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
         var instance1 = "instance_1";
         var instance2 = "instance_2";
@@ -122,16 +123,20 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                     """);
         }
 
-        Thread t1 = new Thread(() -> handler(cfg, instance1, batchSettings));
-        Thread t2 = new Thread(() -> handler(cfg, instance2, batchSettings));
-        Thread t1dup = new Thread(() -> handler(cfg, instance1, batchSettings));
+        AtomicInteger successCounter = new AtomicInteger(0);
+        Thread t1 = new Thread(() -> handler(cfg, instance1, successCounter));
+        Thread t2 = new Thread(() -> handler(cfg, instance2, successCounter));
+        Thread t1dup = new Thread(() -> handler(cfg, instance1, new AtomicInteger(0)));
 
         t1.start();
         t2.start();
         pause(100L);
         t1dup.start();
 
+        System.err.println("[FFF] Threads started, initializing...");
+
         pause(10_000);
+
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, """
                     INSERT INTO `mv_jobs` (job_name, should_run) VALUES
@@ -140,7 +145,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                         """);
         }
 
-        System.err.println("[FFF] Waiting for thread completion...");
+        System.err.println("[FFF] Job added, waiting for thread completion...");
 
         try {
             t1.join();
@@ -156,18 +161,22 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         }
 
         System.err.println("[FFF] All done!");
+
+        Assertions.assertEquals(2, successCounter.get());
     }
 
-    private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
+    private void handler(YdbConnector.Config cfg, String name, AtomicInteger successCounter) {
+        var batchSettings = new MvBatchSettings(cfg.getProperties());
         try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn)) {
-            try (var runner = new MvRunner(conn, api, instanceName)) {
+            try (var runner = new MvRunner(conn, api, name)) {
                 api.applyDefaults(conn.getConfig().getProperties());
-                MvCoordinator.newInstance(conn, batchSettings, instanceName)
-                        .start();
-                runner.start();
-
-                pause(40_000);
+                try (var coord = MvCoordinator.newInstance(conn, batchSettings, name)) {
+                    coord.start();
+                    runner.start();
+                    pause(40_000);
+                }
             }
+            successCounter.incrementAndGet();
         } catch (Exception ex) {
             ex.printStackTrace(System.err);
         }
