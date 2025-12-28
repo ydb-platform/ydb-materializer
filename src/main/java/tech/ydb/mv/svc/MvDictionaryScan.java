@@ -84,17 +84,15 @@ public class MvDictionaryScan {
         if (scanLimit <= 0) {
             scanLimit = Long.MAX_VALUE;
         }
-        var adapter = new Adapter(tableName);
-        MvKey startKey = new MvScanDao(conn, adapter).initScan();
+        var result = new MvChangesSingleDict(tableName);
+        var scanner = new Scanner(tableName, result);
+        MvKey startKey = new MvScanDao(conn, scanner).initScan();
         MvKey curKey = startKey;
+        result.setScanPosition(startKey);
 
         LOG.info("\t...dictionary `{}` at position {}", tableName, startKey);
 
-        var result = new MvChangesSingleDict(tableName);
-        result.setScanPosition(startKey);
-
         long changeRowsScanned = 0;
-        boolean hasMissingDiffFieldRows = false;
         var pTableName = PrimitiveValue.newText(tableName);
         ResultSetReader rsr;
         do {
@@ -114,34 +112,7 @@ public class MvDictionaryScan {
             }
             rsr = conn.sqlRead(sql, params).getResultSet(0);
             while (rsr.next()) {
-                curKey = new MvKey(rsr, historyTableInfo.getKeyInfo());
-                result.setScanPosition(curKey);
-                String diffStr = rsr.getColumn(5).getJsonDocument();
-                if (diffStr == null) {
-                    if (!hasMissingDiffFieldRows) {
-                        LOG.warn("Missing value in the `diff_val` field with key {} "
-                                + "of the `{}` table, row skipped. Further messages suppressed.",
-                                curKey, historyTableName);
-                        hasMissingDiffFieldRows = true;
-                    }
-                    continue;
-                }
-                JsonElement diffObj = JsonParser.parseString(diffStr);
-                if (!diffObj.isJsonObject()) {
-                    if (!hasMissingDiffFieldRows) {
-                        LOG.warn("Illegal format value in the `diff_val` field with key {} "
-                                + "of the `{}` table, row skipped. Further messages suppressed.",
-                                curKey, historyTableName);
-                        hasMissingDiffFieldRows = true;
-                    }
-                    continue;
-                }
-                MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),
-                        adapter.sourceTableInfo.getKeyInfo());
-                JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
-                for (JsonElement item : diffArray.asList()) {
-                    result.updateField(item.getAsString(), rowKey);
-                }
+                curKey = scanner.handleRow(curKey, rsr);
                 ++changeRowsScanned;
             }
             if (changeRowsScanned > scanLimit) {
@@ -189,10 +160,10 @@ public class MvDictionaryScan {
 
     class Adapter implements MvScanAdapter {
 
-        private final String sourceTableName;
-        private final MvTableInfo sourceTableInfo;
+        final String sourceTableName;
+        final MvTableInfo sourceTableInfo;
 
-        public Adapter(String sourceTableName) {
+        Adapter(String sourceTableName) {
             this.sourceTableName = sourceTableName;
             this.sourceTableInfo = describer.describeTable(sourceTableName);
         }
@@ -221,6 +192,48 @@ public class MvDictionaryScan {
             return sourceTableName;
         }
 
+    }
+
+    class Scanner extends Adapter {
+
+        private final MvChangesSingleDict result;
+
+        public Scanner(String sourceTableName, MvChangesSingleDict result) {
+            super(sourceTableName);
+            this.result = result;
+        }
+
+        MvKey handleRow(MvKey curKey, ResultSetReader rsr) {
+            curKey = new MvKey(rsr, historyTableInfo.getKeyInfo());
+            result.setScanPosition(curKey);
+            String diffStr = rsr.getColumn(5).getJsonDocument();
+            if (diffStr == null) {
+                if (!result.isMissingDiffFieldRows()) {
+                    LOG.warn("Missing value in the `diff_val` field with key {} "
+                            + "of the `{}` table, row skipped. Further messages suppressed.",
+                            curKey, historyTableName);
+                    result.setMissingDiffFieldRows(true);
+                }
+                return curKey;
+            }
+            JsonElement diffObj = JsonParser.parseString(diffStr);
+            if (!diffObj.isJsonObject()) {
+                if (!result.isMissingDiffFieldRows()) {
+                    LOG.warn("Illegal format value in the `diff_val` field with key {} "
+                            + "of the `{}` table, row skipped. Further messages suppressed.",
+                            curKey, historyTableName);
+                    result.setMissingDiffFieldRows(true);
+                }
+                return curKey;
+            }
+            MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),
+                    sourceTableInfo.getKeyInfo());
+            JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
+            for (JsonElement item : diffArray.asList()) {
+                result.updateField(item.getAsString(), rowKey);
+            }
+            return curKey;
+        }
     }
 
 }
