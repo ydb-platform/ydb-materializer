@@ -9,7 +9,6 @@ import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
 
 /**
  *

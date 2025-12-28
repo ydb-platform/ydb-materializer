@@ -89,7 +89,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
             if (col.isReference()) {
                 column = col.getSourceColumn();
                 values[i] = grabber.getValue(column);
-            } else if (col.getComputation().isLiteral()) {
+            } else if (col.getComputation() != null
+                    && col.getComputation().isLiteral()) {
                 column = col.getComputation().getLiteral().getValue();
                 values[i] = col.getComputation().getLiteral().getPojo();
             }
