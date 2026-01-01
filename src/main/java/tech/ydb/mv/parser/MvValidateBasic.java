@@ -124,17 +124,30 @@ public class MvValidateBasic {
         }
     }
 
+    /**
+     * Check the join conditions for the current join source.
+     *
+     * NOTE: we only support two types of join conditions: (a) comparison
+     * between column in the current table and column in the prior table; (b)
+     * comparison between column in the current table and some literal. All
+     * other join conditions (like literal vs literal) are rejected.
+     *
+     * @param mt
+     * @param src
+     */
     private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
+        String srcAlias = src.getTableAlias();
         for (MvJoinCondition cond : src.getConditions()) {
             if ((cond.getFirstAlias() == null && cond.getFirstLiteral() == null)
                     || (cond.getSecondAlias() == null && cond.getSecondLiteral() == null)
                     || (cond.getFirstAlias() == null && cond.getSecondAlias() == null)) {
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (!src.getTableAlias().equals(cond.getFirstAlias())
-                    && !src.getTableAlias().equals(cond.getSecondAlias())) {
+            } else if ((srcAlias != null)
+                    && !srcAlias.equals(cond.getFirstAlias())
+                    && !srcAlias.equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() == null
+            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() != null
                     && cond.getFirstAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));

@@ -122,6 +122,11 @@ public class MvConfig {
     public static final String CONF_BATCH_UPSERT = "job.batch.upsert";
 
     /**
+     * Handler setting: max number of changes to be scanned in a single batch.
+     */
+    public static final String CONF_MAX_ROW_CHANGES = "job.max.row.changes";
+
+    /**
      * Default input SQL file name.
      */
     public static final String DEF_STMT_FILE = "mv.sql";

@@ -1,7 +1,7 @@
 package tech.ydb.mv.feeder;
 
 import java.util.HashMap;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,14 +20,14 @@ import tech.ydb.mv.model.MvInput;
  *
  * @author zinal
  */
-public class MvCdcFeeder {
+public class MvCdcFeeder implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
     private final MvCdcAdapter adapter;
     private final YdbConnector ydb;
     private final MvSink sink;
-    private final Executor executor;
+    private final ExecutorService executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
@@ -75,6 +75,12 @@ public class MvCdcFeeder {
             LOG.info("Stopping the CDC reader for feeder `{}`", adapter.getFeederName());
             theReader.shutdown();
         }
+    }
+
+    @Override
+    public void close() {
+        stop();
+        executor.shutdownNow();
     }
 
     public MvSink getSink() {

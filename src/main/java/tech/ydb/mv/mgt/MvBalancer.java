@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import tech.ydb.mv.MvConfig;
 
 /**
  * Job balancing logic, part of the coordinator.
@@ -22,7 +23,7 @@ class MvBalancer {
     final AtomicLong commandNo;
     final int runnersCount;
     final List<MvRunnerInfo> allRunners = new ArrayList<>();
-    // jobName
+    // jobName -> job
     final Map<String, MvJobInfo> requiredJobs = new HashMap<>();
     // runnerId -> jobs
     final Map<String, List<MvRunnerJobInfo>> runningJobs = new HashMap<>();
@@ -47,15 +48,26 @@ class MvBalancer {
         var x = jobs.get(job.getRunnerId());
         if (x == null) {
             x = new ArrayList<>();
-            jobs.put(job.getJobName(), x);
+            jobs.put(job.getRunnerId(), x);
         }
         x.add(job);
     }
 
+    HashMap<String, MvRunnerJobInfo> collectRunning() {
+        var ret = new HashMap<String, MvRunnerJobInfo>();
+        for (var runnerJobs : runningJobs.values()) {
+            for (var job : runnerJobs) {
+                ret.put(job.getJobName(), job);
+            }
+        }
+        return ret;
+    }
+
     void balanceJobs() {
+        var allRunning = collectRunning();
         Map<String, MvJobInfo> jobsToRun = requiredJobs.values().stream()
                 .filter(job -> job.isRegularJob())
-                .filter(job -> !runningJobs.containsKey(job.getJobName()))
+                .filter(job -> !allRunning.containsKey(job.getJobName()))
                 .filter(job -> !pendingJobs.containsKey(job.getJobName()))
                 .collect(Collectors.toMap(MvJobInfo::getJobName, job -> job));
 
@@ -112,18 +124,29 @@ class MvBalancer {
                 job.getJobName(), job.getRunnerId());
     }
 
+    private int countJobs(List<MvRunnerJobInfo> jobs) {
+        int count = 0;
+        for (var job : jobs) {
+            if (!MvConfig.HANDLER_COORDINATOR.equals(job.getJobName())) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
     /**
      * Create a command to start a job.
      */
     private void createStartCommand(MvJobInfo job) {
         var cmdCountByRunner = runningJobs.entrySet().stream()
-                .collect(Collectors.toMap(me -> me.getKey(), me -> me.getValue().size()));
+                .collect(Collectors.toMap(me -> me.getKey(), me -> countJobs(me.getValue())));
+
+        LOG.info("cmdCountByRunner: {}", cmdCountByRunner);
 
         var comparator = Comparator.comparing(
-                (MvRunnerJobInfo r) -> cmdCountByRunner.getOrDefault(r.getRunnerId(), 0))
+                (MvRunnerInfo r) -> cmdCountByRunner.getOrDefault(r.getRunnerId(), 0))
                 .thenComparing(r -> r.getRunnerId());
-        var runner = runningJobs.values().stream()
-                .flatMap(v -> v.stream())
+        var runner = allRunners.stream()
                 .sorted(comparator)
                 .findFirst()
                 .get();

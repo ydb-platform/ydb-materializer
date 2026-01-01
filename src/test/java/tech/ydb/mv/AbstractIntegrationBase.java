@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -293,6 +294,17 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         } catch (IOException ix) {
             throw new RuntimeException(ix);
         }
+    }
+
+    private final AtomicReference<YdbConnector.Config> configRef
+            = new AtomicReference<>();
+
+    protected YdbConnector.Config getNewConfig() {
+        return YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+    }
+
+    protected YdbConnector.Config getConfig() {
+        return configRef.updateAndGet((v) -> (v != null) ? v : getNewConfig());
     }
 
     protected void prepareDb() {

@@ -10,7 +10,6 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.svc.MvJobContext;
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
@@ -76,8 +75,7 @@ public class MvScanFeeder {
         MvScanContext ctx = context.getAndSet(
                 new MvScanContext(job.getHandler(), target, job.getYdb(), controlTable));
         if (ctx != null) {
-            context.set(ctx);
-            return false;
+            throw new IllegalStateException("Illegal startup sequence for MvScanFeeder");
         }
         Thread thread = new Thread(() -> safeRun());
         thread.setDaemon(true);

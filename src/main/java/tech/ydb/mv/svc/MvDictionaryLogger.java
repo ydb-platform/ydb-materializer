@@ -112,7 +112,7 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
         LOG.info("Stopping dictionary manager.");
         MvCdcFeeder cf = feeder.getAndSet(null);
         if (cf != null) {
-            cf.stop();
+            cf.close();
         }
     }
 

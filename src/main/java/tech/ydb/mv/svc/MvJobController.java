@@ -6,9 +6,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.apply.MvApplyActionList;
-
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.feeder.MvCdcFeeder;
@@ -18,7 +18,6 @@ import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.support.MvScanAdapter;
 import tech.ydb.mv.support.MvScanDao;
 
@@ -28,7 +27,7 @@ import tech.ydb.mv.support.MvScanDao;
  *
  * @author zinal
  */
-public class MvJobController {
+public class MvJobController implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvJobController.class);
 
@@ -108,6 +107,14 @@ public class MvJobController {
         applyManager.awaitTermination(Duration.ofSeconds(10));
         releaseLock();
         return true;
+    }
+
+    @Override
+    public void close() {
+        if (context.isRunning()) {
+            stop();
+        }
+        cdcFeeder.close();
     }
 
     public boolean startScan(String name, MvScanSettings settings) {

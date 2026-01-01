@@ -218,7 +218,7 @@ java -jar ydb-materializer-*.jar config.xml SQL
 ```
 
 #### Режим LOCAL
-Запускает локальную службу обработки материализованных представлений:
+Запускает локальную одноузловую службу обработки материализованных представлений:
 ```bash
 java -jar ydb-materializer-*.jar config.xml LOCAL
 ```
@@ -274,6 +274,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.apply.queue">10000</entry>
 <entry key="job.batch.select">1000</entry>
 <entry key="job.batch.upsert">500</entry>
+<entry key="job.max.row.changes">100000</entry>
 <entry key="job.query.seconds">30</entry>
 
 <!-- Настройки средств управления -->
@@ -332,6 +333,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.apply.queue` — максимальное количество элементов в очереди apply на поток
 - `job.batch.select` — размер пакета для операций SELECT
 - `job.batch.upsert` — размер пакета для операций UPSERT или DELETE
+- `job.max.row.changes` — максимальное количество изменений по отдельной таблице, обрабатываемых за одну итерацию
 - `job.query.seconds` — максимальное время выполнения запроса на выборку, вставку или удаление данных, секунд
 
 #### Настройки системы управления заданиями
@@ -455,16 +457,16 @@ VALUES ('my_handler', NULL, true);
 
 Координатор автоматически обнаружит новую задачу и назначит её доступному исполнителю.
 
-Параметры в поле `job_settings` можно не указывать (будут использованы параметры по умолчанию) или указать в виде JSON-документа следующего формата:
+Параметры в поле `job_settings` можно не указывать (будут использованы параметры по умолчанию, загружаемые из глобальных настроек) или указать в виде JSON-документа следующего формата:
 
 ```json
-{
-    "cdcReaderThreads": 4,
-    "applyThreads": 4,
-    "applyQueueSize": 10000,
-    "selectBatchSize": 1000,
-    "upsertBatchSize": 500,
-    "dictionaryScanSeconds": 28800
+{ # в комментарии указана соответствующая глобальная настройка
+    "cdcReaderThreads": 4,                # job.cdc.threads
+    "applyThreads": 4,                    # job.apply.threads
+    "applyQueueSize": 10000,              # job.apply.queue
+    "selectBatchSize": 1000,              # job.batch.select
+    "upsertBatchSize": 500,               # job.batch.upsert
+    "dictionaryScanSeconds": 28800        # job.dict.scan.seconds
 }
 ```
 
@@ -472,9 +474,10 @@ VALUES ('my_handler', NULL, true);
 
 ```json
 {
-    "upsertBatchSize": 500,
-    "cdcReaderThreads": 4,
-    "rowsPerSecondLimit": 10000
+    "upsertBatchSize": 500,               # job.batch.upsert
+    "cdcReaderThreads": 4,                # job.cdc.threads
+    "rowsPerSecondLimit": 10000,          # job.scan.rate
+    "maxChangeRowsScanned": 100000        # job.max.row.changes
 }
 ```
 
