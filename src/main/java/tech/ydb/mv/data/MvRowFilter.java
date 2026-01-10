@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Row filter for a single target's scan.
@@ -13,11 +13,11 @@ import tech.ydb.mv.model.MvViewPart;
  */
 public class MvRowFilter {
 
-    private final MvViewPart target;
-    private MvViewPart transformation;
+    private final MvViewExpr target;
+    private MvViewExpr transformation;
     private final ArrayList<Block> blocks = new ArrayList<>();
 
-    public MvRowFilter(MvViewPart target) {
+    public MvRowFilter(MvViewExpr target) {
         this.target = target;
     }
 
@@ -25,15 +25,15 @@ public class MvRowFilter {
         return blocks;
     }
 
-    public MvViewPart getTarget() {
+    public MvViewExpr getTarget() {
         return target;
     }
 
-    public MvViewPart getTransformation() {
+    public MvViewExpr getTransformation() {
         return transformation;
     }
 
-    public void setTransformation(MvViewPart transformation) {
+    public void setTransformation(MvViewExpr transformation) {
         this.transformation = transformation;
     }
 

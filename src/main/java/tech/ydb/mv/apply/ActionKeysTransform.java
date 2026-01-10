@@ -8,7 +8,7 @@ import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Single-step input key transformation to the keys of the main table for a
@@ -23,8 +23,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
     private final boolean keysTransform;
     private final List<MvColumn> columns;
 
-    public ActionKeysTransform(MvViewPart target, MvJoinSource src,
-            MvViewPart transformation, MvActionContext context) {
+    public ActionKeysTransform(MvViewExpr target, MvJoinSource src,
+            MvViewExpr transformation, MvActionContext context) {
         super(target, src, transformation, context);
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");

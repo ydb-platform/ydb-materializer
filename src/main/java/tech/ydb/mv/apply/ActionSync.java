@@ -22,7 +22,7 @@ import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -43,7 +43,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
             = new ThreadLocal<>();
 
-    public ActionSync(MvViewPart target, MvActionContext context) {
+    public ActionSync(MvViewExpr target, MvActionContext context) {
         super(context);
         if (target == null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {

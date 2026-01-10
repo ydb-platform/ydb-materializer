@@ -88,10 +88,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownAlias extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final String aliasName;
 
-        public UnknownAlias(MvViewPart target, String aliasName, MvSqlPosHolder place) {
+        public UnknownAlias(MvViewExpr target, String aliasName, MvSqlPosHolder place) {
             super(place.getSqlPos());
             this.target = target;
             this.aliasName = aliasName;
@@ -107,11 +107,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownColumn extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final String aliasName;
         private final String columnName;
 
-        public UnknownColumn(MvViewPart target,
+        public UnknownColumn(MvViewExpr target,
                 String aliasName, String columnName, MvSqlPosHolder place) {
             super(place.getSqlPos());
             this.target = target;
@@ -129,11 +129,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class IllegalJoinCondition extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinSource src;
         private final MvJoinCondition cond;
 
-        public IllegalJoinCondition(MvViewPart target, MvJoinSource src, MvJoinCondition cond) {
+        public IllegalJoinCondition(MvViewExpr target, MvJoinSource src, MvJoinCondition cond) {
             super(cond.getSqlPos());
             this.target = target;
             this.src = src;
@@ -150,9 +150,9 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class MissingTargetTable extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
 
-        public MissingTargetTable(MvViewPart target) {
+        public MissingTargetTable(MvViewExpr target) {
             super(target.getSqlPos());
             this.target = target;
         }
@@ -166,10 +166,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownSourceTable extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final String tableName;
 
-        public UnknownSourceTable(MvViewPart target, String tableName, MvSqlPosHolder place) {
+        public UnknownSourceTable(MvViewExpr target, String tableName, MvSqlPosHolder place) {
             super(place.getSqlPos());
             this.target = target;
             this.tableName = tableName;
@@ -185,10 +185,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class MismatchedSourceTable extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinSource js;
 
-        public MismatchedSourceTable(MvViewPart target, MvJoinSource js) {
+        public MismatchedSourceTable(MvViewExpr target, MvJoinSource js) {
             super(js.getSqlPos());
             this.target = target;
             this.js = js;
@@ -211,12 +211,12 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownColumnInCondition extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinCondition cond;
         private final String tableAlias;
         private final String columnName;
 
-        public UnknownColumnInCondition(MvViewPart target, MvJoinCondition cond,
+        public UnknownColumnInCondition(MvViewExpr target, MvJoinCondition cond,
                 String tableAlias, String columnName) {
             super(cond.getSqlPos());
             this.target = target;
@@ -236,10 +236,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UnknownOutputColumn extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvColumn column;
 
-        public UnknownOutputColumn(MvViewPart target, MvColumn column) {
+        public UnknownOutputColumn(MvViewExpr target, MvColumn column) {
             super(column.getSqlPos());
             this.target = target;
             this.column = column;
@@ -255,10 +255,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class IllegalOutputReference extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvColumn column;
 
-        public IllegalOutputReference(MvViewPart target, MvColumn column) {
+        public IllegalOutputReference(MvViewExpr target, MvColumn column) {
             super(column.getSqlPos());
             this.target = target;
             this.column = column;
@@ -348,10 +348,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class DuplicateViewPart extends Error {
 
-        private final MvViewPart cur;
-        private final MvViewPart prev;
+        private final MvViewExpr cur;
+        private final MvViewExpr prev;
 
-        public DuplicateViewPart(MvViewPart cur, MvViewPart prev) {
+        public DuplicateViewPart(MvViewExpr cur, MvViewExpr prev) {
             super(cur.getSqlPos());
             this.cur = cur;
             this.prev = prev;
@@ -458,10 +458,10 @@ public interface MvIssue extends MvSqlPosHolder {
     public static class MissingInput extends Warning {
 
         private final MvHandler handler;
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinSource source;
 
-        public MissingInput(MvHandler handler, MvViewPart target, MvJoinSource source) {
+        public MissingInput(MvHandler handler, MvViewExpr target, MvJoinSource source) {
             super(source.getSqlPos());
             this.handler = handler;
             this.target = target;
@@ -510,11 +510,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class SqlCustomColumnError extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvColumn column;
         private final String issues;
 
-        public SqlCustomColumnError(MvViewPart target, MvColumn column, String issues) {
+        public SqlCustomColumnError(MvViewExpr target, MvColumn column, String issues) {
             super(column.getSqlPos());
             this.target = target;
             this.column = column;
@@ -532,11 +532,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class SqlCustomFilterError extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvComputation filter;
         private final String issues;
 
-        public SqlCustomFilterError(MvViewPart target, MvComputation filter, String issues) {
+        public SqlCustomFilterError(MvViewExpr target, MvComputation filter, String issues) {
             super(filter.getSqlPos());
             this.target = target;
             this.filter = filter;
@@ -554,10 +554,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class SqlUnexpectedError extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final String issues;
 
-        public SqlUnexpectedError(MvViewPart target, String issues) {
+        public SqlUnexpectedError(MvViewExpr target, String issues) {
             super(target.getSqlPos());
             this.target = target;
             this.issues = issues;
@@ -578,11 +578,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class TargetMultipleHandlers extends Error {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvHandler handler1;
         private final MvHandler handler2;
 
-        public TargetMultipleHandlers(MvViewPart target, MvHandler handler1, MvHandler handler2) {
+        public TargetMultipleHandlers(MvViewExpr target, MvHandler handler1, MvHandler handler2) {
             super(handler2.getSqlPos());
             this.target = target;
             this.handler1 = handler1;
@@ -601,9 +601,9 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class UselessTarget extends Warning {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
 
-        public UselessTarget(MvViewPart target) {
+        public UselessTarget(MvViewExpr target) {
             super(target.getSqlPos());
             this.target = target;
         }
@@ -618,10 +618,10 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class KeyExtractionImpossible extends Warning {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinSource source;
 
-        public KeyExtractionImpossible(MvViewPart target, MvJoinSource source) {
+        public KeyExtractionImpossible(MvViewExpr target, MvJoinSource source) {
             super(source.getSqlPos());
             this.target = target;
             this.source = source;
@@ -639,11 +639,11 @@ public interface MvIssue extends MvSqlPosHolder {
 
     public static class MissingJoinIndex extends Warning {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvJoinSource source;
         private final List<String> columns;
 
-        public MissingJoinIndex(MvViewPart target, MvJoinSource source, List<String> columns) {
+        public MissingJoinIndex(MvViewExpr target, MvJoinSource source, List<String> columns) {
             super(source.getSqlPos());
             this.target = target;
             this.source = source;

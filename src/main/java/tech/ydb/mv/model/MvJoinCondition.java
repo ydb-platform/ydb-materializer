@@ -100,7 +100,7 @@ public class MvJoinCondition implements MvSqlPosHolder {
      * @return The copy of the current condition object adopted to the specified
      * MV part instance.
      */
-    public MvJoinCondition cloneTo(MvViewPart part) {
+    public MvJoinCondition cloneTo(MvViewExpr part) {
         MvJoinCondition ret = new MvJoinCondition(sqlPos);
         if (firstLiteral != null) {
             ret.setFirstLiteral(part.addLiteral(firstLiteral.getValue()));

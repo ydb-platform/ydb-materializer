@@ -7,7 +7,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
@@ -24,7 +24,7 @@ class MvApply {
         return new SourceBuilder(table, selector);
     }
 
-    static TargetBuilder newTarget(MvViewPart target, MvViewPart dictTrans) {
+    static TargetBuilder newTarget(MvViewExpr target, MvViewExpr dictTrans) {
         return new TargetBuilder(target, dictTrans);
     }
 
@@ -76,9 +76,9 @@ class MvApply {
 
     static class Target {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final MvApplyActionList refreshActions;
-        private final MvViewPart dictTrans;
+        private final MvViewExpr dictTrans;
 
         Target(TargetBuilder builder) {
             this.target = builder.target;
@@ -86,7 +86,7 @@ class MvApply {
             this.dictTrans = builder.dictTrans;
         }
 
-        public MvViewPart getTarget() {
+        public MvViewExpr getTarget() {
             return target;
         }
 
@@ -94,18 +94,18 @@ class MvApply {
             return refreshActions;
         }
 
-        public MvViewPart getDictTrans() {
+        public MvViewExpr getDictTrans() {
             return dictTrans;
         }
     }
 
     static class TargetBuilder {
 
-        private final MvViewPart target;
+        private final MvViewExpr target;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
-        private final MvViewPart dictTrans;
+        private final MvViewExpr dictTrans;
 
-        TargetBuilder(MvViewPart target, MvViewPart dictTrans) {
+        TargetBuilder(MvViewExpr target, MvViewExpr dictTrans) {
             this.target = target;
             this.dictTrans = dictTrans;
         }
@@ -127,7 +127,7 @@ class MvApply {
         final int workersCount;
         final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
-        final HashMap<MvViewPart, TargetBuilder> targets = new HashMap<>();
+        final HashMap<MvViewExpr, TargetBuilder> targets = new HashMap<>();
 
         public Configurator(MvActionContext context) {
             this.context = context;
@@ -136,7 +136,7 @@ class MvApply {
             this.partitioning = context.getPartitioning();
         }
 
-        void build(HashMap<String, Source> src, HashMap<MvViewPart, Target> trg) {
+        void build(HashMap<String, Source> src, HashMap<MvViewExpr, Target> trg) {
             prepare();
             sources.forEach((k, v) -> src.put(k, v.build()));
             targets.forEach((k, v) -> trg.put(k, v.build()));
@@ -152,7 +152,7 @@ class MvApply {
             return b;
         }
 
-        TargetBuilder makeTarget(MvViewPart target, MvViewPart dictTrans) {
+        TargetBuilder makeTarget(MvViewExpr target, MvViewExpr dictTrans) {
             var b = targets.get(target);
             if (b == null) {
                 b = newTarget(target, dictTrans);
@@ -169,7 +169,7 @@ class MvApply {
             }
         }
 
-        void configureTarget(MvViewPart target) {
+        void configureTarget(MvViewExpr target) {
             int sourceCount = target.getSources().size();
             if (sourceCount < 1) {
                 // constant or expression-based target - nothing to do
@@ -207,33 +207,33 @@ class MvApply {
             if (cf == null) {
                 LOG.info("Missing changefeed for secondary input table `{}`, "
                         + "skipping for target `{}` as {}.", source.getTableName(),
-                        pg.getTarget().getName(), pg.getTarget().getAlias());
+                        pg.getExpr().getName(), pg.getExpr().getAlias());
                 return;
             }
-            MvViewPart transformation = pg.extractKeysReverse(source);
+            MvViewExpr transformation = pg.extractKeysReverse(source);
             if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
                         + "to keys for table `{}`, skipping for target `{}` as {}",
                         source.getTableName(), pg.getTopSourceTableName(),
-                        pg.getTarget().getName(), pg.getTarget().getAlias());
+                        pg.getExpr().getName(), pg.getExpr().getAlias());
                 return;
             }
             MvApplyAction action;
             if (transformation.isKeyOnlyTransformation()) {
                 // Can directly transform the input keys to topmost-left key
-                action = new ActionKeysTransform(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysTransform(pg.getExpr(), source, transformation, context);
             } else if (transformation.isSingleStepTransformation()
                     && MvTableInfo.ChangefeedMode.BOTH_IMAGES.equals(cf.getMode())) {
                 // Can be directly transformed on the changefeed data
-                action = new ActionKeysTransform(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysTransform(pg.getExpr(), source, transformation, context);
             } else {
                 // The key information has to be grabbed from the database
-                action = new ActionKeysGrab(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysGrab(pg.getExpr(), source, transformation, context);
             }
             makeSource(source.getTableInfo()).addAction(action);
         }
 
-        MvViewPart makeDictTrans(MvViewPart target, MvPathGenerator pathGenerator) {
+        MvViewExpr makeDictTrans(MvViewExpr target, MvPathGenerator pathGenerator) {
             var batchSources = target.getSources().stream()
                     .filter(js -> js.isTableKnown())
                     .filter(js -> js.getInput().isBatchMode())

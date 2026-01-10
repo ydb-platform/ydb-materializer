@@ -10,7 +10,7 @@ import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -23,13 +23,13 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysFilter.class);
 
-    private final MvViewPart target;
+    private final MvViewExpr target;
     private final MvKeyInfo topmostKey;
     private final MvRowFilter filter;
     private final String sqlSelect;
 
-    public ActionKeysFilter(MvActionContext context, MvViewPart target,
-            MvViewPart request, MvRowFilter filter) {
+    public ActionKeysFilter(MvActionContext context, MvViewExpr target,
+            MvViewExpr request, MvRowFilter filter) {
         super(context);
         this.target = target;
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();

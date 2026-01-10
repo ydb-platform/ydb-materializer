@@ -63,7 +63,7 @@ public class MvInput implements MvSqlPosHolder {
         return Collections.unmodifiableList(references);
     }
 
-    public void addReference(MvViewPart part, MvJoinSource js) {
+    public void addReference(MvViewExpr part, MvJoinSource js) {
         references.add(new Reference(part, js));
     }
 
@@ -74,15 +74,15 @@ public class MvInput implements MvSqlPosHolder {
 
     public static class Reference {
 
-        private final MvViewPart part;
+        private final MvViewExpr part;
         private final MvJoinSource source;
 
-        public Reference(MvViewPart part, MvJoinSource source) {
+        public Reference(MvViewExpr part, MvJoinSource source) {
             this.part = part;
             this.source = source;
         }
 
-        public MvViewPart getPart() {
+        public MvViewExpr getPart() {
             return part;
         }
 

@@ -13,7 +13,7 @@ import tech.ydb.table.Session;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvIssue;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.model.MvView;
 
 /**
@@ -36,14 +36,14 @@ public class MvValidateSql {
             return false;
         }
         for (MvView mv : context.getViews().values()) {
-            for (MvViewPart mt : mv.getParts().values()) {
+            for (MvViewExpr mt : mv.getParts().values()) {
                 validateViewPart(mt);
             }
         }
         return context.isValid();
     }
 
-    private boolean validateViewPart(MvViewPart part) {
+    private boolean validateViewPart(MvViewExpr part) {
         MvSqlGen sg = new MvSqlGen(part);
         // fast track - attempt to check the whole SELECT, if valid - stop
         String currentSql = sg.makeSelect();
@@ -82,7 +82,7 @@ public class MvValidateSql {
         return false;
     }
 
-    private void validateFilter(MvViewPart target, MvSqlGen sg,
+    private void validateFilter(MvViewExpr target, MvSqlGen sg,
             List<MvColumn> exprColumns, HashSet<String> knownIssues) {
         // safe placeholders for all columns
         maskAllExcept(null, exprColumns, sg);
@@ -94,7 +94,7 @@ public class MvValidateSql {
         }
     }
 
-    private void validateColumn(MvViewPart target, MvColumn current, MvSqlGen sg,
+    private void validateColumn(MvViewExpr target, MvColumn current, MvSqlGen sg,
             List<MvColumn> exprColumns, HashSet<String> knownIssues) {
         maskAllExcept(current, exprColumns, sg);
         if (target.getFilter() != null) {
@@ -126,7 +126,7 @@ public class MvValidateSql {
         return status.toString();
     }
 
-    private List<MvColumn> collectExpressionColumns(MvViewPart target) {
+    private List<MvColumn> collectExpressionColumns(MvViewExpr target) {
         List<MvColumn> output = new ArrayList<>();
         for (MvColumn c : target.getColumns()) {
             if (c.isComputation() && !c.getComputation().isLiteral()) {

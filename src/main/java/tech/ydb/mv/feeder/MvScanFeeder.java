@@ -15,7 +15,7 @@ import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -28,7 +28,7 @@ public class MvScanFeeder {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanFeeder.class);
 
     private final MvJobContext job;
-    private final MvViewPart target;
+    private final MvViewExpr target;
     private final MvKeyInfo keyInfo;
     private final AtomicReference<MvScanContext> context;
     private final MvSink sink;
@@ -42,7 +42,7 @@ public class MvScanFeeder {
     public MvScanFeeder(
             MvJobContext job,
             MvSink sink,
-            MvViewPart target,
+            MvViewExpr target,
             MvScanSettings settings,
             MvApplyActionList actions,
             MvScanCompletion completion

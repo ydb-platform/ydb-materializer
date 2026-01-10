@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import tech.ydb.mv.model.MvHandler;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
@@ -54,7 +54,7 @@ public class MvChangesMultiDict {
         return filters;
     }
 
-    public MvRowFilter toFilter(MvHandler handler, MvViewPart target) {
+    public MvRowFilter toFilter(MvHandler handler, MvViewExpr target) {
         // table alias -> keys to be checked
         var dictChecks = new HashMap<String, Set<MvKey>>();
         // table alias -> used columns
@@ -88,7 +88,7 @@ public class MvChangesMultiDict {
         for (var tableAlias : dictChecks.keySet()) {
             pathFilter.add(target.getSourceByAlias(tableAlias));
         }
-        MvViewPart transformation = new MvPathGenerator(target).applyFilter(pathFilter);
+        MvViewExpr transformation = new MvPathGenerator(target).applyFilter(pathFilter);
         if (transformation == null) {
             LOG.error("DICTIONARY CHANGES LOST. Unable to build transformation "
                     + "for target {}, filter {}", target, pathFilter);
@@ -117,7 +117,7 @@ public class MvChangesMultiDict {
      * @param target
      * @return the column usage map
      */
-    public static Map<String, Set<String>> getColumnUsage(MvViewPart target) {
+    public static Map<String, Set<String>> getColumnUsage(MvViewExpr target) {
         HashMap<String, Set<String>> columnUsage = new HashMap<>();
         for (var js : target.getSources()) {
             for (var cond : js.getConditions()) {

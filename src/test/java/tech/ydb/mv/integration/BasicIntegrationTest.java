@@ -11,7 +11,7 @@ import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -93,7 +93,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 wc.printSql(System.out);
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
-                MvViewPart mainTarget = wc.getMetadata().getHandlers()
+                MvViewExpr mainTarget = wc.getMetadata().getHandlers()
                         .get("handler1").getView("test1/mv1").getParts()
                         .values().iterator().next();
                 String sqlQuery;

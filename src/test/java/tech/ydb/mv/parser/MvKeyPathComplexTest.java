@@ -11,7 +11,7 @@ import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Complex test class for MvKeyPathGenerator
@@ -74,7 +74,7 @@ public class MvKeyPathComplexTest {
         sourceF.getConditions().add(conditionEF2);
 
         // Create target with multi-column join
-        MvViewPart multiColTarget = new MvViewPart("multi_col_target");
+        MvViewExpr multiColTarget = new MvViewExpr("multi_col_target");
         multiColTarget.getSources().add(sourceE);
         multiColTarget.getSources().add(sourceF);
 
@@ -94,7 +94,7 @@ public class MvKeyPathComplexTest {
         multiColTarget.getColumns().add(columnF);
 
         // Test transformation from F to E
-        MvViewPart result = new MvPathGenerator(multiColTarget).extractKeysReverse(sourceF);
+        MvViewExpr result = new MvPathGenerator(multiColTarget).extractKeysReverse(sourceF);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -170,7 +170,7 @@ public class MvKeyPathComplexTest {
         sourceH.setTableInfo(tableH);
 
         // Create target with literal conditions
-        MvViewPart literalTarget = new MvViewPart("literal_target");
+        MvViewExpr literalTarget = new MvViewExpr("literal_target");
         literalTarget.getSources().add(sourceG);
         literalTarget.getSources().add(sourceI);
         literalTarget.getSources().add(sourceH);
@@ -233,7 +233,7 @@ public class MvKeyPathComplexTest {
 
 
         // Test transformation from H to G (should go H -> I -> G)
-        MvViewPart result = new MvPathGenerator(literalTarget).extractKeysReverse(sourceH);
+        MvViewExpr result = new MvPathGenerator(literalTarget).extractKeysReverse(sourceH);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -308,7 +308,7 @@ public class MvKeyPathComplexTest {
         sourceK.setTableInfo(tableK);
 
         // Create target
-        MvViewPart notReferencedTarget = new MvViewPart("not_referenced_target");
+        MvViewExpr notReferencedTarget = new MvViewExpr("not_referenced_target");
         notReferencedTarget.getSources().add(sourceJ);
         notReferencedTarget.getSources().add(sourceK);
 
@@ -338,7 +338,7 @@ public class MvKeyPathComplexTest {
         notReferencedTarget.getColumns().add(columnK);
 
         // Test transformation from K to J
-        MvViewPart result = new MvPathGenerator(notReferencedTarget).extractKeysReverse(sourceK);
+        MvViewExpr result = new MvPathGenerator(notReferencedTarget).extractKeysReverse(sourceK);
         assertNotNull(result);
 
         // The generator optimizes this case to use only K with the foreign key mapping
@@ -439,7 +439,7 @@ public class MvKeyPathComplexTest {
         sourceZ.getConditions().add(conditionXZ);
 
         // Create target
-        MvViewPart crossTarget = new MvViewPart("cross_target");
+        MvViewExpr crossTarget = new MvViewExpr("cross_target");
         crossTarget.getSources().add(sourceX);
         crossTarget.getSources().add(sourceY);
         crossTarget.getSources().add(sourceZ);
@@ -467,7 +467,7 @@ public class MvKeyPathComplexTest {
         crossTarget.getColumns().add(columnZ);
 
         // Test transformation from Z to X (should go Z -> Y -> X)
-        MvViewPart result = new MvPathGenerator(crossTarget).extractKeysReverse(sourceZ);
+        MvViewExpr result = new MvPathGenerator(crossTarget).extractKeysReverse(sourceZ);
         assertNotNull(result);
 
         if (PRINT_SQL) {

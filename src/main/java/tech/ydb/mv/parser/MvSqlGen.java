@@ -14,7 +14,7 @@ import tech.ydb.table.values.Type;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
@@ -35,10 +35,10 @@ public class MvSqlGen implements AutoCloseable {
     public static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
     public static final String EOL = System.getProperty("line.separator");
 
-    private final MvViewPart target;
+    private final MvViewExpr target;
     private final HashSet<MvComputation> excludedComputations;
 
-    public MvSqlGen(MvViewPart target) {
+    public MvSqlGen(MvViewExpr target) {
         if (target == null) {
             throw new NullPointerException("target argument cannot be null");
         }
@@ -46,7 +46,7 @@ public class MvSqlGen implements AutoCloseable {
         this.excludedComputations = new HashSet<>();
     }
 
-    public MvViewPart getTarget() {
+    public MvViewExpr getTarget() {
         return target;
     }
 
@@ -560,7 +560,7 @@ public class MvSqlGen implements AutoCloseable {
         return output;
     }
 
-    public static StructType toKeyType(MvViewPart target) {
+    public static StructType toKeyType(MvViewExpr target) {
         if (target == null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException();
         }
@@ -575,7 +575,7 @@ public class MvSqlGen implements AutoCloseable {
         return StructType.of(m);
     }
 
-    public static StructType toRowType(MvViewPart target) {
+    public static StructType toRowType(MvViewExpr target) {
         if (target == null) {
             throw new NullPointerException();
         }

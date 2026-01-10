@@ -14,7 +14,7 @@ public class MvView implements MvSqlPosHolder {
     // fields grabbed from the SQL statement
     private final String viewName;
     private final MvSqlPos sqlPos;
-    private final HashMap<String, MvViewPart> parts = new HashMap<>();
+    private final HashMap<String, MvViewExpr> parts = new HashMap<>();
     // fields computed later or added based on the database metadata
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private MvTableInfo tableInfo;
@@ -41,7 +41,7 @@ public class MvView implements MvSqlPosHolder {
         this.tableInfo = tableInfo;
     }
 
-    public HashMap<String, MvViewPart> getParts() {
+    public HashMap<String, MvViewExpr> getParts() {
         return parts;
     }
 
@@ -49,12 +49,12 @@ public class MvView implements MvSqlPosHolder {
         return columns;
     }
 
-    public MvViewPart addPart(MvViewPart t) {
+    public MvViewExpr addPart(MvViewExpr t) {
         return parts.put(t.getAlias(), t);
     }
 
     public void updateUsedColumns() {
-        for (MvViewPart t : parts.values()) {
+        for (MvViewExpr t : parts.values()) {
             t.updateUsedColumns();
         }
     }
@@ -70,6 +70,10 @@ public class MvView implements MvSqlPosHolder {
         if (!found) {
             columns.add(column);
         }
+    }
+
+    public String[] getKeyColumnNames() {
+        return tableInfo.getKey().toArray(String[]::new);
     }
 
     @Override

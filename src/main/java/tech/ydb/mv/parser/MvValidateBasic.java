@@ -11,7 +11,7 @@ import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.model.MvView;
 
 /**
@@ -65,7 +65,7 @@ public class MvValidateBasic {
 
     private void checkViews() {
         for (MvView view : context.getViews().values()) {
-            for (MvViewPart mt : view.getParts().values()) {
+            for (MvViewExpr mt : view.getParts().values()) {
                 checkViewPart(mt);
                 checkJoinIndexes(mt);
                 checkKeyExtractionIndexes(mt);
@@ -73,7 +73,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkViewPart(MvViewPart mt) {
+    private void checkViewPart(MvViewExpr mt) {
         if (mt.getTableInfo() == null) {
             context.addIssue(new MvIssue.MissingTargetTable(mt));
         }
@@ -110,7 +110,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetFilter(MvViewPart mt, MvComputation filter) {
+    private void checkTargetFilter(MvViewExpr mt, MvComputation filter) {
         for (var src : filter.getSources()) {
             if (src.getReference() != null
                     && src.getReference().getTableInfo() != null) {
@@ -135,7 +135,7 @@ public class MvValidateBasic {
      * @param mt
      * @param src
      */
-    private void checkJoinConditions(MvViewPart mt, MvJoinSource src) {
+    private void checkJoinConditions(MvViewExpr mt, MvJoinSource src) {
         String srcAlias = src.getTableAlias();
         for (MvJoinCondition cond : src.getConditions()) {
             if ((cond.getFirstAlias() == null && cond.getFirstLiteral() == null)
@@ -157,7 +157,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkJoinColumns(MvViewPart mt, MvJoinCondition cond) {
+    private void checkJoinColumns(MvViewExpr mt, MvJoinCondition cond) {
         if (cond.getFirstAlias() != null) {
             MvJoinSource ref = mt.getSourceByAlias(cond.getFirstAlias());
             if (ref != null && ref.getTableInfo() != null) {
@@ -178,7 +178,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetOutputColumn(MvViewPart mt, MvColumn column) {
+    private void checkTargetOutputColumn(MvViewExpr mt, MvColumn column) {
         if (column.isComputation()) {
             MvComputation comp = column.getComputation();
             for (var src : comp.getSources()) {
@@ -207,7 +207,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkJoinIndexes(MvViewPart mt) {
+    private void checkJoinIndexes(MvViewExpr mt) {
         // Check each join source for missing indexes on join columns
         for (MvJoinSource src : mt.getSources()) {
             // Skip MAIN source - we only check right parts of joins (INNER, LEFT)
@@ -232,7 +232,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkKeyExtractionIndexes(MvViewPart mt) {
+    private void checkKeyExtractionIndexes(MvViewExpr mt) {
         MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
@@ -242,7 +242,7 @@ public class MvValidateBasic {
             if (js.getInput().isBatchMode()) {
                 continue;
             }
-            MvViewPart temp = pathGenerator.extractKeysReverse(js);
+            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
             if (temp == null) {
                 context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
             } else {
@@ -283,7 +283,7 @@ public class MvValidateBasic {
     private void checkInputsVsTargets() {
         for (MvHandler mh : context.getHandlers().values()) {
             for (MvView mv : mh.getViews().values()) {
-                for (MvViewPart mt : mv.getParts().values()) {
+                for (MvViewExpr mt : mv.getParts().values()) {
                     checkTargetVsInputs(mh, mt);
                 }
             }
@@ -293,7 +293,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetVsInputs(MvHandler mh, MvViewPart mt) {
+    private void checkTargetVsInputs(MvHandler mh, MvViewExpr mt) {
         for (var joinSource : mt.getSources()) {
             if (mh.getInput(joinSource.getTableName()) == null) {
                 context.addIssue(new MvIssue.MissingInput(mh, mt, joinSource));

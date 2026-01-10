@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * @author zinal
  */
-public class MvViewPart implements MvSqlPosHolder {
+public class MvViewExpr implements MvSqlPosHolder {
 
     public static final String ALIAS_DEFAULT = "default";
 
@@ -26,21 +26,21 @@ public class MvViewPart implements MvSqlPosHolder {
     // fields computed later or added based on the database metadata
     private MvUsedColumns usedColumns;
 
-    public MvViewPart(MvView view, String alias, MvSqlPos sqlPos) {
+    public MvViewExpr(MvView view, String alias, MvSqlPos sqlPos) {
         this.view = view;
         this.alias = alias;
         this.sqlPos = sqlPos;
     }
 
-    public MvViewPart(MvView view, String alias) {
+    public MvViewExpr(MvView view, String alias) {
         this(view, alias, MvSqlPos.EMPTY);
     }
 
-    public MvViewPart(MvView view) {
+    public MvViewExpr(MvView view) {
         this(view, ALIAS_DEFAULT, MvSqlPos.EMPTY);
     }
 
-    public MvViewPart(String name) {
+    public MvViewExpr(String name) {
         this(new MvView(name, MvSqlPos.EMPTY));
         this.view.addPart(this);
     }
@@ -104,6 +104,7 @@ public class MvViewPart implements MvSqlPosHolder {
         return null;
     }
 
+    @Deprecated
     public MvJoinSource getTopMostSource() {
         if (sources.isEmpty()) {
             throw new IllegalStateException("No join sources defined in target "
@@ -212,7 +213,7 @@ public class MvViewPart implements MvSqlPosHolder {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final MvViewPart other = (MvViewPart) obj;
+        final MvViewExpr other = (MvViewExpr) obj;
         if (!Objects.equals(this.getName(), other.getName())) {
             return false;
         }

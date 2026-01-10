@@ -5,22 +5,22 @@ import java.util.List;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
- * Generic code to obtain the keys to the main table via another join input.
+ * Generic code to obtain the keys to the target table via some join input.
  *
  * @author zinal
  */
 abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
-    protected final MvViewPart target;
+    protected final MvViewExpr target;
     protected final String inputTableName;
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
 
-    public ActionKeysAbstract(MvViewPart target, MvJoinSource src,
-            MvViewPart transformation, MvActionContext context) {
+    public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
+            MvViewExpr transformation, MvActionContext context) {
         super(context);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {

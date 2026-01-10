@@ -7,7 +7,7 @@ import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvViewPart;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  *
@@ -22,13 +22,13 @@ public class MvSqlPrinter {
     }
 
     public void write(PrintStream pw) {
-        for (MvViewPart mt : sortTargets()) {
+        for (MvViewExpr mt : sortTargets()) {
             write(pw, mt);
         }
     }
 
-    private ArrayList<MvViewPart> sortTargets() {
-        ArrayList<MvViewPart> output = new ArrayList<>();
+    private ArrayList<MvViewExpr> sortTargets() {
+        ArrayList<MvViewExpr> output = new ArrayList<>();
         for (var mv : ctx.getViews().values()) {
             output.addAll(mv.getParts().values());
         }
@@ -36,7 +36,7 @@ public class MvSqlPrinter {
         return output;
     }
 
-    private int compareTargets(MvViewPart x, MvViewPart y) {
+    private int compareTargets(MvViewExpr x, MvViewExpr y) {
         int cmp = x.getName().compareToIgnoreCase(y.getName());
         if (cmp == 0) {
             cmp = x.getAlias().compareToIgnoreCase(y.getAlias());
@@ -44,7 +44,7 @@ public class MvSqlPrinter {
         return cmp;
     }
 
-    public void write(PrintStream pw, MvViewPart mt) {
+    public void write(PrintStream pw, MvViewExpr mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");
         pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
@@ -88,7 +88,7 @@ public class MvSqlPrinter {
                 // Key extraction not needed in batch mode
                 continue;
             }
-            MvViewPart temp = pathGenerator.extractKeysReverse(js);
+            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
             if (temp != null) {

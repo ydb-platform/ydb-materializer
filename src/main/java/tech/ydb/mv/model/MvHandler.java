@@ -48,7 +48,7 @@ public class MvHandler implements MvSqlPosHolder {
         return views.get(name);
     }
 
-    public MvViewPart getPart(String name, String alias) {
+    public MvViewExpr getPart(String name, String alias) {
         MvView v = getView(name);
         if (v == null) {
             return null;
@@ -56,7 +56,7 @@ public class MvHandler implements MvSqlPosHolder {
         return v.getParts().get(alias);
     }
 
-    public boolean containsPart(MvViewPart part) {
+    public boolean containsPart(MvViewExpr part) {
         if (part == null) {
             return false;
         }
