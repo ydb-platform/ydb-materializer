@@ -1,6 +1,7 @@
 package tech.ydb.mv.model;
 
 import java.util.Properties;
+
 import tech.ydb.mv.MvConfig;
 
 /**
@@ -30,12 +31,9 @@ public class MvDictionarySettings extends MvScanSettings {
 
     public MvDictionarySettings(Properties props) {
         super(props);
-        String v = props.getProperty(MvConfig.CONF_BATCH_UPSERT, "500");
-        this.upsertBatchSize = Integer.parseInt(v);
-        v = props.getProperty(MvConfig.CONF_CDC_THREADS, "4");
-        this.cdcReaderThreads = Integer.parseInt(v);
-        v = props.getProperty(MvConfig.CONF_MAX_ROW_CHANGES, "100000");
-        this.maxChangeRowsScanned = Integer.parseInt(v);
+        this.upsertBatchSize = MvConfig.parseInt(props, MvConfig.CONF_BATCH_UPSERT, 500);
+        this.cdcReaderThreads = MvConfig.parseInt(props, MvConfig.CONF_CDC_THREADS, 4);
+        this.maxChangeRowsScanned = MvConfig.parseInt(props, MvConfig.CONF_MAX_ROW_CHANGES, 100000);
     }
 
     public int getUpsertBatchSize() {

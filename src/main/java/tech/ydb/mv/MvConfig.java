@@ -1,5 +1,6 @@
 package tech.ydb.mv;
 
+import java.util.Properties;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -150,6 +151,40 @@ public class MvConfig {
      * Coordination node path.
      */
     public static final String DEF_COORD_PATH = "mv/coordination";
+
+    public static int parseInt(Properties props, String propName, int defval) {
+        String v = props.getProperty(propName);
+        if (v == null || v.length() == 0) {
+            return defval;
+        }
+        return parseInt(v, propName);
+    }
+
+    public static int parseInt(String value, String comment) {
+        try {
+            return Integer.parseInt(value);
+        } catch (IllegalArgumentException iae) {
+            throw new RuntimeException("[" + comment + "]"
+                    + "Failed to parse integer " + value, iae);
+        }
+    }
+
+    public static long parseLong(Properties props, String propName, long defval) {
+        String v = props.getProperty(propName);
+        if (v == null || v.length() == 0) {
+            return defval;
+        }
+        return parseLong(v, propName);
+    }
+
+    public static long parseLong(String value, String comment) {
+        try {
+            return Long.parseLong(value);
+        } catch (IllegalArgumentException iae) {
+            throw new RuntimeException("[" + comment + "]"
+                    + "Failed to parse long " + value, iae);
+        }
+    }
 
     public static Mode parseMode(String v) {
         if (v == null) {

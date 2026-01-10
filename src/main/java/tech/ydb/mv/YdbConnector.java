@@ -262,12 +262,20 @@ public class YdbConnector implements AutoCloseable {
 
     public int getProperty(String name, int defval) {
         String v = config.properties.getProperty(name, String.valueOf(defval));
-        return Integer.parseInt(v);
+        try {
+            return Integer.parseInt(v);
+        } catch (IllegalArgumentException iae) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as integer: " + v, iae);
+        }
     }
 
     public long getProperty(String name, long defval) {
         String v = config.properties.getProperty(name, String.valueOf(defval));
-        return Long.parseLong(v);
+        try {
+            return Long.parseLong(v);
+        } catch (IllegalArgumentException iae) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as long: " + v, iae);
+        }
     }
 
     public static String safe(String value) {
@@ -310,18 +318,42 @@ public class YdbConnector implements AutoCloseable {
             }
             this.prefix = prefix;
             this.connectionString = props.getProperty(prefix + "url");
-            this.authMode = AuthMode.valueOf(props.getProperty(prefix + "auth.mode", "NONE"));
+            this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
             this.saKeyFile = props.getProperty(prefix + "auth.sakey");
             this.staticLogin = props.getProperty(prefix + "auth.username");
             this.staticPassword = props.getProperty(prefix + "auth.password");
             this.tlsCertificateFile = props.getProperty(prefix + "cafile");
             this.preferLocalDc = Boolean.parseBoolean(
                     props.getProperty(prefix + "preferLocalDc", "false"));
+            this.poolSize = parseInt(props.getProperty(prefix + "poolSize"), this.poolSize, "poolSize");
             String spool = props.getProperty(prefix + "poolSize");
             if (spool != null && spool.length() > 0) {
                 poolSize = Integer.parseInt(spool);
             }
             this.properties.putAll(props);
+        }
+
+        private static AuthMode parseAuthMode(String value) {
+            if (value == null || value.length() == 0) {
+                return AuthMode.NONE;
+            }
+            try {
+                return AuthMode.valueOf(value);
+            } catch (IllegalArgumentException iae) {
+                throw new RuntimeException("Unsupported authmode: " + value, iae);
+            }
+        }
+
+        private static int parseInt(String value, int defval, String comment) {
+            if (value == null || value.length() == 0) {
+                return defval;
+            }
+            try {
+                return Integer.parseInt(value);
+            } catch (IllegalArgumentException iae) {
+                throw new RuntimeException("Failed to parse " + comment
+                        + " as integer, input value: " + value);
+            }
         }
 
         /**
