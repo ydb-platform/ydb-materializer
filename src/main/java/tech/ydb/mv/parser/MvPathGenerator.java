@@ -37,14 +37,14 @@ public class MvPathGenerator {
     private final MvTableInfo topMostTable;
     private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
 
-    public MvPathGenerator(MvViewExpr target) {
-        if (target == null || target.getSources().isEmpty()) {
-            throw new IllegalArgumentException("Target is not valid for generator");
+    public MvPathGenerator(MvViewExpr expr) {
+        if (expr == null || expr.getSources().isEmpty()) {
+            throw new IllegalArgumentException("Input expression is not valid for path generator");
         }
-        this.expr = target;
-        this.topMostSource = target.getTopMostSource();
+        this.expr = expr;
+        this.topMostSource = expr.getTopMostSource();
         this.topMostTable = this.topMostSource.getTableInfo();
-        this.adjacencyMap = buildAdjacencyMap(target);
+        this.adjacencyMap = buildAdjacencyMap(expr);
     }
 
     public MvViewExpr getExpr() {
@@ -85,68 +85,6 @@ public class MvPathGenerator {
             return null; // No path found
         }
         return createTarget(path, path.get(0), topMostTable.getKey());
-    }
-
-    /**
-     * Generates a transformation target to obtain specific fields from a target
-     * table, given the primary key of the top-most table.
-     *
-     * @param point The alias of the table to retrieve fields from
-     * @param fieldNames The names of the fields to retrieve
-     * @return A new MvTarget defining the minimal transformation, or null if no
-     * path exists
-     * @throws IllegalArgumentException if parameters are invalid
-     */
-    public MvViewExpr extractFields(MvJoinSource point, List<String> fieldNames) {
-        if (point == null || fieldNames == null || fieldNames.isEmpty()) {
-            throw new IllegalArgumentException("Target table alias and field names must be provided");
-        }
-
-        // Validate that all requested fields exist in the target table
-        MvTableInfo targetTableInfo = point.getTableInfo();
-        if (targetTableInfo == null) {
-            throw new IllegalArgumentException("Table info not available for target table '" + point + "'");
-        }
-
-        for (String fieldName : fieldNames) {
-            if (!targetTableInfo.getColumns().containsKey(fieldName)) {
-                throw new IllegalArgumentException("Field '" + fieldName + "' not found in table '" + point + "'");
-            }
-        }
-
-        // If target source is the top-most source, create a simple target
-        if (point == topMostSource) {
-            return createSimpleTarget(point, fieldNames);
-        }
-
-        // Check if we can directly map the fields without joins
-        if (canDirectlyMapFields(point, fieldNames)) {
-            return createDirectTarget(point, fieldNames, false);
-        }
-
-        // Find path from top-most source to target source
-        List<MvJoinSource> path = findPath(topMostSource, point);
-        if (path == null || path.isEmpty()) {
-            return null; // No path found
-        }
-
-        return createTarget(path, point, fieldNames);
-    }
-
-    /**
-     * Generates a transformation target to obtain all fields from a target
-     * table, given the primary key of the top-most table.
-     *
-     * @param point The alias of the table to retrieve fields from
-     * @return A new MvTarget defining the minimal transformation, or null if no
-     * path exists
-     * @throws IllegalArgumentException if parameters are invalid
-     */
-    public MvViewExpr extractFields(MvJoinSource point) {
-        if (point == null) {
-            throw new IllegalArgumentException("Target table alias must be provided");
-        }
-        return extractFields(point, new ArrayList<>(point.getTableInfo().getColumns().keySet()));
     }
 
     /**

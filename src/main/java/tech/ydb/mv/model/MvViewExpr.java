@@ -104,7 +104,6 @@ public class MvViewExpr implements MvSqlPosHolder {
         return null;
     }
 
-    @Deprecated
     public MvJoinSource getTopMostSource() {
         if (sources.isEmpty()) {
             throw new IllegalStateException("No join sources defined in target "
