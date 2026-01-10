@@ -264,8 +264,8 @@ public class YdbConnector implements AutoCloseable {
         String v = config.properties.getProperty(name, String.valueOf(defval));
         try {
             return Integer.parseInt(v);
-        } catch (IllegalArgumentException iae) {
-            throw new RuntimeException("[" + name + "]" + " Cannot parse as integer: " + v, iae);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as integer: " + v, nfe);
         }
     }
 
@@ -273,8 +273,8 @@ public class YdbConnector implements AutoCloseable {
         String v = config.properties.getProperty(name, String.valueOf(defval));
         try {
             return Long.parseLong(v);
-        } catch (IllegalArgumentException iae) {
-            throw new RuntimeException("[" + name + "]" + " Cannot parse as long: " + v, iae);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as long: " + v, nfe);
         }
     }
 
@@ -326,10 +326,6 @@ public class YdbConnector implements AutoCloseable {
             this.preferLocalDc = Boolean.parseBoolean(
                     props.getProperty(prefix + "preferLocalDc", "false"));
             this.poolSize = parseInt(props.getProperty(prefix + "poolSize"), this.poolSize, "poolSize");
-            String spool = props.getProperty(prefix + "poolSize");
-            if (spool != null && spool.length() > 0) {
-                poolSize = Integer.parseInt(spool);
-            }
             this.properties.putAll(props);
         }
 
@@ -350,7 +346,7 @@ public class YdbConnector implements AutoCloseable {
             }
             try {
                 return Integer.parseInt(value);
-            } catch (IllegalArgumentException iae) {
+            } catch (NumberFormatException nfe) {
                 throw new RuntimeException("Failed to parse " + comment
                         + " as integer, input value: " + value);
             }

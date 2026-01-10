@@ -89,7 +89,8 @@ public class App {
         theRunner.stop();
         theCoord.stop();
         api.shutdown();
-        conn.close();
+        // YDB connection should not be closed here,
+        // as it is managed on the upper level.
     }
 
 }

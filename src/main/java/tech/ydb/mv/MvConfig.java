@@ -163,9 +163,9 @@ public class MvConfig {
     public static int parseInt(String value, String comment) {
         try {
             return Integer.parseInt(value);
-        } catch (IllegalArgumentException iae) {
+        } catch (NumberFormatException nfe) {
             throw new RuntimeException("[" + comment + "]"
-                    + "Failed to parse integer " + value, iae);
+                    + "Failed to parse integer " + value, nfe);
         }
     }
 
@@ -180,9 +180,9 @@ public class MvConfig {
     public static long parseLong(String value, String comment) {
         try {
             return Long.parseLong(value);
-        } catch (IllegalArgumentException iae) {
+        } catch (NumberFormatException nfe) {
             throw new RuntimeException("[" + comment + "]"
-                    + "Failed to parse long " + value, iae);
+                    + "Failed to parse long " + value, nfe);
         }
     }
 
