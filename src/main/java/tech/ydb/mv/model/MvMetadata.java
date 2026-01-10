@@ -92,7 +92,7 @@ public class MvMetadata {
      * @return true, if no errors detected, false otherwise
      */
     public boolean validate(YdbConnector conn) {
-        if (! isValid()) {
+        if (!isValid()) {
             return false;
         }
         boolean valid = new MvValidateBasic(this).validate();
@@ -103,26 +103,26 @@ public class MvMetadata {
     }
 
     /**
-     * Load the missing parts of metadata and perform validation.
-     * Table, column and changefeed information is loaded using the helper object passed.
+     * Load the missing parts of metadata and perform validation. Table, column
+     * and changefeed information is loaded using the helper object passed.
      *
      * @param describer Helper for metadata retrieval
      * @return true, if no errors detected, false otherwise
      */
     public boolean linkAndValidate(MvDescriber describer) {
-        if (! isValid()) {
+        if (!isValid()) {
             return false;
         }
         tables.clear();
         for (String tabname : collectTables()) {
             MvTableInfo ti = describer.describeTable(tabname);
-            if (ti!=null) {
+            if (ti != null) {
                 tables.put(tabname, ti);
             }
         }
         linkTables();
         linkColumns();
-        if (! validate(describer.getYdb()) ) {
+        if (!validate(describer.getYdb())) {
             return false;
         }
         views.values().forEach(target -> target.updateUsedColumns());
@@ -134,9 +134,9 @@ public class MvMetadata {
         for (MvView v : views.values()) {
             // target table
             ret.add(v.getName());
-            for (MvTarget t : v.getTargets().values()) {
+            for (var t : v.getParts().values()) {
                 // source tables
-                for (MvJoinSource r : t.getSources()) {
+                for (var r : t.getSources()) {
                     ret.add(r.getTableName());
                 }
             }
@@ -151,10 +151,10 @@ public class MvMetadata {
     }
 
     private void linkTables() {
-        for (MvView v : views.values()) {
+        for (var v : views.values()) {
             v.setTableInfo(tables.get(v.getName()));
-            for (MvTarget t : v.getTargets().values()) {
-                for (MvJoinSource js : t.getSources()) {
+            for (var t : v.getParts().values()) {
+                for (var js : t.getSources()) {
                     js.setTableInfo(tables.get(js.getTableName()));
                 }
             }
@@ -167,13 +167,13 @@ public class MvMetadata {
     }
 
     private void linkColumns() {
-        for (MvView v : views.values()) {
+        for (var v : views.values()) {
             MvTableInfo ti = v.getTableInfo();
-            if (ti==null) {
+            if (ti == null) {
                 continue;
             }
-            for (MvTarget t : v.getTargets().values()) {
-                for (MvColumn column : t.getColumns()) {
+            for (var t : v.getParts().values()) {
+                for (var column : t.getColumns()) {
                     column.setType(ti.getColumns().get(column.getName()));
                     v.addColumnIf(column);
                 }
@@ -188,7 +188,7 @@ public class MvMetadata {
      * @return MvMetadata instance limited to the specified handler only
      */
     public MvMetadata subset(MvHandler handler) {
-        if (! isValid()) {
+        if (!isValid()) {
             throw new IllegalStateException("Cannot subset a non-valid metadata");
         }
         if (handler != handlers.get(handler.getName())) {

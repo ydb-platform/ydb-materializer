@@ -124,7 +124,7 @@ public class MvJobController implements AutoCloseable {
                     + "` for handler `" + context.getHandler().getName() + "`");
         }
         int counter = 0;
-        for (var target : view.getTargets().values()) {
+        for (var target : view.getParts().values()) {
             if (context.startScan(target, settings, applyManager)) {
                 counter += 1;
             }
@@ -138,7 +138,7 @@ public class MvJobController implements AutoCloseable {
             return false;
         }
         int counter = 0;
-        for (var target : view.getTargets().values()) {
+        for (var target : view.getParts().values()) {
             if (context.stopScan(target)) {
                 counter += 1;
             }

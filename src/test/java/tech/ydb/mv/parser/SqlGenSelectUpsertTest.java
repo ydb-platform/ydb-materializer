@@ -26,7 +26,7 @@ public class SqlGenSelectUpsertTest {
 
         // Get the target and add MvTableInfo instances
         var view = mc.getViews().values().iterator().next();
-        var target = view.getTargets().values().iterator().next();
+        var target = view.getParts().values().iterator().next();
         addTableInfoToTarget(target);
 
         // Generate SQL
@@ -53,7 +53,7 @@ public class SqlGenSelectUpsertTest {
 
         // Get the target and add MvTableInfo instances
         var view = mc.getViews().values().iterator().next();
-        var target = view.getTargets().values().iterator().next();
+        var target = view.getParts().values().iterator().next();
         addTableInfoToTarget2(target);
 
         // Generate SQL
@@ -69,7 +69,7 @@ public class SqlGenSelectUpsertTest {
         validateGeneratedSelectSql2(generatedSql, target);
     }
 
-    private void addTableInfoToTarget(tech.ydb.mv.model.MvTarget target) {
+    private void addTableInfoToTarget(tech.ydb.mv.model.MvViewPart target) {
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("main_table")
         );
@@ -84,7 +84,7 @@ public class SqlGenSelectUpsertTest {
         );
     }
 
-    private void addTableInfoToTarget2(tech.ydb.mv.model.MvTarget target) {
+    private void addTableInfoToTarget2(tech.ydb.mv.model.MvViewPart target) {
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("schema3/main_table")
         );
@@ -99,7 +99,7 @@ public class SqlGenSelectUpsertTest {
         );
     }
 
-    private void validateGeneratedSelectSql1(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateGeneratedSelectSql1(String sql, tech.ydb.mv.model.MvViewPart target) {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
@@ -185,7 +185,7 @@ public class SqlGenSelectUpsertTest {
         }
     }
 
-    private void validateGeneratedSelectSql2(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateGeneratedSelectSql2(String sql, tech.ydb.mv.model.MvViewPart target) {
         // Check for DECLARE statement
         Assertions.assertTrue(sql.startsWith("DECLARE $"),
                 "SQL should start with DECLARE statement");
@@ -327,7 +327,7 @@ public class SqlGenSelectUpsertTest {
                 "SQL should contain sub3.c5 reference");
     }
 
-    private void validateConstantsUsage(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateConstantsUsage(String sql, tech.ydb.mv.model.MvViewPart target) {
         // Check that all literals are properly formatted in the constants subquery
         for (var literal : target.getLiterals()) {
             String value = literal.getValue();

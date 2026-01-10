@@ -7,7 +7,7 @@ import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 
 /**
  *
@@ -22,21 +22,21 @@ public class MvSqlPrinter {
     }
 
     public void write(PrintStream pw) {
-        for (MvTarget mt : sortTargets()) {
+        for (MvViewPart mt : sortTargets()) {
             write(pw, mt);
         }
     }
 
-    private ArrayList<MvTarget> sortTargets() {
-        ArrayList<MvTarget> output = new ArrayList<>();
+    private ArrayList<MvViewPart> sortTargets() {
+        ArrayList<MvViewPart> output = new ArrayList<>();
         for (var mv : ctx.getViews().values()) {
-            output.addAll(mv.getTargets().values());
+            output.addAll(mv.getParts().values());
         }
         output.sort((x, y) -> compareTargets(x, y));
         return output;
     }
 
-    private int compareTargets(MvTarget x, MvTarget y) {
+    private int compareTargets(MvViewPart x, MvViewPart y) {
         int cmp = x.getName().compareToIgnoreCase(y.getName());
         if (cmp == 0) {
             cmp = x.getAlias().compareToIgnoreCase(y.getAlias());
@@ -44,7 +44,7 @@ public class MvSqlPrinter {
         return cmp;
     }
 
-    public void write(PrintStream pw, MvTarget mt) {
+    public void write(PrintStream pw, MvViewPart mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");
         pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
@@ -88,7 +88,7 @@ public class MvSqlPrinter {
                 // Key extraction not needed in batch mode
                 continue;
             }
-            MvTarget temp = pathGenerator.extractKeysReverse(js);
+            MvViewPart temp = pathGenerator.extractKeysReverse(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
             if (temp != null) {

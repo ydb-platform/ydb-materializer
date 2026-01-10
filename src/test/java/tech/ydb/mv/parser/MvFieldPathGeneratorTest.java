@@ -13,7 +13,7 @@ import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 
 import java.util.Arrays;
 
@@ -26,7 +26,7 @@ public class MvFieldPathGeneratorTest {
 
     private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
 
-    private MvTarget originalTarget;
+    private MvViewPart originalTarget;
     private MvJoinSource sourceA, sourceB, sourceC, sourceD;
     private MvTableInfo tableInfoA, tableInfoB, tableInfoC, tableInfoD;
     private static volatile boolean inputPrinted = false;
@@ -90,7 +90,7 @@ public class MvFieldPathGeneratorTest {
         sourceD.setTableInfo(tableInfoD);
 
         // Create original target
-        originalTarget = new MvTarget("test_target");
+        originalTarget = new MvViewPart("test_target");
         originalTarget.setTableInfo(tableInfoA);
 
         // Add sources
@@ -178,7 +178,7 @@ public class MvFieldPathGeneratorTest {
                 .add(sourceA, "id")
                 .add(sourceB, "id", "a_id")
                 .add(sourceD, "id", "a_id");
-        MvTarget result = new MvPathGenerator(originalTarget).applyFilter(filter);
+        MvViewPart result = new MvPathGenerator(originalTarget).applyFilter(filter);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -198,7 +198,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_DirectCase() {
         // Test case where target source is the top-most source
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
+        MvViewPart result = new MvPathGenerator(originalTarget).extractFields(
                 sourceA, Arrays.asList("name", "id"));
         assertNotNull(result);
 
@@ -227,7 +227,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_OneStep() {
         // Test transformation to get fields from B (one step: A -> B)
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
+        MvViewPart result = new MvPathGenerator(originalTarget).extractFields(
                 sourceB, Arrays.asList("description", "some"));
         assertNotNull(result);
 
@@ -259,7 +259,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateFields_TwoSteps() {
         // Test transformation to get fields from C (two steps: A -> B -> C)
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
+        MvViewPart result = new MvPathGenerator(originalTarget).extractFields(
                 sourceC, Arrays.asList("value"));
         assertNotNull(result);
 
@@ -284,7 +284,7 @@ public class MvFieldPathGeneratorTest {
     @Test
     public void testGenerateAllFields() {
         // Test transformation to get all fields from D
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(sourceD);
+        MvViewPart result = new MvPathGenerator(originalTarget).extractFields(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -361,7 +361,7 @@ public class MvFieldPathGeneratorTest {
         originalTarget.getSources().add(sourceE);
 
         // Should return null when no path exists
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
+        MvViewPart result = new MvPathGenerator(originalTarget).extractFields(
                 sourceE, Arrays.asList("data"));
         assertNull(result);
     }

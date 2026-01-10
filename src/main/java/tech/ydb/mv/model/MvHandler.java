@@ -48,19 +48,19 @@ public class MvHandler implements MvSqlPosHolder {
         return views.get(name);
     }
 
-    public MvTarget getTarget(String name, String alias) {
+    public MvViewPart getPart(String name, String alias) {
         MvView v = getView(name);
         if (v == null) {
             return null;
         }
-        return v.getTargets().get(alias);
+        return v.getParts().get(alias);
     }
 
-    public boolean containsTarget(MvTarget target) {
-        if (target == null) {
+    public boolean containsPart(MvViewPart part) {
+        if (part == null) {
             return false;
         }
-        return target == getTarget(target.getName(), target.getAlias());
+        return part == getPart(part.getName(), part.getAlias());
     }
 
     public MvInput addInput(MvInput input) {

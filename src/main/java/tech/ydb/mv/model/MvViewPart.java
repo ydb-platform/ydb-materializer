@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * @author zinal
  */
-public class MvTarget implements MvSqlPosHolder {
+public class MvViewPart implements MvSqlPosHolder {
 
     public static final String ALIAS_DEFAULT = "default";
 
@@ -26,23 +26,23 @@ public class MvTarget implements MvSqlPosHolder {
     // fields computed later or added based on the database metadata
     private MvUsedColumns usedColumns;
 
-    public MvTarget(MvView view, String alias, MvSqlPos sqlPos) {
+    public MvViewPart(MvView view, String alias, MvSqlPos sqlPos) {
         this.view = view;
         this.alias = alias;
         this.sqlPos = sqlPos;
     }
 
-    public MvTarget(MvView view, String alias) {
+    public MvViewPart(MvView view, String alias) {
         this(view, alias, MvSqlPos.EMPTY);
     }
 
-    public MvTarget(MvView view) {
+    public MvViewPart(MvView view) {
         this(view, ALIAS_DEFAULT, MvSqlPos.EMPTY);
     }
 
-    public MvTarget(String name) {
+    public MvViewPart(String name) {
         this(new MvView(name, MvSqlPos.EMPTY));
-        this.view.addTarget(this);
+        this.view.addPart(this);
     }
 
     /**
@@ -212,7 +212,7 @@ public class MvTarget implements MvSqlPosHolder {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final MvTarget other = (MvTarget) obj;
+        final MvViewPart other = (MvViewPart) obj;
         if (!Objects.equals(this.getName(), other.getName())) {
             return false;
         }

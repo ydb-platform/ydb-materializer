@@ -7,7 +7,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
@@ -24,7 +24,7 @@ class MvApply {
         return new SourceBuilder(table, selector);
     }
 
-    static TargetBuilder newTarget(MvTarget target, MvTarget dictTrans) {
+    static TargetBuilder newTarget(MvViewPart target, MvViewPart dictTrans) {
         return new TargetBuilder(target, dictTrans);
     }
 
@@ -76,9 +76,9 @@ class MvApply {
 
     static class Target {
 
-        private final MvTarget target;
+        private final MvViewPart target;
         private final MvApplyActionList refreshActions;
-        private final MvTarget dictTrans;
+        private final MvViewPart dictTrans;
 
         Target(TargetBuilder builder) {
             this.target = builder.target;
@@ -86,7 +86,7 @@ class MvApply {
             this.dictTrans = builder.dictTrans;
         }
 
-        public MvTarget getTarget() {
+        public MvViewPart getTarget() {
             return target;
         }
 
@@ -94,18 +94,18 @@ class MvApply {
             return refreshActions;
         }
 
-        public MvTarget getDictTrans() {
+        public MvViewPart getDictTrans() {
             return dictTrans;
         }
     }
 
     static class TargetBuilder {
 
-        private final MvTarget target;
+        private final MvViewPart target;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
-        private final MvTarget dictTrans;
+        private final MvViewPart dictTrans;
 
-        TargetBuilder(MvTarget target, MvTarget dictTrans) {
+        TargetBuilder(MvViewPart target, MvViewPart dictTrans) {
             this.target = target;
             this.dictTrans = dictTrans;
         }
@@ -127,7 +127,7 @@ class MvApply {
         final int workersCount;
         final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
-        final HashMap<MvTarget, TargetBuilder> targets = new HashMap<>();
+        final HashMap<MvViewPart, TargetBuilder> targets = new HashMap<>();
 
         public Configurator(MvActionContext context) {
             this.context = context;
@@ -136,7 +136,7 @@ class MvApply {
             this.partitioning = context.getPartitioning();
         }
 
-        void build(HashMap<String, Source> src, HashMap<MvTarget, Target> trg) {
+        void build(HashMap<String, Source> src, HashMap<MvViewPart, Target> trg) {
             prepare();
             sources.forEach((k, v) -> src.put(k, v.build()));
             targets.forEach((k, v) -> trg.put(k, v.build()));
@@ -152,7 +152,7 @@ class MvApply {
             return b;
         }
 
-        TargetBuilder makeTarget(MvTarget target, MvTarget dictTrans) {
+        TargetBuilder makeTarget(MvViewPart target, MvViewPart dictTrans) {
             var b = targets.get(target);
             if (b == null) {
                 b = newTarget(target, dictTrans);
@@ -163,13 +163,13 @@ class MvApply {
 
         void prepare() {
             for (var view : metadata.getViews().values()) {
-                for (var target : view.getTargets().values()) {
+                for (var target : view.getParts().values()) {
                     configureTarget(target);
                 }
             }
         }
 
-        void configureTarget(MvTarget target) {
+        void configureTarget(MvViewPart target) {
             int sourceCount = target.getSources().size();
             if (sourceCount < 1) {
                 // constant or expression-based target - nothing to do
@@ -210,7 +210,7 @@ class MvApply {
                         pg.getTarget().getName(), pg.getTarget().getAlias());
                 return;
             }
-            MvTarget transformation = pg.extractKeysReverse(source);
+            MvViewPart transformation = pg.extractKeysReverse(source);
             if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
                         + "to keys for table `{}`, skipping for target `{}` as {}",
@@ -233,7 +233,7 @@ class MvApply {
             makeSource(source.getTableInfo()).addAction(action);
         }
 
-        MvTarget makeDictTrans(MvTarget target, MvPathGenerator pathGenerator) {
+        MvViewPart makeDictTrans(MvViewPart target, MvPathGenerator pathGenerator) {
             var batchSources = target.getSources().stream()
                     .filter(js -> js.isTableKnown())
                     .filter(js -> js.getInput().isBatchMode())

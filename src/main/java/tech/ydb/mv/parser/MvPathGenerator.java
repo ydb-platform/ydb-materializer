@@ -18,7 +18,7 @@ import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 
 /**
  * Generates a minimal MvTarget that defines the transformation needed to
@@ -32,12 +32,12 @@ import tech.ydb.mv.model.MvTarget;
  */
 public class MvPathGenerator {
 
-    private final MvTarget target;
+    private final MvViewPart target;
     private final MvJoinSource topMostSource;
     private final MvTableInfo topMostTable;
     private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
 
-    public MvPathGenerator(MvTarget target) {
+    public MvPathGenerator(MvViewPart target) {
         if (target == null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException("Target is not valid for generator");
         }
@@ -47,7 +47,7 @@ public class MvPathGenerator {
         this.adjacencyMap = buildAdjacencyMap(target);
     }
 
-    public MvTarget getTarget() {
+    public MvViewPart getTarget() {
         return target;
     }
 
@@ -64,7 +64,7 @@ public class MvPathGenerator {
      * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public MvTarget extractKeysReverse(MvJoinSource point) {
+    public MvViewPart extractKeysReverse(MvJoinSource point) {
         // Validate that inputSource is part of the originalTarget
         if (!target.getSources().contains(point)) {
             throw new IllegalArgumentException("Input source must be part of the original target");
@@ -97,7 +97,7 @@ public class MvPathGenerator {
      * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public MvTarget extractFields(MvJoinSource point, List<String> fieldNames) {
+    public MvViewPart extractFields(MvJoinSource point, List<String> fieldNames) {
         if (point == null || fieldNames == null || fieldNames.isEmpty()) {
             throw new IllegalArgumentException("Target table alias and field names must be provided");
         }
@@ -142,7 +142,7 @@ public class MvPathGenerator {
      * path exists
      * @throws IllegalArgumentException if parameters are invalid
      */
-    public MvTarget extractFields(MvJoinSource point) {
+    public MvViewPart extractFields(MvJoinSource point) {
         if (point == null) {
             throw new IllegalArgumentException("Target table alias must be provided");
         }
@@ -157,7 +157,7 @@ public class MvPathGenerator {
      * @param filter The list of sources and their destination columns
      * @return Transformation after the filter is applied
      */
-    public MvTarget applyFilter(Filter filter) {
+    public MvViewPart applyFilter(Filter filter) {
         if (filter == null || filter.items.isEmpty()) {
             throw new IllegalArgumentException("Empty filter passed");
         }
@@ -180,7 +180,7 @@ public class MvPathGenerator {
             }
         }
 
-        MvTarget result = new MvTarget("filter");
+        MvViewPart result = new MvViewPart("filter");
         // Add all sources
         int index = 0;
         for (MvJoinSource src : target.getSources()) {
@@ -342,8 +342,8 @@ public class MvPathGenerator {
      * Creates a simple direct target for the case where target source is the
      * top-most source.
      */
-    private static MvTarget createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
-        MvTarget result = new MvTarget(source.getTableName() + "_simple");
+    private static MvViewPart createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
+        MvViewPart result = new MvViewPart(source.getTableName() + "_simple");
         result.setTableInfo(source.getTableInfo());
 
         // Add the source as the main source
@@ -367,8 +367,8 @@ public class MvPathGenerator {
     /**
      * Creates a direct target that maps fields without any joins.
      */
-    private MvTarget createDirectTarget(MvJoinSource source, List<String> fieldNames, boolean forward) {
-        MvTarget result = new MvTarget(source.getTableName() + "_direct");
+    private MvViewPart createDirectTarget(MvJoinSource source, List<String> fieldNames, boolean forward) {
+        MvViewPart result = new MvViewPart(source.getTableName() + "_direct");
         result.setTableInfo(source.getTableInfo());
 
         // Add the target source as the main source
@@ -411,9 +411,9 @@ public class MvPathGenerator {
      * Creates a transformation target based on the found path to retrieve
      * specific fields.
      */
-    private static MvTarget createTarget(List<MvJoinSource> path,
+    private static MvViewPart createTarget(List<MvJoinSource> path,
             MvJoinSource point, List<String> fieldNames) {
-        MvTarget result = new MvTarget(point.getTableName() + "_full");
+        MvViewPart result = new MvViewPart(point.getTableName() + "_full");
         result.setTableInfo(point.getTableInfo());
 
         // Add sources in the path
@@ -452,7 +452,7 @@ public class MvPathGenerator {
      * @param tableRef Source table reference
      * @param fieldNames List of field names to be added
      */
-    private static void fillTargetColumns(MvTarget result,
+    private static void fillTargetColumns(MvViewPart result,
             MvJoinSource tableRef, List<String> fieldNames) {
         for (String fieldName : fieldNames) {
             MvColumn column = new MvColumn(fieldName);
@@ -515,7 +515,7 @@ public class MvPathGenerator {
      * Copy all literal conditions from the current level. These are the
      * filtering conditions we need.
      */
-    private static void copyLiteralConditions(MvTarget result,
+    private static void copyLiteralConditions(MvViewPart result,
             MvJoinSource src, MvJoinSource dst) {
         for (MvJoinCondition cond : src.getConditions()) {
             MvLiteral literal = null;
@@ -544,7 +544,7 @@ public class MvPathGenerator {
      * linked below the src in the path.
      */
     private static void copyRelationalConditions(List<MvJoinSource> path,
-            MvJoinSource src, MvJoinSource dst, MvTarget result) {
+            MvJoinSource src, MvJoinSource dst, MvViewPart result) {
         int baseIndex = path.indexOf(src);
         if (baseIndex < 0) {
             throw new IllegalArgumentException("Component " + src
@@ -720,7 +720,7 @@ public class MvPathGenerator {
     /**
      * Builds an adjacency map representing the join relationships.
      */
-    private static Map<MvJoinSource, List<MvJoinSource>> buildAdjacencyMap(MvTarget target) {
+    private static Map<MvJoinSource, List<MvJoinSource>> buildAdjacencyMap(MvViewPart target) {
         Map<MvJoinSource, List<MvJoinSource>> map = new HashMap<>();
 
         // Initialize map with all sources

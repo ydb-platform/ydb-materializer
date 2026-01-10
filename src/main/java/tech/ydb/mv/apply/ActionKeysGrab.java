@@ -11,7 +11,7 @@ import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -24,8 +24,8 @@ class ActionKeysGrab extends ActionKeysAbstract {
 
     private final String sqlSelect;
 
-    public ActionKeysGrab(MvTarget target, MvJoinSource src,
-            MvTarget transformation, MvActionContext context) {
+    public ActionKeysGrab(MvViewPart target, MvJoinSource src,
+            MvViewPart transformation, MvActionContext context) {
         super(target, src, transformation, context);
         try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();

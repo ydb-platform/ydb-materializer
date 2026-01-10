@@ -13,7 +13,7 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 import tech.ydb.mv.parser.MvDescriberMeta;
 
 /**
@@ -30,7 +30,7 @@ public class MvJobContext implements MvCdcAdapter {
     // initially stopped
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
     // target -> scan feeder
-    private final HashMap<MvTarget, MvScanFeeder> scanFeeders = new HashMap<>();
+    private final HashMap<MvViewPart, MvScanFeeder> scanFeeders = new HashMap<>();
 
     public MvJobContext(MvService service, MvMetadata metadata,
             MvHandler handler, MvHandlerSettings settings) {
@@ -102,14 +102,14 @@ public class MvJobContext implements MvCdcAdapter {
         return false;
     }
 
-    public boolean startScan(MvTarget target, MvScanSettings settings,
+    public boolean startScan(MvViewPart target, MvScanSettings settings,
             MvApplyManager applyManager) {
         return startScan(target, settings, applyManager, null, null);
     }
 
-    public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
+    public synchronized boolean startScan(MvViewPart target, MvScanSettings settings,
             MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
-        if (target == null || !handler.containsTarget(target)) {
+        if (target == null || !handler.containsPart(target)) {
             throw new IllegalArgumentException("Illegal target `" + target
                     + "` for handler `" + handler.getName() + "`");
         }
@@ -126,8 +126,8 @@ public class MvJobContext implements MvCdcAdapter {
         return sf.start();
     }
 
-    public synchronized boolean stopScan(MvTarget target) {
-        if (target == null || !handler.containsTarget(target)) {
+    public synchronized boolean stopScan(MvViewPart target) {
+        if (target == null || !handler.containsPart(target)) {
             return false;
         }
         MvScanFeeder sf = scanFeeders.remove(target);
@@ -137,7 +137,7 @@ public class MvJobContext implements MvCdcAdapter {
         return sf.stop();
     }
 
-    public synchronized void forgetScan(MvTarget target) {
+    public synchronized void forgetScan(MvViewPart target) {
         if (target != null) {
             scanFeeders.remove(target);
         }

@@ -96,24 +96,25 @@ public class MvJoinCondition implements MvSqlPosHolder {
     /**
      * Clone the current join condition to another instance of MV.
      *
-     * @param target MV to which the new condition will apply
-     * @return The copy of the currrent condition object adopted to the specified MV instance.
+     * @param part MV part to which the new condition will apply
+     * @return The copy of the current condition object adopted to the specified
+     * MV part instance.
      */
-    public MvJoinCondition cloneTo(MvTarget target) {
+    public MvJoinCondition cloneTo(MvViewPart part) {
         MvJoinCondition ret = new MvJoinCondition(sqlPos);
         if (firstLiteral != null) {
-            ret.setFirstLiteral(target.addLiteral(firstLiteral.getValue()));
+            ret.setFirstLiteral(part.addLiteral(firstLiteral.getValue()));
         } else {
             ret.setFirstAlias(firstAlias);
             ret.setFirstColumn(firstColumn);
-            ret.setFirstRef(target.getSourceByAlias(firstAlias));
+            ret.setFirstRef(part.getSourceByAlias(firstAlias));
         }
         if (secondLiteral != null) {
-            ret.setSecondLiteral(target.addLiteral(secondLiteral.getValue()));
+            ret.setSecondLiteral(part.addLiteral(secondLiteral.getValue()));
         } else {
             ret.setSecondAlias(secondAlias);
             ret.setSecondColumn(secondColumn);
-            ret.setSecondRef(target.getSourceByAlias(secondAlias));
+            ret.setSecondRef(part.getSourceByAlias(secondAlias));
         }
         return ret;
     }

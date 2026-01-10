@@ -5,7 +5,7 @@ import java.util.List;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 
 /**
  * Generic code to obtain the keys to the main table via another join input.
@@ -14,13 +14,13 @@ import tech.ydb.mv.model.MvTarget;
  */
 abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
-    protected final MvTarget target;
+    protected final MvViewPart target;
     protected final String inputTableName;
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
 
-    public ActionKeysAbstract(MvTarget target, MvJoinSource src,
-            MvTarget transformation, MvActionContext context) {
+    public ActionKeysAbstract(MvViewPart target, MvJoinSource src,
+            MvViewPart transformation, MvActionContext context) {
         super(context);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {

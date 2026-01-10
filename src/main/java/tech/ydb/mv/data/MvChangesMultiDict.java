@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import tech.ydb.mv.model.MvHandler;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
@@ -44,7 +44,7 @@ public class MvChangesMultiDict {
     public ArrayList<MvRowFilter> toFilters(MvHandler handler) {
         ArrayList<MvRowFilter> filters = new ArrayList<>(handler.getViews().size());
         for (var view : handler.getViews().values()) {
-            for (var target : view.getTargets().values()) {
+            for (var target : view.getParts().values()) {
                 var filter = toFilter(handler, target);
                 if (filter != null && !filter.isEmpty()) {
                     filters.add(filter);
@@ -54,7 +54,7 @@ public class MvChangesMultiDict {
         return filters;
     }
 
-    public MvRowFilter toFilter(MvHandler handler, MvTarget target) {
+    public MvRowFilter toFilter(MvHandler handler, MvViewPart target) {
         // table alias -> keys to be checked
         var dictChecks = new HashMap<String, Set<MvKey>>();
         // table alias -> used columns
@@ -88,7 +88,7 @@ public class MvChangesMultiDict {
         for (var tableAlias : dictChecks.keySet()) {
             pathFilter.add(target.getSourceByAlias(tableAlias));
         }
-        MvTarget transformation = new MvPathGenerator(target).applyFilter(pathFilter);
+        MvViewPart transformation = new MvPathGenerator(target).applyFilter(pathFilter);
         if (transformation == null) {
             LOG.error("DICTIONARY CHANGES LOST. Unable to build transformation "
                     + "for target {}, filter {}", target, pathFilter);
@@ -117,7 +117,7 @@ public class MvChangesMultiDict {
      * @param target
      * @return the column usage map
      */
-    public static Map<String, Set<String>> getColumnUsage(MvTarget target) {
+    public static Map<String, Set<String>> getColumnUsage(MvViewPart target) {
         HashMap<String, Set<String>> columnUsage = new HashMap<>();
         for (var js : target.getSources()) {
             for (var cond : js.getConditions()) {

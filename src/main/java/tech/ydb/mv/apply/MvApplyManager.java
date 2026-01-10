@@ -15,7 +15,7 @@ import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewPart;
 import tech.ydb.mv.support.YdbMisc;
 import tech.ydb.mv.feeder.MvSink;
 
@@ -37,7 +37,7 @@ public class MvApplyManager implements MvSink {
     // source table name -> table apply configuration data
     private final HashMap<String, MvApply.Source> sourceConfigs = new HashMap<>();
     // target -> refresh action singleton list
-    private final HashMap<MvTarget, MvApply.Target> targetConfigs = new HashMap<>();
+    private final HashMap<MvViewPart, MvApply.Target> targetConfigs = new HashMap<>();
 
     public MvApplyManager(MvJobContext context) {
         this.context = new MvActionContext(context, this);
@@ -245,7 +245,7 @@ public class MvApplyManager implements MvSink {
     }
 
     @Override
-    public boolean submitRefresh(MvTarget target,
+    public boolean submitRefresh(MvViewPart target,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
         var targetConfig = targetConfigs.get(target);
         if (targetConfig == null) {
@@ -263,7 +263,7 @@ public class MvApplyManager implements MvSink {
      * @param changes The change records to be submitted for processing.
      * @param handler The commit processing handler
      */
-    public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
+    public void submitForce(MvViewPart target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         var sourceConfig = findSource(changes, handler);
         if (sourceConfig != null) {
