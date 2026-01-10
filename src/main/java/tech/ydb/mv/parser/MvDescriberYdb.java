@@ -29,12 +29,7 @@ public class MvDescriberYdb implements MvDescriber {
 
     @Override
     public MvTableInfo describeTable(String tabname) {
-        String path;
-        if (tabname.startsWith("/")) {
-            path = tabname;
-        } else {
-            path = ydb.getDatabase() + "/" + tabname;
-        }
+        String path = ydb.fullTableName(tabname);
         LOG.debug("Describing table {} ...", path);
         TableDescription desc;
         try {

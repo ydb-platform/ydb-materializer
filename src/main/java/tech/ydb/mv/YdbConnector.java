@@ -54,6 +54,9 @@ public class YdbConnector implements AutoCloseable {
                         CloudAuthHelper.getAuthProviderFromEnviron());
                 break;
             case STATIC:
+                if (config.getStaticLogin() == null || config.getStaticPassword() == null) {
+                    throw new IllegalArgumentException("Login or password is missing for STATIC authentication");
+                }
                 builder = builder.withAuthProvider(
                         new StaticCredentials(config.getStaticLogin(), config.getStaticPassword()));
                 break;
@@ -62,6 +65,9 @@ public class YdbConnector implements AutoCloseable {
                         CloudAuthHelper.getMetadataAuthProvider());
                 break;
             case SAKEY:
+                if (config.getSaKeyFile() == null) {
+                    throw new IllegalArgumentException("Service account file is missing for SAKEY authentication");
+                }
                 builder = builder.withAuthProvider(
                         CloudAuthHelper.getServiceAccountFileAuthProvider(config.getSaKeyFile()));
                 break;
@@ -167,6 +173,9 @@ public class YdbConnector implements AutoCloseable {
     }
 
     public String fullTableName(String tableName) {
+        if (tableName == null) {
+            return null;
+        }
         while (tableName.endsWith("/")) {
             tableName = tableName.substring(0, tableName.length() - 1);
         }
@@ -306,6 +315,7 @@ public class YdbConnector implements AutoCloseable {
 
         public Config() {
             this.prefix = "ydb.";
+            this.connectionString = "/local";
         }
 
         public Config(Properties props) {
@@ -318,6 +328,9 @@ public class YdbConnector implements AutoCloseable {
             }
             this.prefix = prefix;
             this.connectionString = props.getProperty(prefix + "url");
+            if (this.connectionString == null || this.connectionString.length() == 0) {
+                this.connectionString = "/local";
+            }
             this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
             this.saKeyFile = props.getProperty(prefix + "auth.sakey");
             this.staticLogin = props.getProperty(prefix + "auth.username");

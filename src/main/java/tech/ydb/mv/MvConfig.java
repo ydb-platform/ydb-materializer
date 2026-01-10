@@ -164,7 +164,7 @@ public class MvConfig {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException nfe) {
-            throw new RuntimeException("[" + comment + "]"
+            throw new RuntimeException("[" + comment + "] "
                     + "Failed to parse integer " + value, nfe);
         }
     }
@@ -181,7 +181,7 @@ public class MvConfig {
         try {
             return Long.parseLong(value);
         } catch (NumberFormatException nfe) {
-            throw new RuntimeException("[" + comment + "]"
+            throw new RuntimeException("[" + comment + "] "
                     + "Failed to parse long " + value, nfe);
         }
     }
