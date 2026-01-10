@@ -209,6 +209,14 @@ public class YdbConnector implements AutoCloseable {
     public void close() {
         opened.set(false);
         LOG.info("Closing YDB connections...");
+        // coordinationClient does not support closing, so we leave it as is
+        if (topicClient != null) {
+            try {
+                topicClient.close();
+            } catch (Exception ex) {
+                LOG.warn("TopicClient closing threw an exception", ex);
+            }
+        }
         if (tableClient != null) {
             try {
                 tableClient.close();

@@ -259,7 +259,7 @@ public class MvJobDao extends MvDaoHelpers {
     public void createScan(MvJobScanInfo scan) {
         ydb.sqlWrite(sqlCreateScan, Params.of(
                 "$job_name", PrimitiveValue.newText(scan.getJobName()),
-                "$target_name", PrimitiveValue.newText(scan.getJobName()),
+                "$target_name", PrimitiveValue.newText(scan.getTargetName()),
                 "$scan_settings", jsonDocument(scan.getScanSettings()),
                 "$requested_at", PrimitiveValue.newTimestamp(scan.getRequestedAt()),
                 "$accepted_at", timestamp(scan.getAcceptedAt()),
