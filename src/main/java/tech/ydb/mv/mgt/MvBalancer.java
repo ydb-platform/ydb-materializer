@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import tech.ydb.mv.MvConfig;
@@ -114,9 +115,9 @@ class MvBalancer {
                 Instant.now(),
                 MvCommand.TYPE_STOP,
                 job.getJobName(),
-                null,
+                null, // job settings are not needed for STOP
                 MvCommand.STATUS_CREATED,
-                null
+                null // diagnostics should not be set
         );
 
         jobDao.createCommand(command);
@@ -138,18 +139,21 @@ class MvBalancer {
      * Create a command to start a job.
      */
     private void createStartCommand(MvJobInfo job) {
-        var cmdCountByRunner = runningJobs.entrySet().stream()
-                .collect(Collectors.toMap(me -> me.getKey(), me -> countJobs(me.getValue())));
-
-        LOG.info("cmdCountByRunner: {}", cmdCountByRunner);
-
-        var comparator = Comparator.comparing(
-                (MvRunnerInfo r) -> cmdCountByRunner.getOrDefault(r.getRunnerId(), 0))
-                .thenComparing(r -> r.getRunnerId());
-        var runner = allRunners.stream()
-                .sorted(comparator)
-                .findFirst()
-                .get();
+        MvRunnerInfo runner;
+        try {
+            var cmdCountByRunner = runningJobs.entrySet().stream()
+                    .collect(Collectors.toMap(me -> me.getKey(), me -> countJobs(me.getValue())));
+            var comparator = Comparator.comparing(
+                    (MvRunnerInfo r) -> cmdCountByRunner.getOrDefault(r.getRunnerId(), 0))
+                    .thenComparing(r -> r.getRunnerId());
+            runner = allRunners.stream()
+                    .sorted(comparator)
+                    .findFirst()
+                    .get();
+        } catch (NoSuchElementException nsee) {
+            throw new RuntimeException("Cannot obtain the runner, "
+                    + "failed to start job " + job.getJobName(), nsee);
+        }
 
         var command = new MvCommand(
                 runner.getRunnerId(),
@@ -159,7 +163,7 @@ class MvBalancer {
                 job.getJobName(),
                 job.getJobSettings(),
                 MvCommand.STATUS_CREATED,
-                null
+                null // diagnostics should not be set
         );
         jobDao.createCommand(command);
 

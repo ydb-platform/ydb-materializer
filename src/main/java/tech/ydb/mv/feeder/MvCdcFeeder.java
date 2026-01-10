@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -80,7 +81,16 @@ public class MvCdcFeeder implements AutoCloseable {
     @Override
     public void close() {
         stop();
-        executor.shutdownNow();
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                int total = executor.shutdownNow().size();
+                LOG.error("Total of {} tasks have not completed "
+                        + "within the timeout of 30 seconds.", total);
+            }
+        } catch (InterruptedException ix) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public MvSink getSink() {
@@ -136,7 +146,7 @@ public class MvCdcFeeder implements AutoCloseable {
             Thread t = new Thread(Thread.currentThread().getThreadGroup(), r,
                     "mv-cdc-worker-" + adapter.getFeederName()
                     + "-" + threadNumber.getAndIncrement(), 0);
-            t.setDaemon(false);
+            t.setDaemon(true);
             t.setPriority(Thread.NORM_PRIORITY);
             return t;
         }
