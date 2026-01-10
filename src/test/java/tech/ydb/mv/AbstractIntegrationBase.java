@@ -32,7 +32,7 @@ import tech.ydb.table.query.Params;
  */
 public abstract class AbstractIntegrationBase {
 
-    public static final String CREATE_TABLES1
+    public static final String CREATE_TABLES_BASE
             = """
 CREATE TABLE `test1/statements` (
     statement_no Int32 NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE `test1/dict_hist` (
 );
 """;
 
-    public static final String CREATE_TABLES2
+    public static final String CREATE_TABLES_DATA
             = """
 CREATE TABLE `test1/main_table` (
     id Text NOT NULL,
@@ -141,14 +141,14 @@ ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table4` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 """;
 
-    public static final String DROP_TABLES1
+    public static final String DROP_TABLES_BASE
             = """
 DROP TABLE `test1/statements`;
 DROP TABLE `test1/scans_state`;
 DROP TABLE `test1/dict_hist`;
 """;
 
-    public static final String DROP_TABLES2
+    public static final String DROP_TABLES_DATA
             = """
 DROP TABLE `test1/main_table`;
 DROP TABLE `test1/sub_table1`;
@@ -175,7 +175,7 @@ ALTER TOPIC `test1/sub_table1/cf1` ADD CONSUMER `consumer2`;
 ALTER TOPIC `test1/sub_table2/cf2` ADD CONSUMER `consumer2`;
 """;
 
-    public static final String UPSERT_CONFIG1
+    public static final String UPSERT_CONFIG
             = """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   (1, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv1` AS
@@ -222,7 +222,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INPUT `test1/sub_table3` CHANGEFEED cf3 AS BATCH;@@);
 """;
 
-    public static final String WRITE_INITIAL1
+    public static final String WRITE_INITIAL_DATA
             = """
 INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20) VALUES
  ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u)
@@ -322,8 +322,8 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         System.err.println("[AAA] Database cleanup...");
         YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
-            runDdl(conn, DROP_TABLES1);
-            runDdl(conn, DROP_TABLES2);
+            runDdl(conn, DROP_TABLES_BASE);
+            runDdl(conn, DROP_TABLES_DATA);
         }
     }
 
@@ -338,13 +338,13 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     protected static void fillDatabase(YdbConnector conn) {
         System.err.println("[AAA] Preparation: creating tables...");
-        runDdl(conn, CREATE_TABLES1);
-        runDdl(conn, CREATE_TABLES2);
+        runDdl(conn, CREATE_TABLES_BASE);
+        runDdl(conn, CREATE_TABLES_DATA);
         System.err.println("[AAA] Preparation: adding consumers...");
         runDdl(conn, CDC_CONSUMERS1);
         runDdl(conn, CDC_CONSUMERS2);
         System.err.println("[AAA] Preparation: adding config...");
-        runDdl(conn, UPSERT_CONFIG1);
+        runDdl(conn, UPSERT_CONFIG);
     }
 
     protected static CompletableFuture<Status> runSql(QuerySession qs, String sql, TxMode txMode) {

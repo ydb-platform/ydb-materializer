@@ -110,7 +110,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
-                runDml(conn, WRITE_INITIAL1);
+                runDml(conn, WRITE_INITIAL_DATA);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
