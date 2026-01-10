@@ -140,7 +140,7 @@ public class MvSqlGen implements AutoCloseable {
 
     public String makeSelect() {
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyFields(sb);
+        genDeclareMainKeyList(sb);
         genFullSelect(sb, true);
         sb.append(";").append(EOL);
         return sb.toString();
@@ -157,8 +157,12 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String makePlainDelete() {
+        // FIXME: the implementation below only works for the case when
+        // the PK for the MV is exactly the same as the PK for the topmost
+        // join source. It needs to be extended for the case when PK is
+        // computed based on some input columns.
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyFields(sb);
+        genDeclareMainKeyList(sb);
         sb.append("DELETE FROM ");
         safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
@@ -227,7 +231,7 @@ public class MvSqlGen implements AutoCloseable {
         }
     }
 
-    private void genDeclareMainKeyFields(StringBuilder sb) {
+    private void genDeclareMainKeyList(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
         }

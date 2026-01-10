@@ -161,6 +161,7 @@ public class MvService implements MvApi {
         } catch (InterruptedException ix) {
             Thread.currentThread().interrupt();
         }
+        locker.close();
     }
 
     public synchronized boolean startDictionaryHandler() {
