@@ -20,10 +20,10 @@ class MvCdcCommitHandler implements MvCommitHandler {
     private volatile int counter;
     private volatile boolean committed;
 
-    public MvCdcCommitHandler(DataReceivedEvent event) {
+    MvCdcCommitHandler(DataReceivedEvent event, int counter) {
         this.instance = COUNTER.incrementAndGet();
         this.event = event;
-        this.counter = event.getMessages().size();
+        this.counter = counter;
         this.committed = false;
         LOG.debug("instance {} created -> {}", instance, counter);
     }

@@ -2,6 +2,8 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 
+import com.google.common.collect.Lists;
+
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
@@ -18,6 +20,7 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
     protected final String inputTableName;
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
+    protected final int selectBatchSize;
 
     public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
             MvViewExpr transformation, MvActionContext context) {
@@ -34,11 +37,18 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }
+        this.selectBatchSize = context.getSettings().getSelectBatchSize();
     }
 
     @Override
     public final void apply(List<MvApplyTask> input) {
-        new PerCommit(input).apply((handler, tasks) -> process(handler, tasks));
+        new PerCommit(input).apply((handler, tasks) -> applyPerCommit(handler, tasks));
+    }
+
+    private void applyPerCommit(MvCommitHandler handler, List<MvApplyTask> tasks) {
+        for (List<MvApplyTask> part : Lists.partition(tasks, selectBatchSize)) {
+            process(handler, part);
+        }
     }
 
     /**
