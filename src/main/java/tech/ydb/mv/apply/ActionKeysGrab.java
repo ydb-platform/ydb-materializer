@@ -57,7 +57,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
             return;
         }
         if (rows.getColumnCount() < keyInfo.size()) {
-            throw new IllegalStateException("Actual output coluumns: "
+            throw new IllegalStateException("Actual output columns: "
                     + rows.getColumnCount() + ", expected: " + keyInfo.size());
         }
         // Convert the keys to change records.
