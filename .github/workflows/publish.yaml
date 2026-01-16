@@ -10,7 +10,6 @@ jobs:
   publish:
     name: Publish YDB Materializer
     runs-on: ubuntu-latest
-    needs: validate
 
     steps:
       - name: Install gpg secret key
