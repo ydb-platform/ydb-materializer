@@ -36,6 +36,16 @@ In standalone application mode, YDB Materializer implements:
 
 In embedded library mode, YDB Materializer implements all the listed functions, providing the ability to call them programmatically through methods of the corresponding classes.
 
+Maven dependency for embedding the YDB Materializer into the application:
+
+```xml
+        <dependency>
+            <groupId>tech.ydb.apps</groupId>
+            <artifactId>ydb-materializer</artifactId>
+            <version>1.8</version>
+        </dependency>
+```
+
 ## Materialized View Language Syntax
 
 The YDB Materializer uses a custom SQL-like language to define materialized views and their processing handlers. This language is based on a subset of SQL with specific extensions for YDB materialized views.
