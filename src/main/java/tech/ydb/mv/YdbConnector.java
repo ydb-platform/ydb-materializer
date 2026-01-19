@@ -54,6 +54,9 @@ public class YdbConnector implements AutoCloseable {
                         CloudAuthHelper.getAuthProviderFromEnviron());
                 break;
             case STATIC:
+                if (config.getStaticLogin() == null || config.getStaticPassword() == null) {
+                    throw new IllegalArgumentException("Login or password is missing for STATIC authentication");
+                }
                 builder = builder.withAuthProvider(
                         new StaticCredentials(config.getStaticLogin(), config.getStaticPassword()));
                 break;
@@ -62,6 +65,9 @@ public class YdbConnector implements AutoCloseable {
                         CloudAuthHelper.getMetadataAuthProvider());
                 break;
             case SAKEY:
+                if (config.getSaKeyFile() == null) {
+                    throw new IllegalArgumentException("Service account file is missing for SAKEY authentication");
+                }
                 builder = builder.withAuthProvider(
                         CloudAuthHelper.getServiceAccountFileAuthProvider(config.getSaKeyFile()));
                 break;
@@ -167,6 +173,9 @@ public class YdbConnector implements AutoCloseable {
     }
 
     public String fullTableName(String tableName) {
+        if (tableName == null) {
+            return null;
+        }
         while (tableName.endsWith("/")) {
             tableName = tableName.substring(0, tableName.length() - 1);
         }
@@ -209,6 +218,14 @@ public class YdbConnector implements AutoCloseable {
     public void close() {
         opened.set(false);
         LOG.info("Closing YDB connections...");
+        // coordinationClient does not support closing, so we leave it as is
+        if (topicClient != null) {
+            try {
+                topicClient.close();
+            } catch (Exception ex) {
+                LOG.warn("TopicClient closing threw an exception", ex);
+            }
+        }
         if (tableClient != null) {
             try {
                 tableClient.close();
@@ -254,12 +271,20 @@ public class YdbConnector implements AutoCloseable {
 
     public int getProperty(String name, int defval) {
         String v = config.properties.getProperty(name, String.valueOf(defval));
-        return Integer.parseInt(v);
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as integer: " + v, nfe);
+        }
     }
 
     public long getProperty(String name, long defval) {
         String v = config.properties.getProperty(name, String.valueOf(defval));
-        return Long.parseLong(v);
+        try {
+            return Long.parseLong(v);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + name + "]" + " Cannot parse as long: " + v, nfe);
+        }
     }
 
     public static String safe(String value) {
@@ -290,6 +315,7 @@ public class YdbConnector implements AutoCloseable {
 
         public Config() {
             this.prefix = "ydb.";
+            this.connectionString = "/local";
         }
 
         public Config(Properties props) {
@@ -302,18 +328,41 @@ public class YdbConnector implements AutoCloseable {
             }
             this.prefix = prefix;
             this.connectionString = props.getProperty(prefix + "url");
-            this.authMode = AuthMode.valueOf(props.getProperty(prefix + "auth.mode", "NONE"));
+            if (this.connectionString == null || this.connectionString.length() == 0) {
+                this.connectionString = "/local";
+            }
+            this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
             this.saKeyFile = props.getProperty(prefix + "auth.sakey");
             this.staticLogin = props.getProperty(prefix + "auth.username");
             this.staticPassword = props.getProperty(prefix + "auth.password");
             this.tlsCertificateFile = props.getProperty(prefix + "cafile");
             this.preferLocalDc = Boolean.parseBoolean(
                     props.getProperty(prefix + "preferLocalDc", "false"));
-            String spool = props.getProperty(prefix + "poolSize");
-            if (spool != null && spool.length() > 0) {
-                poolSize = Integer.parseInt(spool);
-            }
+            this.poolSize = parseInt(props.getProperty(prefix + "poolSize"), this.poolSize, "poolSize");
             this.properties.putAll(props);
+        }
+
+        private static AuthMode parseAuthMode(String value) {
+            if (value == null || value.length() == 0) {
+                return AuthMode.NONE;
+            }
+            try {
+                return AuthMode.valueOf(value);
+            } catch (IllegalArgumentException iae) {
+                throw new RuntimeException("Unsupported authmode: " + value, iae);
+            }
+        }
+
+        private static int parseInt(String value, int defval, String comment) {
+            if (value == null || value.length() == 0) {
+                return defval;
+            }
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException nfe) {
+                throw new RuntimeException("Failed to parse " + comment
+                        + " as integer, input value: " + value);
+            }
         }
 
         /**

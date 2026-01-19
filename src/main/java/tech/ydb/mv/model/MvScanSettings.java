@@ -23,8 +23,7 @@ public class MvScanSettings implements Serializable {
     }
 
     public MvScanSettings(Properties props) {
-        String v = props.getProperty(MvConfig.CONF_SCAN_RATE, "10000");
-        this.rowsPerSecondLimit = Integer.parseInt(v);
+        this.rowsPerSecondLimit = MvConfig.parseInt(props, MvConfig.CONF_SCAN_RATE, 10000);
     }
 
     public int getRowsPerSecondLimit() {

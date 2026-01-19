@@ -10,13 +10,12 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
 import tech.ydb.mv.svc.MvJobContext;
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -29,7 +28,7 @@ public class MvScanFeeder {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvScanFeeder.class);
 
     private final MvJobContext job;
-    private final MvTarget target;
+    private final MvViewExpr target;
     private final MvKeyInfo keyInfo;
     private final AtomicReference<MvScanContext> context;
     private final MvSink sink;
@@ -43,7 +42,7 @@ public class MvScanFeeder {
     public MvScanFeeder(
             MvJobContext job,
             MvSink sink,
-            MvTarget target,
+            MvViewExpr target,
             MvScanSettings settings,
             MvApplyActionList actions,
             MvScanCompletion completion
@@ -76,8 +75,7 @@ public class MvScanFeeder {
         MvScanContext ctx = context.getAndSet(
                 new MvScanContext(job.getHandler(), target, job.getYdb(), controlTable));
         if (ctx != null) {
-            context.set(ctx);
-            return false;
+            throw new IllegalStateException("Illegal startup sequence for MvScanFeeder");
         }
         Thread thread = new Thread(() -> safeRun());
         thread.setDaemon(true);
@@ -122,8 +120,8 @@ public class MvScanFeeder {
                 run();
                 return;
             } catch (Exception ex) {
-                LOG.info("Failed scan feeder for target {} in handler {} - retry pending...",
-                        target.getName(), job.getHandler().getName(), ex);
+                LOG.info("Failed scan feeder for target `{}` as {} in handler `{}` - retry pending...",
+                        target.getName(), target.getAlias(), job.getHandler().getName(), ex);
             }
             sleepSome();
         }
@@ -140,8 +138,8 @@ public class MvScanFeeder {
             if (key == null) {
                 ctx.getScanDao().registerScan();
             }
-            LOG.info("Started scan feeder for target {} in handler {}, position {}",
-                    target.getName(), job.getHandler().getName(), key);
+            LOG.info("Started scan feeder for target `{}` as {} in handler `{}`, position {}",
+                    target.getName(), target.getAlias(), job.getHandler().getName(), key);
         }
         rateLimiterCounter = 0;
         rateLimiterStamp = System.currentTimeMillis();
@@ -157,8 +155,8 @@ public class MvScanFeeder {
         if (completion != null) {
             completion.onScanComplete();
         }
-        LOG.info("Finished scan feeder for target {} in handler {}",
-                target.getName(), job.getHandler().getName());
+        LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
+                target.getName(), target.getAlias(), job.getHandler().getName());
     }
 
     private int stepScan(MvScanContext ctx) {

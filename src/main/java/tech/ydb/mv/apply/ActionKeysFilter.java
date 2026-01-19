@@ -10,7 +10,7 @@ import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -23,13 +23,13 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysFilter.class);
 
-    private final MvTarget target;
+    private final MvViewExpr target;
     private final MvKeyInfo topmostKey;
     private final MvRowFilter filter;
     private final String sqlSelect;
 
-    public ActionKeysFilter(MvActionContext context, MvTarget target,
-            MvTarget request, MvRowFilter filter) {
+    public ActionKeysFilter(MvActionContext context, MvViewExpr target,
+            MvViewExpr request, MvRowFilter filter) {
         super(context);
         this.target = target;
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
@@ -37,9 +37,9 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         try (MvSqlGen sg = new MvSqlGen(request)) {
             this.sqlSelect = sg.makeSelect();
         }
-        LOG.info(" [{}] Handler `{}`, target `{}`, total {} filter(s)",
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
                 instance, context.getMetadata().getName(), target.getName(),
-                filter.getBlocks().size());
+                target.getAlias(), filter.getBlocks().size());
     }
 
     @Override

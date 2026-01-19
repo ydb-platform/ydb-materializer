@@ -1,9 +1,10 @@
 package tech.ydb.mv.feeder;
 
 import java.util.HashMap;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -20,14 +21,14 @@ import tech.ydb.mv.model.MvInput;
  *
  * @author zinal
  */
-public class MvCdcFeeder {
+public class MvCdcFeeder implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcFeeder.class);
 
     private final MvCdcAdapter adapter;
     private final YdbConnector ydb;
     private final MvSink sink;
-    private final Executor executor;
+    private final ExecutorService executor;
     private final AtomicReference<AsyncReader> reader = new AtomicReference<>();
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
@@ -54,8 +55,12 @@ public class MvCdcFeeder {
         if (!adapter.isRunning()) {
             return;
         }
-        LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
         AsyncReader theReader = buildReader();
+        if (theReader == null) {
+            LOG.info("Empty topic list, refusing to start the CDC reader in feeder `{}`", adapter.getFeederName());
+            return;
+        }
+        LOG.info("Activating the CDC reader for feeder `{}`", adapter.getFeederName());
         theReader.init();
         reader.set(theReader);
     }
@@ -73,6 +78,21 @@ public class MvCdcFeeder {
         }
     }
 
+    @Override
+    public void close() {
+        stop();
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                int total = executor.shutdownNow().size();
+                LOG.error("Total of {} tasks have not completed "
+                        + "within the timeout of 30 seconds.", total);
+            }
+        } catch (InterruptedException ix) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public MvSink getSink() {
         return sink;
     }
@@ -86,6 +106,7 @@ public class MvCdcFeeder {
                 .setDecompressionExecutor(Runnable::run) // CDC doesn't use compression, skip thread switching
                 .setMaxMemoryUsageBytes(200 * 1024 * 1024) // 200 Mb
                 .setConsumerName(adapter.getConsumerName());
+        int topicCount = 0;
         for (MvInput mi : sink.getInputs()) {
             String topicPath = ydb.fullCdcTopicName(mi.getTableName(), mi.getChangefeed());
             if (parsers.containsKey(topicPath)) {
@@ -99,6 +120,10 @@ public class MvCdcFeeder {
                     .build());
             LOG.debug("Topic `{}` reading configured for `{}` in consumer `{}`",
                     topicPath, adapter.getFeederName(), adapter.getConsumerName());
+            ++topicCount;
+        }
+        if (topicCount == 0) {
+            return null;
         }
         ReadEventHandlersSettings rehs = ReadEventHandlersSettings.newBuilder()
                 .setEventHandler(new MvCdcEventReader(this))
@@ -121,7 +146,7 @@ public class MvCdcFeeder {
             Thread t = new Thread(Thread.currentThread().getThreadGroup(), r,
                     "mv-cdc-worker-" + adapter.getFeederName()
                     + "-" + threadNumber.getAndIncrement(), 0);
-            t.setDaemon(false);
+            t.setDaemon(true);
             t.setPriority(Thread.NORM_PRIORITY);
             return t;
         }

@@ -33,16 +33,24 @@ public class MvRunner implements AutoCloseable {
     private final Map<String, MvRunnerJobInfo> localJobs = new HashMap<>();
     private volatile Thread runnerThread = null;
 
-    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
+    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings, String runnerId) {
         this.api = api;
         this.settings = settings;
         this.tableOps = new MvJobDao(ydb, settings);
-        this.runnerId = generateRunnerId();
+        this.runnerId = (runnerId == null) ? generateRunnerId() : runnerId;
         this.runnerIdentity = generateRunnerIdentity();
     }
 
+    public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
+        this(ydb, api, settings, null);
+    }
+
+    public MvRunner(YdbConnector ydb, MvApi api, String runnerId) {
+        this(ydb, api, new MvBatchSettings(), runnerId);
+    }
+
     public MvRunner(YdbConnector ydb, MvApi api) {
-        this(ydb, api, new MvBatchSettings());
+        this(ydb, api, new MvBatchSettings(), null);
     }
 
     /**
@@ -53,7 +61,7 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean start() {
         if (running.getAndSet(true)) {
-            LOG.info("MvRunner is already running, ignored start attempt");
+            LOG.info("MvRunner {} is already running, ignored start attempt", runnerId);
             return false;
         }
 
@@ -75,7 +83,7 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean stop() {
         if (!running.getAndSet(false)) {
-            LOG.info("MvRunner is already stopped, ignored stop attempt");
+            LOG.info("MvRunner {} is already stopped, ignored stop attempt", runnerId);
             return false;
         }
 
@@ -92,7 +100,7 @@ public class MvRunner implements AutoCloseable {
             try {
                 stopHandler(jobName);
             } catch (Exception ex) {
-                LOG.error("Failed to stop job {} during shutdown", jobName, ex);
+                LOG.error("[{}] Failed to stop job {} during shutdown", runnerId, jobName, ex);
             }
         }
         synchronized (localJobs) {
@@ -105,11 +113,11 @@ public class MvRunner implements AutoCloseable {
                 runnerThread.join(5000); // Wait up to 5 seconds
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                LOG.warn("Interrupted while waiting for runner thread to stop");
+                LOG.warn("[{}] Interrupted while waiting for runner thread to stop", runnerId);
             }
         }
 
-        LOG.info("MvRunner stopped");
+        LOG.info("MvRunner with ID {} stopped", runnerId);
         return true;
     }
 
@@ -147,7 +155,7 @@ public class MvRunner implements AutoCloseable {
                 YdbMisc.sleep(200L);
 
             } catch (Exception ex) {
-                LOG.error("Error in MvRunner main loop", ex);
+                LOG.error("[{}] Error in MvRunner main loop", runnerId, ex);
                 YdbMisc.sleep(5000); // Sleep longer on error
             }
         }
@@ -191,7 +199,8 @@ public class MvRunner implements AutoCloseable {
      * Execute a command.
      */
     private void executeCommand(MvCommand command) {
-        LOG.info("Executing command: {} for job: {}", command.getCommandType(), command.getJobName());
+        LOG.info("[{}] Executing command: {} for job: {}", runnerId,
+                command.getCommandType(), command.getJobName());
 
         try {
             tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
@@ -209,15 +218,15 @@ public class MvRunner implements AutoCloseable {
                 throw new IllegalArgumentException("Unknown command type: " + command.getCommandType());
             }
 
-            LOG.info("Command executed successfully: {} for job: {}",
-                    command.getCommandType(), command.getJobName());
+            LOG.info("[{}] Command executed successfully: {} for job: {}",
+                    runnerId, command.getCommandType(), command.getJobName());
 
             tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
                     MvCommand.STATUS_SUCCESS, null);
 
         } catch (Exception ex) {
-            LOG.error("Exception during command execution: {} for job: {}",
-                    command.getCommandType(), command.getJobName(), ex);
+            LOG.error("[{}] Exception during command execution: {} for job: {}",
+                    runnerId, command.getCommandType(), command.getJobName(), ex);
             tableOps.updateCommandStatus(command.getRunnerId(), command.getCommandNo(),
                     MvCommand.STATUS_ERROR, YdbMisc.getStackTrace(ex));
         }
@@ -265,7 +274,7 @@ public class MvRunner implements AutoCloseable {
 
             tableOps.upsertRunnerJob(runnerJob);
 
-            LOG.info("Started handler `{}`", jobName);
+            LOG.info("[{}] Started handler `{}`", runnerId, jobName);
         } else {
             throw new RuntimeException("Start request rejected for handler `"
                     + jobName + "` - already running.");
@@ -285,7 +294,7 @@ public class MvRunner implements AutoCloseable {
 
         tableOps.deleteRunnerJob(runnerId, jobName);
 
-        LOG.info("Stopped handler `{}`", jobName);
+        LOG.info("[{}] Stopped handler `{}`", runnerId, jobName);
     }
 
     private void startScan(String jobName, String targetName, String settingsJson) {
@@ -303,7 +312,7 @@ public class MvRunner implements AutoCloseable {
             api.setScanSettings(oldSettings);
         }
 
-        LOG.info("Started scan, handler `{}`, table `{}`", jobName, targetName);
+        LOG.info("[{}] Started scan, handler `{}`, table `{}`", runnerId, jobName, targetName);
     }
 
     private void stopScan(String jobName, String targetName) {
@@ -311,7 +320,7 @@ public class MvRunner implements AutoCloseable {
             throw new IllegalStateException("Scan was not stopped for handler `"
                     + jobName + "`, table `" + targetName + "`");
         }
-        LOG.info("Stopped scan, handler `{}`, table `{}`", jobName, targetName);
+        LOG.info("[{}] Stopped scan, handler `{}`, table `{}`", runnerId, jobName, targetName);
     }
 
     /**

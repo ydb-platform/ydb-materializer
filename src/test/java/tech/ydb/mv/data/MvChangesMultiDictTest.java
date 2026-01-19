@@ -19,8 +19,8 @@ import tech.ydb.table.values.PrimitiveType;
 public class MvChangesMultiDictTest {
 
     private MvHandler handler;
-    private MvTarget targetSingleDict;
-    private MvTarget targetMultiDict;
+    private MvViewExpr targetSingleDict;
+    private MvViewExpr targetMultiDict;
     private MvChangesMultiDict changes;
 
     // Dictionary table infos
@@ -137,7 +137,7 @@ public class MvChangesMultiDictTest {
         dict3Source.getConditions().add(cond3);
 
         // Create target that depends on single dictionary (dict1 only)
-        targetSingleDict = new MvTarget("target_single");
+        targetSingleDict = new MvViewExpr("target_single");
         targetSingleDict.getSources().add(mainSource);
         targetSingleDict.getSources().add(dict1Source);
 
@@ -153,7 +153,7 @@ public class MvChangesMultiDictTest {
         targetSingleDict.getColumns().add(col2);
 
         // Create target that depends on all three dictionaries
-        targetMultiDict = new MvTarget("target_multi");
+        targetMultiDict = new MvViewExpr("target_multi");
         targetMultiDict.getSources().add(mainSource);
         targetMultiDict.getSources().add(dict1Source);
         targetMultiDict.getSources().add(dict2Source);
@@ -181,13 +181,13 @@ public class MvChangesMultiDictTest {
         targetMultiDict.getColumns().add(col6);
 
         // Create handler
-        handler = new MvHandler("test_handler", MvSqlPos.EMPTY);
+        handler = new MvHandler("test_handler");
         handler.addInput(mainInput);
         handler.addInput(dict1Input);
         handler.addInput(dict2Input);
         handler.addInput(dict3Input);
-        handler.addTarget(targetSingleDict);
-        handler.addTarget(targetMultiDict);
+        handler.addView(targetSingleDict.getView());
+        handler.addView(targetMultiDict.getView());
 
         changes = new MvChangesMultiDict();
     }
@@ -237,7 +237,7 @@ public class MvChangesMultiDictTest {
         assertEquals(2, filters.size());
 
         // Check that both targets have filters
-        Set<MvTarget> filteredTargets = new HashSet<>();
+        Set<MvViewExpr> filteredTargets = new HashSet<>();
         for (MvRowFilter filter : filters) {
             filteredTargets.add(filter.getTarget());
             assertFalse(filter.isEmpty());
@@ -273,7 +273,7 @@ public class MvChangesMultiDictTest {
         assertEquals(2, filters.size());
 
         // Check that both targets have filters
-        Set<MvTarget> filteredTargets = new HashSet<>();
+        Set<MvViewExpr> filteredTargets = new HashSet<>();
         for (MvRowFilter filter : filters) {
             filteredTargets.add(filter.getTarget());
             assertFalse(filter.isEmpty());
@@ -296,7 +296,7 @@ public class MvChangesMultiDictTest {
         assertEquals(2, filters.size());
 
         // Check that both targets have filters
-        Set<MvTarget> filteredTargets = new HashSet<>();
+        Set<MvViewExpr> filteredTargets = new HashSet<>();
         for (MvRowFilter filter : filters) {
             filteredTargets.add(filter.getTarget());
             assertFalse(filter.isEmpty());
@@ -319,7 +319,7 @@ public class MvChangesMultiDictTest {
         assertEquals(2, filters.size());
 
         // Check that both targets have filters
-        Set<MvTarget> filteredTargets = new HashSet<>();
+        Set<MvViewExpr> filteredTargets = new HashSet<>();
         for (MvRowFilter filter : filters) {
             filteredTargets.add(filter.getTarget());
             assertFalse(filter.isEmpty());
@@ -448,7 +448,7 @@ public class MvChangesMultiDictTest {
         assertEquals(2, filters.size());
 
         // Check that both targets have filters
-        Set<MvTarget> filteredTargets = new HashSet<>();
+        Set<MvViewExpr> filteredTargets = new HashSet<>();
         for (MvRowFilter filter : filters) {
             filteredTargets.add(filter.getTarget());
             assertFalse(filter.isEmpty());

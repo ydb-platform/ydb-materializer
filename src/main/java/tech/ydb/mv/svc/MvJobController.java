@@ -6,9 +6,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.apply.MvApplyActionList;
-
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.feeder.MvCdcFeeder;
@@ -18,7 +18,6 @@ import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
 import tech.ydb.mv.support.MvScanAdapter;
 import tech.ydb.mv.support.MvScanDao;
 
@@ -28,7 +27,7 @@ import tech.ydb.mv.support.MvScanDao;
  *
  * @author zinal
  */
-public class MvJobController {
+public class MvJobController implements AutoCloseable {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvJobController.class);
 
@@ -110,21 +109,41 @@ public class MvJobController {
         return true;
     }
 
+    @Override
+    public void close() {
+        if (context.isRunning()) {
+            stop();
+        }
+        cdcFeeder.close();
+    }
+
     public boolean startScan(String name, MvScanSettings settings) {
-        MvTarget target = context.getHandler().getTarget(name);
-        if (target == null) {
+        var view = context.getHandler().getView(name);
+        if (view == null) {
             throw new IllegalArgumentException("Illegal target name `" + name
                     + "` for handler `" + context.getHandler().getName() + "`");
         }
-        return context.startScan(target, settings, applyManager, null, null);
+        int counter = 0;
+        for (var target : view.getParts().values()) {
+            if (context.startScan(target, settings, applyManager)) {
+                counter += 1;
+            }
+        }
+        return (counter > 0);
     }
 
     public boolean stopScan(String name) {
-        MvTarget target = context.getHandler().getTarget(name);
-        if (target == null) {
+        var view = context.getHandler().getView(name);
+        if (view == null) {
             return false;
         }
-        return context.stopScan(target);
+        int counter = 0;
+        for (var target : view.getParts().values()) {
+            if (context.stopScan(target)) {
+                counter += 1;
+            }
+        }
+        return (counter > 0);
     }
 
     private boolean obtainLock() {
@@ -141,7 +160,7 @@ public class MvJobController {
 
     private void clearScanPositions() {
         var scanDao = new MvScanDao(context.getYdb(), new TempScanDaoAdapter());
-        for (var target : context.getHandler().getTargets().values()) {
+        for (var target : context.getHandler().getViews().values()) {
             scanDao.unregisterSpecificScan(target.getName());
         }
     }
@@ -203,8 +222,9 @@ public class MvJobController {
         }
         var completionHandler = new DictScanComplete(dictScan, changes, filters.size());
         for (var filter : filters) {
-            LOG.info("Initiating dictionary refresh scan for target `{}` in handler `{}`",
-                    filter.getTarget().getName(), context.getHandler().getName());
+            LOG.info("Initiating dictionary refresh scan for target `{}` as {} in handler `{}`",
+                    filter.getTarget().getName(), filter.getTarget().getAlias(),
+                    context.getHandler().getName());
             var action = applyManager.createFilterAction(filter);
             var actions = new MvApplyActionList(action);
             context.startScan(filter.getTarget(), settings, applyManager,

@@ -13,7 +13,8 @@ import tech.ydb.table.Session;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvIssue;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
+import tech.ydb.mv.model.MvView;
 
 /**
  * SQL validation for MV context - used to detect errors in opaque expressions.
@@ -34,14 +35,16 @@ public class MvValidateSql {
         if (!context.isValid()) {
             return false;
         }
-        for (MvTarget target : context.getTargets().values()) {
-            validateTarget(target);
+        for (MvView mv : context.getViews().values()) {
+            for (MvViewExpr mt : mv.getParts().values()) {
+                validateViewPart(mt);
+            }
         }
         return context.isValid();
     }
 
-    private boolean validateTarget(MvTarget target) {
-        MvSqlGen sg = new MvSqlGen(target);
+    private boolean validateViewPart(MvViewExpr part) {
+        MvSqlGen sg = new MvSqlGen(part);
         // fast track - attempt to check the whole SELECT, if valid - stop
         String currentSql = sg.makeSelect();
         String originalIssues = validateSql(currentSql);
@@ -51,35 +54,35 @@ public class MvValidateSql {
         // there are issues with the whole SELECT, probably bad opaque expressions
         // trying to isolate and report properly
         HashSet<String> knownIssues = new HashSet<>();
-        List<MvColumn> exprColumns = collectExpressionColumns(target);
-        if (exprColumns.isEmpty() && target.getFilter() != null) {
+        List<MvColumn> exprColumns = collectExpressionColumns(part);
+        if (exprColumns.isEmpty() && part.getFilter() != null) {
             // no expressions in columns, and we have the filter - so it is wrong
-            context.addIssue(new MvIssue.SqlCustomFilterError(target, target.getFilter(), originalIssues));
+            context.addIssue(new MvIssue.SqlCustomFilterError(part, part.getFilter(), originalIssues));
             return false;
         }
         // check the filter
-        if (target.getFilter() != null) {
-            validateFilter(target, sg, exprColumns, knownIssues);
+        if (part.getFilter() != null) {
+            validateFilter(part, sg, exprColumns, knownIssues);
         }
         if (exprColumns.size() > 1) {
             for (MvColumn current : exprColumns) {
                 // safe placeholders for all but the current column
                 // safe placeholder for WHERE filter
-                validateColumn(target, current, sg, exprColumns, knownIssues);
+                validateColumn(part, current, sg, exprColumns, knownIssues);
             }
         } else if (exprColumns.size() == 1) {
             // single expression column
             MvColumn current = exprColumns.iterator().next();
-            validateColumn(target, current, sg, exprColumns, knownIssues);
+            validateColumn(part, current, sg, exprColumns, knownIssues);
         }
         if (knownIssues.isEmpty()) {
             // Could not localize the error, but still need to report it.
-            context.addIssue(new MvIssue.SqlUnexpectedError(target, originalIssues));
+            context.addIssue(new MvIssue.SqlUnexpectedError(part, originalIssues));
         }
         return false;
     }
 
-    private void validateFilter(MvTarget target, MvSqlGen sg,
+    private void validateFilter(MvViewExpr target, MvSqlGen sg,
             List<MvColumn> exprColumns, HashSet<String> knownIssues) {
         // safe placeholders for all columns
         maskAllExcept(null, exprColumns, sg);
@@ -91,7 +94,7 @@ public class MvValidateSql {
         }
     }
 
-    private void validateColumn(MvTarget target, MvColumn current, MvSqlGen sg,
+    private void validateColumn(MvViewExpr target, MvColumn current, MvSqlGen sg,
             List<MvColumn> exprColumns, HashSet<String> knownIssues) {
         maskAllExcept(current, exprColumns, sg);
         if (target.getFilter() != null) {
@@ -123,7 +126,7 @@ public class MvValidateSql {
         return status.toString();
     }
 
-    private List<MvColumn> collectExpressionColumns(MvTarget target) {
+    private List<MvColumn> collectExpressionColumns(MvViewExpr target) {
         List<MvColumn> output = new ArrayList<>();
         for (MvColumn c : target.getColumns()) {
             if (c.isComputation() && !c.getComputation().isLiteral()) {

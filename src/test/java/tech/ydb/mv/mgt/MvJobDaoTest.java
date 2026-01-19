@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
  *
  * @author zinal
  */
-public class MvJobDaoTest extends AbstractMgtTest {
+public class MvJobDaoTest extends MgmtTestBase {
 
     @BeforeAll
     public static void setup() {

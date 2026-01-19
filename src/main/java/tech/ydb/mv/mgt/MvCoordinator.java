@@ -94,6 +94,8 @@ public class MvCoordinator implements AutoCloseable {
         }
         LOG.info("Stopping, instanceId={}", runnerId);
         demote();
+        cancelLeader();
+        cancelAttempt();
         return true;
     }
 
@@ -209,20 +211,22 @@ public class MvCoordinator implements AutoCloseable {
             f.cancel(true);
         }
 
-        f = attemptFuture.getAndSet(null);
-        if (f != null) {
-            f.cancel(false);
-        }
+        cancelAttempt();
 
         LOG.info("Leader loop started, instanceId={}", runnerId);
     }
 
     private void leaderTick() {
+        if (!isRunning()) {
+            return;
+        }
         try {
             if (!stillActive()) {
                 LOG.info("Lost ownership, demoting, instanceId={}", runnerId);
                 demote();
-                scheduleAttempt();
+                if (isRunning()) {
+                    scheduleAttempt();
+                }
                 return;
             }
 
@@ -239,6 +243,9 @@ public class MvCoordinator implements AutoCloseable {
     }
 
     private boolean stillActive() {
+        if (!isRunning()) {
+            return false;
+        }
         var runners = jobDao.getJobRunners(MvConfig.HANDLER_COORDINATOR);
         if (runners.size() != 1) {
             return false;
@@ -262,6 +269,13 @@ public class MvCoordinator implements AutoCloseable {
         var f = leaderFuture.getAndSet(null);
         if (f != null) {
             f.cancel(true);
+        }
+    }
+
+    private void cancelAttempt() {
+        var f = attemptFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(false);
         }
     }
 

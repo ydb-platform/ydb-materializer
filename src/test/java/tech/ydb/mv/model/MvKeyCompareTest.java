@@ -3,7 +3,6 @@ package tech.ydb.mv.model;
 import tech.ydb.mv.data.MvKeyPrefix;
 import tech.ydb.mv.data.MvKey;
 import java.math.BigDecimal;
-import java.util.Base64;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import tech.ydb.mv.data.YdbBytes;

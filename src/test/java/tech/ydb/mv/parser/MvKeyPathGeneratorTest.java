@@ -13,7 +13,7 @@ import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Test class for MvKeyPathGenerator
@@ -24,7 +24,7 @@ public class MvKeyPathGeneratorTest {
 
     private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
 
-    private MvTarget originalTarget;
+    private MvViewExpr originalTarget;
     private MvJoinSource sourceA, sourceB, sourceC, sourceD;
     private MvTableInfo tableInfoA, tableInfoB, tableInfoC, tableInfoD;
     private static volatile boolean inputPrinted = false;
@@ -115,7 +115,7 @@ public class MvKeyPathGeneratorTest {
         sourceD.getConditions().add(conditionAD);
 
         // Create original target
-        originalTarget = new MvTarget("test_target", new MvSqlPos(1, 1));
+        originalTarget = new MvViewExpr("test_target");
         originalTarget.getSources().add(sourceA);
         originalTarget.getSources().add(sourceB);
         originalTarget.getSources().add(sourceC);
@@ -150,7 +150,7 @@ public class MvKeyPathGeneratorTest {
         columnD.setType(PrimitiveType.Text);
         originalTarget.getColumns().add(columnD);
 
-        if (PRINT_SQL && ! inputPrinted) {
+        if (PRINT_SQL && !inputPrinted) {
             System.out.println("*** Input SQL: " + new MvSqlGen(originalTarget).makeCreateView());
             inputPrinted = true;
         }
@@ -159,7 +159,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_DirectCase() {
         // Test case where input source is the top-most source
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceA);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceA);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -179,7 +179,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_OneStep() {
         // Test transformation from B to A (optimized - B has a_id foreign key)
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceB);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceB);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -206,7 +206,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_TwoSteps() {
         // Test transformation from C to A (two steps: C -> B -> A)
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceC);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceC);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -230,7 +230,7 @@ public class MvKeyPathGeneratorTest {
     @Test
     public void testGenerateKeyPath_Optimize() {
         // Test transformation from D to A (one step: D)
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceD);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -265,7 +265,7 @@ public class MvKeyPathGeneratorTest {
         originalTarget.getSources().add(disconnectedSource);
 
         // Should return null when no path exists
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(disconnectedSource);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(disconnectedSource);
         assertNull(result);
     }
 
@@ -282,7 +282,7 @@ public class MvKeyPathGeneratorTest {
         sourceA.getConditions().add(circularCondition);
 
         // Should still optimize (D has a_id foreign key to A)
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceD);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceD);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -305,7 +305,7 @@ public class MvKeyPathGeneratorTest {
 
         sourceA.setTableInfo(tableInfoMultiKey);
 
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceA);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceA);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -336,7 +336,7 @@ public class MvKeyPathGeneratorTest {
         literalCond.setSecondLiteral(originalTarget.addLiteral("'AAA'"));
         sourceB.getConditions().add(literalCond);
 
-        MvTarget result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceC);
+        MvViewExpr result = new MvPathGenerator(originalTarget).extractKeysReverse(sourceC);
         assertNotNull(result);
 
         if (PRINT_SQL) {

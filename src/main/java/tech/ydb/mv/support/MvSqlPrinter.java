@@ -7,7 +7,7 @@ import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  *
@@ -22,21 +22,32 @@ public class MvSqlPrinter {
     }
 
     public void write(PrintStream pw) {
-        for (MvTarget mt : sortTargets()) {
+        for (MvViewExpr mt : sortTargets()) {
             write(pw, mt);
         }
     }
 
-    private ArrayList<MvTarget> sortTargets() {
-        ArrayList<MvTarget> output = new ArrayList<>(ctx.getTargets().values());
-        output.sort((x, y) -> x.getName().compareToIgnoreCase(y.getName()));
+    private ArrayList<MvViewExpr> sortTargets() {
+        ArrayList<MvViewExpr> output = new ArrayList<>();
+        for (var mv : ctx.getViews().values()) {
+            output.addAll(mv.getParts().values());
+        }
+        output.sort((x, y) -> compareTargets(x, y));
         return output;
     }
 
-    public void write(PrintStream pw, MvTarget mt) {
+    private int compareTargets(MvViewExpr x, MvViewExpr y) {
+        int cmp = x.getName().compareToIgnoreCase(y.getName());
+        if (cmp == 0) {
+            cmp = x.getAlias().compareToIgnoreCase(y.getAlias());
+        }
+        return cmp;
+    }
+
+    public void write(PrintStream pw, MvViewExpr mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");
-        pw.println("*** Target: " + mt.getName());
+        pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
         pw.println("-------------------------------------------------------");
         pw.println();
         pw.println("  ** Equivalent view DDL:");
@@ -77,7 +88,7 @@ public class MvSqlPrinter {
                 // Key extraction not needed in batch mode
                 continue;
             }
-            MvTarget temp = pathGenerator.extractKeysReverse(js);
+            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
             pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
             pw.println();
             if (temp != null) {

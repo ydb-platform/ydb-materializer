@@ -13,7 +13,7 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvScanSettings;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvDescriberMeta;
 
 /**
@@ -29,8 +29,8 @@ public class MvJobContext implements MvCdcAdapter {
     private final MvDescriberMeta describer;
     // initially stopped
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
-    // target name -> scan feeder
-    private final HashMap<String, MvScanFeeder> scanFeeders = new HashMap<>();
+    // target -> scan feeder
+    private final HashMap<MvViewExpr, MvScanFeeder> scanFeeders = new HashMap<>();
 
     public MvJobContext(MvService service, MvMetadata metadata,
             MvHandler handler, MvHandlerSettings settings) {
@@ -102,10 +102,14 @@ public class MvJobContext implements MvCdcAdapter {
         return false;
     }
 
-    public synchronized boolean startScan(MvTarget target, MvScanSettings settings,
+    public boolean startScan(MvViewExpr target, MvScanSettings settings,
+            MvApplyManager applyManager) {
+        return startScan(target, settings, applyManager, null, null);
+    }
+
+    public synchronized boolean startScan(MvViewExpr target, MvScanSettings settings,
             MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
-        if (target == null
-                || handler.getTargets().get(target.getName()) != target) {
+        if (target == null || !handler.containsPart(target)) {
             throw new IllegalArgumentException("Illegal target `" + target
                     + "` for handler `" + handler.getName() + "`");
         }
@@ -113,30 +117,29 @@ public class MvJobContext implements MvCdcAdapter {
             throw new IllegalStateException("Scan start refused on stopped handler `"
                     + handler.getName() + "`");
         }
-        MvScanFeeder sf = scanFeeders.get(target.getName());
+        MvScanFeeder sf = scanFeeders.get(target);
         if (sf != null && sf.isRunning()) {
             return false;
         }
         sf = new MvScanFeeder(this, applyManager, target, settings, actions, completion);
-        scanFeeders.put(target.getName(), sf);
+        scanFeeders.put(target, sf);
         return sf.start();
     }
 
-    public synchronized boolean stopScan(MvTarget target) {
-        if (target == null
-                || handler.getTargets().get(target.getName()) != target) {
+    public synchronized boolean stopScan(MvViewExpr target) {
+        if (target == null || !handler.containsPart(target)) {
             return false;
         }
-        MvScanFeeder sf = scanFeeders.remove(target.getName());
+        MvScanFeeder sf = scanFeeders.remove(target);
         if (sf == null) {
             return false;
         }
         return sf.stop();
     }
 
-    public synchronized void forgetScan(MvTarget target) {
+    public synchronized void forgetScan(MvViewExpr target) {
         if (target != null) {
-            scanFeeders.remove(target.getName());
+            scanFeeders.remove(target);
         }
     }
 
