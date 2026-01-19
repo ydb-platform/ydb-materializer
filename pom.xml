@@ -4,8 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>tech.ydb.samples</groupId>
     <artifactId>ydb-materializer</artifactId>
-    <version>1.4-SNAPSHOT</version>
+    <version>1.7.0</version>
     <name>YDB Materializer</name>
+    <description>YDB Materializer — tool for materializing YDB data.</description>
+    <url>https://github.com/ydb-platform/ydb-materializer</url>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -163,17 +165,27 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
                         <version>3.3.1</version>
-                        <configuration>
-                            <skipSource>true</skipSource>
-                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>3.11.2</version>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
