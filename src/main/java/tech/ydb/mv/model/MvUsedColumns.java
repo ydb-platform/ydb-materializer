@@ -13,7 +13,7 @@ public class MvUsedColumns {
     // alias -> usage
     private final HashMap<String, JoinSource> tables = new HashMap<>();
 
-    public void fill(MvTarget target) {
+    public void fill(MvViewExpr target) {
         for (MvColumn c : target.getColumns()) {
             if (c.isComputation()) {
                 for (var src : c.getComputation().getSources()) {

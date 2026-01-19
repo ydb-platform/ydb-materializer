@@ -141,12 +141,12 @@ public class MvService implements MvApi {
     public void shutdown() {
         cancelPartitionsRefresh();
         List<MvJobController> currentJobs;
-        synchronized(this) {
+        synchronized (this) {
             currentJobs = new ArrayList<>(handlers.values());
         }
-        currentJobs.forEach(h -> h.stop());
+        currentJobs.forEach(h -> h.close());
         stopDictionaryHandler();
-        synchronized(this) {
+        synchronized (this) {
             handlers.clear();
         }
         locker.releaseAll();
@@ -161,6 +161,7 @@ public class MvService implements MvApi {
         } catch (InterruptedException ix) {
             Thread.currentThread().interrupt();
         }
+        locker.close();
     }
 
     public synchronized boolean startDictionaryHandler() {

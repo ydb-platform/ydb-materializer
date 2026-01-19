@@ -15,7 +15,7 @@ import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.support.YdbMisc;
 import tech.ydb.mv.feeder.MvSink;
 
@@ -36,8 +36,8 @@ public class MvApplyManager implements MvSink {
 
     // source table name -> table apply configuration data
     private final HashMap<String, MvApply.Source> sourceConfigs = new HashMap<>();
-    // target table name -> refresh action singleton list
-    private final HashMap<String, MvApply.Target> targetConfigs = new HashMap<>();
+    // target -> refresh action singleton list
+    private final HashMap<MvViewExpr, MvApply.Target> targetConfigs = new HashMap<>();
 
     public MvApplyManager(MvJobContext context) {
         this.context = new MvActionContext(context, this);
@@ -245,9 +245,9 @@ public class MvApplyManager implements MvSink {
     }
 
     @Override
-    public boolean submitRefresh(MvTarget target,
+    public boolean submitRefresh(MvViewExpr target,
             Collection<MvChangeRecord> changes, MvCommitHandler handler) {
-        var targetConfig = targetConfigs.get(target.getName());
+        var targetConfig = targetConfigs.get(target);
         if (targetConfig == null) {
             return submitCustom(null, changes, handler);
         }
@@ -263,7 +263,7 @@ public class MvApplyManager implements MvSink {
      * @param changes The change records to be submitted for processing.
      * @param handler The commit processing handler
      */
-    public void submitForce(MvTarget target, Collection<MvChangeRecord> changes,
+    public void submitForce(MvViewExpr target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         var sourceConfig = findSource(changes, handler);
         if (sourceConfig != null) {
@@ -271,7 +271,7 @@ public class MvApplyManager implements MvSink {
             if (target == null) {
                 actions = sourceConfig.getActions();
             } else {
-                var targetConfig = targetConfigs.get(target.getName());
+                var targetConfig = targetConfigs.get(target);
                 if (targetConfig != null) {
                     actions = targetConfig.getRefreshActions();
                 } else {
@@ -284,14 +284,15 @@ public class MvApplyManager implements MvSink {
 
     public MvApplyAction createFilterAction(MvRowFilter filter) {
         var target = filter.getTarget();
-        var targetConfig = targetConfigs.get(target.getName());
+        var targetConfig = targetConfigs.get(target);
         if (targetConfig == null) {
             throw new IllegalArgumentException("Cannot produce filter action "
-                    + "for unknown target " + target.getName());
+                    + "for unknown target " + target.getName() + " as " + target.getAlias());
         }
         if (targetConfig.getDictTrans() == null) {
-            throw new IllegalArgumentException("Cannot produce filter action "
-                    + "for non-dictionary target " + target.getName());
+            throw new IllegalArgumentException(
+                    "Cannot produce filter action for non-dictionary target "
+                    + target.getName() + " as " + target.getAlias());
         }
         return new ActionKeysFilter(context, target, targetConfig.getDictTrans(), filter);
     }

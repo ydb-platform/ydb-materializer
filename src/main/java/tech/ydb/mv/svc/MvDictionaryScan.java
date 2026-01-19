@@ -38,6 +38,8 @@ public class MvDictionaryScan {
     private final String controlTableName;
     private final String historyTableName;
     private final MvTableInfo historyTableInfo;
+    private final String sqlSelectInitial;
+    private final String sqlSelectNext;
 
     public MvDictionaryScan(YdbConnector conn, MvDescriber describer,
             MvHandler handler, MvDictionarySettings settings) {
@@ -50,61 +52,77 @@ public class MvDictionaryScan {
         this.historyTableName = conn.getProperty(
                 MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         this.historyTableInfo = describer.describeTable(this.historyTableName);
+        this.sqlSelectInitial = getSelectInitial(this.historyTableName);
+        this.sqlSelectNext = getSelectNext(this.historyTableName);
     }
 
     public MvHandler getHandler() {
         return handler;
     }
 
+    private static String getSelectInitial(String historyTableName) {
+        return "DECLARE $src AS Text; "
+                + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
+                + historyTableName
+                + "` WHERE src=$src "
+                + "ORDER BY src, tv, seqno, key_text "
+                + "LIMIT 500;";
+    }
+
+    private static String getSelectNext(String historyTableName) {
+        return "DECLARE $src AS Text; DECLARE $tv AS Timestamp; "
+                + "DECLARE $seqno AS Uint64; DECLARE $key_text AS Text; "
+                + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
+                + historyTableName
+                + "` WHERE src=$src AND (tv, seqno, key_text) > ($tv, $seqno, $key_text) "
+                + "ORDER BY src, tv, seqno, key_text "
+                + "LIMIT 500;";
+    }
+
     public MvChangesSingleDict scan(String tableName) {
-        var adapter = new Adapter(tableName);
-        MvKey startKey = new MvScanDao(conn, adapter).initScan();
+        long scanLimit = settings.getMaxChangeRowsScanned();
+        if (scanLimit <= 0) {
+            scanLimit = Long.MAX_VALUE;
+        }
+        var result = new MvChangesSingleDict(tableName);
+        var scanner = new Scanner(tableName, result);
+        MvKey startKey = new MvScanDao(conn, scanner).initScan();
+        MvKey curKey = startKey;
+        result.setScanPosition(startKey);
 
         LOG.info("\t...dictionary `{}` at position {}", tableName, startKey);
 
-        Params params;
-        String sql;
-        if (startKey == null || startKey.isEmpty()) {
-            params = Params.of("$src", PrimitiveValue.newText(tableName));
-            sql = "DECLARE $src AS Text; "
-                    + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
-                    + historyTableName
-                    + "` WHERE src=$src "
-                    + "ORDER BY src, tv, seqno, key_text;";
-        } else {
-            params = Params.of(
-                    "$src", PrimitiveValue.newText(tableName),
-                    "$tv", startKey.convertValue(1),
-                    "$seqno", startKey.convertValue(2),
-                    "$key_text", startKey.convertValue(3)
-            );
-            sql = "DECLARE $src AS Text; DECLARE $tv AS Timestamp; "
-                    + "DECLARE $seqno AS Uint64; DECLARE $key_text AS Text; "
-                    + "SELECT src, tv, seqno, key_text, key_val, diff_val FROM `"
-                    + historyTableName
-                    + "` WHERE src=$src AND (tv, seqno, key_text) > ($tv, $seqno, $key_text) "
-                    + "ORDER BY src, tv, seqno, key_text;";
-        }
-        ResultSetReader rsr = conn.sqlRead(sql, params).getResultSet(0);
-        var result = new MvChangesSingleDict(tableName);
-        result.setScanPosition(startKey);
-        while (rsr.next()) {
-            result.setScanPosition(new MvKey(rsr, historyTableInfo.getKeyInfo()));
-            String diffStr = rsr.getColumn(5).getJsonDocument();
-            if (diffStr == null) {
-                continue;
+        long changeRowsScanned = 0;
+        var pTableName = PrimitiveValue.newText(tableName);
+        ResultSetReader rsr;
+        do {
+            Params params;
+            String sql;
+            if (curKey == null || curKey.isEmpty()) {
+                params = Params.of("$src", pTableName);
+                sql = sqlSelectInitial;
+            } else {
+                params = Params.of(
+                        "$src", pTableName,
+                        "$tv", curKey.convertValue(1),
+                        "$seqno", curKey.convertValue(2),
+                        "$key_text", curKey.convertValue(3)
+                );
+                sql = sqlSelectNext;
             }
-            JsonElement diffObj = JsonParser.parseString(diffStr);
-            if (!diffObj.isJsonObject()) {
-                continue;
+            rsr = conn.sqlRead(sql, params).getResultSet(0);
+            while (rsr.next()) {
+                curKey = scanner.handleRow(curKey, rsr);
+                ++changeRowsScanned;
             }
-            MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),
-                    adapter.sourceTableInfo.getKeyInfo());
-            JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
-            for (JsonElement item : diffArray.asList()) {
-                result.updateField(item.getAsString(), rowKey);
+            if (changeRowsScanned > scanLimit) {
+                LOG.warn("Dictionary changes scan for table `{}` stopped "
+                        + "before reaching EOF because it got {} rows, limit is {} rows.",
+                        tableName, changeRowsScanned, scanLimit);
+                break;
             }
-        }
+        } while (rsr.getRowCount() > 0);
+
         return result;
     }
 
@@ -125,7 +143,7 @@ public class MvDictionaryScan {
                 .filter(i -> i.isTableKnown())
                 .map(i -> i.getTableName())
                 .forEach(tableName -> ret.addItem(scan(tableName)));
-        if (! ret.isEmpty()) {
+        if (!ret.isEmpty()) {
             var items = ret.getItems().stream()
                     .filter(i -> !i.isEmpty())
                     .map(i -> i.getTableName())
@@ -142,10 +160,10 @@ public class MvDictionaryScan {
 
     class Adapter implements MvScanAdapter {
 
-        private final String sourceTableName;
-        private final MvTableInfo sourceTableInfo;
+        final String sourceTableName;
+        final MvTableInfo sourceTableInfo;
 
-        public Adapter(String sourceTableName) {
+        Adapter(String sourceTableName) {
             this.sourceTableName = sourceTableName;
             this.sourceTableInfo = describer.describeTable(sourceTableName);
         }
@@ -174,6 +192,48 @@ public class MvDictionaryScan {
             return sourceTableName;
         }
 
+    }
+
+    class Scanner extends Adapter {
+
+        private final MvChangesSingleDict result;
+
+        public Scanner(String sourceTableName, MvChangesSingleDict result) {
+            super(sourceTableName);
+            this.result = result;
+        }
+
+        MvKey handleRow(MvKey curKey, ResultSetReader rsr) {
+            curKey = new MvKey(rsr, historyTableInfo.getKeyInfo());
+            result.setScanPosition(curKey);
+            String diffStr = rsr.getColumn(5).getJsonDocument();
+            if (diffStr == null) {
+                if (!result.isMissingDiffFieldRows()) {
+                    LOG.warn("Missing value in the `diff_val` field with key {} "
+                            + "of the `{}` table, row skipped. Further messages suppressed.",
+                            curKey, historyTableName);
+                    result.setMissingDiffFieldRows(true);
+                }
+                return curKey;
+            }
+            JsonElement diffObj = JsonParser.parseString(diffStr);
+            if (!diffObj.isJsonObject()) {
+                if (!result.isMissingDiffFieldRows()) {
+                    LOG.warn("Illegal format value in the `diff_val` field with key {} "
+                            + "of the `{}` table, row skipped. Further messages suppressed.",
+                            curKey, historyTableName);
+                    result.setMissingDiffFieldRows(true);
+                }
+                return curKey;
+            }
+            MvKey rowKey = new MvKey(rsr.getColumn(4).getJsonDocument(),
+                    sourceTableInfo.getKeyInfo());
+            JsonArray diffArray = diffObj.getAsJsonObject().getAsJsonArray("f");
+            for (JsonElement item : diffArray.asList()) {
+                result.updateField(item.getAsString(), rowKey);
+            }
+            return curKey;
+        }
     }
 
 }

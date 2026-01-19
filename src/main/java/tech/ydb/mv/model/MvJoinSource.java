@@ -73,6 +73,12 @@ public class MvJoinSource implements MvSqlPosHolder {
      */
     public List<String> collectRightJoinColumns() {
         List<String> joinColumns = new ArrayList<>();
+        if (conditions.isEmpty()) {
+            return joinColumns;
+        }
+        if (tableAlias == null) {
+            throw new IllegalStateException("Table alias is not set");
+        }
         for (MvJoinCondition cond : conditions) {
             // Check if this condition references the current source and collect the column
             if (tableAlias.equals(cond.getFirstAlias()) && cond.getFirstColumn() != null) {

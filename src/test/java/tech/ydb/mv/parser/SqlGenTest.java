@@ -22,10 +22,11 @@ public class SqlGenTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getParts().values().iterator().next();
         // Set table information
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("main_table")
@@ -59,10 +60,11 @@ public class SqlGenTest {
 
         // Verify parsing was successful
         Assertions.assertTrue(mc.isValid());
-        Assertions.assertEquals(1, mc.getTargets().size());
+        Assertions.assertEquals(1, mc.getViews().size());
 
         // Get the target
-        var target = mc.getTargets().values().iterator().next();
+        var view = mc.getViews().values().iterator().next();
+        var target = view.getParts().values().iterator().next();
         // Set table information
         target.getSources().get(0).setTableInfo(
                 SqlConstants.tiMainTable("schema3/main_table")
@@ -89,7 +91,7 @@ public class SqlGenTest {
         validateGeneratedSql2(generatedSql, target);
     }
 
-    private void validateGeneratedSql1(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateGeneratedSql1(String sql, tech.ydb.mv.model.MvViewExpr target) {
         // Check that SQL starts with CREATE VIEW
         Assertions.assertTrue(sql.startsWith("CREATE VIEW "),
                 "SQL should start with 'CREATE VIEW'");
@@ -161,7 +163,7 @@ public class SqlGenTest {
         }
     }
 
-    private void validateGeneratedSql2(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateGeneratedSql2(String sql, tech.ydb.mv.model.MvViewExpr target) {
         // Check that SQL starts with CREATE VIEW
         Assertions.assertTrue(sql.startsWith("CREATE VIEW "),
                 "SQL should start with 'CREATE VIEW'");
@@ -295,7 +297,7 @@ public class SqlGenTest {
                 "SQL should contain sub3.c5 reference");
     }
 
-    private void validateConstantsUsage(String sql, tech.ydb.mv.model.MvTarget target) {
+    private void validateConstantsUsage(String sql, tech.ydb.mv.model.MvViewExpr target) {
         // Check that all literals are properly formatted in the constants subquery
         for (var literal : target.getLiterals()) {
             String value = literal.getValue();

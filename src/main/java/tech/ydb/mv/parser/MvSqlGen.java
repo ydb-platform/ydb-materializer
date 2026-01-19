@@ -14,7 +14,7 @@ import tech.ydb.table.values.Type;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvLiteral;
 import tech.ydb.mv.model.MvTableInfo;
@@ -35,10 +35,10 @@ public class MvSqlGen implements AutoCloseable {
     public static final Pattern SAFE_ID_PATT = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*$");
     public static final String EOL = System.getProperty("line.separator");
 
-    private final MvTarget target;
+    private final MvViewExpr target;
     private final HashSet<MvComputation> excludedComputations;
 
-    public MvSqlGen(MvTarget target) {
+    public MvSqlGen(MvViewExpr target) {
         if (target == null) {
             throw new NullPointerException("target argument cannot be null");
         }
@@ -46,7 +46,7 @@ public class MvSqlGen implements AutoCloseable {
         this.excludedComputations = new HashSet<>();
     }
 
-    public MvTarget getTarget() {
+    public MvViewExpr getTarget() {
         return target;
     }
 
@@ -140,7 +140,7 @@ public class MvSqlGen implements AutoCloseable {
 
     public String makeSelect() {
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyFields(sb);
+        genDeclareMainKeyList(sb);
         genFullSelect(sb, true);
         sb.append(";").append(EOL);
         return sb.toString();
@@ -157,8 +157,12 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String makePlainDelete() {
+        // FIXME: the implementation below only works for the case when
+        // the PK for the MV is exactly the same as the PK for the topmost
+        // join source. It needs to be extended for the case when PK is
+        // computed based on some input columns.
         final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyFields(sb);
+        genDeclareMainKeyList(sb);
         sb.append("DELETE FROM ");
         safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
@@ -227,7 +231,7 @@ public class MvSqlGen implements AutoCloseable {
         }
     }
 
-    private void genDeclareMainKeyFields(StringBuilder sb) {
+    private void genDeclareMainKeyList(StringBuilder sb) {
         if (target.getSources().isEmpty()) {
             throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
         }
@@ -560,7 +564,7 @@ public class MvSqlGen implements AutoCloseable {
         return output;
     }
 
-    public static StructType toKeyType(MvTarget target) {
+    public static StructType toKeyType(MvViewExpr target) {
         if (target == null || target.getSources().isEmpty()) {
             throw new IllegalArgumentException();
         }
@@ -575,7 +579,7 @@ public class MvSqlGen implements AutoCloseable {
         return StructType.of(m);
     }
 
-    public static StructType toRowType(MvTarget target) {
+    public static StructType toRowType(MvViewExpr target) {
         if (target == null) {
             throw new NullPointerException();
         }

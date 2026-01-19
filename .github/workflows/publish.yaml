@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  MAVEN_ARGS: --batch-mode --no-transfer-progress -Dstyle.color=always
+  MAVEN_ARGS: --batch-mode --no-transfer-progress -Dstyle.color=always -DskipTests=true
 
 jobs:
   publish:

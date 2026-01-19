@@ -33,7 +33,8 @@ public class MvTableInfo {
     public MvTableInfo(String name, String path, TableDescription td) {
         LinkedHashMap<String, Type> theColumns = new LinkedHashMap<>();
         for (var c : td.getColumns()) {
-            theColumns.putLast(c.getName(), c.getType());
+            theColumns.remove(c.getName());
+            theColumns.put(c.getName(), c.getType());
         }
         ArrayList<String> theKey = new ArrayList<>();
         for (String k : td.getPrimaryKeys()) {
@@ -325,7 +326,8 @@ public class MvTableInfo {
         }
 
         public Builder addColumn(String name, Type type) {
-            columns.putLast(name, type);
+            columns.remove(name);
+            columns.put(name, type);
             return this;
         }
 

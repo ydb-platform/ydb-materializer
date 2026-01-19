@@ -1,13 +1,17 @@
 # YDB materialized view processor
 
-The YDB Materializer is a Java application that processes user-managed materialized views in YDB.
+The YDB Materializer is a Java application that ensures data population for user-managed materialized views in YDB.
+
+Each "materialized view" (MV) technically is a regular YDB table, which is updated using this application. The source information for populating the MV is retrieved from a set of other tables, which are linked together through SQL-style JOINs. To support online synchronization of changes from the source tables into the MV, YDB Change Data Capture streams are used.
+
+The destination tables for MVs, source tables, required indexes and CDC streams should be created prior to using the application in MV synchronization mode. The application may help to generate DDL parts for some objects — for example, it reports missing indexes and can generate the proposed structure of destination tables.
 
 [See the Releases page for downloads](https://github.com/ydb-platform/ydb-materializer/releases).
 
 ## Requirements and building
 
-- Java 21 or higher
-- YDB cluster with appropriate permissions
+- Java 17 or higher
+- YDB cluster 24.4+ with appropriate permissions
 - Network access to YDB cluster
 - Required system tables created in the database
 - [Maven](https://maven.apache.org/) for building from source code
@@ -15,15 +19,22 @@ The YDB Materializer is a Java application that processes user-managed materiali
 Building:
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home
 mvn clean package -DskipTests=true
 ```
 
 ## Usage
 
-Each "materialized view" (MV) technically is a regular YDB table, which is updated using this application. The source information is retrieved from the set of the original tables, which are linked together through the SQL-style JOINs. To support the online sync of the source tables' changes into the MV, YDB Change Data Capture streams are used.
+YDB Materializer can be embedded as a library in a user application, or used as a standalone application.
 
-The destination tables for MVs, source tables, required indexes and CDC streams should be created prior to using the application for synchronization. The application may help to generate the DDL parts of some of the objects - for example it reports the missing indexes, and can generate the proposed structure of the destination tables.
+The description of materialized views and their processing jobs must be prepared using a special SQL-like language. The corresponding descriptions can be provided as a text file or as a database table. Connection settings and various technical parameters are provided as a set of properties (programmatically or as a Java Properties configuration file).
+
+In standalone application mode, YDB Materializer implements:
+- validation of materialized view and job definitions, including their compliance with the structure of source database tables, and output of corresponding error and warning messages for user analysis;
+- generation and output of various SQL statements used by YDB Materializer, for further user analysis;
+- service mode, in which it synchronizes the changes from source tables into the materialized view tables.
+
+In embedded library mode, YDB Materializer implements all the listed functions, providing the ability to call them programmatically through methods of the corresponding classes.
 
 ## Materialized View Language Syntax
 
@@ -37,6 +48,8 @@ The language supports two main statement types:
 
 ### Materialized View Definition
 
+Basic materialized view:
+
 ```sql
 CREATE ASYNC MATERIALIZED VIEW <view_name> AS
   SELECT <column_definitions>
@@ -44,6 +57,26 @@ CREATE ASYNC MATERIALIZED VIEW <view_name> AS
   [<join_clauses>]
   [WHERE <filter_expression>];
 ```
+
+Composite materialized view:
+
+```sql
+CREATE ASYNC MATERIALIZED VIEW <view_name> AS
+  (SELECT <column_definitions>
+   FROM <main_table1> AS <alias>
+   [<join_clauses>]
+   [WHERE <filter_expression>]) AS <select_alias1>
+UNION ALL
+  (SELECT <column_definitions>
+   FROM <main_table2> AS <alias>
+   [<join_clauses>]
+   [WHERE <filter_expression>]) AS <select_alias2>
+UNION ALL
+   ...
+   ;
+```
+
+A composite materialized view definition consists of two or more subqueries, each with the same syntax as a basic materialized view query, combined using the `UNION ALL` operator. Each subquery must also contain an alias that is unique within the composite materialized view and used to identify the subquery during its processing.
 
 #### Column Definitions
 
@@ -65,10 +98,12 @@ Join conditions support:
 
 #### Filter Expressions
 
-The WHERE clause supports opaque YQL expressions:
+The WHERE clause supports opaque (to the application) YQL expressions that are substituted unchanged directly into the generated queries:
 ```sql
-WHERE #[<yql_expression>]#
+WHERE COMPUTE ON table_alias.column_name, ... #[<yql_expression>]#
 ```
+
+The presence of references to specific table and column names allows correct generation of derived SQL statements using opaque expressions that rely on specific columns of source tables.
 
 ### Handler Definition
 
@@ -182,10 +217,16 @@ Generates and outputs the SQL statements for materialized views:
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
 
-#### RUN Mode
-Starts the materialized view processing service:
+#### LOCAL Mode
+Starts a local, single-node materialized view processing service:
 ```bash
-java -jar ydb-materializer-*.jar config.xml RUN
+java -jar ydb-materializer-*.jar config.xml LOCAL
+```
+
+#### JOB Mode
+Starts a distributed materialized view processing service:
+```bash
+java -jar ydb-materializer-*.jar config.xml JOB
 ```
 
 ## Configuration File
@@ -233,6 +274,7 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="job.apply.queue">10000</entry>
 <entry key="job.batch.select">1000</entry>
 <entry key="job.batch.upsert">500</entry>
+<entry key="job.max.row.changes">100000</entry>
 <entry key="job.query.seconds">30</entry>
 
 <!-- Management settings -->
@@ -290,8 +332,9 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.apply.threads` - Number of apply worker threads
 - `job.apply.queue` - Max elements in apply queue per thread
 - `job.batch.select` - Batch size for SELECT operations
-- `job.batch.upsert` - Batch size for UPSERT operations
-- `job.query.seconds` — Query timeout for SELECT, UPSERT or DELETE operations, seconds
+- `job.batch.upsert` - Batch size for UPSERT or DELETE operations
+- `job.max.row.changes` - Maximum number of changes per individual table processed in one iteration
+- `job.query.seconds` — Maximum query execution time for SELECT, UPSERT or DELETE operations, seconds
 
 #### Management Settings
 - `mv.jobs.table` - Custom MV_JOBS table name
@@ -409,16 +452,16 @@ VALUES ('my_handler', NULL, true);
 
 The coordinator will automatically detect the new job and assign it to an available runner.
 
-The `job_settings` can be specified as NULL (so that the default parameters will be used), or specified as a JSON document of the following format:
+The `job_settings` can be omitted (so that the default parameters will be used, loaded from global settings) or specified as a JSON document of the following format:
 
 ```json
-{
-    "cdcReaderThreads": 4,
-    "applyThreads": 4,
-    "applyQueueSize": 10000,
-    "selectBatchSize": 1000,
-    "upsertBatchSize": 500,
-    "dictionaryScanSeconds": 28800
+{ # comment indicates the corresponding global setting
+    "cdcReaderThreads": 4,                # job.cdc.threads
+    "applyThreads": 4,                    # job.apply.threads
+    "applyQueueSize": 10000,              # job.apply.queue
+    "selectBatchSize": 1000,              # job.batch.select
+    "upsertBatchSize": 500,               # job.batch.upsert
+    "dictionaryScanSeconds": 28800        # job.dict.scan.seconds
 }
 ```
 
@@ -426,9 +469,10 @@ The example above shows the defaults for regular jobs. For special dictionary sc
 
 ```json
 {
-    "upsertBatchSize": 500,
-    "cdcReaderThreads": 4,
-    "rowsPerSecondLimit": 10000
+    "upsertBatchSize": 500,               # job.batch.upsert
+    "cdcReaderThreads": 4,                # job.cdc.threads
+    "rowsPerSecondLimit": 10000,          # job.scan.rate
+    "maxChangeRowsScanned": 100000        # job.max.row.changes
 }
 ```
 

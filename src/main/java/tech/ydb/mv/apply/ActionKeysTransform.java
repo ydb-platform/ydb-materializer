@@ -8,7 +8,7 @@ import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Single-step input key transformation to the keys of the main table for a
@@ -23,8 +23,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
     private final boolean keysTransform;
     private final List<MvColumn> columns;
 
-    public ActionKeysTransform(MvTarget target, MvJoinSource src,
-            MvTarget transformation, MvActionContext context) {
+    public ActionKeysTransform(MvViewExpr target, MvJoinSource src,
+            MvViewExpr transformation, MvActionContext context) {
         super(target, src, transformation, context);
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");
@@ -35,8 +35,9 @@ class ActionKeysTransform extends ActionKeysAbstract {
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
-        LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getName(),
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as {}, changefeed `{}` mode {}",
+                instance, context.getMetadata().getName(),
+                target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
@@ -46,7 +47,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
     public String toString() {
         return "MvKeysTransform{" + inputTableName
                 + " AS " + inputTableAlias + " -> "
-                + target.getName() + '}';
+                + target.getName() + " AS " + target.getAlias() + '}';
     }
 
     @Override
@@ -88,7 +89,8 @@ class ActionKeysTransform extends ActionKeysAbstract {
             if (col.isReference()) {
                 column = col.getSourceColumn();
                 values[i] = grabber.getValue(column);
-            } else if (col.getComputation().isLiteral()) {
+            } else if (col.getComputation() != null
+                    && col.getComputation().isLiteral()) {
                 column = col.getComputation().getLiteral().getValue();
                 values[i] = col.getComputation().getLiteral().getPojo();
             }

@@ -24,12 +24,12 @@ public class MvInput implements MvSqlPosHolder {
     }
 
     public boolean isTableKnown() {
-        return (tableInfo!=null) && (tableName!=null)
+        return (tableInfo != null) && (tableName != null)
                 && tableName.equals(tableInfo.getName());
     }
 
     public MvTableInfo.Changefeed getChangefeedInfo() {
-        if (tableInfo==null || changefeed==null) {
+        if (tableInfo == null || changefeed == null) {
             return null;
         }
         return tableInfo.getChangefeeds().get(changefeed);
@@ -63,8 +63,8 @@ public class MvInput implements MvSqlPosHolder {
         return Collections.unmodifiableList(references);
     }
 
-    public void addReference(MvTarget target, MvJoinSource js) {
-        references.add(new Reference(target, js));
+    public void addReference(MvViewExpr part, MvJoinSource js) {
+        references.add(new Reference(part, js));
     }
 
     @Override
@@ -73,16 +73,17 @@ public class MvInput implements MvSqlPosHolder {
     }
 
     public static class Reference {
-        private final MvTarget target;
+
+        private final MvViewExpr part;
         private final MvJoinSource source;
 
-        public Reference(MvTarget target, MvJoinSource source) {
-            this.target = target;
+        public Reference(MvViewExpr part, MvJoinSource source) {
+            this.part = part;
             this.source = source;
         }
 
-        public MvTarget getTarget() {
-            return target;
+        public MvViewExpr getPart() {
+            return part;
         }
 
         public MvJoinSource getSource() {

@@ -11,7 +11,8 @@ import tech.ydb.mv.model.MvIssue;
 import tech.ydb.mv.model.MvJoinCondition;
 import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
+import tech.ydb.mv.model.MvView;
 
 /**
  * MV configuration validation logic.
@@ -36,7 +37,7 @@ public class MvValidateBasic {
 
     private void doValidate() {
         checkHandlers();
-        checkTargets();
+        checkViews();
         if (context.isValid()) {
             // cross-checks, if other things valid
             checkChangefeeds();
@@ -49,7 +50,7 @@ public class MvValidateBasic {
     }
 
     private void checkHandler(MvHandler h) {
-        if (h.getTargets().isEmpty()) {
+        if (h.getViews().isEmpty()) {
             context.addIssue(new MvIssue.EmptyHandler(h, MvIssue.EmptyHandlerType.NO_TARGETS));
         }
         if (h.getInputs().isEmpty()) {
@@ -62,15 +63,17 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargets() {
-        for (MvTarget mt : context.getTargets().values()) {
-            checkTarget(mt);
-            checkJoinIndexes(mt);
-            checkKeyExtractionIndexes(mt);
+    private void checkViews() {
+        for (MvView view : context.getViews().values()) {
+            for (MvViewExpr mt : view.getParts().values()) {
+                checkViewPart(mt);
+                checkJoinIndexes(mt);
+                checkKeyExtractionIndexes(mt);
+            }
         }
     }
 
-    private void checkTarget(MvTarget mt) {
+    private void checkViewPart(MvViewExpr mt) {
         if (mt.getTableInfo() == null) {
             context.addIssue(new MvIssue.MissingTargetTable(mt));
         }
@@ -88,7 +91,7 @@ public class MvValidateBasic {
         // Validate that the target is used in no more than one handler.
         MvHandler firstHandler = null;
         for (MvHandler mh : context.getHandlers().values()) {
-            if (mh.getTarget(mt.getName()) != null) {
+            if (mh.getView(mt.getName()) != null) {
                 if (firstHandler == null) {
                     firstHandler = mh;
                 } else {
@@ -107,7 +110,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetFilter(MvTarget mt, MvComputation filter) {
+    private void checkTargetFilter(MvViewExpr mt, MvComputation filter) {
         for (var src : filter.getSources()) {
             if (src.getReference() != null
                     && src.getReference().getTableInfo() != null) {
@@ -121,17 +124,30 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkJoinConditions(MvTarget mt, MvJoinSource src) {
+    /**
+     * Check the join conditions for the current join source.
+     *
+     * NOTE: we only support two types of join conditions: (a) comparison
+     * between column in the current table and column in the prior table; (b)
+     * comparison between column in the current table and some literal. All
+     * other join conditions (like literal vs literal) are rejected.
+     *
+     * @param mt
+     * @param src
+     */
+    private void checkJoinConditions(MvViewExpr mt, MvJoinSource src) {
+        String srcAlias = src.getTableAlias();
         for (MvJoinCondition cond : src.getConditions()) {
             if ((cond.getFirstAlias() == null && cond.getFirstLiteral() == null)
                     || (cond.getSecondAlias() == null && cond.getSecondLiteral() == null)
                     || (cond.getFirstAlias() == null && cond.getSecondAlias() == null)) {
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (!src.getTableAlias().equals(cond.getFirstAlias())
-                    && !src.getTableAlias().equals(cond.getSecondAlias())) {
+            } else if ((srcAlias != null)
+                    && !srcAlias.equals(cond.getFirstAlias())
+                    && !srcAlias.equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
-            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() == null
+            } else if (cond.getFirstAlias() != null && cond.getSecondAlias() != null
                     && cond.getFirstAlias().equals(cond.getSecondAlias())) {
                 // TODO: maybe a different issue with better explanation
                 context.addIssue(new MvIssue.IllegalJoinCondition(mt, src, cond));
@@ -141,7 +157,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkJoinColumns(MvTarget mt, MvJoinCondition cond) {
+    private void checkJoinColumns(MvViewExpr mt, MvJoinCondition cond) {
         if (cond.getFirstAlias() != null) {
             MvJoinSource ref = mt.getSourceByAlias(cond.getFirstAlias());
             if (ref != null && ref.getTableInfo() != null) {
@@ -162,7 +178,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetOutputColumn(MvTarget mt, MvColumn column) {
+    private void checkTargetOutputColumn(MvViewExpr mt, MvColumn column) {
         if (column.isComputation()) {
             MvComputation comp = column.getComputation();
             for (var src : comp.getSources()) {
@@ -191,7 +207,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkJoinIndexes(MvTarget mt) {
+    private void checkJoinIndexes(MvViewExpr mt) {
         // Check each join source for missing indexes on join columns
         for (MvJoinSource src : mt.getSources()) {
             // Skip MAIN source - we only check right parts of joins (INNER, LEFT)
@@ -216,7 +232,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkKeyExtractionIndexes(MvTarget mt) {
+    private void checkKeyExtractionIndexes(MvViewExpr mt) {
         MvPathGenerator pathGenerator = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
@@ -226,7 +242,7 @@ public class MvValidateBasic {
             if (js.getInput().isBatchMode()) {
                 continue;
             }
-            MvTarget temp = pathGenerator.extractKeysReverse(js);
+            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
             if (temp == null) {
                 context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
             } else {
@@ -266,8 +282,10 @@ public class MvValidateBasic {
 
     private void checkInputsVsTargets() {
         for (MvHandler mh : context.getHandlers().values()) {
-            for (MvTarget mt : mh.getTargets().values()) {
-                checkTargetVsInputs(mh, mt);
+            for (MvView mv : mh.getViews().values()) {
+                for (MvViewExpr mt : mv.getParts().values()) {
+                    checkTargetVsInputs(mh, mt);
+                }
             }
             for (MvInput mi : mh.getInputs().values()) {
                 checkInputVsTargets(mh, mi);
@@ -275,7 +293,7 @@ public class MvValidateBasic {
         }
     }
 
-    private void checkTargetVsInputs(MvHandler mh, MvTarget mt) {
+    private void checkTargetVsInputs(MvHandler mh, MvViewExpr mt) {
         for (var joinSource : mt.getSources()) {
             if (mh.getInput(joinSource.getTableName()) == null) {
                 context.addIssue(new MvIssue.MissingInput(mh, mt, joinSource));
@@ -285,10 +303,15 @@ public class MvValidateBasic {
 
     private void checkInputVsTargets(MvHandler mh, MvInput i) {
         boolean found = false;
-        for (var mt : mh.getTargets().values()) {
-            for (var s : mt.getSources()) {
-                if (i.getTableName().equals(s.getTableName())) {
-                    found = true;
+        for (var mv : mh.getViews().values()) {
+            for (var mt : mv.getParts().values()) {
+                for (var s : mt.getSources()) {
+                    if (i.getTableName().equals(s.getTableName())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
                     break;
                 }
             }

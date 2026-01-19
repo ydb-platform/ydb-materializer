@@ -58,11 +58,12 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         String topicPath = event.getPartitionSession().getPath();
         MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
-            LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic {}",
+            LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic `{}`",
                     owner.getName(), event.getMessages().size(), topicPath);
             event.commit();
             return;
         }
+
         ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
         for (Message m : event.getMessages()) {
             Instant tv = m.getCreatedAt();
@@ -72,13 +73,28 @@ class MvCdcEventReader extends AbstractReadEventHandler {
             if (tv == null) {
                 tv = Instant.now();
             }
+            // Parser returns null for messages it cannot decode, or decides to skip.
             MvChangeRecord cr = parser.parse(m.getData(), tv);
             if (cr != null) {
                 records.add(cr);
             }
         }
-        LOG.trace("Topic {} input {}", topicPath, records);
-        sink.submit(records, new MvCdcCommitHandler(event));
+        LOG.trace("Topic `{}` parsed input: {}", topicPath, records);
+
+        if (records.isEmpty()) {
+            LOG.warn("Feeder `{}` skipping {} message(s) for topic `{}` - nothing to process",
+                    owner.getName(), event.getMessages().size(), topicPath);
+            event.commit();
+            return;
+        }
+
+        try {
+            sink.submit(records, new MvCdcCommitHandler(event, records.size()));
+        } catch (Exception ex) {
+            // We should not throw from onMessages(), as it stops the CDC reader.
+            LOG.error("Feeder `{}` for topic `{}` SUBMIT FAILED",
+                    owner.getName(), topicPath, ex);
+        }
     }
 
 }
