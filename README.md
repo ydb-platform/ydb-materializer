@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ydb-platform/ydb-materializer/blob/master/LICENSE)
+[![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo1.maven.org%2Fmaven2%2Ftech%2Fydb%2Fapps%2Fydb-materializer%2Fmaven-metadata.xml)](https://mvnrepository.com/artifact/tech.ydb.apps/ydb-materializer)
+[![Publish](https://img.shields.io/github/actions/workflow/status/ydb-platform/ydb-materializer/publish.yaml)](https://github.com/ydb-platform/ydb-materializer/actions/workflows/publish.yaml)
+
 # YDB materialized view processor
 
 The YDB Materializer is a Java application that ensures data population for user-managed materialized views in YDB.
