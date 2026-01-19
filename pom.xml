@@ -6,6 +6,8 @@
     <artifactId>ydb-materializer</artifactId>
     <version>1.7</version>
     <name>YDB Materializer</name>
+    <description>YDB Materializer — tool for materializing YDB data.</description>
+    <url>https://github.com/ydb-platform/ydb-materializer</url>
     <packaging>jar</packaging>
     <build>
         <plugins>
@@ -177,17 +179,11 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
                         <version>3.3.1</version>
-                        <configuration>
-                            <skipSource>true</skipSource>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>3.11.2</version>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
