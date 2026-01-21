@@ -581,9 +581,9 @@ The system will automatically distribute jobs across available runners and maint
 
 ## Performance tuning
 
-In practice, overall performance is primarily determined by the complexity of the queries that define a materialized view, rather than only by the number of worker threads. Expensive joins, large intermediate result sets, complex `WHERE` conditions (including opaque `#[ ... ]#` YQL expressions), and multiple `UNION ALL` branches directly increase the cost of each `SELECT` / `UPSERT` / `DELETE` statement issued by the Materializer.
+In practice, overall performance is primarily determined by the complexity of the queries that define a materialized view, rather than only by the number of worker threads. Expensive joins, large intermediate result sets, complex `WHERE` conditions (including opaque `#[ ... ]#` YQL expressions), and multiple `UNION ALL` branches directly increase the cost of each `SELECT` / `UPSERT` / `DELETE` statement issued by the YDB Materializer.
 
-Handler job parameters below control how aggressively the Materializer consumes changefeeds and applies updates for both **STREAM** and **BATCH** style handlers (including scan‑style batch operations and dictionary jobs):
+Handler job parameters below control how aggressively the YDB Materializer consumes changefeeds and applies updates for both **STREAM** and **BATCH** style handlers (including scan‑style batch operations and dictionary jobs):
 
 - **`job.cdc.threads` / `cdcReaderThreads`**
   - Sets the number of parallel threads reading from CDC changefeeds.
@@ -595,16 +595,16 @@ Handler job parameters below control how aggressively the Materializer consumes 
   - Sets the number of worker threads that execute generated `SELECT` / `UPSERT` / `DELETE` statements to update the MV tables. The keys being processed are sent to the particular worker depending on the key value, so the contention on the single key never happens.
   - **STREAM mode**: more threads allow processing more change batches in parallel, improving throughput; too many threads may cause resource contention and overload the YDB cluster.
   - **BATCH mode**: same as for the STREAM mode. Using a significant number of threads combined with a large number of rows affected by the dictionary changes may lead to a large spike in the resource usage when the dictionary scan is activated.
-  - **Scan processing**: same as for the STREAM mode. The total time required for scan execution depends on the amount of work and scan speed, and the latter is limited both by the `job.scan.rate` setting and by the performance of the apply process, and the latter depends on the number of threads involved.
+  - **Scan processing**: same as for the STREAM mode. The total time required for scan execution depends on the amount of work (MV size) and scan speed, and the latter is limited both by the `job.scan.rate` setting and by the performance of the apply process, and the latter depends on the number of threads involved.
 
 - **`job.apply.queue` / `applyQueueSize`**
-  - Maximum number of queued change batches per apply thread (buffer between CDC readers and apply workers, as well as between the apply workers performing the key fetch operation and the apply workers performing the MV refresh). Each handler uses a counter (one per handler) for the total number of queued elements, and uses its value to pause reading extra input data from the CDC topics when the queues become too large. This effectively limits the memory used by the intermediate data inside the instance of the Materializer running the particular handler instance.
+  - Maximum number of changes queued for processing (size of the buffer between CDC readers and apply workers, as well as between the apply workers performing the key fetch operation and the apply workers performing the MV refresh). Each handler uses a counter (one per handler) for the total number of queued elements, and uses its value to pause reading extra input data from the CDC topics when the queues become too large. This effectively limits the memory used by the intermediate data inside the instance of the Materializer running the particular handler.
   - **STREAM mode**: a larger queue smooths short‑term spikes in incoming CDC traffic; if it is too small, CDC readers are throttled more often and end‑to‑end latency increases. If it is too large, the job may accumulate many pending changes in memory, increasing the memory usage and the time needed to drain the backlog.
-  - **BATCH mode and scans**: defines how many prepared batches can wait for execution. Larger queues help keep apply workers busy but also increase memory footprint when many targets are scanned at once.
+  - **BATCH mode and scans**: defines how many prepared batches can wait for execution. Larger queues help keep apply workers busy but also increase memory footprint.
 
 - **`job.batch.select` / `selectBatchSize`**
-  - Limits how many source rows are read in a single `SELECT` when collecting data for a batch of changes.
-  - **STREAM mode**: used for relatively small batches produced from continuous CDC events; increasing this value can reduce SQL overhead per row but may raise latency for individual changes, because larger batches wait longer to be processed.
+  - Limits how many source rows are read in a single `SELECT` statement when collecting data for a batch of changes.
+  - **STREAM mode**: moderate values help group small reads efficiently while keeping read latency acceptable; increasing this value can reduce SQL overhead per row but may raise latency for individual changes, because larger batches wait longer to be processed.
   - **BATCH mode and scans**: directly affects the size of read operations during full or partial resynchronization. Larger batches improve throughput (fewer queries, better amortization of network round‑trips) but produce heavier queries for YDB.
 
 - **`job.batch.upsert` / `upsertBatchSize`**
@@ -618,6 +618,6 @@ Handler job parameters below control how aggressively the Materializer consumes 
 - **`job.dict.scan.seconds` / `dictionaryScanSeconds`**
   - The interval between the checks for dictionary changes potentially affecting the MVs within the particular handler job.
   - **STREAM mode and scans**: no effect.
-  - **BATCH mode**: larger time between the checks means more rare checks for the changes, which allows those changes to accumulate. Accumulating more changes allows to process those changes in a single scan, instead of running multiple scans for each smaller portion of changes. The related setting `job.max.row.changes` limits the total amount of the changes allowed to be processed in the single batch, which helps to ensure that too many dictionary updates will not overflow the memory of the current Materializer instance.
+  - **BATCH mode**: larger time between the checks means more rare checks for the changes, which allows those changes to accumulate. Accumulating more changes allows to process those changes in a single scan, instead of running multiple scans for each smaller portion of changes. The related setting `job.max.row.changes` limits the total amount of the changes allowed to be processed in the single batch, which helps to ensure that too many dictionary updates will not overflow the memory of the current YDB Materializer instance.
 
 When tuning these settings, start from the defaults, observe YDB metrics (latency, throughput, CPU, memory, query timeouts), then adjust one parameter at a time. For most workloads, it is safer to keep batch sizes and thread counts moderate for STREAM handlers (favoring predictable latency), and to use more aggressive values only for planned BATCH or scan operations where higher short‑term load is acceptable.
