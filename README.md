@@ -349,6 +349,7 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.batch.upsert` - Batch size for UPSERT or DELETE operations
 - `job.max.row.changes` - Maximum number of changes per individual table processed in one iteration
 - `job.query.seconds` — Maximum query execution time for SELECT, UPSERT or DELETE operations, seconds
+- `job.scan.rate` - Speed limit for scan operations, in rows per second
 
 #### Management Settings
 - `mv.jobs.table` - Custom MV_JOBS table name
@@ -475,7 +476,8 @@ The `job_settings` can be omitted (so that the default parameters will be used, 
     "applyQueueSize": 10000,              # job.apply.queue
     "selectBatchSize": 1000,              # job.batch.select
     "upsertBatchSize": 500,               # job.batch.upsert
-    "dictionaryScanSeconds": 28800        # job.dict.scan.seconds
+    "dictionaryScanSeconds": 28800,       # job.dict.scan.seconds
+    "queryTimeoutSeconds": 30             # job.query.seconds
 }
 ```
 
@@ -576,3 +578,46 @@ The system provides automatic fault tolerance:
 4. **Monitor Operations** - Use the monitoring queries listed above
 
 The system will automatically distribute jobs across available runners and maintain the desired state.
+
+## Performance tuning
+
+In practice, overall performance is primarily determined by the complexity of the queries that define a materialized view, rather than only by the number of worker threads. Expensive joins, large intermediate result sets, complex `WHERE` conditions (including opaque `#[ ... ]#` YQL expressions), and multiple `UNION ALL` branches directly increase the cost of each `SELECT` / `UPSERT` / `DELETE` statement issued by the Materializer.
+
+Handler job parameters below control how aggressively the Materializer consumes changefeeds and applies updates for both **STREAM** and **BATCH** style handlers (including scan‑style batch operations and dictionary jobs):
+
+- **`job.cdc.threads` / `cdcReaderThreads`**
+  - Sets the number of parallel threads reading from CDC changefeeds.
+  - **STREAM mode**: more threads increase the rate at which new events are read from YDB, which can improve end‑to‑end latency but also increases pressure on downstream apply workers and the database.
+  - **BATCH mode**: more threads speed up reading and saving the accumulated changes into the intermediate table, but do not directly affect the end-to-end latency (which is mostly affected by `job.dict.scan.seconds` setting). Please note that the setting defined for the dictionary handler job is used (or the global setting if the specific setting for the dictionary handler is not defined) instead of the setting configured for the regular handler involved.
+  - **Scan processing**: this setting does not affect scans, including the BATCH-induced scans inside the dictionary handler.
+
+- **`job.apply.threads` / `applyThreads`**
+  - Sets the number of worker threads that execute generated `SELECT` / `UPSERT` / `DELETE` statements to update the MV tables. The keys being processed are sent to the particular worker depending on the key value, so the contention on the single key never happens.
+  - **STREAM mode**: more threads allow processing more change batches in parallel, improving throughput; too many threads may cause resource contention and overload the YDB cluster.
+  - **BATCH mode**: same as for the STREAM mode. Using a significant number of threads combined with a large number of rows affected by the dictionary changes may lead to a large spike in the resource usage when the dictionary scan is activated.
+  - **Scan processing**: same as for the STREAM mode. The total time required for scan execution depends on the amount of work and scan speed, and the latter is limited both by the `job.scan.rate` setting and by the performance of the apply process, and the latter depends on the number of threads involved.
+
+- **`job.apply.queue` / `applyQueueSize`**
+  - Maximum number of queued change batches per apply thread (buffer between CDC readers and apply workers, as well as between the apply workers performing the key fetch operation and the apply workers performing the MV refresh). Each handler uses a counter (one per handler) for the total number of queued elements, and uses its value to pause reading extra input data from the CDC topics when the queues become too large. This effectively limits the memory used by the intermediate data inside the instance of the Materializer running the particular handler instance.
+  - **STREAM mode**: a larger queue smooths short‑term spikes in incoming CDC traffic; if it is too small, CDC readers are throttled more often and end‑to‑end latency increases. If it is too large, the job may accumulate many pending changes in memory, increasing the memory usage and the time needed to drain the backlog.
+  - **BATCH mode and scans**: defines how many prepared batches can wait for execution. Larger queues help keep apply workers busy but also increase memory footprint when many targets are scanned at once.
+
+- **`job.batch.select` / `selectBatchSize`**
+  - Limits how many source rows are read in a single `SELECT` when collecting data for a batch of changes.
+  - **STREAM mode**: used for relatively small batches produced from continuous CDC events; increasing this value can reduce SQL overhead per row but may raise latency for individual changes, because larger batches wait longer to be processed.
+  - **BATCH mode and scans**: directly affects the size of read operations during full or partial resynchronization. Larger batches improve throughput (fewer queries, better amortization of network round‑trips) but produce heavier queries for YDB.
+
+- **`job.batch.upsert` / `upsertBatchSize`**
+  - Controls how many rows are written in a single `UPSERT` or `DELETE` operation to destination MV tables.
+  - **STREAM mode**: moderate values help group small updates efficiently while keeping write latency acceptable; very small values increase per‑row overhead, very large values may cause long‑running write statements that are more likely to hit timeouts or increase the overall latency of MV updates.
+  - **BATCH mode and scans**: larger batches significantly increase write throughput during bulk refresh operations, but also amplify the impact of each individual statement (locks, resource usage, and potential retries). It is recommended to increase this value gradually and monitor YDB latency, error rates, and resource utilization.
+
+- **`job.query.seconds` / `queryTimeoutSeconds`**
+  - The maximum allowed time for the query to be executed. `CLIENT_DEADLINE_EXCEEDED` error is generated when the timeout is reached, and the query gets re-started. This parameter is a safeguard against hanging queries which could slow down the overall processing if allowed to run for the arbitrary amount of time. Should be chosen to allow for potentially complex queries to be executed, while still not allowing to consume too much execution time in the worst case, like getting executed on the overloaded YDB node.
+
+- **`job.dict.scan.seconds` / `dictionaryScanSeconds`**
+  - The interval between the checks for dictionary changes potentially affecting the MVs within the particular handler job.
+  - **STREAM mode and scans**: no effect.
+  - **BATCH mode**: larger time between the checks means more rare checks for the changes, which allows those changes to accumulate. Accumulating more changes allows to process those changes in a single scan, instead of running multiple scans for each smaller portion of changes. The related setting `job.max.row.changes` limits the total amount of the changes allowed to be processed in the single batch, which helps to ensure that too many dictionary updates will not overflow the memory of the current Materializer instance.
+
+When tuning these settings, start from the defaults, observe YDB metrics (latency, throughput, CPU, memory, query timeouts), then adjust one parameter at a time. For most workloads, it is safer to keep batch sizes and thread counts moderate for STREAM handlers (favoring predictable latency), and to use more aggressive values only for planned BATCH or scan operations where higher short‑term load is acceptable.
