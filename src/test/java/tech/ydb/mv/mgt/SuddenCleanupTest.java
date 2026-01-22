@@ -14,6 +14,8 @@ import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.table.query.Params;
+import tech.ydb.table.values.PrimitiveValue;
 
 /**
  *
@@ -21,12 +23,23 @@ import tech.ydb.mv.support.YdbMisc;
  */
 public class SuddenCleanupTest extends MgmtTestBase {
 
-    private final ArrayList<MvRunner> runners = new ArrayList<>();
+    private final ArrayList<WorkerInfo> workers = new ArrayList<>();
 
-    private ArrayList<MvRunner> copyRunners() {
-        synchronized (runners) {
-            return new ArrayList<>(runners);
+    private ArrayList<WorkerInfo> copyWorkers() {
+        synchronized (workers) {
+            return new ArrayList<>(workers);
         }
+    }
+
+    private WorkerInfo findCoordinator() {
+        synchronized (workers) {
+            for (var wi : workers) {
+                if (wi.coordinator.isLeader()) {
+                    return wi;
+                }
+            }
+        }
+        return null;
     }
 
     @BeforeAll
@@ -42,21 +55,34 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
     @Test
     public void testSuddenCleanup() {
-        final int numThreads = 1;
+        final int numThreads = 3;
         var pool = Executors.newFixedThreadPool(numThreads);
         for (int ix = 0; ix < numThreads; ++ix) {
             pool.submit(() -> workerThread());
         }
 
-        pause(20000L);
+        pause(10000L);
 
-        var activeRunners = copyRunners();
+        WorkerInfo wiCoord = findCoordinator();
+        Assertions.assertNotNull(wiCoord);
+        System.out.println("Achtung! Sudden cleanup for coordinator's runner: " + wiCoord.runner.getRunnerId());
+        ydbConnector.sqlWrite("DECLARE $runner_id AS Text; "
+                + "UPDATE `test1/mv_runners` "
+                + "SET updated_at=Timestamp('2021-01-01T00:00:00Z') "
+                + "WHERE runner_id=$runner_id;",
+                Params.of("$runner_id", PrimitiveValue.newText(wiCoord.runner.getRunnerId())));
+
+        pause(10000L);
+        pause(10000L);
+
+        System.out.println("Shutting down...");
+        var activeRunners = copyWorkers();
         while (!activeRunners.isEmpty()) {
             for (var runner : activeRunners) {
-                runner.stop();
+                runner.runner.stop();
             }
             standardPause();
-            activeRunners = copyRunners();
+            activeRunners = copyWorkers();
         }
 
         boolean isTerminated = false;
@@ -76,14 +102,16 @@ public class SuddenCleanupTest extends MgmtTestBase {
                 try (MvApi api = MvApi.newInstance(conn)) {
                     var batchSettings = new MvBatchSettings(api.getYdb().getConfig().getProperties());
                     try (var theRunner = new MvRunner(api.getYdb(), api, batchSettings)) {
+                        WorkerInfo wi = null;
                         try (var theCoord = MvCoordinator.newInstance(
                                 api.getYdb(),
                                 batchSettings,
                                 theRunner.getRunnerId(),
                                 api.getScheduler()
                         )) {
-                            synchronized (runners) {
-                                runners.add(theRunner);
+                            wi = new WorkerInfo(theRunner, theCoord);
+                            synchronized (workers) {
+                                workers.add(wi);
                             }
                             theRunner.start();
                             theCoord.start();
@@ -91,8 +119,8 @@ public class SuddenCleanupTest extends MgmtTestBase {
                                 YdbMisc.sleep(200L);
                             }
                         } finally {
-                            synchronized (runners) {
-                                runners.remove(theRunner);
+                            synchronized (workers) {
+                                workers.remove(wi);
                             }
                         }
                     }
@@ -114,6 +142,19 @@ public class SuddenCleanupTest extends MgmtTestBase {
             props.setProperty(pair.getKey().toString(), pair.getValue().toString());
         }
         props.remove(MvConfig.CONF_HANDLERS);
+        props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "60000");
+        props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "30000");
         return props;
+    }
+
+    static class WorkerInfo {
+
+        final MvRunner runner;
+        final MvCoordinator coordinator;
+
+        public WorkerInfo(MvRunner runner, MvCoordinator coordinator) {
+            this.runner = runner;
+            this.coordinator = coordinator;
+        }
     }
 }
