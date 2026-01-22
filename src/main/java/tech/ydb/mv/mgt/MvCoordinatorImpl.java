@@ -11,17 +11,21 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinatorImpl.class);
 
+    private final String runnerId;
     private final AtomicLong commandNo = new AtomicLong();
     private final MvJobDao jobDao;
     private final MvBatchSettings settings;
     private final Instant startupTv;
     private volatile boolean balancing;
+    private volatile boolean selfCleanupDetected;
 
-    public MvCoordinatorImpl(MvJobDao jobDao, MvBatchSettings settings) {
+    public MvCoordinatorImpl(String runnerId, MvJobDao jobDao, MvBatchSettings settings) {
+        this.runnerId = runnerId;
         this.jobDao = jobDao;
         this.settings = settings;
         this.startupTv = Instant.now().plusMillis(settings.getCoordStartupMs());
         this.balancing = false;
+        this.selfCleanupDetected = false;
     }
 
     @Override
@@ -48,12 +52,29 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                     .filter(runner -> runner.getUpdatedAt().isBefore(cutoffTime))
                     .toList();
 
-            for (MvRunnerInfo inactiveRunner : inactiveRunners) {
-                jobDao.deletePendingCommands(inactiveRunner.getRunnerId());
-                jobDao.deleteRunnerJobs(inactiveRunner.getRunnerId());
-                jobDao.deleteRunner(inactiveRunner.getRunnerId());
+            boolean hasSelfCleanup = inactiveRunners.stream()
+                    .map(ir -> ir.getRunnerId())
+                    .filter(v -> runnerId.equals(v))
+                    .count() > 0L;
+            if (hasSelfCleanup) {
+                if (!selfCleanupDetected) {
+                    selfCleanupDetected = true;
+                    LOG.warn("Delected inactivity for self-runner {}, cleanup DELAYED.", runnerId);
+                }
+                return;
+            } else {
+                if (selfCleanupDetected) {
+                    selfCleanupDetected = false;
+                    LOG.info("Resumed activity reporting for self-runner {}, cleanup RE-ACTIVATED.", runnerId);
+                }
+            }
 
-                LOG.info("Cleaned up inactive runner: {}", inactiveRunner.getRunnerId());
+            for (MvRunnerInfo ir : inactiveRunners) {
+                jobDao.deletePendingCommands(ir.getRunnerId());
+                jobDao.deleteRunnerJobs(ir.getRunnerId());
+                jobDao.deleteRunner(ir.getRunnerId());
+
+                LOG.info("Cleaned up inactive runner: {}", ir.getRunnerId());
             }
 
         } catch (Exception ex) {

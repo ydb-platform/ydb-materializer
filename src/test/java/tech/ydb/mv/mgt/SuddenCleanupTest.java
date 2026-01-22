@@ -61,7 +61,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
             pool.submit(() -> workerThread());
         }
 
-        pause(10000L);
+        pause(3000L);
 
         WorkerInfo wiCoord = findCoordinator();
         Assertions.assertNotNull(wiCoord);
@@ -74,6 +74,8 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
         pause(10000L);
         pause(10000L);
+
+        Assertions.assertTrue(wiCoord.coordinator.isLeader(), "Coordinator remains the leader");
 
         System.out.println("Shutting down...");
         var activeRunners = copyWorkers();
@@ -142,8 +144,8 @@ public class SuddenCleanupTest extends MgmtTestBase {
             props.setProperty(pair.getKey().toString(), pair.getValue().toString());
         }
         props.remove(MvConfig.CONF_HANDLERS);
-        props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "60000");
-        props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "30000");
+        props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "7500");
+        props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "15000");
         return props;
     }
 

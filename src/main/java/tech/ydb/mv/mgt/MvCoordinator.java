@@ -70,7 +70,7 @@ public class MvCoordinator implements AutoCloseable {
             scheduler = Executors.newScheduledThreadPool(1);
         }
         if (job == null) {
-            job = new MvCoordinatorImpl(jobDao, settings);
+            job = new MvCoordinatorImpl(runnerId, jobDao, settings);
         }
         return new MvCoordinator(locker, jobDao, scheduler, settings, job, runnerId);
     }
