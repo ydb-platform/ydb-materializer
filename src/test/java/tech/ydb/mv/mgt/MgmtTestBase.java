@@ -89,7 +89,7 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
         }
     }
 
-    protected static byte[] getMgtConfig() {
+    protected static Properties getMgtProperties() {
         Properties props = new Properties();
         props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
@@ -98,7 +98,11 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
         props.setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "test1/mv_runners");
         props.setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "test1/mv_runner_jobs");
         props.setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "test1/mv_commands");
+        return props;
+    }
 
+    protected static byte[] getMgtConfig() {
+        var props = getMgtProperties();
         try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", java.nio.charset.StandardCharsets.UTF_8);
             return baos.toByteArray();
