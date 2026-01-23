@@ -42,6 +42,17 @@ public class SuddenCleanupTest extends MgmtTestBase {
         return null;
     }
 
+    private WorkerInfo findRegular() {
+        synchronized (workers) {
+            for (var wi : workers) {
+                if (!wi.coordinator.isLeader()) {
+                    return wi;
+                }
+            }
+        }
+        return null;
+    }
+
     @BeforeAll
     public static void setup() {
         prepareMgtDb();
@@ -65,17 +76,16 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
         WorkerInfo wiCoord = findCoordinator();
         Assertions.assertNotNull(wiCoord);
+        WorkerInfo wiReg = findRegular();
+        Assertions.assertNotNull(wiReg);
+
         System.out.println("Achtung! Sudden cleanup for coordinator's runner: " + wiCoord.runner.getRunnerId());
-        ydbConnector.sqlWrite("DECLARE $runner_id AS Text; "
-                + "UPDATE `test1/mv_runners` "
-                + "SET updated_at=Timestamp('2021-01-01T00:00:00Z') "
-                + "WHERE runner_id=$runner_id;",
-                Params.of("$runner_id", PrimitiveValue.newText(wiCoord.runner.getRunnerId())));
+        makeRunnerObsolete(wiCoord.runner.getRunnerId());
 
         pause(10000L);
         pause(10000L);
 
-        Assertions.assertTrue(wiCoord.coordinator.isLeader(), "Coordinator remains the leader");
+        Assertions.assertTrue(wiCoord.coordinator.isLeader(), "Initial leader remains the leader");
 
         System.out.println("Shutting down...");
         var activeRunners = copyWorkers();
@@ -96,7 +106,15 @@ public class SuddenCleanupTest extends MgmtTestBase {
         Assertions.assertTrue(isTerminated, "Jobs did not shut down within 30 seconds");
     }
 
-    public int workerThread() {
+    private void makeRunnerObsolete(String runnerId) {
+        ydbConnector.sqlWrite("DECLARE $runner_id AS Text; "
+                + "UPDATE `test1/mv_runners` "
+                + "SET updated_at=Timestamp('2021-01-01T00:00:00Z') "
+                + "WHERE runner_id=$runner_id;",
+                Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
+    }
+
+    private int workerThread() {
         System.out.println("Worker entry");
         try {
             YdbConnector.Config cfg = new YdbConnector.Config(getConfigProps(), null);
