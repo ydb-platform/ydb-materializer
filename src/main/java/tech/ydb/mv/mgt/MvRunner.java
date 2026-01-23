@@ -1,6 +1,8 @@
 package tech.ydb.mv.mgt;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,11 +63,11 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean start() {
         if (running.getAndSet(true)) {
-            LOG.info("MvRunner {} is already running, ignored start attempt", runnerId);
+            LOG.info("[{}] MvRunner already started, ignored start attempt", runnerId);
             return false;
         }
 
-        LOG.info("Starting MvRunner with ID: {}", runnerId);
+        LOG.info("[{}] Starting MvRunner", runnerId);
 
         // Start the runner thread
         runnerThread = new Thread(this::run, "mv-runner-" + runnerId);
@@ -83,11 +85,11 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean stop() {
         if (!running.getAndSet(false)) {
-            LOG.info("MvRunner {} is already stopped, ignored stop attempt", runnerId);
+            LOG.info("[{}] MvRunner already stopped, ignored stop attempt", runnerId);
             return false;
         }
 
-        LOG.info("Stopping MvRunner with ID: {}", runnerId);
+        LOG.info("[{}] Stopping MvRunner", runnerId);
 
         stopAllJobs();
 
@@ -101,7 +103,7 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
-        LOG.info("MvRunner with ID {} stopped", runnerId);
+        LOG.info("[{}] MvRunner stopped", runnerId);
         return true;
     }
 
@@ -131,14 +133,14 @@ public class MvRunner implements AutoCloseable {
         synchronized (localJobs) {
             localJobs.clear();
         }
-        LOG.info("[{}] All jobs were shut down", runnerId);
+        LOG.info("[{}] All jobs were stopped", runnerId);
     }
 
     /**
      * Main runner loop.
      */
     private void run() {
-        LOG.info("MvRunner thread started for runner: {}", runnerId);
+        LOG.debug("[{}] Worker thread started", runnerId);
 
         long lastReportTime = 0;
         long lastCommandCheckTime = 0;
@@ -162,7 +164,7 @@ public class MvRunner implements AutoCloseable {
 
                 if (!registered) {
                     // lost runner, should stop all jobs and re-register
-                    LOG.warn("Runner {} has been lost, stopping jobs and re-registering", runnerId);
+                    LOG.warn("[{}] MvRunner has been lost, stopping jobs and re-registering", runnerId);
                     stopAllJobs();
                     continue;
                 }
@@ -182,7 +184,7 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
-        LOG.info("MvRunner thread finished for runner: {}", runnerId);
+        LOG.debug("[{}] Worker thread finished", runnerId);
     }
 
     /**
@@ -191,7 +193,7 @@ public class MvRunner implements AutoCloseable {
     private void registerRunner() {
         MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
         tableOps.upsertRunner(runnerInfo);
-        LOG.info("Registered runner {}", runnerId);
+        LOG.info("[{}] Registered runner", runnerId);
     }
 
     /**
@@ -203,7 +205,7 @@ public class MvRunner implements AutoCloseable {
     private boolean checkAndReport() {
         MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
         boolean retval = tableOps.checkRunner(runnerInfo);
-        LOG.debug("Checked status for runner {}: {}", runnerId, retval);
+        LOG.debug("[{}] Checked status: {}", runnerId, retval);
         return retval;
     }
 
@@ -354,8 +356,11 @@ public class MvRunner implements AutoCloseable {
      * Generate a unique runner ID.
      */
     private String generateRunnerId() {
-        return UUID.randomUUID().toString().replace("-", "")
-                + "-" + Long.toHexString(System.currentTimeMillis());
+        UUID uuid = UUID.randomUUID();
+        ByteBuffer bb = ByteBuffer.allocate(16);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return Base64.getUrlEncoder().encodeToString(bb.array()).substring(0, 22);
     }
 
     /**

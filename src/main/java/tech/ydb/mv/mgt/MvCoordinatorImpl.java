@@ -59,13 +59,13 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             if (hasSelfCleanup) {
                 if (!selfCleanupDetected) {
                     selfCleanupDetected = true;
-                    LOG.warn("Delected inactivity for self-runner {}, cleanup DELAYED.", runnerId);
+                    LOG.warn("[{}] Delected inactivity for self-runner, cleanup DELAYED.", runnerId);
                 }
                 return;
             } else {
                 if (selfCleanupDetected) {
                     selfCleanupDetected = false;
-                    LOG.info("Resumed activity reporting for self-runner {}, cleanup RE-ACTIVATED.", runnerId);
+                    LOG.info("[{}] Resumed activity reporting for self-runner, cleanup RE-ACTIVATED.", runnerId);
                 }
             }
 
@@ -74,11 +74,11 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                 jobDao.deleteRunnerJobs(ir.getRunnerId());
                 jobDao.deleteRunner(ir.getRunnerId());
 
-                LOG.info("Cleaned up inactive runner: {}", ir.getRunnerId());
+                LOG.info("[{}] Cleaned up inactive runner: {}", runnerId, ir.getRunnerId());
             }
 
         } catch (Exception ex) {
-            LOG.error("Failed to cleanup inactive runners", ex);
+            LOG.error("[{}] Failed to cleanup inactive runners", runnerId, ex);
         }
     }
 
@@ -91,13 +91,13 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         }
         if (!balancing) {
             balancing = true;
-            LOG.info("Started job balancing...");
+            LOG.info("[{}] Started job balancing...", runnerId);
         }
         try {
             new MvBalancer(jobDao, commandNo, settings.getRunnersCount())
                     .balanceJobs();
         } catch (Exception ex) {
-            LOG.error("Failed to balance jobs", ex);
+            LOG.error("[{}] Failed to balance jobs", runnerId, ex);
         }
     }
 
@@ -105,7 +105,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         try {
             doAcceptScans();
         } catch (Exception ex) {
-            LOG.error("Failed to process scans requests", ex);
+            LOG.error("[{}] Failed to process scans requests", runnerId, ex);
         }
     }
 
@@ -126,9 +126,9 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         }
         var runners = jobDao.getJobRunners(scan.getJobName());
         if (runners.size() != 1) {
-            LOG.info("Cannot start the requested scan "
+            LOG.info("[{}] Cannot start the requested scan "
                     + "for handler `{}`, target `{}` - runner was not found.",
-                    scan.getJobName(), scan.getTargetName());
+                    runnerId, scan.getJobName(), scan.getTargetName());
             return;
         }
         var runner = runners.get(0);
