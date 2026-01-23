@@ -291,6 +291,7 @@
                         <version>0.7.0</version>
                         <extensions>true</extensions>
                         <configuration>
+                            <autoPublish>true</autoPublish>
                             <publishingServerId>ossrh-s01</publishingServerId>
                         </configuration>
                     </plugin>
