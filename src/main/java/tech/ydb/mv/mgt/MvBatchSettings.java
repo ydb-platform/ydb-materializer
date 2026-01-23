@@ -159,83 +159,183 @@ public class MvBatchSettings implements Serializable {
         this.runnersCount = MvConfig.parseInt(props, CONF_COORD_RUNNERS_COUNT, 0);
     }
 
+    /**
+     * Get MV_JOBS table name.
+     *
+     * @return MV_JOBS table name to be used.
+     */
     public String getTableJobs() {
         return tableJobs;
     }
 
+    /**
+     * Set MV_JOBS table name.
+     *
+     * @param tableJobs MV_JOBS table name to be used.
+     */
     public void setTableJobs(String tableJobs) {
         this.tableJobs = tableJobs;
     }
 
+    /**
+     * Get MV_JOB_SCANS table name.
+     *
+     * @return MV_JOB_SCANS table name to be used.
+     */
     public String getTableScans() {
         return tableScans;
     }
 
+    /**
+     * Set MV_JOB_SCANS table name.
+     *
+     * @param tableScans MV_JOB_SCANS table name to be used.
+     */
     public void setTableScans(String tableScans) {
         this.tableScans = tableScans;
     }
 
+    /**
+     * Get MV_RUNNERS table name.
+     *
+     * @return MV_RUNNERS table name to be used.
+     */
     public String getTableRunners() {
         return tableRunners;
     }
 
+    /**
+     * Set MV_RUNNERS table name.
+     *
+     * @param tableRunners MV_RUNNERS table name to be used.
+     */
     public void setTableRunners(String tableRunners) {
         this.tableRunners = tableRunners;
     }
 
+    /**
+     * Get MV_RUNNER_JOBS table name.
+     *
+     * @return MV_RUNNER_JOBS table name to be used.
+     */
     public String getTableRunnerJobs() {
         return tableRunnerJobs;
     }
 
+    /**
+     * Set MV_RUNNER_JOBS table name.
+     *
+     * @param tableRunnerJobs MV_RUNNER_JOBS table name to be used.
+     */
     public void setTableRunnerJobs(String tableRunnerJobs) {
         this.tableRunnerJobs = tableRunnerJobs;
     }
 
+    /**
+     * Get MV_COMMANDS table name.
+     *
+     * @return MV_COMMANDS table name to be used.
+     */
     public String getTableCommands() {
         return tableCommands;
     }
 
+    /**
+     * Set MV_COMMANDS table name.
+     *
+     * @param tableCommands MV_COMMANDS table name to be used.
+     */
     public void setTableCommands(String tableCommands) {
         this.tableCommands = tableCommands;
     }
 
     // Getters and setters for timing settings
+    /**
+     * Get scan period.
+     *
+     * @return Period (ms) for runners/coordinator to re-scan state.
+     */
     public long getScanPeriodMs() {
         return scanPeriodMs;
     }
 
+    /**
+     * Set scan period.
+     *
+     * @param scanPeriodMs Period (ms) for runners/coordinator to re-scan state.
+     */
     public void setScanPeriodMs(long scanPeriodMs) {
         this.scanPeriodMs = scanPeriodMs;
     }
 
+    /**
+     * Get runner report period.
+     *
+     * @return Period (ms) for runner status reports.
+     */
     public long getReportPeriodMs() {
         return reportPeriodMs;
     }
 
+    /**
+     * Set runner report period.
+     *
+     * @param reportPeriodMs Period (ms) for runner status reports.
+     */
     public void setReportPeriodMs(long reportPeriodMs) {
         this.reportPeriodMs = reportPeriodMs;
     }
 
+    /**
+     * Get runner timeout.
+     *
+     * @return Timeout (ms) after which a runner is considered missing.
+     */
     public long getRunnerTimeoutMs() {
         return runnerTimeoutMs;
     }
 
+    /**
+     * Set runner timeout.
+     *
+     * @param runnerTimeoutMs Timeout (ms) after which a runner is considered missing.
+     */
     public void setRunnerTimeoutMs(long runnerTimeoutMs) {
         this.runnerTimeoutMs = runnerTimeoutMs;
     }
 
+    /**
+     * Get coordinator startup delay.
+     *
+     * @return Delay (ms) between coordinator startup and activation.
+     */
     public long getCoordStartupMs() {
         return coordStartupMs;
     }
 
+    /**
+     * Set coordinator startup delay.
+     *
+     * @param coordStartupMs Delay (ms) between coordinator startup and activation.
+     */
     public void setCoordStartupMs(long coordStartupMs) {
         this.coordStartupMs = coordStartupMs;
     }
 
+    /**
+     * Get minimal number of runners required for distribution.
+     *
+     * @return Minimal number of runners required for job distribution (0 means "no minimum").
+     */
     public int getRunnersCount() {
         return runnersCount;
     }
 
+    /**
+     * Set minimal number of runners required for distribution.
+     *
+     * @param runnersCount Minimal number of runners required for job distribution.
+     */
     public void setRunnersCount(int runnersCount) {
         this.runnersCount = runnersCount;
     }

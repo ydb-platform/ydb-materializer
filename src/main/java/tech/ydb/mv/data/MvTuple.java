@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 /**
+ * Comparable tuple used for keys and key prefixes.
+ *
+ * Comparison is performed lexicographically over tuple elements, treating
+ * {@code null} as less than a non-null value.
  *
  * @author zinal
  */
@@ -14,6 +18,11 @@ public class MvTuple implements Comparable<MvTuple>, Serializable {
 
     protected final Comparable[] values;
 
+    /**
+     * Create tuple from array of values.
+     *
+     * @param values Tuple items.
+     */
     public MvTuple(Comparable[] values) {
         this.values = values;
     }
@@ -26,6 +35,12 @@ public class MvTuple implements Comparable<MvTuple>, Serializable {
         return values[pos];
     }
 
+    /**
+     * Lexicographical comparison of tuple values.
+     *
+     * @param other Other tuple.
+     * @return Comparison result.
+     */
     @Override
     public int compareTo(MvTuple other) {
         int keyLen = Math.min(this.values.length, other.values.length);

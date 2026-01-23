@@ -20,6 +20,15 @@ import tech.ydb.table.values.Value;
  */
 public abstract class YdbConv {
 
+    /**
+     * Create an "empty" optional value for the given type.
+     *
+     * If {@code t} is already optional, returns an empty value of that optional.
+     * Otherwise wraps {@code t} into optional and returns empty.
+     *
+     * @param t Target type.
+     * @return Empty optional value.
+     */
     public static OptionalValue makeEmpty(Type t) {
         switch (t.getKind()) {
             case OPTIONAL:
@@ -29,6 +38,13 @@ public abstract class YdbConv {
         }
     }
 
+    /**
+     * Convert a POJO value into a YDB {@link Value} of the specified type.
+     *
+     * @param v POJO value (may be {@code null}).
+     * @param t Target YDB type.
+     * @return YDB value, possibly empty optional if {@code v} is {@code null}.
+     */
     public static Value<?> fromPojo(Object v, Type t) {
         if (v == null) {
             return makeEmpty(t);
@@ -47,6 +63,13 @@ public abstract class YdbConv {
         }
     }
 
+    /**
+     * Convert a POJO value into a YDB primitive value.
+     *
+     * @param v POJO value (may be {@code null}).
+     * @param t Primitive target type.
+     * @return YDB value, possibly empty optional if {@code v} is {@code null}.
+     */
     public static Value<?> fromPojo(Object v, PrimitiveType t) {
         if (v == null) {
             return makeEmpty(t);
@@ -105,6 +128,12 @@ public abstract class YdbConv {
         }
     }
 
+    /**
+     * Convert a YDB value to a POJO representation.
+     *
+     * @param v YDB value (may be {@code null}).
+     * @return POJO representation (may be {@code null}).
+     */
     public static Comparable<?> toPojo(Value<?> v) {
         if (v == null) {
             return null;
@@ -127,6 +156,12 @@ public abstract class YdbConv {
         }
     }
 
+    /**
+     * Convert a primitive YDB value to a POJO representation.
+     *
+     * @param v Primitive value.
+     * @return POJO representation.
+     */
     public static Comparable<?> toPojo(PrimitiveValue v) {
         switch (v.getType()) {
             case Bool:
@@ -182,6 +217,13 @@ public abstract class YdbConv {
         }
     }
 
+    /**
+     * Convert a YDB value to another YDB type.
+     *
+     * @param input Input value (may be {@code null}).
+     * @param type Desired type (may be {@code null} to keep input type).
+     * @return Converted value.
+     */
     public static Value<?> convert(Value<?> input, Type type) {
         if (input == null) {
             return null;
@@ -224,6 +266,12 @@ public abstract class YdbConv {
                 + "to type " + type, reason);
     }
 
+    /**
+     * Convert current result-set row to an array of POJO values.
+     *
+     * @param rsr Result set reader positioned at a row.
+     * @return Array of values in column order.
+     */
     public static Comparable<?>[] toPojoRow(ResultSetReader rsr) {
         Comparable<?>[] ret = new Comparable<?>[rsr.getColumnCount()];
         for (int i = 0; i < rsr.getColumnCount(); ++i) {

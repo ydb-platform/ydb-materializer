@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
+ * The reference to the source (input) table for a SQL join.
  *
  * @author zinal
  */
@@ -26,13 +27,16 @@ public class MvJoinSource implements MvSqlPosHolder {
         this(MvSqlPos.EMPTY);
     }
 
+    /**
+     * @return true, if table metadata is available, and false otherwise.
+     */
     public boolean isTableKnown() {
-        return (tableInfo!=null) && (tableName!=null)
+        return (tableInfo != null) && (tableName != null)
                 && tableName.equals(tableInfo.getName());
     }
 
     public MvTableInfo.Changefeed getChangefeedInfo() {
-        if (input==null) {
+        if (input == null) {
             return null;
         }
         return input.getChangefeedInfo();
@@ -43,8 +47,8 @@ public class MvJoinSource implements MvSqlPosHolder {
     }
 
     /**
-     * @return true, if this join source depends on at least one
-     *   other join source through its conditions, and false otherwise
+     * @return true, if this join source depends on at least one other join
+     * source through its conditions, and false otherwise
      */
     public boolean isRelated() {
         for (var cond : conditions) {

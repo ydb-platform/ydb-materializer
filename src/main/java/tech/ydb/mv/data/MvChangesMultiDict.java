@@ -2,7 +2,6 @@ package tech.ydb.mv.data;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -23,10 +22,21 @@ public class MvChangesMultiDict {
 
     private final HashMap<String, MvChangesSingleDict> items = new HashMap<>();
 
+    /**
+     * Get dictionary-change items collected for a handler.
+     *
+     * @return Collection of per-dictionary change objects.
+     */
     public Collection<MvChangesSingleDict> getItems() {
-        return Collections.unmodifiableCollection(items.values());
+        return items.values();
     }
 
+    /**
+     * Check whether there are any recorded changes.
+     *
+     * @return {@code true} if all contained dictionaries have no changes
+     * recorded.
+     */
     public boolean isEmpty() {
         for (var item : items.values()) {
             if (!item.isEmpty()) {
@@ -36,11 +46,23 @@ public class MvChangesMultiDict {
         return true;
     }
 
+    /**
+     * Add (or replace) an item for a dictionary table.
+     *
+     * @param sd Change tracking for a single dictionary table.
+     * @return This instance for chaining.
+     */
     public MvChangesMultiDict addItem(MvChangesSingleDict sd) {
         items.put(sd.getTableName(), sd);
         return this;
     }
 
+    /**
+     * Build row filters for all view parts impacted by dictionary changes.
+     *
+     * @param handler Handler definition (views, sources).
+     * @return List of non-empty filters to be applied.
+     */
     public ArrayList<MvRowFilter> toFilters(MvHandler handler) {
         ArrayList<MvRowFilter> filters = new ArrayList<>(handler.getViews().size());
         for (var view : handler.getViews().values()) {
@@ -54,6 +76,15 @@ public class MvChangesMultiDict {
         return filters;
     }
 
+    /**
+     * Build a row filter for a single view part, based on relevant dictionary
+     * changes.
+     *
+     * @param handler Handler definition (views, sources).
+     * @param target View part to build filter for.
+     * @return Filter for {@code target}, or {@code null} if there are no
+     * relevant changes.
+     */
     public MvRowFilter toFilter(MvHandler handler, MvViewExpr target) {
         // table alias -> keys to be checked
         var dictChecks = new HashMap<String, Set<MvKey>>();
@@ -111,11 +142,13 @@ public class MvChangesMultiDict {
     }
 
     /**
-     * table alias -> columns being used as output or in relations. // TODO:
-     * move to MvTarget to be collected after parsing
+     * Get column usage map for a view part.
      *
-     * @param target
-     * @return the column usage map
+     * The map is: table alias -&gt; columns that are used as outputs, in join
+     * conditions, or in filters.
+     *
+     * @param target View part to analyze.
+     * @return Column usage map.
      */
     public static Map<String, Set<String>> getColumnUsage(MvViewExpr target) {
         HashMap<String, Set<String>> columnUsage = new HashMap<>();

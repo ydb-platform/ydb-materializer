@@ -6,6 +6,9 @@ import java.util.Arrays;
 import java.util.Base64;
 
 /**
+ * Byte array wrapper used by the materializer for YDB BYTES values.
+ *
+ * Provides stable comparison and Base64 URL-safe encoding/decoding.
  *
  * @author zinal
  */
@@ -15,10 +18,20 @@ public class YdbBytes implements Comparable<YdbBytes>, Serializable {
 
     private final byte[] value;
 
+    /**
+     * Create wrapper from raw bytes.
+     *
+     * @param value Raw bytes.
+     */
     public YdbBytes(byte[] value) {
         this.value = value;
     }
 
+    /**
+     * Create wrapper from Base64 URL-safe encoded representation.
+     *
+     * @param encodedValue Base64 URL-safe encoded bytes.
+     */
     public YdbBytes(String encodedValue) {
         this.value = Base64.getUrlDecoder().decode(encodedValue);
     }
@@ -27,10 +40,21 @@ public class YdbBytes implements Comparable<YdbBytes>, Serializable {
         return value;
     }
 
+    /**
+     * Encode bytes as Base64 URL-safe string.
+     *
+     * @return Encoded bytes.
+     */
     public String encode() {
         return Base64.getUrlEncoder().encodeToString(value);
     }
 
+    /**
+     * Compare byte arrays using unsigned lexicographical order.
+     *
+     * @param o Other value.
+     * @return Comparison result.
+     */
     @Override
     public int compareTo(YdbBytes o) {
         return Arrays.compareUnsigned(value, o.value);

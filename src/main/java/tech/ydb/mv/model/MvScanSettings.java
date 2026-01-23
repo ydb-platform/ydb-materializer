@@ -6,7 +6,7 @@ import java.util.Properties;
 import tech.ydb.mv.MvConfig;
 
 /**
- *
+ * Settings for full table scans (batch mode).
  * @author zinal
  */
 public class MvScanSettings implements Serializable {
@@ -15,21 +15,44 @@ public class MvScanSettings implements Serializable {
 
     private int rowsPerSecondLimit = 10000;
 
+    /**
+     * Create settings with default values.
+     */
     public MvScanSettings() {
     }
 
+    /**
+     * Copy constructor.
+     *
+     * @param other Settings to copy.
+     */
     public MvScanSettings(MvScanSettings other) {
         this.rowsPerSecondLimit = other.rowsPerSecondLimit;
     }
 
+    /**
+     * Create settings from properties.
+     *
+     * @param props Properties to read settings from.
+     */
     public MvScanSettings(Properties props) {
         this.rowsPerSecondLimit = MvConfig.parseInt(props, MvConfig.CONF_SCAN_RATE, 10000);
     }
 
+    /**
+     * Get scan throttling limit.
+     *
+     * @return Rows-per-second limit used for scans.
+     */
     public int getRowsPerSecondLimit() {
         return rowsPerSecondLimit;
     }
 
+    /**
+     * Set scan throttling limit.
+     *
+     * @param rowsPerSecondLimit Rows-per-second limit used for scans.
+     */
     public void setRowsPerSecondLimit(int rowsPerSecondLimit) {
         this.rowsPerSecondLimit = rowsPerSecondLimit;
     }
