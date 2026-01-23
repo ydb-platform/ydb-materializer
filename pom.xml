@@ -42,14 +42,20 @@
     </licenses>
     <developers>
         <developer>
-            <name>Maxim Zinal</name>
-            <email>alexandr268@ydb.tech</email>
+            <name>Kirill Kurdyukov</name>
+            <email>kurdyukov-kir@ydb.tech</email>
             <organization>YDB</organization>
             <organizationUrl>https://ydb.tech/</organizationUrl>
         </developer>
         <developer>
-            <name>Kirill Kurdyukov</name>
-            <email>kurdyukov-kir@ydb.tech</email>
+            <name>Maxim Zinal</name>
+            <email>zinal@ydb.tech</email>
+            <organization>YDB</organization>
+            <organizationUrl>https://ydb.tech/</organizationUrl>
+        </developer>
+        <developer>
+            <name>Aleksandr Gorshenin</name>
+            <email>alexandr268@ydb.tech</email>
             <organization>YDB</organization>
             <organizationUrl>https://ydb.tech/</organizationUrl>
         </developer>
