@@ -9,8 +9,9 @@ import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvTableInfo;
 
 /**
- * Key prefix in the comparable form. Includes the link to the key information,
- * which is linked to the specific table.
+ * Key prefix in the comparable form.
+ *
+ * Includes the link to the key info, which is linked to the specific table.
  *
  * @author zinal
  */
@@ -59,10 +60,21 @@ public class MvKeyPrefix extends MvTuple {
         return values[pos];
     }
 
+    /**
+     * Convert one component of the prefix to a typed YDB value.
+     *
+     * @param pos Component position.
+     * @return YDB value for the component at {@code pos}.
+     */
     public Value<?> convertValue(int pos) {
         return YdbConv.fromPojo(values[pos], info.getType(pos));
     }
 
+    /**
+     * Convert the prefix to a struct value in the table key struct order.
+     *
+     * @return Key prefix as a {@link StructValue}.
+     */
     public StructValue convertKeyToStructValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];
@@ -73,6 +85,11 @@ public class MvKeyPrefix extends MvTuple {
         return info.getStructType().newValueUnsafe(members);
     }
 
+    /**
+     * Convert the prefix to a tuple value in the key column order.
+     *
+     * @return Key prefix as a {@link TupleValue}.
+     */
     public TupleValue convertKeyToTupleValue() {
         int count = info.size();
         Value<?>[] members = new Value<?>[count];
@@ -82,6 +99,11 @@ public class MvKeyPrefix extends MvTuple {
         return info.getTupleType().newValueOwn(members);
     }
 
+    /**
+     * Convert the prefix to JSON representation.
+     *
+     * @return JSON string containing key members by name.
+     */
     public String convertKeyToJson() {
         int count = info.size();
         YdbStruct ys = new YdbStruct(count);
@@ -106,10 +128,24 @@ public class MvKeyPrefix extends MvTuple {
         return super.compareTo(other);
     }
 
+    /**
+     * Build prefix values from a key bound.
+     *
+     * @param kb Key bound.
+     * @param info Key metadata.
+     * @return Prefix values.
+     */
     public static Comparable[] makePrefix(KeyBound kb, MvKeyInfo info) {
         return makePrefix(kb.getValue(), info);
     }
 
+    /**
+     * Build prefix values from a YDB value.
+     *
+     * @param value YDB value.
+     * @param info Key metadata.
+     * @return Prefix values.
+     */
     public static Comparable[] makePrefix(Value<?> value, MvKeyInfo info) {
         switch (value.getType().getKind()) {
             case OPTIONAL:
@@ -134,6 +170,13 @@ public class MvKeyPrefix extends MvTuple {
         }
     }
 
+    /**
+     * Build prefix values from a YDB tuple value.
+     *
+     * @param value Tuple value.
+     * @param info Key metadata.
+     * @return Prefix values.
+     */
     public static Comparable[] makePrefix(TupleValue value, MvKeyInfo info) {
         int prefixLen = Math.min(value.size(), info.size());
         Comparable[] output = new Comparable[prefixLen];
@@ -148,10 +191,24 @@ public class MvKeyPrefix extends MvTuple {
         return output;
     }
 
+    /**
+     * Build prefix values from JSON.
+     *
+     * @param json JSON representation of a key/prefix.
+     * @param info Key metadata.
+     * @return Prefix values.
+     */
     public static Comparable[] makePrefix(String json, MvKeyInfo info) {
         return makePrefix(YdbStruct.fromJson(json), info);
     }
 
+    /**
+     * Build prefix values from a struct by taking the longest non-null prefix.
+     *
+     * @param ys Struct containing key values by name.
+     * @param info Key metadata.
+     * @return Prefix values.
+     */
     public static Comparable[] makePrefix(YdbStruct ys, MvKeyInfo info) {
         int prefixLen = 0;
         for (int pos = 0; pos < info.size(); ++pos) {

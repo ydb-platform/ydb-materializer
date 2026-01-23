@@ -33,7 +33,7 @@ public class MvJobController implements AutoCloseable {
 
     private final MvJobContext context;
     private final MvApplyManager applyManager;
-    private final MvCdcFeeder cdcFeeder;
+    private final AtomicReference<MvCdcFeeder> cdcFeeder = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> dictCheckFuture = new AtomicReference<>();
     private final AtomicLong dictCheckTime = new AtomicLong(0);
 
@@ -41,7 +41,6 @@ public class MvJobController implements AutoCloseable {
             MvHandler handler, MvHandlerSettings settings) {
         this.context = new MvJobContext(service, metadata, handler, settings);
         this.applyManager = new MvApplyManager(this.context);
-        this.cdcFeeder = new MvCdcFeeder(this.context, service.getYdb(), this.applyManager);
     }
 
     @Override
@@ -62,7 +61,7 @@ public class MvJobController implements AutoCloseable {
     }
 
     public MvCdcFeeder getCdcFeeder() {
-        return cdcFeeder;
+        return cdcFeeder.get();
     }
 
     public boolean isRunning() {
@@ -73,7 +72,7 @@ public class MvJobController implements AutoCloseable {
         return applyManager.isLocked();
     }
 
-    public boolean start() {
+    public synchronized boolean start() {
         if (context.isRunning()) {
             LOG.warn("Ignored start call for an already running controller `{}`", getName());
             return false;
@@ -89,12 +88,18 @@ public class MvJobController implements AutoCloseable {
         // as we cannot resume any regular scans.
         clearScanPositions();
         applyManager.start();
-        cdcFeeder.start();
+        var cdcFeederTemp = cdcFeeder.get();
+        if (cdcFeederTemp != null) {
+            cdcFeederTemp.close();
+        }
+        cdcFeederTemp = new MvCdcFeeder(context, context.getYdb(), applyManager);
+        cdcFeederTemp.start();
+        cdcFeeder.set(cdcFeederTemp);
         scheduleDictionaryChecks();
         return true;
     }
 
-    public boolean stop() {
+    public synchronized boolean stop() {
         if (!context.isRunning()) {
             LOG.warn("Ignored stop call for an already stopped controller `{}`", getName());
             return false;
@@ -102,7 +107,11 @@ public class MvJobController implements AutoCloseable {
         LOG.info("Stopping the controller `{}`", getName());
         context.setStopped();
         cancelDictionaryChecks();
-        cdcFeeder.stop();
+        var cdcFeederTemp = cdcFeeder.get();
+        if (cdcFeederTemp != null) {
+            cdcFeeder.set(null);
+            cdcFeederTemp.close();
+        }
         // no explicit stop for applyManager - threads are stopped by context flag
         applyManager.awaitTermination(Duration.ofSeconds(10));
         releaseLock();
@@ -114,7 +123,6 @@ public class MvJobController implements AutoCloseable {
         if (context.isRunning()) {
             stop();
         }
-        cdcFeeder.close();
     }
 
     public boolean startScan(String name, MvScanSettings settings) {

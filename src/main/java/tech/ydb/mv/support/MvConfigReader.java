@@ -54,6 +54,10 @@ public class MvConfigReader extends MvConfig {
         String tabname = props.getProperty(CONF_INPUT_TABLE, DEF_STMT_TABLE);
         LOG.info("Reading MV script from table {}", tabname);
         String sql = readStatements(ydb, tabname);
+        if (sql == null || sql.length() == 0) {
+            LOG.warn("Empty configuration passed");
+            return new MvMetadata();
+        }
         return new MvSqlParser(sql).fill();
     }
 

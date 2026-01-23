@@ -11,17 +11,21 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCoordinatorImpl.class);
 
+    private final String runnerId;
     private final AtomicLong commandNo = new AtomicLong();
     private final MvJobDao jobDao;
     private final MvBatchSettings settings;
     private final Instant startupTv;
     private volatile boolean balancing;
+    private volatile boolean selfCleanupDetected;
 
-    public MvCoordinatorImpl(MvJobDao jobDao, MvBatchSettings settings) {
+    public MvCoordinatorImpl(String runnerId, MvJobDao jobDao, MvBatchSettings settings) {
+        this.runnerId = runnerId;
         this.jobDao = jobDao;
         this.settings = settings;
         this.startupTv = Instant.now().plusMillis(settings.getCoordStartupMs());
         this.balancing = false;
+        this.selfCleanupDetected = false;
     }
 
     @Override
@@ -48,16 +52,33 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                     .filter(runner -> runner.getUpdatedAt().isBefore(cutoffTime))
                     .toList();
 
-            for (MvRunnerInfo inactiveRunner : inactiveRunners) {
-                jobDao.deletePendingCommands(inactiveRunner.getRunnerId());
-                jobDao.deleteRunnerJobs(inactiveRunner.getRunnerId());
-                jobDao.deleteRunner(inactiveRunner.getRunnerId());
+            boolean hasSelfCleanup = inactiveRunners.stream()
+                    .map(ir -> ir.getRunnerId())
+                    .filter(v -> runnerId.equals(v))
+                    .count() > 0L;
+            if (hasSelfCleanup) {
+                if (!selfCleanupDetected) {
+                    selfCleanupDetected = true;
+                    LOG.warn("[{}] Delected inactivity for self-runner, cleanup DELAYED.", runnerId);
+                }
+                return;
+            } else {
+                if (selfCleanupDetected) {
+                    selfCleanupDetected = false;
+                    LOG.info("[{}] Resumed activity reporting for self-runner, cleanup RE-ACTIVATED.", runnerId);
+                }
+            }
 
-                LOG.info("Cleaned up inactive runner: {}", inactiveRunner.getRunnerId());
+            for (MvRunnerInfo ir : inactiveRunners) {
+                jobDao.deletePendingCommands(ir.getRunnerId());
+                jobDao.deleteRunnerJobs(ir.getRunnerId());
+                jobDao.deleteRunner(ir.getRunnerId());
+
+                LOG.info("[{}] Cleaned up inactive runner: {}", runnerId, ir.getRunnerId());
             }
 
         } catch (Exception ex) {
-            LOG.error("Failed to cleanup inactive runners", ex);
+            LOG.error("[{}] Failed to cleanup inactive runners", runnerId, ex);
         }
     }
 
@@ -70,13 +91,13 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         }
         if (!balancing) {
             balancing = true;
-            LOG.info("Started job balancing...");
+            LOG.info("[{}] Started job balancing...", runnerId);
         }
         try {
             new MvBalancer(jobDao, commandNo, settings.getRunnersCount())
                     .balanceJobs();
         } catch (Exception ex) {
-            LOG.error("Failed to balance jobs", ex);
+            LOG.error("[{}] Failed to balance jobs", runnerId, ex);
         }
     }
 
@@ -84,7 +105,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         try {
             doAcceptScans();
         } catch (Exception ex) {
-            LOG.error("Failed to process scans requests", ex);
+            LOG.error("[{}] Failed to process scans requests", runnerId, ex);
         }
     }
 
@@ -105,9 +126,9 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
         }
         var runners = jobDao.getJobRunners(scan.getJobName());
         if (runners.size() != 1) {
-            LOG.info("Cannot start the requested scan "
+            LOG.info("[{}] Cannot start the requested scan "
                     + "for handler `{}`, target `{}` - runner was not found.",
-                    scan.getJobName(), scan.getTargetName());
+                    runnerId, scan.getJobName(), scan.getTargetName());
             return;
         }
         var runner = runners.get(0);

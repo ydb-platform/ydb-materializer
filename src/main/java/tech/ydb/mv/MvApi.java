@@ -18,6 +18,12 @@ import tech.ydb.mv.svc.MvLocker;
  */
 public interface MvApi extends AutoCloseable {
 
+    /**
+     * Create the new service API instance.
+     *
+     * @param ydb YDB connection
+     * @return New service API instance created and configured
+     */
     static MvApi newInstance(YdbConnector ydb) {
         return new MvService(ydb);
     }
@@ -57,7 +63,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for handler settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setHandlerSettings(MvHandlerSettings defaultSettings);
 
@@ -69,7 +75,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for dictionary processing settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setDictionarySettings(MvDictionarySettings defaultSettings);
 
@@ -81,7 +87,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for scan settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setScanSettings(MvScanSettings defaultSettings);
 

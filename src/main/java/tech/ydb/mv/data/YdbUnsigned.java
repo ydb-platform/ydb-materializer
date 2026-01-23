@@ -3,6 +3,8 @@ package tech.ydb.mv.data;
 import java.io.Serializable;
 
 /**
+ * Unsigned 64-bit integer wrapper used by the Materializer for YDB UINT64
+ * values.
  *
  * @author zinal
  */
@@ -12,10 +14,20 @@ public class YdbUnsigned implements Comparable<YdbUnsigned>, Serializable {
 
     private final long value;
 
+    /**
+     * Create wrapper from raw unsigned long bits.
+     *
+     * @param value Value stored as unsigned {@code long}.
+     */
     public YdbUnsigned(long value) {
         this.value = value;
     }
 
+    /**
+     * Create wrapper from an unsigned decimal string representation.
+     *
+     * @param value Unsigned long in decimal form.
+     */
     public YdbUnsigned(String value) {
         this.value = Long.parseUnsignedLong(value);
     }
@@ -24,6 +36,12 @@ public class YdbUnsigned implements Comparable<YdbUnsigned>, Serializable {
         return value;
     }
 
+    /**
+     * Compare unsigned values.
+     *
+     * @param o Other value.
+     * @return Comparison result.
+     */
     @Override
     public int compareTo(YdbUnsigned o) {
         return Long.compareUnsigned(value, o.value);

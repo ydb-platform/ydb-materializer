@@ -20,6 +20,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /**
+ * Serializable "struct-like" container for YDB values used by the Materializer.
+ *
+ * Supports a fixed set of comparable value types and can be serialized to/from
+ * JSON for storing change images and keys.
  *
  * @author zinal
  */
@@ -88,10 +92,20 @@ public class YdbStruct implements Serializable {
 
     private final Map<String, Comparable<?>> values;
 
+    /**
+     * Create an empty, mutable struct.
+     */
     public YdbStruct() {
         this.values = new HashMap<>();
     }
 
+    /**
+     * Create a struct with expected capacity.
+     *
+     * If {@code capacity <= 0} the struct is created as empty/immutable.
+     *
+     * @param capacity Expected number of members.
+     */
     public YdbStruct(int capacity) {
         if (capacity > 0) {
             this.values = new HashMap<>(capacity);
@@ -100,22 +114,46 @@ public class YdbStruct implements Serializable {
         }
     }
 
+    /**
+     * @return {@code true} if the struct contains no fields.
+     */
     public boolean isEmpty() {
         return values.isEmpty();
     }
 
+    /**
+     * @return {@code true} if the struct contains at least one field.
+     */
     public boolean isFilled() {
         return !values.isEmpty();
     }
 
+    /**
+     * Get a set of field names.
+     *
+     * @return Field names.
+     */
     public Set<String> keySet() {
         return values.keySet();
     }
 
+    /**
+     * Retrieve a value of a specific field.
+     *
+     * @param name Name of the field to be retrieved.
+     * @return Field value, or null if such a field was not found.
+     */
     public Comparable<?> get(String name) {
         return values.get(name);
     }
 
+    /**
+     * Put a value into the struct.
+     *
+     * @param name Field name.
+     * @param v Field value (may be {@code null}).
+     * @return Previous value.
+     */
     public Comparable<?> put(String name, Comparable<?> v) {
         if (v != null) {
             if (CLS2INFO.get(v.getClass()) == null) {
@@ -126,66 +164,118 @@ public class YdbStruct implements Serializable {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Boolean v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, String v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, YdbBytes v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Float v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Double v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Byte v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Short v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Integer v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Long v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, YdbUnsigned v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, BigDecimal v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, LocalDate v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, LocalDateTime v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Instant v) {
         return values.put(name, v);
     }
 
+    /**
+     * See {@link #put(String, Comparable)}.
+     */
     public Comparable<?> put(String name, Duration v) {
         return values.put(name, v);
     }
 
+    /**
+     * Add a value into the struct (fluent API).
+     *
+     * @param name Field name.
+     * @param v Field value (may be {@code null}).
+     * @return This instance.
+     */
     public YdbStruct add(String name, Comparable<?> v) {
         if (v != null) {
             if (CLS2INFO.get(v.getClass()) == null) {
@@ -197,76 +287,121 @@ public class YdbStruct implements Serializable {
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Boolean v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, String v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, YdbBytes v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Float v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Double v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Byte v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Short v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Integer v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Long v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, YdbUnsigned v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, BigDecimal v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, LocalDate v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, LocalDateTime v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Instant v) {
         values.put(name, v);
         return this;
     }
 
+    /**
+     * See {@link #add(String, Comparable)}.
+     */
     public YdbStruct add(String name, Duration v) {
         values.put(name, v);
         return this;
@@ -294,10 +429,21 @@ public class YdbStruct implements Serializable {
         return Objects.equals(this.values, other.values);
     }
 
+    /**
+     * Convert struct to JSON string.
+     *
+     * @return JSON representation.
+     */
     public String toJson() {
         return appendJson(new JsonObject()).toString();
     }
 
+    /**
+     * Append this struct as JSON properties to the provided object.
+     *
+     * @param root Root JSON object.
+     * @return The same {@code root} instance.
+     */
     public JsonObject appendJson(JsonObject root) {
         for (Map.Entry<String, Comparable<?>> me : values.entrySet()) {
             if (me.getValue() == null) {
@@ -321,6 +467,12 @@ public class YdbStruct implements Serializable {
         return toJson();
     }
 
+    /**
+     * Parse struct from JSON string created by {@link #toJson()}.
+     *
+     * @param json JSON input.
+     * @return Parsed struct.
+     */
     public static YdbStruct fromJson(String json) {
         JsonElement root = JsonParser.parseString(json);
         if (!root.isJsonObject()) {
@@ -356,6 +508,11 @@ public class YdbStruct implements Serializable {
         return new TypeInfo<>(clazz, typeCode, fnOut, fnIn);
     }
 
+    /**
+     * Internal type descriptor used for JSON serialization/deserialization.
+     *
+     * @param <T> The actual data type used
+     */
     @SuppressWarnings("rawtypes")
     public static class TypeInfo<T> {
 
