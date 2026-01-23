@@ -9,6 +9,11 @@ import java.util.List;
  */
 public interface MvApplyAction {
 
+    /**
+     * Apply the action to the list of input tasks.
+     *
+     * @param input List of tasks (data items) to be processed by the action.
+     */
     void apply(List<MvApplyTask> input);
 
     @Override
