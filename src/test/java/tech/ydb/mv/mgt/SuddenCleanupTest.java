@@ -100,6 +100,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
         pause(10000L);
         pause(10000L);
+        pause(10000L);
 
         System.out.println("Shutting down...");
         var activeRunners = copyWorkers();
@@ -176,8 +177,8 @@ public class SuddenCleanupTest extends MgmtTestBase {
             props.setProperty(pair.getKey().toString(), pair.getValue().toString());
         }
         props.remove(MvConfig.CONF_HANDLERS);
-        props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "30000");
-        props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "60000");
+        props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "20000");
+        props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "40000");
         return props;
     }
 
