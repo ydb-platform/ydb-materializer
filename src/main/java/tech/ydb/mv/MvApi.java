@@ -139,6 +139,14 @@ public interface MvApi extends AutoCloseable {
     boolean stopScan(String handlerName, String targetName);
 
     /**
+     * Generate the set of SQL statements for CDC streams, print and optionally
+     * apply to the database.
+     *
+     * @param pw The output print stream
+     */
+    void generateStreams(PrintStream pw);
+
+    /**
      * Print the list of issues in the current context
      *
      * @param pw The output print stream
@@ -146,7 +154,7 @@ public interface MvApi extends AutoCloseable {
     void printIssues(PrintStream pw);
 
     /**
-     * Generate the set of SQL statements and print.
+     * Generate the set of all SQL statements used and print.
      *
      * @param pw The output print stream
      */

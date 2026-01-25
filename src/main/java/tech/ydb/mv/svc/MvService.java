@@ -22,6 +22,7 @@ import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.parser.MvDescriberYdb;
+import tech.ydb.mv.parser.MvStreamBuilder;
 import tech.ydb.mv.support.MvConfigReader;
 import tech.ydb.mv.support.MvIssuePrinter;
 import tech.ydb.mv.support.MvSqlPrinter;
@@ -273,6 +274,13 @@ public class MvService implements MvApi {
             return false;
         }
         return c.stopScan(targetName);
+    }
+
+    @Override
+    public void generateStreams(PrintStream pw) {
+        for (var handler : metadata.getHandlers().values()) {
+            new MvStreamBuilder(ydb, pw, handler, true).apply();
+        }
     }
 
     @Override
