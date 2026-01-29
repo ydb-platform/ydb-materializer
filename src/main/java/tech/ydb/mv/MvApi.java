@@ -142,9 +142,11 @@ public interface MvApi extends AutoCloseable {
      * Generate the set of SQL statements for CDC streams, print and optionally
      * apply to the database.
      *
+     * @param create true, if the missing CDC streams and consumers should be
+     * created, and false otherwise.
      * @param pw The output print stream
      */
-    void generateStreams(PrintStream pw);
+    void generateStreams(boolean create, PrintStream pw);
 
     /**
      * Print the list of issues in the current context

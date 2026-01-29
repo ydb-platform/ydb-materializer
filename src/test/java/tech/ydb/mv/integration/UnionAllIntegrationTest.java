@@ -1,6 +1,9 @@
 package tech.ydb.mv.integration;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.Properties;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,11 +75,6 @@ CREATE TABLE `test2/mv1` (
     INDEX ix_c1 GLOBAL ON (c1),
     INDEX ix_c7 GLOBAL ON (c7)
 );
-
-ALTER TABLE `test2/main1` ADD CHANGEFEED `cf0` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
-ALTER TABLE `test2/sub1` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
-ALTER TABLE `test2/main2` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
-ALTER TABLE `test2/sub2` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'KEYS_ONLY');
 """;
 
     public static final String DROP_TABLES_UA
@@ -86,14 +84,6 @@ DROP TABLE `test2/main2`;
 DROP TABLE `test2/sub1`;
 DROP TABLE `test2/sub2`;
 DROP TABLE `test2/mv1`;
-""";
-
-    public static final String CDC_CONSUMERS_UA
-            = """
-ALTER TOPIC `test2/main1/cf0` ADD CONSUMER `consumer3`;
-ALTER TOPIC `test2/sub1/cf1` ADD CONSUMER `consumer3`;
-ALTER TOPIC `test2/main2/cf2` ADD CONSUMER `consumer3`;
-ALTER TOPIC `test2/sub2/cf3` ADD CONSUMER `consumer3`;
 """;
 
     public static final String UPSERT_CONFIG_UA
@@ -229,8 +219,6 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
             System.err.println("[UUU] Preparation: creating tables...");
             runDdl(conn, CREATE_TABLES_BASE);
             runDdl(conn, CREATE_TABLES_UA);
-            System.err.println("[UUU] Preparation: adding consumers...");
-            runDdl(conn, CDC_CONSUMERS_UA);
             System.err.println("[UUU] Preparation: adding config...");
             runDdl(conn, UPSERT_CONFIG_UA);
         }
@@ -251,6 +239,12 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
         System.err.println("[UUU] Starting up...");
         var cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (var conn = new YdbConnector(cfg)) {
+            try (var svc = new MvService(conn)) {
+                svc.applyDefaults(conn.getConfig().getProperties());
+                System.err.println("[UUU] Creating CDC streams...");
+                var ps = new PrintStream(new ByteArrayOutputStream());
+                svc.generateStreams(true, ps);
+            }
             try (var svc = new MvService(conn)) {
                 svc.applyDefaults(conn.getConfig().getProperties());
 

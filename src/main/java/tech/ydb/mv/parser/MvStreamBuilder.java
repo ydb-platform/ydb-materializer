@@ -2,12 +2,14 @@ package tech.ydb.mv.parser;
 
 import java.io.PrintStream;
 import java.util.concurrent.CompletableFuture;
+
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Status;
+import tech.ydb.query.QuerySession;
+
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.query.QuerySession;
 
 /**
  *

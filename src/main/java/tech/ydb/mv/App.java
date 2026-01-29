@@ -72,7 +72,8 @@ public class App {
             }
             case STREAMS -> {
                 LOG.info("Stream generation requested.");
-                api.generateStreams(System.out);
+                boolean create = conn.getProperty(MvConfig.CONF_STREAMS_CREATE, false);
+                api.generateStreams(create, System.out);
             }
             case LOCAL -> {
                 LOG.info("Local service requested.");
