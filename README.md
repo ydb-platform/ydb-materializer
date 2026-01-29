@@ -215,7 +215,7 @@ The application supports three operational modes:
 
 **Parameters:**
 - `<config.xml>` - Path to the XML configuration file
-- `<MODE>` - Operation mode: `CHECK`, `SQL`, or `RUN`
+- `<MODE>` - Operation mode: `CHECK`, `SQL`, `STREAMS`, `LOCAL`, or `RUN`
 
 ### Operation Modes
 
@@ -230,6 +230,14 @@ Generates and outputs the SQL statements for materialized views:
 ```bash
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
+
+#### STREAMS Mode
+Generates and (optionally) applies to the working database SQL instructions for CDC streams creation:
+```bash
+java -jar ydb-materializer-*.jar config.xml STREAMS
+```
+
+CDC streams creation is performed when the configuration includes the parameter `job.streams.create=true`.
 
 #### LOCAL Mode
 Starts a local, single-node materialized view processing service:
@@ -268,6 +276,7 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
 <entry key="job.input.table">mv/statements</entry>
+<entry key="job.streams.create">false</entry>
 
 <!-- Handler configuration -->
 <entry key="job.handlers">h1,h2,h3</entry>
@@ -329,6 +338,7 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.input.mode` - Input source: `FILE` or `TABLE`
 - `job.input.file` - Path to SQL file (for FILE mode)
 - `job.input.table` - Table name for statements (for TABLE mode)
+- `job.streams.create` - when set to `true`, create the missing CDC streams.
 - `job.handlers` - Comma-separated list of handler names to activate
 - `job.scan.table` - Scan position control table name
 - `job.dict.hist.table` - Dictionary history table name

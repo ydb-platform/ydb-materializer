@@ -42,7 +42,7 @@ YDB Materializer может быть встроен как библиотека 
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.8</version>
+            <version>1.10</version>
         </dependency>
 ```
 
@@ -211,7 +211,7 @@ java -jar ydb-materializer-*.jar <config.xml> <MODE>
 
 **Параметры:**
 - `<config.xml>` — путь к файлу XML-конфигурации.
-- `<MODE>` — режим работы: `CHECK`, `SQL` или `RUN`.
+- `<MODE>` — режим работы: `CHECK`, `SQL` `STREAMS`, `LOCAL` или `RUN`.
 
 ### Режимы работы
 
@@ -226,6 +226,14 @@ java -jar ydb-materializer-*.jar config.xml CHECK
 ```bash
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
+
+#### Режим STREAMS
+Генерирует и (опционально) применяет к рабочей базе данных SQL-инструкции для создания потоков CDC:
+```bash
+java -jar ydb-materializer-*.jar config.xml STREAMS
+```
+
+Создание потоков CDC осуществляется при наличии в конфигурации установленного параметра `job.streams.create=true`.
 
 #### Режим LOCAL
 Запускает локальную одноузловую службу обработки материализованных представлений:
@@ -264,6 +272,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
 <entry key="job.input.table">mv/statements</entry>
+<entry key="job.streams.create">false</entry>
 
 <!-- Конфигурация обработчика -->
 <entry key="job.handlers">h1,h2,h3</entry>
@@ -325,6 +334,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.input.mode` — источник ввода: `FILE` или `TABLE`.
 - `job.input.file` — путь к SQL-файлу (для режима FILE).
 - `job.input.table` — имя таблицы для инструкций (для режима TABLE).
+- `job.streams.create` - если установлено в `true`, создать недостающие объекты потоков CDC.
 - `job.handlers` — список имён обработчиков для активации, разделённый запятыми.
 - `job.scan.table` — имя таблицы для ведения позиций сканирования
 - `job.dict.hist.table` - имя таблицы для ведения истории изменения справочников

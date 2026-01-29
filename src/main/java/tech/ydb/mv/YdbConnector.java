@@ -287,6 +287,11 @@ public class YdbConnector implements AutoCloseable {
         }
     }
 
+    public boolean getProperty(String name, boolean defval) {
+        String v = config.properties.getProperty(name, String.valueOf(defval));
+        return Boolean.parseBoolean(v);
+    }
+
     public static String safe(String value) {
         return value.replaceAll("[;.$`'\\\"()\\\\]", "_");
     }

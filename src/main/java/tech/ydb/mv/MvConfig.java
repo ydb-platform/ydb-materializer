@@ -48,6 +48,11 @@ public class MvConfig {
     public static final String CONF_INPUT_TABLE = "job.input.table";
 
     /**
+     * If set to "true", attempt to create CDC streams and consumers.
+     */
+    public static final String CONF_STREAMS_CREATE = "job.streams.create";
+
+    /**
      * Comma-separated list of handler names to be activated on RUN action.
      */
     public static final String CONF_HANDLERS = "job.handlers";
@@ -186,6 +191,17 @@ public class MvConfig {
         }
     }
 
+    public static String getAllModes() {
+        var sb = new StringBuilder();
+        for (var mode : Mode.values()) {
+            if (sb.length() == 0) {
+                sb.append('|');
+            }
+            sb.append(mode.toString());
+        }
+        return sb.toString();
+    }
+
     public static Mode parseMode(String v) {
         if (v == null) {
             return null;
@@ -225,11 +241,31 @@ public class MvConfig {
         return null;
     }
 
+    /**
+     * Application execution mode.
+     */
     public static enum Mode {
+        /**
+         * Validate configuration and report issues.
+         */
         CHECK,
+        /**
+         * Generate and print SQL queries used by the Materializer.
+         */
         SQL,
+        /**
+         * Generate and print (and optionally apply) SQL queries for CDC streams
+         * and consumers.
+         */
+        STREAMS,
+        /**
+         * Run application in the local (single-instance) mode.
+         */
         LOCAL,
-        JOB
+        /**
+         * Run application in the distributed (multi-instance) mode.
+         */
+        JOB,
     }
 
     public static enum Input {

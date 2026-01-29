@@ -35,7 +35,7 @@ public class App {
      */
     public static void main(String[] args) {
         if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
-            System.out.println("USAGE: tech.ydb.mv.App job.xml CHECK|SQL|LOCAL|JOB");
+            System.out.println("USAGE: tech.ydb.mv.App job.xml " + MvConfig.getAllModes());
             System.exit(1);
         }
         try {
@@ -69,6 +69,11 @@ public class App {
             case SQL -> {
                 LOG.info("SQL output requested.");
                 api.printSql(System.out);
+            }
+            case STREAMS -> {
+                LOG.info("Stream generation requested.");
+                boolean create = conn.getProperty(MvConfig.CONF_STREAMS_CREATE, false);
+                api.generateStreams(create, System.out);
             }
             case LOCAL -> {
                 LOG.info("Local service requested.");
