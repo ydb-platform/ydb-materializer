@@ -19,6 +19,7 @@ import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -37,6 +38,9 @@ abstract class ActionBase {
     protected final SessionRetryContext retryCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
+    private String metricsMvName;
+    private String metricsSourceTable;
+    private String metricsSourceAlias;
 
     protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
@@ -47,6 +51,24 @@ abstract class ActionBase {
         this.querySettings = ExecuteQuerySettings.newBuilder()
                 .withRequestTimeout(Duration.ofSeconds(queryTimeout))
                 .build();
+    }
+
+    protected final void setMetricsScope(String mvName, String sourceTable, String sourceAlias) {
+        this.metricsMvName = mvName;
+        this.metricsSourceTable = sourceTable;
+        this.metricsSourceAlias = sourceAlias;
+    }
+
+    String getMetricsMvName() {
+        return metricsMvName;
+    }
+
+    String getMetricsSourceTable() {
+        return metricsSourceTable;
+    }
+
+    String getMetricsSourceAlias() {
+        return metricsSourceAlias;
     }
 
     public static String getLastSqlStatement() {
@@ -94,9 +116,15 @@ abstract class ActionBase {
         }
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
+        long startNs = System.nanoTime();
         ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
+        long durationNs = System.nanoTime() - startNs;
+        if (metricsMvName != null) {
+            MvMetrics.recordSqlTime(metricsMvName, metricsSourceTable, metricsSourceAlias,
+                    "select", durationNs);
+        }
         lastSqlStatement.set(null);
         return rsr;
     }

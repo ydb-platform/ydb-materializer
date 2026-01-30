@@ -243,20 +243,9 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 ;
 """;
 
-    @RegisterExtension
-    protected static final YdbHelperExtension YDB = new YdbHelperExtension();
-
-    protected static String getConnectionUrl() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(YDB.useTls() ? "grpcs://" : "grpc://");
-        sb.append(YDB.endpoint());
-        sb.append(YDB.database());
-        return sb.toString();
-    }
-
     protected static byte[] getConfig() {
         Properties props = new Properties();
-        props.setProperty("ydb.url", getConnectionUrl());
+        props.setProperty("ydb.url", "grpc://localhost:2136/local");
         props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
@@ -267,6 +256,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
         props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
+        props.setProperty(MvConfig.CONF_METRICS_ENABLED, "true");
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             props.storeToXML(baos, "Test props", StandardCharsets.UTF_8);

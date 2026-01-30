@@ -47,6 +47,10 @@ public class MvCdcFeeder {
         return adapter.getFeederName();
     }
 
+    public String getConsumerName() {
+        return adapter.getConsumerName();
+    }
+
     public synchronized void start() {
         if (reader.get() != null) {
             return;

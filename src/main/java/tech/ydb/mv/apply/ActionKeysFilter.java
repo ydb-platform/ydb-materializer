@@ -37,6 +37,10 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         try (MvSqlGen sg = new MvSqlGen(request)) {
             this.sqlSelect = sg.makeSelect();
         }
+        var source = target.getTopMostSource();
+        if (source != null) {
+            setMetricsScope(target.getName(), source.getTableName(), source.getTableAlias());
+        }
         LOG.info(" [{}] Handler `{}`, target `{}`, total {} filter(s)",
                 instance, context.getMetadata().getName(), target.getName(),
                 filter.getBlocks().size());

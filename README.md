@@ -250,6 +250,12 @@ The configuration file is an XML properties file that defines connection paramet
 </properties>
 ```
 
+### Minimal runnable example
+Use these files for a single-table MV example:
+- `scripts/example-simple-ddl.sql` (create tables and changefeed)
+- `scripts/example-simple.sql` (MV + handler definition)
+- `scripts/example-simple.xml` (config)
+
 ### Configuration Parameters Reference
 
 #### Database Connection
@@ -304,6 +310,13 @@ The configuration file is an XML properties file that defines connection paramet
 - `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
 - `mv.coord.startup.ms` - The delay between the Coordinator startup and job distribution activation, milliseconds
 - `mv.coord.runners.count` - The minimal number of Runners for job distribution
+
+#### Metrics
+- `metrics.enabled` - Enable Prometheus metrics endpoint (default: false)
+- `metrics.port` - Port for Prometheus metrics endpoint (default: 9090)
+- `metrics.host` - Host/interface to bind metrics endpoint (default: 0.0.0.0)
+
+For a ready-to-use Prometheus + Grafana stack, see `monitoring/README.md`.
 
 ## Distributed Job Management (JOB Mode)
 

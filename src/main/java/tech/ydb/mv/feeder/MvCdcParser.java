@@ -40,14 +40,14 @@ class MvCdcParser {
         this.tableInfo = input.getTableInfo();
     }
 
-    public MvChangeRecord parse(byte[] jsonData, Instant tv) {
+    public ParseResult parse(byte[] jsonData, Instant tv) {
         String jsonText = new String(jsonData, StandardCharsets.UTF_8);
         JsonElement rootElement = JsonParser.parseString(jsonText);
         JsonObject root = rootElement.isJsonObject()
                 ? rootElement.getAsJsonObject() : null;
         if ((root == null) || !root.has("key")) {
             LOG.error("unsupported cdc message {}", jsonText);
-            return null;
+            return ParseResult.error();
         }
         try {
             JsonArray key = root.get("key").getAsJsonArray();
@@ -61,15 +61,15 @@ class MvCdcParser {
                 updateMode = true;
             }
             MvKey theKey = parseKey(key);
-            return new MvChangeRecord(
+            return ParseResult.success(new MvChangeRecord(
                     theKey, tv,
                     (erase == null) ? MvChangeRecord.OpType.UPSERT : MvChangeRecord.OpType.DELETE,
                     parseImage(updateMode ? null : theKey, oldImage),
                     parseImage(updateMode ? null : theKey, newImage)
-            );
+            ));
         } catch (Exception ex) {
             LOG.error("error parsing cdc message {}", jsonText, ex);
-            return null;
+            return ParseResult.error();
         }
     }
 
@@ -188,6 +188,33 @@ class MvCdcParser {
 
         LOG.warn("unsupported type {}", type);
         throw new RuntimeException("Can't read node value " + node + " with type " + type);
+    }
+
+    static class ParseResult {
+
+        private final MvChangeRecord record;
+        private final boolean error;
+
+        private ParseResult(MvChangeRecord record, boolean error) {
+            this.record = record;
+            this.error = error;
+        }
+
+        public static ParseResult success(MvChangeRecord record) {
+            return new ParseResult(record, false);
+        }
+
+        public static ParseResult error() {
+            return new ParseResult(null, true);
+        }
+
+        public MvChangeRecord getRecord() {
+            return record;
+        }
+
+        public boolean isError() {
+            return error;
+        }
     }
 
 }

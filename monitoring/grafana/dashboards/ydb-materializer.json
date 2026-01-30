@@ -1,0 +1,208 @@
+{
+  "id": null,
+  "uid": "ydb-materializer",
+  "title": "YDB Materializer",
+  "tags": ["ydb", "materializer"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "templating": {
+    "list": [
+      {
+        "name": "consumer",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_cdc_records_read_total, consumer)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "topic",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_cdc_records_read_total, topic)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "mv",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_records_processed_total, mv)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "source_alias",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_records_processed_total, source_alias)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "source_table",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_records_processed_total, source_table)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "operation",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_sql_seconds_count, operation)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CDC Read Rate",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (consumer, topic) (rate(ydbmv_cdc_records_read_total{consumer=~\"$consumer\",topic=~\"$topic\"}[5m]))",
+          "legendFormat": "{{consumer}} / {{topic}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CDC Submitted Rate",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (consumer, topic) (rate(ydbmv_cdc_records_submitted_total{consumer=~\"$consumer\",topic=~\"$topic\"}[5m]))",
+          "legendFormat": "{{consumer}} / {{topic}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CDC Parse Errors Rate",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 7, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (consumer, topic) (rate(ydbmv_cdc_parse_errors_total{consumer=~\"$consumer\",topic=~\"$topic\"}[5m]))",
+          "legendFormat": "{{consumer}} / {{topic}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CDC Parse p95",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 7, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, consumer, topic) (rate(ydbmv_cdc_parse_seconds_bucket{consumer=~\"$consumer\",topic=~\"$topic\"}[5m])))",
+          "legendFormat": "{{consumer}} / {{topic}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CDC Submit p95",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, consumer, topic) (rate(ydbmv_cdc_submit_seconds_bucket{consumer=~\"$consumer\",topic=~\"$topic\"}[5m])))",
+          "legendFormat": "{{consumer}} / {{topic}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MV Processed Rate",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (mv, source_alias, source_table) (rate(ydbmv_mv_records_processed_total{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m]))",
+          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MV Processing Errors Rate",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (mv, source_alias, source_table) (rate(ydbmv_mv_processing_errors_total{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m]))",
+          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MV Processing p95",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, mv, source_alias, source_table) (rate(ydbmv_mv_processing_seconds_bucket{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m])))",
+          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "SQL p95 by Operation",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, mv, source_alias, source_table, operation) (rate(ydbmv_mv_sql_seconds_bucket{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\",operation=~\"$operation\"}[5m])))",
+          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}} / {{operation}}"
+        }
+      ]
+    }
+  ]
+}

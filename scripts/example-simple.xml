@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+<comment>YDB Materializer simple example</comment>
+
+<!-- Connection parameters -->
+<entry key="ydb.url">grpcs://ydb01.localdomain:2135/cluster1/testdb</entry>
+<entry key="ydb.cafile">/path/to/ca.crt</entry>
+<entry key="ydb.poolSize">20</entry>
+
+<!-- Authentication mode: NONE, ENV, STATIC, METADATA, SAKEY -->
+<entry key="ydb.auth.mode">STATIC</entry>
+<entry key="ydb.auth.username">root</entry>
+<entry key="ydb.auth.password">your_password</entry>
+
+<!-- Input statements -->
+<entry key="job.input.mode">FILE</entry>
+<entry key="job.input.file">example-simple.sql</entry>
+
+<!-- Active handlers -->
+<entry key="job.handlers">h1</entry>
+
+<!-- Handler settings -->
+<entry key="job.cdc.threads">2</entry>
+<entry key="job.apply.threads">2</entry>
+<entry key="job.apply.queue">1000</entry>
+<entry key="job.batch.select">100</entry>
+<entry key="job.batch.upsert">100</entry>
+<entry key="job.query.seconds">30</entry>
+
+<!-- Metrics -->
+<entry key="metrics.enabled">true</entry>
+<entry key="metrics.host">0.0.0.0</entry>
+<entry key="metrics.port">9090</entry>
+
+</properties>

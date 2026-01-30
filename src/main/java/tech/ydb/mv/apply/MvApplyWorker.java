@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.metrics.MvMetrics;
 
 /**
  * The apply worker is an active object (thread) with the input queue to
@@ -128,10 +129,17 @@ class MvApplyWorker implements Runnable {
     }
 
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
+        ActionBase base = (action instanceof ActionBase) ? (ActionBase) action : null;
+        String mvName = (base == null) ? null : base.getMetricsMvName();
+        String sourceTable = (base == null) ? null : base.getMetricsSourceTable();
+        String sourceAlias = (base == null) ? null : base.getMetricsSourceAlias();
+        long startNs = System.nanoTime();
         try {
             action.apply(tasks);
+            MvMetrics.recordProcessedCount(mvName, sourceTable, sourceAlias, tasks.size());
         } catch (Exception ex) {
             retries.addItems(tasks, action);
+            MvMetrics.recordProcessingError(mvName, sourceTable, sourceAlias, tasks.size());
             String lastSql = ActionBase.getLastSqlStatement();
             if (lastSql != null) {
                 LOG.error("Execution failed for action {}, scheduling for retry. Last SQL:\n{}\n",
@@ -140,6 +148,9 @@ class MvApplyWorker implements Runnable {
                 LOG.error("Execution failed for action {}, scheduling for retry",
                         action, ex);
             }
+        } finally {
+            long durationNs = System.nanoTime() - startNs;
+            MvMetrics.recordProcessingTime(mvName, sourceTable, sourceAlias, durationNs);
         }
     }
 

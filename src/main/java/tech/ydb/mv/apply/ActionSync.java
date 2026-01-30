@@ -40,8 +40,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final String sqlDelete;
     private final StructType rowType;
 
-    private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
-            = new ThreadLocal<>();
+    private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
     public ActionSync(MvTarget target, MvActionContext context) {
         super(context);
@@ -57,6 +56,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             this.rowType = sg.toRowType();
         }
         MvJoinSource src = target.getTopMostSource();
+        setMetricsScope(target.getName(), src.getTableName(), src.getTableAlias());
         LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(), target.getName(),
                 src.getTableName(), src.getTableAlias(),
@@ -130,11 +130,12 @@ class ActionSync extends ActionBase implements MvApplyAction {
         finishStatement();
         // submit the new query
         lastSqlStatement.set(sqlDelete);
+        long startNs = System.nanoTime();
         var statement = retryCtx.supplyResult(
                 qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
-        currentStatement.set(statement);
+        currentStatement.set(new StatementTiming(statement, startNs, "delete"));
     }
 
     private void upsertRows(List<MvKey> workUpsert) {
@@ -162,18 +163,29 @@ class ActionSync extends ActionBase implements MvApplyAction {
         finishStatement();
         // submit the new query
         lastSqlStatement.set(sqlUpsert);
+        long startNs = System.nanoTime();
         var statement = retryCtx.supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
-        currentStatement.set(statement);
+        currentStatement.set(new StatementTiming(statement, startNs, "upsert"));
     }
 
     private void finishStatement() {
-        var statement = currentStatement.get();
-        if (statement != null) {
+        var timing = currentStatement.get();
+        if (timing != null) {
             currentStatement.remove();
-            statement.join().getStatus().expectSuccess();
+            timing.future.join().getStatus().expectSuccess();
+            long durationNs = System.nanoTime() - timing.startNs;
+            if (getMetricsMvName() != null) {
+                tech.ydb.mv.metrics.MvMetrics.recordSqlTime(
+                        getMetricsMvName(),
+                        getMetricsSourceTable(),
+                        getMetricsSourceAlias(),
+                        timing.operation,
+                        durationNs
+                );
+            }
         }
         lastSqlStatement.set(null);
     }
@@ -202,6 +214,19 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 }
             }
             output.add(rowType.newValueUnsafe(members));
+        }
+    }
+
+    private static class StatementTiming {
+
+        final CompletableFuture<Result<QueryInfo>> future;
+        final long startNs;
+        final String operation;
+
+        StatementTiming(CompletableFuture<Result<QueryInfo>> future, long startNs, String operation) {
+            this.future = future;
+            this.startNs = startNs;
+            this.operation = operation;
         }
     }
 }

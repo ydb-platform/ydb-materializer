@@ -11,6 +11,7 @@ import tech.ydb.topic.read.events.StartPartitionSessionEvent;
 import tech.ydb.topic.read.events.StopPartitionSessionEvent;
 
 import tech.ydb.mv.data.MvChangeRecord;
+import tech.ydb.mv.metrics.MvMetrics;
 
 /**
  *
@@ -56,6 +57,8 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     @Override
     public void onMessages(DataReceivedEvent event) {
         String topicPath = event.getPartitionSession().getPath();
+        String consumerName = owner.getConsumerName();
+        MvMetrics.recordCdcRead(consumerName, topicPath, event.getMessages().size());
         MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
             LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic {}",
@@ -72,13 +75,19 @@ class MvCdcEventReader extends AbstractReadEventHandler {
             if (tv == null) {
                 tv = Instant.now();
             }
-            MvChangeRecord cr = parser.parse(m.getData(), tv);
-            if (cr != null) {
-                records.add(cr);
+            long parseStart = System.nanoTime();
+            MvCdcParser.ParseResult result = parser.parse(m.getData(), tv);
+            long parseTime = System.nanoTime() - parseStart;
+            MvMetrics.recordCdcParse(consumerName, topicPath, parseTime, result.isError());
+            if (result.getRecord() != null) {
+                records.add(result.getRecord());
             }
         }
         LOG.trace("Topic {} input {}", topicPath, records);
+        long submitStart = System.nanoTime();
         sink.submit(records, new MvCdcCommitHandler(event));
+        long submitTime = System.nanoTime() - submitStart;
+        MvMetrics.recordCdcSubmit(consumerName, topicPath, submitTime, records.size());
     }
 
 }

@@ -269,6 +269,12 @@ java -jar ydb-materializer-*.jar config.xml JOB
 </properties>
 ```
 
+### Минимальный исполняемый пример
+Файлы для простого примера на одной таблице:
+- `scripts/example-simple-ddl.sql` (создание таблиц и changefeed)
+- `scripts/example-simple.sql` (определение MV и handler)
+- `scripts/example-simple.xml` (конфиг)
+
 ### Справочная информация о параметрах конфигурации
 
 #### Подключение к базе данных
@@ -323,6 +329,13 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `mv.runner.timeout.ms` - Таймаут отсутствия обновлений Координатора и Исполнителя, миллисекунды
 - `mv.coord.startup.ms` - Пауза между стартом Координатора и началом распределения заданий, миллисекунды
 - `mv.coord.runners.count` - Минимальное количество Исполнителей для распределения заданий
+
+#### Метрики
+- `metrics.enabled` - Включить endpoint метрик Prometheus (по умолчанию: false)
+- `metrics.port` - Порт endpoint метрик Prometheus (по умолчанию: 9090)
+- `metrics.host` - Адрес/интерфейс для endpoint метрик (по умолчанию: 0.0.0.0)
+
+Готовый стенд Prometheus + Grafana описан в `monitoring/README.md`.
 
 ## Управление распределёнными задачами (режим JOB)
 

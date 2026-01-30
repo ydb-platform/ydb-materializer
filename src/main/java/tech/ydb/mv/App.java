@@ -3,6 +3,7 @@ package tech.ydb.mv;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvRunner;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -48,24 +49,34 @@ public class App {
 
     public void run(MvConfig.Mode mode) {
         api.applyDefaults(conn.getConfig().getProperties());
-        switch (mode) {
-            case CHECK -> {
-                LOG.info("Issues output requested.");
-                api.printIssues(System.out);
+        if (MvConfig.Mode.LOCAL.equals(mode) || MvConfig.Mode.JOB.equals(mode)) {
+            MvMetrics.init(conn.getConfig().getProperties());
+        }
+        try {
+            switch (mode) {
+                case CHECK -> {
+                    LOG.info("Issues output requested.");
+                    api.printIssues(System.out);
+                }
+                case SQL -> {
+                    LOG.info("SQL output requested.");
+                    api.printSql(System.out);
+                }
+                case LOCAL -> {
+                    LOG.info("Local service requested.");
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                        api.shutdown();
+                        MvMetrics.shutdown();
+                    }));
+                    api.runDefaultHandlers();
+                }
+                case JOB -> {
+                    LOG.info("Distributed job service requested.");
+                    runJobService();
+                }
             }
-            case SQL -> {
-                LOG.info("SQL output requested.");
-                api.printSql(System.out);
-            }
-            case LOCAL -> {
-                LOG.info("Local service requested.");
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> api.shutdown()));
-                api.runDefaultHandlers();
-            }
-            case JOB -> {
-                LOG.info("Distributed job service requested.");
-                runJobService();
-            }
+        } finally {
+            MvMetrics.shutdown();
         }
     }
 
@@ -102,7 +113,7 @@ public class App {
             coord.stop();
         }
         api.shutdown();
+        MvMetrics.shutdown();
         conn.close();
     }
-
 }
