@@ -18,6 +18,12 @@ import tech.ydb.mv.svc.MvLocker;
  */
 public interface MvApi extends AutoCloseable {
 
+    /**
+     * Create the new service API instance.
+     *
+     * @param ydb YDB connection
+     * @return New service API instance created and configured
+     */
     static MvApi newInstance(YdbConnector ydb) {
         return new MvService(ydb);
     }
@@ -57,7 +63,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for handler settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setHandlerSettings(MvHandlerSettings defaultSettings);
 
@@ -69,7 +75,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for dictionary processing settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setDictionarySettings(MvDictionarySettings defaultSettings);
 
@@ -81,7 +87,7 @@ public interface MvApi extends AutoCloseable {
     /**
      * Set the new defaults for scan settings.
      *
-     * @param defaultSettings
+     * @param defaultSettings The default settings to be used
      */
     void setScanSettings(MvScanSettings defaultSettings);
 
@@ -133,6 +139,16 @@ public interface MvApi extends AutoCloseable {
     boolean stopScan(String handlerName, String targetName);
 
     /**
+     * Generate the set of SQL statements for CDC streams, print and optionally
+     * apply to the database.
+     *
+     * @param create true, if the missing CDC streams and consumers should be
+     * created, and false otherwise.
+     * @param pw The output print stream
+     */
+    void generateStreams(boolean create, PrintStream pw);
+
+    /**
      * Print the list of issues in the current context
      *
      * @param pw The output print stream
@@ -140,7 +156,7 @@ public interface MvApi extends AutoCloseable {
     void printIssues(PrintStream pw);
 
     /**
-     * Generate the set of SQL statements and print.
+     * Generate the set of all SQL statements used and print.
      *
      * @param pw The output print stream
      */

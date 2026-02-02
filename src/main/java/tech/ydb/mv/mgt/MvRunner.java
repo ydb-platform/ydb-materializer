@@ -1,6 +1,8 @@
 package tech.ydb.mv.mgt;
 
+import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,11 +63,11 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean start() {
         if (running.getAndSet(true)) {
-            LOG.info("MvRunner {} is already running, ignored start attempt", runnerId);
+            LOG.info("[{}] MvRunner already started, ignored start attempt", runnerId);
             return false;
         }
 
-        LOG.info("Starting MvRunner with ID: {}", runnerId);
+        LOG.info("[{}] Starting MvRunner", runnerId);
 
         // Start the runner thread
         runnerThread = new Thread(this::run, "mv-runner-" + runnerId);
@@ -83,29 +85,13 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean stop() {
         if (!running.getAndSet(false)) {
-            LOG.info("MvRunner {} is already stopped, ignored stop attempt", runnerId);
+            LOG.info("[{}] MvRunner already stopped, ignored stop attempt", runnerId);
             return false;
         }
 
-        LOG.info("Stopping MvRunner with ID: {}", runnerId);
+        LOG.info("[{}] Stopping MvRunner", runnerId);
 
-        // Stop all local jobs
-        List<String> jobNames;
-        synchronized (localJobs) {
-            jobNames = localJobs.values().stream()
-                    .map(v -> v.getJobName())
-                    .toList();
-        }
-        for (String jobName : jobNames) {
-            try {
-                stopHandler(jobName);
-            } catch (Exception ex) {
-                LOG.error("[{}] Failed to stop job {} during shutdown", runnerId, jobName, ex);
-            }
-        }
-        synchronized (localJobs) {
-            localJobs.clear();
-        }
+        stopAllJobs();
 
         // Wait for runner thread to finish
         if (runnerThread != null) {
@@ -117,7 +103,7 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
-        LOG.info("MvRunner with ID {} stopped", runnerId);
+        LOG.info("[{}] MvRunner stopped", runnerId);
         return true;
     }
 
@@ -127,22 +113,60 @@ public class MvRunner implements AutoCloseable {
     }
 
     /**
+     * Stop all local jobs.
+     */
+    private void stopAllJobs() {
+        List<String> jobNames;
+        synchronized (localJobs) {
+            jobNames = localJobs.values().stream()
+                    .map(v -> v.getJobName())
+                    .toList();
+        }
+        for (String jobName : jobNames) {
+            LOG.info("[{}] Stopping job {}", runnerId, jobName);
+            try {
+                stopHandler(jobName);
+            } catch (Exception ex) {
+                LOG.error("[{}] Failed to stop job {} during shutdown", runnerId, jobName, ex);
+            }
+        }
+        synchronized (localJobs) {
+            localJobs.clear();
+        }
+        LOG.info("[{}] All jobs were stopped", runnerId);
+    }
+
+    /**
      * Main runner loop.
      */
     private void run() {
-        LOG.info("MvRunner thread started for runner: {}", runnerId);
+        LOG.debug("[{}] Worker thread started", runnerId);
 
         long lastReportTime = 0;
         long lastCommandCheckTime = 0;
+        boolean registered = false;
 
         while (running.get()) {
+            long currentTime = System.currentTimeMillis();
             try {
-                long currentTime = System.currentTimeMillis();
-
-                // Report status periodically
-                if (currentTime - lastReportTime >= settings.getReportPeriodMs()) {
-                    reportStatus();
+                if (!registered) {
+                    registerRunner();
                     lastReportTime = currentTime;
+                    registered = true;
+                    continue;
+                }
+
+                // Check and report status periodically
+                if (currentTime - lastReportTime >= settings.getReportPeriodMs()) {
+                    registered = checkAndReport();
+                    lastReportTime = currentTime;
+                }
+
+                if (!registered) {
+                    // lost runner, should stop all jobs and re-register
+                    LOG.warn("[{}] MvRunner has been lost, stopping jobs and re-registering", runnerId);
+                    stopAllJobs();
+                    continue;
                 }
 
                 // Check for commands periodically
@@ -160,38 +184,43 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
-        LOG.info("MvRunner thread finished for runner: {}", runnerId);
+        LOG.debug("[{}] Worker thread finished", runnerId);
+    }
+
+    /**
+     * Registration of the runner to the mv_runners table.
+     */
+    private void registerRunner() {
+        MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
+        tableOps.upsertRunner(runnerInfo);
+        LOG.info("[{}] Registered runner", runnerId);
     }
 
     /**
      * Report current status to the mv_runners table.
+     *
+     * If the registration was lost, this means that the coordinator has dropped
+     * it. In that case all the jobs must be stopped immediately.
      */
-    private void reportStatus() {
-        try {
-            MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
-            tableOps.upsertRunner(runnerInfo);
-            LOG.debug("Reported status for runner: {}", runnerId);
-        } catch (Exception ex) {
-            LOG.error("Failed to report status for runner: {}", runnerId, ex);
-        }
+    private boolean checkAndReport() {
+        MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
+        boolean retval = tableOps.checkRunner(runnerInfo);
+        LOG.debug("[{}] Checked status: {}", runnerId, retval);
+        return retval;
     }
 
     /**
      * Check for new commands and execute them.
      */
     private void checkCommands() {
-        try {
-            List<MvCommand> commands = tableOps.getCommandsForRunner(runnerId);
-            for (MvCommand command : commands) {
-                if (!running.get()) {
-                    return;
-                }
-                if (command.isCreated()) {
-                    executeCommand(command);
-                }
+        List<MvCommand> commands = tableOps.getCommandsForRunner(runnerId);
+        for (MvCommand command : commands) {
+            if (!running.get()) {
+                return;
             }
-        } catch (Exception ex) {
-            LOG.error("Failed to check commands for runner: {}", runnerId, ex);
+            if (command.isCreated()) {
+                executeCommand(command);
+            }
         }
     }
 
@@ -327,8 +356,11 @@ public class MvRunner implements AutoCloseable {
      * Generate a unique runner ID.
      */
     private String generateRunnerId() {
-        return UUID.randomUUID().toString().replace("-", "")
-                + "-" + Long.toHexString(System.currentTimeMillis());
+        UUID uuid = UUID.randomUUID();
+        ByteBuffer bb = ByteBuffer.allocate(16);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return Base64.getUrlEncoder().encodeToString(bb.array()).substring(0, 22);
     }
 
     /**

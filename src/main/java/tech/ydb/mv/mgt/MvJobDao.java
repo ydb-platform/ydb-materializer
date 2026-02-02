@@ -30,6 +30,7 @@ public class MvJobDao extends MvDaoHelpers {
     private final String sqlGetAllScans;
     private final String sqlUpdateScanStart;
     private final String sqlUpsertRunner;
+    private final String sqlCheckRunner;
     private final String sqlGetAllRunners;
     private final String sqlDeleteRunner;
     private final String sqlUpsertRunnerJob;
@@ -111,6 +112,16 @@ public class MvJobDao extends MvDaoHelpers {
             DECLARE $updated_at AS Timestamp;
             UPSERT INTO `%s` (runner_id, runner_identity, updated_at)
             VALUES ($runner_id, $runner_identity, $updated_at);
+            """, tabRunners
+        );
+        this.sqlCheckRunner = String.format("""
+            DECLARE $runner_id AS Text;
+            DECLARE $runner_identity AS Text;
+            DECLARE $updated_at AS Timestamp;
+            SELECT runner_id FROM `%1$s` WHERE runner_id=$runner_id;
+            UPSERT INTO `%1$s` SELECT runner_id,
+                $runner_identity AS runner_identity, $updated_at AS updated_at
+                FROM `%1$s` WHERE runner_id=$runner_id;
             """, tabRunners
         );
         this.sqlGetAllRunners = String.format("""
@@ -294,6 +305,22 @@ public class MvJobDao extends MvDaoHelpers {
                 "$runner_identity", PrimitiveValue.newText(runner.getIdentity()),
                 "$updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
         ));
+    }
+
+    public boolean checkRunner(MvRunnerInfo runner) {
+        var qr = ydb.sqlReadWrite(sqlCheckRunner, Params.of(
+                "$runner_id", PrimitiveValue.newText(runner.getRunnerId()),
+                "$runner_identity", PrimitiveValue.newText(runner.getIdentity()),
+                "$updated_at", PrimitiveValue.newTimestamp(runner.getUpdatedAt())
+        ));
+        if (qr.getResultSetCount() != 1) {
+            return false;
+        }
+        var rs = qr.getResultSet(0);
+        if (rs.getRowCount() != 1) {
+            return false;
+        }
+        return true;
     }
 
     public List<MvRunnerInfo> getAllRunners() {

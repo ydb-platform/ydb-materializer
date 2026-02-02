@@ -70,7 +70,7 @@ public class MvCoordinator implements AutoCloseable {
             scheduler = Executors.newScheduledThreadPool(1);
         }
         if (job == null) {
-            job = new MvCoordinatorImpl(jobDao, settings);
+            job = new MvCoordinatorImpl(runnerId, jobDao, settings);
         }
         return new MvCoordinator(locker, jobDao, scheduler, settings, job, runnerId);
     }
@@ -83,7 +83,7 @@ public class MvCoordinator implements AutoCloseable {
         if (isRunning()) {
             return false;
         }
-        LOG.info("Starting, instanceId={}", runnerId);
+        LOG.info("[{}] Coordinator starting", runnerId);
         scheduleAttempt();
         return true;
     }
@@ -92,7 +92,7 @@ public class MvCoordinator implements AutoCloseable {
         if (!isRunning()) {
             return false;
         }
-        LOG.info("Stopping, instanceId={}", runnerId);
+        LOG.info("[{}] Coordinator stopping", runnerId);
         demote();
         cancelLeader();
         cancelAttempt();
@@ -101,7 +101,7 @@ public class MvCoordinator implements AutoCloseable {
 
     @Override
     public void close() {
-        LOG.info("Closing, instanceId={}", runnerId);
+        LOG.info("[{}] Coordinator closing", runnerId);
         stop();
         scheduler.shutdown();
         try {
@@ -122,7 +122,7 @@ public class MvCoordinator implements AutoCloseable {
 
     private void scheduleAttempt() {
         long delayMsec = settings.getScanPeriodMs();
-        LOG.debug("Scheduling leadership attempt in {}ms, instanceId={}", delayMsec, runnerId);
+        LOG.debug("[{}] Scheduling leadership attempt in {}ms", runnerId, delayMsec);
         ScheduledFuture<?> f;
         try {
             f = scheduler.schedule(
@@ -148,16 +148,16 @@ public class MvCoordinator implements AutoCloseable {
         try {
             doAttemptLeadership();
         } catch (Exception ex) {
-            LOG.error("Error on leadership attempt, instanceId={}", runnerId, ex);
+            LOG.error("[{}] Error on leadership attempt", runnerId, ex);
             demote();
             scheduleAttempt();
         }
     }
 
     private void doAttemptLeadership() {
-        LOG.trace("Attempting leadership, instanceId={}", runnerId);
+        LOG.trace("[{}] Attempting leadership", runnerId);
         if (leaderFuture.get() != null) {
-            LOG.trace("Leader future is already set, instanceId={}", runnerId);
+            LOG.trace("[{}] Leader future is already set", runnerId);
             return;
         }
 
@@ -166,21 +166,21 @@ public class MvCoordinator implements AutoCloseable {
             scheduleAttempt();
             return;
         }
-        LOG.info("Leadership acquired, instanceId={}", runnerId);
+        LOG.info("[{}] Leadership acquired", runnerId);
 
         startLeaderLoop();
     }
 
     private void startLeaderLoop() {
-        LOG.info("Became leader, tick={}ms, instanceId={}",
-                settings.getScanPeriodMs(), runnerId);
+        LOG.info("[{}] Became leader, tick={}ms",
+                runnerId, settings.getScanPeriodMs());
 
         ScheduledFuture<?> f;
         try {
             var runners = jobDao.getJobRunners(MvConfig.HANDLER_COORDINATOR);
             for (var runner : runners) {
-                LOG.info("Removing demoted coordinator record for runnerId={}, "
-                        + "which was started at {}", runner.getRunnerId(), runner.getStartedAt());
+                LOG.info("[{}] Removing demoted coordinator record, which was started at {}",
+                        runner.getRunnerId(), runner.getStartedAt());
                 jobDao.deleteRunnerJob(runner.getRunnerId(), MvConfig.HANDLER_COORDINATOR);
             }
 
@@ -197,7 +197,7 @@ public class MvCoordinator implements AutoCloseable {
             );
         } catch (RejectedExecutionException ex) {
             if (scheduler.isShutdown() || !jobDao.isConnectionOpen()) {
-                LOG.info("Shutdown in progress, demoting leadership");
+                LOG.info("[{}] Shutdown in progress, demoting leadership", runnerId);
                 demote();
                 return;
             } else {
@@ -207,13 +207,13 @@ public class MvCoordinator implements AutoCloseable {
 
         f = leaderFuture.getAndSet(f);
         if (f != null) {
-            LOG.debug("Cancelling previous leader loop future, instanceId={}", runnerId);
+            LOG.debug("[{}] Cancelling previous leader loop future", runnerId);
             f.cancel(true);
         }
 
         cancelAttempt();
 
-        LOG.info("Leader loop started, instanceId={}", runnerId);
+        LOG.info("[{}] Leader loop started", runnerId);
     }
 
     private void leaderTick() {
@@ -222,7 +222,7 @@ public class MvCoordinator implements AutoCloseable {
         }
         try {
             if (!stillActive()) {
-                LOG.info("Lost ownership, demoting, instanceId={}", runnerId);
+                LOG.info("[{}] Coordinator lost ownership, demoting...", runnerId);
                 demote();
                 if (isRunning()) {
                     scheduleAttempt();
@@ -233,10 +233,10 @@ public class MvCoordinator implements AutoCloseable {
             job.onTick();
         } catch (RejectedExecutionException ree) {
             // shutdown is being performed
-            LOG.error("Detected shutdown on tick action in the coordinator - demoting");
+            LOG.error("[{}] Detected shutdown on tick action in the coordinator - demoting", runnerId);
             demote();
         } catch (Exception ex) {
-            LOG.error("Failed tick action in the coordinator - demoting", ex);
+            LOG.error("[{}] Failed tick action in the coordinator - demoting", runnerId, ex);
             demote();
             scheduleAttempt();
         }
@@ -255,7 +255,7 @@ public class MvCoordinator implements AutoCloseable {
 
     private synchronized void demote() {
         if (leaderFuture.get() != null) {
-            LOG.info("Demoting leadership, instanceId={}", runnerId);
+            LOG.info("[{}] Demoting leadership", runnerId);
             cancelLeader();
             if (jobDao.isConnectionOpen()) {
                 deleteJobRun();
@@ -281,23 +281,23 @@ public class MvCoordinator implements AutoCloseable {
 
     private void deleteJobRun() {
         try {
-            LOG.debug("Dropping job run '{}', instanceId={}",
-                    MvConfig.HANDLER_COORDINATOR, runnerId);
+            LOG.debug("[{}] Dropping job run '{}'",
+                    runnerId, MvConfig.HANDLER_COORDINATOR);
             jobDao.deleteRunnerJob(runnerId, MvConfig.HANDLER_COORDINATOR);
         } catch (Exception e) {
-            LOG.warn("Failed to delete the job run '{}', instanceId={}",
-                    MvConfig.HANDLER_COORDINATOR, runnerId, e);
+            LOG.warn("[{}] Failed to delete the job run '{}', instanceId={}",
+                    runnerId, MvConfig.HANDLER_COORDINATOR, e);
         }
     }
 
     private void safeRelease() {
         try {
-            LOG.debug("Releasing semaphore '{}', instanceId={}",
-                    MvConfig.HANDLER_COORDINATOR, runnerId);
+            LOG.debug("[{}] Releasing semaphore '{}'",
+                    runnerId, MvConfig.HANDLER_COORDINATOR);
             locker.release(MvConfig.HANDLER_COORDINATOR);
         } catch (Exception e) {
-            LOG.warn("Failed to release the semaphore '{}', instanceId={}",
-                    MvConfig.HANDLER_COORDINATOR, runnerId, e);
+            LOG.warn("[{}] Failed to release the semaphore '{}'",
+                    runnerId, MvConfig.HANDLER_COORDINATOR, e);
         }
     }
 
@@ -306,7 +306,7 @@ public class MvCoordinator implements AutoCloseable {
             job.onStop();
             return true;
         } catch (Exception ex) {
-            LOG.warn("Stop action failed", ex);
+            LOG.warn("[{}] Stop action failed", runnerId, ex);
             return false;
         }
     }

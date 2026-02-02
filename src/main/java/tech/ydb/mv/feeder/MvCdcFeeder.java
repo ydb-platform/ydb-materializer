@@ -33,6 +33,13 @@ public class MvCdcFeeder implements AutoCloseable {
     // topicPath -> parser definition
     private final HashMap<String, MvCdcParser> parsers = new HashMap<>();
 
+    /**
+     * Create a CDC feeder.
+     *
+     * @param adapter CDC adapter providing consumer configuration.
+     * @param ydb YDB connector.
+     * @param sink Sink receiving parsed change records.
+     */
     public MvCdcFeeder(MvCdcAdapter adapter, YdbConnector ydb, MvSink sink) {
         this.adapter = adapter;
         this.ydb = ydb;
@@ -44,6 +51,11 @@ public class MvCdcFeeder implements AutoCloseable {
                 adapter.getFeederName());
     }
 
+    /**
+     * Get feeder name.
+     *
+     * @return Feeder identifier used for logging/diagnostics.
+     */
     public String getName() {
         return adapter.getFeederName();
     }
@@ -52,6 +64,9 @@ public class MvCdcFeeder implements AutoCloseable {
         return adapter.getConsumerName();
     }
 
+    /**
+     * Start CDC consumption (idempotent).
+     */
     public synchronized void start() {
         if (reader.get() != null) {
             return;
@@ -69,6 +84,9 @@ public class MvCdcFeeder implements AutoCloseable {
         reader.set(theReader);
     }
 
+    /**
+     * Stop CDC consumption (idempotent).
+     */
     public synchronized void stop() {
         if (adapter.isRunning()) {
             LOG.error("Ignoring an attempt to stop the CDC reader for feeder `{}` "
@@ -83,6 +101,9 @@ public class MvCdcFeeder implements AutoCloseable {
     }
 
     @Override
+    /**
+     * Stop CDC reader and shutdown worker threads.
+     */
     public void close() {
         stop();
         executor.shutdown();
@@ -97,6 +118,11 @@ public class MvCdcFeeder implements AutoCloseable {
         }
     }
 
+    /**
+     * Get sink used by this feeder.
+     *
+     * @return Sink instance.
+     */
     public MvSink getSink() {
         return sink;
     }

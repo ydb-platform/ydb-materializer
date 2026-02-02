@@ -18,14 +18,25 @@ public class App {
     private final YdbConnector conn;
     private final MvApi api;
 
+    /**
+     * Create the application instance.
+     *
+     * @param conn YDB connection
+     * @param api Materializer service API reference
+     */
     public App(YdbConnector conn, MvApi api) {
         this.conn = conn;
         this.api = api;
     }
 
+    /**
+     * Application entry point.
+     *
+     * @param args Command line arguments
+     */
     public static void main(String[] args) {
         if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
-            System.out.println("USAGE: tech.ydb.mv.App job.xml CHECK|SQL|LOCAL|JOB");
+            System.out.println("USAGE: tech.ydb.mv.App job.xml " + MvConfig.getAllModes());
             System.exit(1);
         }
         try {
@@ -44,6 +55,11 @@ public class App {
         }
     }
 
+    /**
+     * Run the configured application in the mode specified.
+     *
+     * @param mode The mode to be used for running the application
+     */
     public void run(MvConfig.Mode mode) {
         api.applyDefaults(conn.getConfig().getProperties());
         if (MvConfig.Mode.LOCAL.equals(mode) || MvConfig.Mode.JOB.equals(mode)) {
