@@ -2,25 +2,28 @@ package tech.ydb.mv.apply;
 
 import java.util.List;
 
+import com.google.common.collect.Lists;
+
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
- * Generic code to obtain the keys to the main table via another join input.
+ * Generic code to obtain the keys to the target table via some join input.
  *
  * @author zinal
  */
 abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
-    protected final MvTarget target;
+    protected final MvViewExpr target;
     protected final String inputTableName;
     protected final String inputTableAlias;
     protected final MvKeyInfo keyInfo;
+    protected final int selectBatchSize;
 
-    public ActionKeysAbstract(MvTarget target, MvJoinSource src,
-            MvTarget transformation, MvActionContext context) {
+    public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
+            MvViewExpr transformation, MvActionContext context) {
         super(context);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {
@@ -35,11 +38,18 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());
         }
+        this.selectBatchSize = context.getSettings().getSelectBatchSize();
     }
 
     @Override
     public final void apply(List<MvApplyTask> input) {
-        new PerCommit(input).apply((handler, tasks) -> process(handler, tasks));
+        new PerCommit(input).apply((handler, tasks) -> applyPerCommit(handler, tasks));
+    }
+
+    private void applyPerCommit(MvCommitHandler handler, List<MvApplyTask> tasks) {
+        for (List<MvApplyTask> part : Lists.partition(tasks, selectBatchSize)) {
+            process(handler, part);
+        }
     }
 
     /**

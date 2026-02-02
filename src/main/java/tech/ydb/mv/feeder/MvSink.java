@@ -5,7 +5,7 @@ import tech.ydb.mv.apply.MvApplyActionList;
 
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.model.MvInput;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  *
@@ -40,7 +40,7 @@ public interface MvSink {
      * @param handler The commit processing handler
      * @return true, if all keys went to the queue, and false otherwise.
      */
-    default boolean submitRefresh(MvTarget target, Collection<MvChangeRecord> records, MvCommitHandler handler) {
+    default boolean submitRefresh(MvViewExpr target, Collection<MvChangeRecord> records, MvCommitHandler handler) {
         return submit(records, handler);
     }
 

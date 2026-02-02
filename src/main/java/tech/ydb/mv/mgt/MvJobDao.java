@@ -1,6 +1,5 @@
 package tech.ydb.mv.mgt;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,7 +7,6 @@ import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
-import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.support.MvDaoHelpers;
@@ -261,7 +259,7 @@ public class MvJobDao extends MvDaoHelpers {
     public void createScan(MvJobScanInfo scan) {
         ydb.sqlWrite(sqlCreateScan, Params.of(
                 "$job_name", PrimitiveValue.newText(scan.getJobName()),
-                "$target_name", PrimitiveValue.newText(scan.getJobName()),
+                "$target_name", PrimitiveValue.newText(scan.getTargetName()),
                 "$scan_settings", jsonDocument(scan.getScanSettings()),
                 "$requested_at", PrimitiveValue.newTimestamp(scan.getRequestedAt()),
                 "$accepted_at", timestamp(scan.getAcceptedAt()),

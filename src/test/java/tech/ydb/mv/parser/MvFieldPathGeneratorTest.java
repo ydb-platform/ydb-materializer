@@ -13,9 +13,7 @@ import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvSqlPos;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
-
-import java.util.Arrays;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Test class for MvFieldPathGenerator
@@ -26,7 +24,7 @@ public class MvFieldPathGeneratorTest {
 
     private static final boolean PRINT_SQL = SqlConstants.PRINT_SQL;
 
-    private MvTarget originalTarget;
+    private MvViewExpr originalTarget;
     private MvJoinSource sourceA, sourceB, sourceC, sourceD;
     private MvTableInfo tableInfoA, tableInfoB, tableInfoC, tableInfoD;
     private static volatile boolean inputPrinted = false;
@@ -90,7 +88,7 @@ public class MvFieldPathGeneratorTest {
         sourceD.setTableInfo(tableInfoD);
 
         // Create original target
-        originalTarget = new MvTarget("test_target", new MvSqlPos(1, 1));
+        originalTarget = new MvViewExpr("test_target");
         originalTarget.setTableInfo(tableInfoA);
 
         // Add sources
@@ -178,7 +176,7 @@ public class MvFieldPathGeneratorTest {
                 .add(sourceA, "id")
                 .add(sourceB, "id", "a_id")
                 .add(sourceD, "id", "a_id");
-        MvTarget result = new MvPathGenerator(originalTarget).applyFilter(filter);
+        MvViewExpr result = new MvPathGenerator(originalTarget).applyFilter(filter);
         assertNotNull(result);
 
         if (PRINT_SQL) {
@@ -193,176 +191,5 @@ public class MvFieldPathGeneratorTest {
         assertEquals(1, result.getSources().get(1).getConditions().size());
         assertEquals(1, result.getSources().get(2).getConditions().size());
         assertEquals(5, result.getColumns().size());
-    }
-
-    @Test
-    public void testGenerateFields_DirectCase() {
-        // Test case where target source is the top-most source
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
-                sourceA, Arrays.asList("name", "id"));
-        assertNotNull(result);
-
-        if (PRINT_SQL) {
-            System.out.println("*** A fields SQL: " + new MvSqlGen(result).makeSelect());
-        }
-
-        assertEquals(1, result.getSources().size());
-        assertEquals("a", result.getSources().get(0).getTableAlias());
-        assertEquals(MvJoinMode.MAIN, result.getSources().get(0).getMode());
-
-        // Should have columns for requested fields
-        assertEquals(2, result.getColumns().size());
-        boolean hasName = false, hasId = false;
-        for (MvColumn column : result.getColumns()) {
-            if ("name".equals(column.getName()) && "a".equals(column.getSourceAlias())) {
-                hasName = true;
-            }
-            if ("id".equals(column.getName()) && "a".equals(column.getSourceAlias())) {
-                hasId = true;
-            }
-        }
-        assertTrue(hasName && hasId);
-    }
-
-    @Test
-    public void testGenerateFields_OneStep() {
-        // Test transformation to get fields from B (one step: A -> B)
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
-                sourceB, Arrays.asList("description", "some"));
-        assertNotNull(result);
-
-        if (PRINT_SQL) {
-            System.out.println("*** B fields SQL: " + new MvSqlGen(result).makeSelect());
-        }
-
-        assertEquals(2, result.getSources().size());
-
-        // Sources should be A (main), B
-        assertEquals("a", result.getSources().get(0).getTableAlias());
-        assertEquals(MvJoinMode.MAIN, result.getSources().get(0).getMode());
-        assertEquals("b", result.getSources().get(1).getTableAlias());
-
-        // Should have columns for requested fields from B
-        assertEquals(2, result.getColumns().size());
-        boolean hasDescription = false, hasSome = false;
-        for (MvColumn column : result.getColumns()) {
-            if ("description".equals(column.getName()) && "b".equals(column.getSourceAlias())) {
-                hasDescription = true;
-            }
-            if ("some".equals(column.getName()) && "b".equals(column.getSourceAlias())) {
-                hasSome = true;
-            }
-        }
-        assertTrue(hasDescription && hasSome);
-    }
-
-    @Test
-    public void testGenerateFields_TwoSteps() {
-        // Test transformation to get fields from C (two steps: A -> B -> C)
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
-                sourceC, Arrays.asList("value"));
-        assertNotNull(result);
-
-        if (PRINT_SQL) {
-            System.out.println("*** C fields SQL: " + new MvSqlGen(result).makeSelect());
-        }
-
-        assertEquals(3, result.getSources().size());
-
-        // Sources should be A (main), B, C
-        assertEquals("a", result.getSources().get(0).getTableAlias());
-        assertEquals(MvJoinMode.MAIN, result.getSources().get(0).getMode());
-        assertEquals("b", result.getSources().get(1).getTableAlias());
-        assertEquals("c", result.getSources().get(2).getTableAlias());
-
-        // Should have columns for requested fields from C
-        assertEquals(1, result.getColumns().size());
-        assertEquals("value", result.getColumns().get(0).getName());
-        assertEquals("c", result.getColumns().get(0).getSourceAlias());
-    }
-
-    @Test
-    public void testGenerateAllFields() {
-        // Test transformation to get all fields from D
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(sourceD);
-        assertNotNull(result);
-
-        if (PRINT_SQL) {
-            System.out.println("*** D all fields SQL: " + new MvSqlGen(result).makeSelect());
-        }
-
-        assertEquals(2, result.getSources().size());
-
-        // Sources should be A (main), D
-        assertEquals("a", result.getSources().get(0).getTableAlias());
-        assertEquals(MvJoinMode.MAIN, result.getSources().get(0).getMode());
-        assertEquals("d", result.getSources().get(1).getTableAlias());
-
-        // Should have columns for all fields from D (id, a_id, value)
-        assertEquals(3, result.getColumns().size());
-        boolean hasId = false, hasAId = false, hasValue = false;
-        for (MvColumn column : result.getColumns()) {
-            if ("id".equals(column.getName()) && "d".equals(column.getSourceAlias())) {
-                hasId = true;
-            }
-            if ("a_id".equals(column.getName()) && "d".equals(column.getSourceAlias())) {
-                hasAId = true;
-            }
-            if ("value".equals(column.getName()) && "d".equals(column.getSourceAlias())) {
-                hasValue = true;
-            }
-        }
-        assertTrue(hasId && hasAId && hasValue);
-    }
-
-    @Test
-    public void testGenerateFields_InvalidFieldName() {
-        // Test with invalid field name
-        assertThrows(IllegalArgumentException.class, () -> {
-            new MvPathGenerator(originalTarget).extractFields(sourceA, Arrays.asList("nonexistent"));
-        });
-    }
-
-    @Test
-    public void testGenerateFields_EmptyFieldList() {
-        // Test with empty field list
-        assertThrows(IllegalArgumentException.class, () -> {
-            new MvPathGenerator(originalTarget).extractFields(sourceA, Arrays.<String>asList());
-        });
-    }
-
-    @Test
-    public void testGenerateFields_NullParameters() {
-        // Test with null parameters
-        assertThrows(IllegalArgumentException.class, () -> {
-            new MvPathGenerator(originalTarget).extractFields(null, Arrays.asList("field"));
-        });
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            new MvPathGenerator(originalTarget).extractFields(sourceA, null);
-        });
-    }
-
-    @Test
-    public void testGenerateFields_NoPath() {
-        // Create a disconnected source
-        MvJoinSource sourceE = new MvJoinSource(new MvSqlPos(5, 1));
-        sourceE.setTableName("tableE");
-        sourceE.setTableAlias("e");
-        sourceE.setMode(MvJoinMode.LEFT);
-
-        MvTableInfo tableInfoE = MvTableInfo.newBuilder("tableE")
-                .addColumn("id", PrimitiveType.Uint64)
-                .addColumn("data", PrimitiveType.Text)
-                .addKey("id")
-                .build();
-        sourceE.setTableInfo(tableInfoE);
-
-        originalTarget.getSources().add(sourceE);
-
-        // Should return null when no path exists
-        MvTarget result = new MvPathGenerator(originalTarget).extractFields(
-                sourceE, Arrays.asList("data"));
-        assertNull(result);
     }
 }

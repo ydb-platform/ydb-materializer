@@ -36,28 +36,13 @@ public class MvHandlerSettings implements Serializable {
     }
 
     public MvHandlerSettings(Properties props) {
-        String v;
-
-        v = props.getProperty(MvConfig.CONF_CDC_THREADS, "4");
-        this.cdcReaderThreads = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_APPLY_THREADS, "4");
-        this.applyThreads = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_APPLY_QUEUE, "10000");
-        this.applyQueueSize = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_BATCH_SELECT, "1000");
-        this.selectBatchSize = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_BATCH_UPSERT, "500");
-        this.upsertBatchSize = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "28800");
-        this.dictionaryScanSeconds = Integer.parseInt(v);
-
-        v = props.getProperty(MvConfig.CONF_QUERY_TIMEOUT, "30");
-        this.queryTimeoutSeconds = Integer.parseInt(v);
+        this.cdcReaderThreads = MvConfig.parseInt(props, MvConfig.CONF_CDC_THREADS, 4);
+        this.applyThreads = MvConfig.parseInt(props, MvConfig.CONF_APPLY_THREADS, 4);
+        this.applyQueueSize = MvConfig.parseInt(props, MvConfig.CONF_APPLY_QUEUE, 10000);
+        this.selectBatchSize = MvConfig.parseInt(props, MvConfig.CONF_BATCH_SELECT, 1000);
+        this.upsertBatchSize = MvConfig.parseInt(props, MvConfig.CONF_BATCH_UPSERT, 500);
+        this.dictionaryScanSeconds = MvConfig.parseInt(props, MvConfig.CONF_DICT_SCAN_SECONDS, 28800);
+        this.queryTimeoutSeconds = MvConfig.parseInt(props, MvConfig.CONF_QUERY_TIMEOUT, 30);
     }
 
     public int getCdcReaderThreads() {

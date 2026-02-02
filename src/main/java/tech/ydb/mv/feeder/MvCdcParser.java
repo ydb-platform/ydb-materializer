@@ -41,15 +41,21 @@ class MvCdcParser {
     }
 
     public ParseResult parse(byte[] jsonData, Instant tv) {
-        String jsonText = new String(jsonData, StandardCharsets.UTF_8);
-        JsonElement rootElement = JsonParser.parseString(jsonText);
-        JsonObject root = rootElement.isJsonObject()
-                ? rootElement.getAsJsonObject() : null;
-        if ((root == null) || !root.has("key")) {
-            LOG.error("unsupported cdc message {}", jsonText);
+        final String jsonText;
+        try {
+            jsonText = new String(jsonData, StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            LOG.error("cdc message data decoding failed, non-utf8 input", ex);
             return ParseResult.error();
         }
         try {
+            JsonElement rootElement = JsonParser.parseString(jsonText);
+            JsonObject root = rootElement.isJsonObject()
+                    ? rootElement.getAsJsonObject() : null;
+            if ((root == null) || !root.has("key")) {
+                LOG.error("unsupported cdc message {}", jsonText);
+                return ParseResult.error();
+            }
             JsonArray key = root.get("key").getAsJsonArray();
             JsonElement erase = root.get("erase");
             JsonElement update = root.get("update");

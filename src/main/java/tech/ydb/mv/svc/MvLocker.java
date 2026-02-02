@@ -1,7 +1,6 @@
 package tech.ydb.mv.svc;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 
 import tech.ydb.coordination.CoordinationClient;
@@ -36,15 +35,19 @@ public class MvLocker implements AutoCloseable {
             seconds = 5;
         }
         this.timeout = Duration.ofSeconds(seconds);
+        LOG.debug("Initialized locking guard {} on `{}` with default timeout {}",
+                System.identityHashCode(this), this.nodePath, this.timeout);
     }
 
     @Override
     public void close() {
+        LOG.debug("Shutting down locking guard {} on `{}`",
+                System.identityHashCode(this), this.nodePath);
         releaseAll();
         try {
             session.close();
         } catch (Exception ex) {
-            LOG.info("Exception on coordination session closure", ex);
+            LOG.warn("Failed to close the coordination session", ex);
         }
     }
 
@@ -80,15 +83,21 @@ public class MvLocker implements AutoCloseable {
     }
 
     public void releaseAll() {
-        ArrayList<String> names = new ArrayList<>();
+        String nextName = null;
         synchronized (leases) {
-            names.addAll(leases.keySet());
+            if (!leases.isEmpty()) {
+                nextName = leases.keySet().iterator().next();
+            }
         }
-        names.forEach(name -> release(name));
-        try {
-            session.close();
-        } catch (Exception ex) {
-            LOG.warn("Failed to close the coordination session", ex);
+        while (nextName != null) {
+            release(nextName);
+            synchronized (leases) {
+                if (leases.isEmpty()) {
+                    nextName = null;
+                } else {
+                    nextName = leases.keySet().iterator().next();
+                }
+            }
         }
     }
 
@@ -133,10 +142,12 @@ public class MvLocker implements AutoCloseable {
         }
         try {
             lease.release().join();
+            LOG.info("Lock `{}` released.", name);
+            return true;
         } catch (Exception ex) {
-            LOG.warn("Failed to release the semaphore {}: {}", name, ex);
+            LOG.warn("Failed to release the lock `{}`", name, ex);
+            return false;
         }
-        return true;
     }
 
 }

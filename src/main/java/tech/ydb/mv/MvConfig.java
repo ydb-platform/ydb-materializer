@@ -1,5 +1,6 @@
 package tech.ydb.mv;
 
+import java.util.Properties;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -137,6 +138,11 @@ public class MvConfig {
     public static final String CONF_BATCH_UPSERT = "job.batch.upsert";
 
     /**
+     * Handler setting: max number of changes to be scanned in a single batch.
+     */
+    public static final String CONF_MAX_ROW_CHANGES = "job.max.row.changes";
+
+    /**
      * Default input SQL file name.
      */
     public static final String DEF_STMT_FILE = "mv.sql";
@@ -160,6 +166,40 @@ public class MvConfig {
      * Coordination node path.
      */
     public static final String DEF_COORD_PATH = "mv/coordination";
+
+    public static int parseInt(Properties props, String propName, int defval) {
+        String v = props.getProperty(propName);
+        if (v == null || v.length() == 0) {
+            return defval;
+        }
+        return parseInt(v, propName);
+    }
+
+    public static int parseInt(String value, String comment) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + comment + "] "
+                    + "Failed to parse integer " + value, nfe);
+        }
+    }
+
+    public static long parseLong(Properties props, String propName, long defval) {
+        String v = props.getProperty(propName);
+        if (v == null || v.length() == 0) {
+            return defval;
+        }
+        return parseLong(v, propName);
+    }
+
+    public static long parseLong(String value, String comment) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException nfe) {
+            throw new RuntimeException("[" + comment + "] "
+                    + "Failed to parse long " + value, nfe);
+        }
+    }
 
     public static Mode parseMode(String v) {
         if (v == null) {

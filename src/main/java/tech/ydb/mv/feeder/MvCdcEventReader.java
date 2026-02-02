@@ -61,11 +61,12 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         MvMetrics.recordCdcRead(consumerName, topicPath, event.getMessages().size());
         MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
-            LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic {}",
+            LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic `{}`",
                     owner.getName(), event.getMessages().size(), topicPath);
             event.commit();
             return;
         }
+
         ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
         for (Message m : event.getMessages()) {
             Instant tv = m.getCreatedAt();
@@ -83,11 +84,25 @@ class MvCdcEventReader extends AbstractReadEventHandler {
                 records.add(result.getRecord());
             }
         }
-        LOG.trace("Topic {} input {}", topicPath, records);
+        LOG.trace("Topic `{}` parsed input: {}", topicPath, records);
+
+        if (records.isEmpty()) {
+            LOG.warn("Feeder `{}` skipping {} message(s) for topic `{}` - nothing to process",
+                    owner.getName(), event.getMessages().size(), topicPath);
+            event.commit();
+            return;
+        }
+
         long submitStart = System.nanoTime();
-        sink.submit(records, new MvCdcCommitHandler(event));
-        long submitTime = System.nanoTime() - submitStart;
-        MvMetrics.recordCdcSubmit(consumerName, topicPath, submitTime, records.size());
+        try {
+            sink.submit(records, new MvCdcCommitHandler(event, records.size()));
+            long submitTime = System.nanoTime() - submitStart;
+            MvMetrics.recordCdcSubmit(consumerName, topicPath, submitTime, records.size());
+        } catch (Exception ex) {
+            // We should not throw from onMessages(), as it stops the CDC reader.
+            LOG.error("Feeder `{}` for topic `{}` SUBMIT FAILED",
+                    owner.getName(), topicPath, ex);
+        }
     }
 
 }

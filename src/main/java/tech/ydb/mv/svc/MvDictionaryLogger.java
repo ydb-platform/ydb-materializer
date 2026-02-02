@@ -112,7 +112,7 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
         LOG.info("Stopping dictionary manager.");
         MvCdcFeeder cf = feeder.getAndSet(null);
         if (cf != null) {
-            cf.stop();
+            cf.close();
         }
     }
 
@@ -149,7 +149,7 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
             conn.sqlWrite(sqlUpsert, Params.of("$input", ListValue.of(values)));
         } catch (Exception ex) {
             LOG.error("Failed to write dictionary batch, will raise for re-processing", ex);
-            throw new RuntimeException(ex.toString());
+            throw new RuntimeException("Dictionary batch re-processing exception", ex);
         }
     }
 

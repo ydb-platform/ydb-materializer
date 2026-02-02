@@ -3,6 +3,8 @@ package tech.ydb.mv.mgt;
 import java.io.Serializable;
 import java.util.Properties;
 
+import tech.ydb.mv.MvConfig;
+
 /**
  * Configuration settings for the distributed job management system. Provides
  * customizable table names and database scan/reporting periods.
@@ -79,21 +81,11 @@ public class MvBatchSettings implements Serializable {
         this.tableRunners = props.getProperty(CONF_TABLE_RUNNERS, DEF_TABLE_RUNNERS);
         this.tableRunnerJobs = props.getProperty(CONF_TABLE_RUNNER_JOBS, DEF_TABLE_RUNNER_JOBS);
         this.tableCommands = props.getProperty(CONF_TABLE_COMMANDS, DEF_TABLE_COMMANDS);
-
-        String v = props.getProperty(CONF_SCAN_PERIOD_MS, String.valueOf(DEF_SCAN_PERIOD_MS));
-        this.scanPeriodMs = Long.parseLong(v);
-
-        v = props.getProperty(CONF_REPORT_PERIOD_MS, String.valueOf(DEF_REPORT_PERIOD_MS));
-        this.reportPeriodMs = Long.parseLong(v);
-
-        v = props.getProperty(CONF_RUNNER_TIMEOUT_MS, String.valueOf(DEF_RUNNER_TIMEOUT_MS));
-        this.runnerTimeoutMs = Long.parseLong(v);
-
-        v = props.getProperty(CONF_COORD_STARTUP_MS, String.valueOf(DEF_COORD_STARTUP_MS));
-        this.coordStartupMs = Long.parseLong(v);
-
-        v = props.getProperty(CONF_COORD_RUNNERS_COUNT, "0");
-        this.runnersCount = Integer.parseInt(v);
+        this.scanPeriodMs = MvConfig.parseLong(props, CONF_SCAN_PERIOD_MS, DEF_SCAN_PERIOD_MS);
+        this.reportPeriodMs = MvConfig.parseLong(props, CONF_REPORT_PERIOD_MS, DEF_REPORT_PERIOD_MS);
+        this.runnerTimeoutMs = MvConfig.parseLong(props, CONF_RUNNER_TIMEOUT_MS, DEF_RUNNER_TIMEOUT_MS);
+        this.coordStartupMs = MvConfig.parseLong(props, CONF_COORD_STARTUP_MS, DEF_COORD_STARTUP_MS);
+        this.runnersCount = MvConfig.parseInt(props, CONF_COORD_RUNNERS_COUNT, 0);
     }
 
     public String getTableJobs() {

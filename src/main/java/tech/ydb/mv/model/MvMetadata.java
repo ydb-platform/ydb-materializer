@@ -21,7 +21,7 @@ public class MvMetadata {
 
     private String dictionaryConsumer = MvConfig.HANDLER_DICTIONARY;
 
-    private final HashMap<String, MvTarget> targets = new HashMap<>();
+    private final HashMap<String, MvView> views = new HashMap<>();
     private final HashMap<String, MvHandler> handlers = new HashMap<>();
     private final HashMap<String, MvTableInfo> tables = new HashMap<>();
 
@@ -39,8 +39,8 @@ public class MvMetadata {
         this.dictionaryConsumer = dictionaryConsumer;
     }
 
-    public Map<String, MvTarget> getTargets() {
-        return targets;
+    public Map<String, MvView> getViews() {
+        return views;
     }
 
     public Map<String, MvHandler> getHandlers() {
@@ -63,8 +63,8 @@ public class MvMetadata {
         return errors.isEmpty();
     }
 
-    public MvTarget addTarget(MvTarget t) {
-        return targets.put(t.getName(), t);
+    public MvView addView(MvView v) {
+        return views.put(v.getName(), v);
     }
 
     public MvHandler addHandler(MvHandler h) {
@@ -92,7 +92,7 @@ public class MvMetadata {
      * @return true, if no errors detected, false otherwise
      */
     public boolean validate(YdbConnector conn) {
-        if (! isValid()) {
+        if (!isValid()) {
             return false;
         }
         boolean valid = new MvValidateBasic(this).validate();
@@ -103,40 +103,42 @@ public class MvMetadata {
     }
 
     /**
-     * Load the missing parts of metadata and perform validation.
-     * Table, column and changefeed information is loaded using the helper object passed.
+     * Load the missing parts of metadata and perform validation. Table, column
+     * and changefeed information is loaded using the helper object passed.
      *
      * @param describer Helper for metadata retrieval
      * @return true, if no errors detected, false otherwise
      */
     public boolean linkAndValidate(MvDescriber describer) {
-        if (! isValid()) {
+        if (!isValid()) {
             return false;
         }
         tables.clear();
         for (String tabname : collectTables()) {
             MvTableInfo ti = describer.describeTable(tabname);
-            if (ti!=null) {
+            if (ti != null) {
                 tables.put(tabname, ti);
             }
         }
         linkTables();
         linkColumns();
-        if (! validate(describer.getYdb()) ) {
+        if (!validate(describer.getYdb())) {
             return false;
         }
-        targets.values().forEach(target -> target.updateUsedColumns());
+        views.values().forEach(target -> target.updateUsedColumns());
         return true;
     }
 
     private TreeSet<String> collectTables() {
         TreeSet<String> ret = new TreeSet<>();
-        for (MvTarget t : targets.values()) {
+        for (MvView v : views.values()) {
             // target table
-            ret.add(t.getName());
-            // source tables
-            for (MvJoinSource r : t.getSources()) {
-                ret.add(r.getTableName());
+            ret.add(v.getName());
+            for (var t : v.getParts().values()) {
+                // source tables
+                for (var r : t.getSources()) {
+                    ret.add(r.getTableName());
+                }
             }
         }
         // possible extra inputs (which may be missing in the targets)
@@ -149,10 +151,12 @@ public class MvMetadata {
     }
 
     private void linkTables() {
-        for (MvTarget t : targets.values()) {
-            t.setTableInfo(tables.get(t.getName()));
-            for (MvJoinSource r : t.getSources()) {
-                r.setTableInfo(tables.get(r.getTableName()));
+        for (var v : views.values()) {
+            v.setTableInfo(tables.get(v.getName()));
+            for (var t : v.getParts().values()) {
+                for (var js : t.getSources()) {
+                    js.setTableInfo(tables.get(js.getTableName()));
+                }
             }
         }
         for (MvHandler h : handlers.values()) {
@@ -163,17 +167,19 @@ public class MvMetadata {
     }
 
     private void linkColumns() {
-        for (MvTarget target : targets.values()) {
-            MvTableInfo ti = target.getTableInfo();
-            if (ti==null) {
+        for (var v : views.values()) {
+            MvTableInfo ti = v.getTableInfo();
+            if (ti == null) {
                 continue;
             }
-            for (MvColumn column : target.getColumns()) {
-                column.setType(ti.getColumns().get(column.getName()));
+            for (var t : v.getParts().values()) {
+                for (var column : t.getColumns()) {
+                    column.setType(ti.getColumns().get(column.getName()));
+                    v.addColumnIf(column);
+                }
             }
         }
     }
-
 
     /**
      * Create a new MvMetadata instance as a subset of the current one.
@@ -182,7 +188,7 @@ public class MvMetadata {
      * @return MvMetadata instance limited to the specified handler only
      */
     public MvMetadata subset(MvHandler handler) {
-        if (! isValid()) {
+        if (!isValid()) {
             throw new IllegalStateException("Cannot subset a non-valid metadata");
         }
         if (handler != handlers.get(handler.getName())) {
@@ -191,8 +197,8 @@ public class MvMetadata {
         MvMetadata output = new MvMetadata();
         output.setDictionaryConsumer(dictionaryConsumer);
         output.addHandler(handler);
-        for (MvTarget target : handler.getTargets().values()) {
-            output.addTarget(target);
+        for (MvView v : handler.getViews().values()) {
+            output.addView(v);
         }
         return output;
     }

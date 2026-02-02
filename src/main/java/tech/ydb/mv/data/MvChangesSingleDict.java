@@ -17,6 +17,8 @@ public class MvChangesSingleDict {
     private final HashMap<String, HashSet<MvKey>> fields = new HashMap<>();
     // the last key in the dictionary log
     private MvKey scanPosition;
+    // whether the diff field has missing values (e.g. skipped rows)
+    private boolean missingDiffFieldRows = false;
 
     public MvChangesSingleDict(String tableName) {
         this.tableName = tableName;
@@ -55,6 +57,14 @@ public class MvChangesSingleDict {
             }
         }
         return true;
+    }
+
+    public boolean isMissingDiffFieldRows() {
+        return missingDiffFieldRows;
+    }
+
+    public void setMissingDiffFieldRows(boolean missingDiffFieldRows) {
+        this.missingDiffFieldRows = missingDiffFieldRows;
     }
 
 }

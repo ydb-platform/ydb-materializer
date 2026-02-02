@@ -7,7 +7,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvPathGenerator;
 
 /**
@@ -24,7 +24,7 @@ class MvApply {
         return new SourceBuilder(table, selector);
     }
 
-    static TargetBuilder newTarget(MvTarget target, MvTarget dictTrans) {
+    static TargetBuilder newTarget(MvViewExpr target, MvViewExpr dictTrans) {
         return new TargetBuilder(target, dictTrans);
     }
 
@@ -76,9 +76,9 @@ class MvApply {
 
     static class Target {
 
-        private final MvTarget target;
+        private final MvViewExpr target;
         private final MvApplyActionList refreshActions;
-        private final MvTarget dictTrans;
+        private final MvViewExpr dictTrans;
 
         Target(TargetBuilder builder) {
             this.target = builder.target;
@@ -86,7 +86,7 @@ class MvApply {
             this.dictTrans = builder.dictTrans;
         }
 
-        public MvTarget getTarget() {
+        public MvViewExpr getTarget() {
             return target;
         }
 
@@ -94,18 +94,18 @@ class MvApply {
             return refreshActions;
         }
 
-        public MvTarget getDictTrans() {
+        public MvViewExpr getDictTrans() {
             return dictTrans;
         }
     }
 
     static class TargetBuilder {
 
-        private final MvTarget target;
+        private final MvViewExpr target;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
-        private final MvTarget dictTrans;
+        private final MvViewExpr dictTrans;
 
-        TargetBuilder(MvTarget target, MvTarget dictTrans) {
+        TargetBuilder(MvViewExpr target, MvViewExpr dictTrans) {
             this.target = target;
             this.dictTrans = dictTrans;
         }
@@ -127,7 +127,7 @@ class MvApply {
         final int workersCount;
         final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
-        final HashMap<String, TargetBuilder> targets = new HashMap<>();
+        final HashMap<MvViewExpr, TargetBuilder> targets = new HashMap<>();
 
         public Configurator(MvActionContext context) {
             this.context = context;
@@ -136,7 +136,7 @@ class MvApply {
             this.partitioning = context.getPartitioning();
         }
 
-        void build(HashMap<String, Source> src, HashMap<String, Target> trg) {
+        void build(HashMap<String, Source> src, HashMap<MvViewExpr, Target> trg) {
             prepare();
             sources.forEach((k, v) -> src.put(k, v.build()));
             targets.forEach((k, v) -> trg.put(k, v.build()));
@@ -152,22 +152,24 @@ class MvApply {
             return b;
         }
 
-        TargetBuilder makeTarget(MvTarget target, MvTarget dictTrans) {
-            var b = targets.get(target.getName());
+        TargetBuilder makeTarget(MvViewExpr target, MvViewExpr dictTrans) {
+            var b = targets.get(target);
             if (b == null) {
                 b = newTarget(target, dictTrans);
-                targets.put(target.getName(), b);
+                targets.put(target, b);
             }
             return b;
         }
 
         void prepare() {
-            for (MvTarget target : metadata.getTargets().values()) {
-                configureTarget(target);
+            for (var view : metadata.getViews().values()) {
+                for (var target : view.getParts().values()) {
+                    configureTarget(target);
+                }
             }
         }
 
-        void configureTarget(MvTarget target) {
+        void configureTarget(MvViewExpr target) {
             int sourceCount = target.getSources().size();
             if (sourceCount < 1) {
                 // constant or expression-based target - nothing to do
@@ -176,11 +178,14 @@ class MvApply {
             MvJoinSource source = target.getTopMostSource();
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
-                LOG.warn("Missing changefeed for main input table `{}`, skipping for target `{}` in handler `{}`.",
-                        source.getTableName(), target.getName(), metadata.getName());
+                LOG.warn("Missing changefeed for main input table `{}`, "
+                        + "skipping for target `{}` as {} in handler `{}`.",
+                        source.getTableName(), target.getName(), target.getAlias(),
+                        metadata.getName());
                 return;
             }
-            LOG.info("Configuring handler `{}`, target `{}` ...", metadata.getName(), target.getName());
+            LOG.info("Configuring handler `{}`, target `{}` as {} ...",
+                    metadata.getName(), target.getName(), target.getAlias());
             // Add sync action for the current target
             ActionSync actionSync = new ActionSync(target, context);
             makeSource(source.getTableInfo()).addAction(actionSync);
@@ -200,34 +205,35 @@ class MvApply {
             }
             MvTableInfo.Changefeed cf = source.getChangefeedInfo();
             if (cf == null) {
-                LOG.info("Missing changefeed for secondary input table `{}`, skipping for target `{}`.",
-                        source.getTableName(), pg.getTarget().getName());
+                LOG.info("Missing changefeed for secondary input table `{}`, "
+                        + "skipping for target `{}` as {}.", source.getTableName(),
+                        pg.getExpr().getName(), pg.getExpr().getAlias());
                 return;
             }
-            MvTarget transformation = pg.extractKeysReverse(source);
+            MvViewExpr transformation = pg.extractKeysReverse(source);
             if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
-                        + "to keys for table `{}`, skipping for target `{}`",
+                        + "to keys for table `{}`, skipping for target `{}` as {}",
                         source.getTableName(), pg.getTopSourceTableName(),
-                        pg.getTarget().getName());
+                        pg.getExpr().getName(), pg.getExpr().getAlias());
                 return;
             }
             MvApplyAction action;
             if (transformation.isKeyOnlyTransformation()) {
                 // Can directly transform the input keys to topmost-left key
-                action = new ActionKeysTransform(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysTransform(pg.getExpr(), source, transformation, context);
             } else if (transformation.isSingleStepTransformation()
                     && MvTableInfo.ChangefeedMode.BOTH_IMAGES.equals(cf.getMode())) {
                 // Can be directly transformed on the changefeed data
-                action = new ActionKeysTransform(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysTransform(pg.getExpr(), source, transformation, context);
             } else {
                 // The key information has to be grabbed from the database
-                action = new ActionKeysGrab(pg.getTarget(), source, transformation, context);
+                action = new ActionKeysGrab(pg.getExpr(), source, transformation, context);
             }
             makeSource(source.getTableInfo()).addAction(action);
         }
 
-        MvTarget makeDictTrans(MvTarget target, MvPathGenerator pathGenerator) {
+        MvViewExpr makeDictTrans(MvViewExpr target, MvPathGenerator pathGenerator) {
             var batchSources = target.getSources().stream()
                     .filter(js -> js.isTableKnown())
                     .filter(js -> js.getInput().isBatchMode())

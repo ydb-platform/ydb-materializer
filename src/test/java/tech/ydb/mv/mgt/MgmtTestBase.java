@@ -9,7 +9,7 @@ import tech.ydb.mv.YdbConnector;
  *
  * @author zinal
  */
-public abstract class AbstractMgtTest extends AbstractIntegrationBase {
+public abstract class MgmtTestBase extends AbstractIntegrationBase {
 
     private static final String CREATE_MGT_TABLES = """
         CREATE TABLE `test1/mv_jobs` (

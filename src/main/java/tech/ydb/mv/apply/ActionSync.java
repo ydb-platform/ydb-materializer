@@ -22,7 +22,7 @@ import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -42,7 +42,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
-    public ActionSync(MvTarget target, MvActionContext context) {
+    public ActionSync(MvViewExpr target, MvActionContext context) {
         super(context);
         if (target == null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {
@@ -57,8 +57,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         }
         MvJoinSource src = target.getTopMostSource();
         setMetricsScope(target.getName(), src.getTableName(), src.getTableAlias());
-        LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getName(),
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
+                instance, context.getMetadata().getName(),
+                target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());

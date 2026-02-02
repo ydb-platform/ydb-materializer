@@ -8,7 +8,7 @@ import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.support.MvScanAdapter;
 import tech.ydb.mv.support.MvScanDao;
@@ -20,7 +20,7 @@ import tech.ydb.mv.support.MvScanDao;
 class MvScanContext implements MvScanAdapter {
 
     private final MvHandler handler;
-    private final MvTarget target;
+    private final MvViewExpr target;
     private final AtomicBoolean shouldRun;
     private final AtomicReference<MvKey> currentKey;
     private final AtomicReference<MvScanCommitHandler> currentHandler;
@@ -33,7 +33,7 @@ class MvScanContext implements MvScanAdapter {
 
     private final MvScanDao scanDao;
 
-    public MvScanContext(MvHandler handler, MvTarget target,
+    public MvScanContext(MvHandler handler, MvViewExpr target,
             YdbConnector ydb, String controlTable) {
         this.handler = handler;
         this.target = target;
@@ -62,7 +62,7 @@ class MvScanContext implements MvScanAdapter {
         return handler;
     }
 
-    public MvTarget getTarget() {
+    public MvViewExpr getTarget() {
         return target;
     }
 

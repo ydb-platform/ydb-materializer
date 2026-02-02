@@ -1,11 +1,8 @@
 package tech.ydb.mv.integration;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.table.query.Params;
@@ -14,7 +11,7 @@ import tech.ydb.topic.settings.DescribeConsumerSettings;
 import tech.ydb.mv.AbstractIntegrationBase;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -68,25 +65,21 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
 ;
 """;
 
-    @BeforeAll
-    public static void init() {
+    @BeforeEach
+    public void init() {
         prepareDb();
     }
 
-    @AfterAll
-    public static void cleanup() {
+    @AfterEach
+    public void cleanup() {
         clearDb();
-    }
-
-    private void standardPause() {
-        pause(2000L);
     }
 
     @Test
     public void basicIntegrationTest() {
         // now the work
         System.err.println("[AAA] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
+        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             MvService wc = new MvService(conn);
             try {
@@ -100,8 +93,9 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 wc.printSql(System.out);
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
-                MvTarget mainTarget = wc.getMetadata().getHandlers()
-                        .get("handler1").getTarget("test1/mv1");
+                MvViewExpr mainTarget = wc.getMetadata().getHandlers()
+                        .get("handler1").getView("test1/mv1").getParts()
+                        .values().iterator().next();
                 String sqlQuery;
                 try (MvSqlGen sg = new MvSqlGen(mainTarget)) {
                     sqlQuery = sg.makeSelectAll();
@@ -116,7 +110,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing some input data...");
-                runDml(conn, WRITE_INITIAL);
+                runDml(conn, WRITE_INITIAL_DATA);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
@@ -206,36 +200,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
-        String sqlMv = "SELECT * FROM `test1/mv1`";
-        var left = convertResultSet(
-                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
-        var right = convertResultSet(
-                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
-        System.out.println("*** comparing rowsets, size1="
-                + left.size() + ", size2=" + right.size());
-        int diffCount = 0;
-        for (var leftMe : left.entrySet()) {
-            var rightVal = right.get(leftMe.getKey());
-            if (rightVal == null) {
-                System.out.println("  missing key: " + leftMe.getKey());
-                ++diffCount;
-                continue;
-            }
-            if (!leftMe.getValue().equals(rightVal)) {
-                System.out.println("  unequal records: \n\t"
-                        + leftMe.getValue() + "\n\t"
-                        + rightVal);
-                ++diffCount;
-            }
-        }
-        for (var rightMe : right.entrySet()) {
-            var leftVal = left.get(rightMe.getKey());
-            if (leftVal == null) {
-                System.out.println("  extra key: " + rightMe.getKey());
-                ++diffCount;
-            }
-        }
-        return diffCount;
+        return checkViewOutput(conn, "test1/mv1", sqlMain);
     }
 
     private void checkConsumerPositions(YdbConnector conn) {
@@ -284,27 +249,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                             .get().asData().getJsonDocument());
         }
         System.out.println("--- dictionary comparison end ---");
-    }
-
-    public static String generateThreadDump() {
-        final StringBuilder dump = new StringBuilder();
-        final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
-        for (ThreadInfo threadInfo : threadInfos) {
-            dump.append('"');
-            dump.append(threadInfo.getThreadName());
-            dump.append("\" ");
-            final Thread.State state = threadInfo.getThreadState();
-            dump.append("\n   java.lang.Thread.State: ");
-            dump.append(state);
-            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
-            for (final StackTraceElement stackTraceElement : stackTraceElements) {
-                dump.append("\n        at ");
-                dump.append(stackTraceElement);
-            }
-            dump.append("\n\n");
-        }
-        return dump.toString();
     }
 
 }

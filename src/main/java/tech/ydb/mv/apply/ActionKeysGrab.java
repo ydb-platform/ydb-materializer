@@ -11,7 +11,7 @@ import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.model.MvJoinSource;
-import tech.ydb.mv.model.MvTarget;
+import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -24,14 +24,15 @@ class ActionKeysGrab extends ActionKeysAbstract {
 
     private final String sqlSelect;
 
-    public ActionKeysGrab(MvTarget target, MvJoinSource src,
-            MvTarget transformation, MvActionContext context) {
+    public ActionKeysGrab(MvViewExpr target, MvJoinSource src,
+            MvViewExpr transformation, MvActionContext context) {
         super(target, src, transformation, context);
         try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();
         }
-        LOG.info(" [{}] Handler `{}`, target `{}`, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(), target.getName(),
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
+                instance, context.getMetadata().getName(),
+                target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
@@ -44,9 +45,8 @@ class ActionKeysGrab extends ActionKeysAbstract {
 
     @Override
     public String toString() {
-        return "MvKeysGrab{" + inputTableName
-                + " AS " + inputTableAlias + " -> "
-                + target.getName() + '}';
+        return "MvKeysGrab{" + inputTableName + " AS " + inputTableAlias + " -> "
+                + target.getName() + " AS " + target.getAlias() + '}';
     }
 
     @Override
@@ -57,7 +57,7 @@ class ActionKeysGrab extends ActionKeysAbstract {
             return;
         }
         if (rows.getColumnCount() < keyInfo.size()) {
-            throw new IllegalStateException("Actual output coluumns: "
+            throw new IllegalStateException("Actual output columns: "
                     + rows.getColumnCount() + ", expected: " + keyInfo.size());
         }
         // Convert the keys to change records.

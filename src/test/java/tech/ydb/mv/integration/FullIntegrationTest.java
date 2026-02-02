@@ -1,7 +1,9 @@
 package tech.ydb.mv.integration;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.AbstractIntegrationBase;
@@ -17,59 +19,24 @@ import tech.ydb.mv.mgt.MvRunner;
  */
 public class FullIntegrationTest extends AbstractIntegrationBase {
 
-    @BeforeAll
-    public static void init() {
+    @BeforeEach
+    public void init() {
+        System.err.println("[FFF] Core initialization ...");
         prepareDb();
+        createExtraTables();
+        System.err.println("[FFF] Core initialization completed!");
     }
 
-    @AfterAll
-    public static void cleanup() {
-        clearDb();
+    @AfterEach
+    public void cleanup() {
+        System.err.println("[FFF] Core cleanup ...");
         dropExtraTables();
+        clearDb();
+        System.err.println("[FFF] Core initialization completed!");
     }
 
-    private static void dropExtraTables() {
-        System.err.println("[AAA] Database cleanup phase 2...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
-            try {
-                runDdl(conn, "DROP TABLE mv_jobs;");
-            } catch(Exception ex) {
-                System.err.println("Cannot drop MV_JOBS: " + ex.toString());
-            }
-            try {
-                runDdl(conn, "DROP TABLE mv_job_scans;");
-            } catch(Exception ex) {
-                System.err.println("Cannot drop MV_JOB_SCANS: " + ex.toString());
-            }
-            try {
-                runDdl(conn, "DROP TABLE mv_runners;");
-            } catch(Exception ex) {
-                System.err.println("Cannot drop MV_RUNNERS: " + ex.toString());
-            }
-            try {
-                runDdl(conn, "DROP TABLE mv_runner_jobs;");
-            } catch(Exception ex) {
-                System.err.println("Cannot drop MV_RUNNER_JOBS: " + ex.toString());
-            }
-            try {
-                runDdl(conn, "DROP TABLE mv_commands;");
-            } catch(Exception ex) {
-                System.err.println("Cannot drop MV_COMMANDS: " + ex.toString());
-            }
-        }
-    }
-
-    @Test
-    public void concurrencyIntegrationTest() {
-        System.err.println("[AAA] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfig(), "config.xml", null);
-        var batchSettings = new MvBatchSettings(cfg.getProperties());
-        cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
-        var instance1 = "instance_1";
-        var instance2 = "instance_2";
-
-        try (YdbConnector conn = new YdbConnector(cfg)) {
+    private void createExtraTables() {
+        try (YdbConnector conn = new YdbConnector(getConfig())) {
             runDdl(conn, """
             CREATE TABLE `mv_jobs` (
                 job_name Text NOT NULL,
@@ -120,18 +87,71 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(runner_id, command_no)
             );
                     """);
+            System.err.println("[FFF] Exta tables created!");
         }
+    }
 
-        Thread t1 = new Thread(() -> handler(cfg, instance1, batchSettings));
-        Thread t2 = new Thread(() -> handler(cfg, instance2, batchSettings));
-        Thread t1dup = new Thread(() -> handler(cfg, instance1, batchSettings));
+    private void dropExtraTables() {
+        System.err.println("[FFF] Database cleanup phase 2...");
+        try (YdbConnector conn = new YdbConnector(getConfig())) {
+            try {
+                runDdl(conn, "DROP TABLE mv_jobs;");
+            } catch (Exception ex) {
+                System.err.println("[FFF] Cannot drop MV_JOBS: " + ex.toString());
+            }
+            try {
+                runDdl(conn, "DROP TABLE mv_job_scans;");
+            } catch (Exception ex) {
+                System.err.println("[FFF] Cannot drop MV_JOB_SCANS: " + ex.toString());
+            }
+            try {
+                runDdl(conn, "DROP TABLE mv_runners;");
+            } catch (Exception ex) {
+                System.err.println("[FFF] Cannot drop MV_RUNNERS: " + ex.toString());
+            }
+            try {
+                runDdl(conn, "DROP TABLE mv_runner_jobs;");
+            } catch (Exception ex) {
+                System.err.println("[FFF] Cannot drop MV_RUNNER_JOBS: " + ex.toString());
+            }
+            try {
+                runDdl(conn, "DROP TABLE mv_commands;");
+            } catch (Exception ex) {
+                System.err.println("[FFF] Cannot drop MV_COMMANDS: " + ex.toString());
+            }
+            System.err.println("[FFF] Exta tables dropped!");
+        }
+    }
+
+    @Override
+    protected YdbConnector.Config getNewConfig() {
+        var ret = super.getNewConfig();
+        ret.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
+        return ret;
+    }
+
+    @Test
+    public void concurrencyIntegrationTest() {
+        System.err.println("[FFF] Starting up...");
+
+        var cfg = getConfig();
+        var instance1 = "instance_1";
+        var instance2 = "instance_2";
+
+        AtomicInteger successCounter = new AtomicInteger(0);
+        Thread t1 = new Thread(() -> handler(cfg, instance1, successCounter));
+        Thread t2 = new Thread(() -> handler(cfg, instance2, successCounter));
+        Thread t1dup = new Thread(() -> handler(cfg, instance1, new AtomicInteger(0)));
 
         t1.start();
         t2.start();
         pause(100L);
         t1dup.start();
 
+        System.err.println("[FFF] Threads started, initializing...");
+
         pause(10_000);
+
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, """
                     INSERT INTO `mv_jobs` (job_name, should_run) VALUES
@@ -139,18 +159,44 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                         ('handler2', true);
                         """);
         }
-        pause(20_000);
+
+        System.err.println("[FFF] Job added, waiting for thread completion...");
+
+        try {
+            t1.join();
+        } catch (InterruptedException ix) {
+        }
+        try {
+            t2.join();
+        } catch (InterruptedException ix) {
+        }
+        try {
+            t1dup.join();
+        } catch (InterruptedException ix) {
+        }
+
+        System.err.println("[FFF] All done!");
+
+        Assertions.assertEquals(2, successCounter.get());
     }
 
-    private void handler(YdbConnector.Config cfg, String instanceName, MvBatchSettings batchSettings) {
-        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn); var runner = new MvRunner(conn, api)) {
-            api.applyDefaults(conn.getConfig().getProperties());
-            MvCoordinator.newInstance(conn, batchSettings, instanceName)
-                    .start();
-            runner.start();
-
-            pause(40_000);
+    private void handler(YdbConnector.Config cfg, String name, AtomicInteger successCounter) {
+        var batchSettings = new MvBatchSettings(cfg.getProperties());
+        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn)) {
+            try (var runner = new MvRunner(conn, api, name)) {
+                api.applyDefaults(conn.getConfig().getProperties());
+                try (var coord = MvCoordinator.newInstance(conn, batchSettings, name)) {
+                    System.err.println("[FFF] Instance starting: " + name);
+                    runner.start();
+                    pause(1_000);
+                    coord.start();
+                    pause(40_000);
+                }
+            }
+            successCounter.incrementAndGet();
+            System.err.println("[FFF] Instance succeeded: " + name);
         } catch (Exception ex) {
+            System.err.println("[FFF] Instance failed: " + name);
             ex.printStackTrace(System.err);
         }
     }
