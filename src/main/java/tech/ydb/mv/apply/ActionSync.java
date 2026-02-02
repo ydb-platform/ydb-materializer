@@ -53,7 +53,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.sqlDelete = sg.makePlainDelete();
-            this.rowType = sg.toRowType();
+            if (target.getTableInfo() != null) {
+                this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+            } else {
+                this.rowType = sg.toRowType();
+            }
         }
         MvJoinSource src = target.getTopMostSource();
         setMetricsScope(target.getName(), src.getTableName(), src.getTableAlias());
