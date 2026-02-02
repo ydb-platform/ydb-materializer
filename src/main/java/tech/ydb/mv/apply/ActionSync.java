@@ -9,6 +9,7 @@ import com.google.common.collect.Lists;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
 import tech.ydb.table.result.ResultSetReader;
@@ -183,7 +184,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             timing.future.join().getStatus().expectSuccess();
             long durationNs = System.nanoTime() - timing.startNs;
             if (getMetricsMvName() != null) {
-                tech.ydb.mv.metrics.MvMetrics.recordSqlTime(
+                MvMetrics.recordSqlTime(
                         getMetricsMvName(),
                         getMetricsSourceTable(),
                         getMetricsSourceAlias(),
