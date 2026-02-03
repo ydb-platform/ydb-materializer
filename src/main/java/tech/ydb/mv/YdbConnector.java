@@ -45,7 +45,11 @@ public class YdbConnector implements AutoCloseable {
     private final AtomicBoolean opened = new AtomicBoolean(false);
 
     public YdbConnector(Config config) {
-        LOG.info("Connecting to {}...", config.getConnectionString());
+        this(config, true);
+    }
+
+    public YdbConnector(Config config, boolean full) {
+        LOG.info("{} Connecting to {}...", config.getPrefix(), config.getConnectionString());
         GrpcTransportBuilder builder = GrpcTransport
                 .forConnectionString(config.getConnectionString());
         switch (config.getAuthMode()) {
@@ -91,10 +95,15 @@ public class YdbConnector implements AutoCloseable {
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
-            this.coordinationClient = CoordinationClient.newClient(tempTransport);
-            this.topicClient = TopicClient.newClient(tempTransport)
-                    .setCompressionExecutor(Runnable::run) // Prevent OOM
-                    .build();
+            if (full) {
+                this.coordinationClient = CoordinationClient.newClient(tempTransport);
+                this.topicClient = TopicClient.newClient(tempTransport)
+                        .setCompressionExecutor(Runnable::run) // Prevent OOM
+                        .build();
+            } else {
+                this.coordinationClient = null;
+                this.topicClient = null;
+            }
             this.tableClient = QueryClient.newTableClient(tempTransport).build();
             this.tableRetryCtx = tech.ydb.table.SessionRetryContext
                     .create(this.tableClient)
@@ -121,15 +130,23 @@ public class YdbConnector implements AutoCloseable {
     }
 
     public YdbConnector(Properties props) {
-        this(new Config(props));
+        this(new Config(props), true);
+    }
+
+    public YdbConnector(Properties props, boolean full) {
+        this(new Config(props), full);
     }
 
     public YdbConnector(Properties props, String prefix) {
-        this(new Config(props, prefix));
+        this(new Config(props, prefix), true);
+    }
+
+    public YdbConnector(Properties props, String prefix, boolean full) {
+        this(new Config(props, prefix), full);
     }
 
     public YdbConnector(String fname, String prefix) {
-        this(Config.fromFile(fname, prefix));
+        this(Config.fromFile(fname, prefix), true);
     }
 
     public YdbConnector(String fname) {
@@ -217,44 +234,44 @@ public class YdbConnector implements AutoCloseable {
     @Override
     public void close() {
         opened.set(false);
-        LOG.info("Closing YDB connections...");
+        LOG.info("{} Closing YDB connections...", config.getPrefix());
         // coordinationClient does not support closing, so we leave it as is
         if (topicClient != null) {
             try {
                 topicClient.close();
             } catch (Exception ex) {
-                LOG.warn("TopicClient closing threw an exception", ex);
+                LOG.warn("{} TopicClient closing threw an exception", config.getPrefix(), ex);
             }
         }
         if (tableClient != null) {
             try {
                 tableClient.close();
             } catch (Exception ex) {
-                LOG.warn("TableClient closing threw an exception", ex);
+                LOG.warn("{} TableClient closing threw an exception", config.getPrefix(), ex);
             }
         }
         if (queryClient != null) {
             try {
                 queryClient.close();
             } catch (Exception ex) {
-                LOG.warn("QueryClient closing threw an exception", ex);
+                LOG.warn("{} QueryClient closing threw an exception", config.getPrefix(), ex);
             }
         }
         if (schemeClient != null) {
             try {
                 schemeClient.close();
             } catch (Exception ex) {
-                LOG.warn("SchemeClient closing threw an exception", ex);
+                LOG.warn("{} SchemeClient closing threw an exception", config.getPrefix(), ex);
             }
         }
         if (transport != null) {
             try {
                 transport.close();
             } catch (Exception ex) {
-                LOG.warn("GrpcTransport closing threw an exception", ex);
+                LOG.warn("{} GrpcTransport closing threw an exception", config.getPrefix(), ex);
             }
         }
-        LOG.info("Disconnected from YDB.");
+        LOG.info("{} Disconnected from YDB.", config.getPrefix());
     }
 
     public boolean isOpen() {
@@ -294,6 +311,14 @@ public class YdbConnector implements AutoCloseable {
 
     public static String safe(String value) {
         return value.replaceAll("[;.$`'\\\"()\\\\]", "_");
+    }
+
+    public static boolean hasConfigPrefix(String prefix, Properties props) {
+        if (prefix == null) {
+            prefix = "ydb.";
+        }
+        String propName = prefix + "url";
+        return props.containsKey(propName);
     }
 
     /**
@@ -337,9 +362,15 @@ public class YdbConnector implements AutoCloseable {
                 this.connectionString = "/local";
             }
             this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
-            this.saKeyFile = props.getProperty(prefix + "auth.sakey");
-            this.staticLogin = props.getProperty(prefix + "auth.username");
-            this.staticPassword = props.getProperty(prefix + "auth.password");
+            switch (this.authMode) {
+                case SAKEY -> {
+                    this.saKeyFile = props.getProperty(prefix + "auth.sakey");
+                }
+                case STATIC -> {
+                    this.staticLogin = props.getProperty(prefix + "auth.username");
+                    this.staticPassword = props.getProperty(prefix + "auth.password");
+                }
+            }
             this.tlsCertificateFile = props.getProperty(prefix + "cafile");
             this.preferLocalDc = Boolean.parseBoolean(
                     props.getProperty(prefix + "preferLocalDc", "false"));

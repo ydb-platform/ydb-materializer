@@ -380,7 +380,7 @@ public class BasicParserTest {
                 return info.get(tabname);
             }
         };
-        mc.linkAndValidate(dummy);
+        mc.linkAndValidate(dummy, dummy);
 
         if (PRINT_SQL) {
             new MvIssuePrinter(mc).write(System.out);

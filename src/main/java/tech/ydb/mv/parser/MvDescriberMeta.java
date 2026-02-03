@@ -21,7 +21,10 @@ public class MvDescriberMeta implements MvDescriber {
 
     @Override
     public MvTableInfo describeTable(String tabname) {
-        MvTableInfo ret = metadata.getTables().get(tabname);
+        MvTableInfo ret = metadata.getInputTables().get(tabname);
+        if (ret == null) {
+            ret = metadata.getOutputTables().get(tabname);
+        }
         if (ret == null) {
             throw new IllegalArgumentException("Unknown table: " + tabname);
         }

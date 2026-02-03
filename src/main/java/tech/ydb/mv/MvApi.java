@@ -34,9 +34,14 @@ public interface MvApi extends AutoCloseable {
     ScheduledExecutorService getScheduler();
 
     /**
-     * @return YDB connector being used
+     * @return YDB input connector being used
      */
     YdbConnector getYdb();
+
+    /**
+     * @return YDB input connector being used
+     */
+    YdbConnector getOutput();
 
     /**
      * @return The locker service enables the distributed concurrency control

@@ -32,6 +32,12 @@ public class MvConfig {
     public static final String HANDLER_COORDINATOR = "ydbmv$coordinator";
 
     /**
+     * Configuration prefix for the optional destination database. When omitted,
+     * source database is also the destination one.
+     */
+    public static final String CONF_DESTINATION = "destination.";
+
+    /**
      * FILE read input statements from file TABLE read input statements from
      * database table
      */

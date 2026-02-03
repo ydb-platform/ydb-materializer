@@ -37,7 +37,8 @@ public class MvService implements MvApi {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
-    private final YdbConnector ydb;
+    private final YdbConnector input;
+    private final YdbConnector output;
     private final MvMetadata metadata;
     private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
@@ -48,10 +49,16 @@ public class MvService implements MvApi {
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
 
-    public MvService(YdbConnector ydb) {
-        this.ydb = ydb;
-        this.metadata = loadMetadata(ydb, null);
-        this.locker = new MvLocker(ydb);
+    public MvService(YdbConnector input) {
+        this.input = input;
+        var props = input.getConfig().getProperties();
+        if (YdbConnector.hasConfigPrefix(MvConfig.CONF_DESTINATION, props)) {
+            this.output = new YdbConnector(props, MvConfig.CONF_DESTINATION, false);
+        } else {
+            this.output = input;
+        }
+        this.metadata = loadMetadata(this.input, this.output, null);
+        this.locker = new MvLocker(input);
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
@@ -65,7 +72,12 @@ public class MvService implements MvApi {
 
     @Override
     public YdbConnector getYdb() {
-        return ydb;
+        return input;
+    }
+
+    @Override
+    public YdbConnector getOutput() {
+        return output;
     }
 
     @Override
@@ -126,7 +138,7 @@ public class MvService implements MvApi {
     @Override
     public void applyDefaults(Properties props) {
         if (props == null) {
-            props = ydb.getConfig().getProperties();
+            props = input.getConfig().getProperties();
         }
         setHandlerSettings(new MvHandlerSettings(props));
         setDictionarySettings(new MvDictionarySettings(props));
@@ -163,15 +175,18 @@ public class MvService implements MvApi {
             Thread.currentThread().interrupt();
         }
         locker.close();
+        if (output != input) {
+            output.close();
+        }
     }
 
     public synchronized boolean startDictionaryHandler() {
         if (dictionaryManager != null) {
             return false;
         }
-        MvMetadata m = loadMetadata(ydb, null);
+        MvMetadata m = loadMetadata(input, output, null);
         appendDictHist(m);
-        dictionaryManager = new MvDictionaryLogger(m, ydb, dictionarySettings.get());
+        dictionaryManager = new MvDictionaryLogger(m, input, dictionarySettings.get());
         dictionaryManager.start();
         return true;
     }
@@ -219,7 +234,7 @@ public class MvService implements MvApi {
             }
             handlers.remove(name);
         }
-        MvMetadata m = loadMetadata(ydb, name);
+        MvMetadata m = loadMetadata(input, output, name);
         appendDictHist(m);
         MvHandler handler = m.getHandlers().get(name);
         if (handler == null) {
@@ -279,7 +294,7 @@ public class MvService implements MvApi {
     @Override
     public void generateStreams(boolean create, PrintStream pw) {
         for (var handler : metadata.getHandlers().values()) {
-            new MvStreamBuilder(ydb, pw, handler, create).apply();
+            new MvStreamBuilder(input, pw, handler, create).apply();
         }
     }
 
@@ -333,7 +348,7 @@ public class MvService implements MvApi {
     }
 
     private List<String> parseActiveHandlerNames() {
-        String v = ydb.getConfig().getProperties().getProperty(MvConfig.CONF_HANDLERS);
+        String v = input.getConfig().getProperties().getProperty(MvConfig.CONF_HANDLERS);
         if (v == null) {
             return Collections.emptyList();
         }
@@ -369,7 +384,7 @@ public class MvService implements MvApi {
 
     private void partitionsRefresh() {
         for (MvJobController c : grabControllers()) {
-            c.getApplyManager().refreshSelectors(ydb.getTableClient());
+            c.getApplyManager().refreshSelectors(input.getTableClient());
         }
     }
 
@@ -377,15 +392,21 @@ public class MvService implements MvApi {
         return new ArrayList<>(handlers.values());
     }
 
+    /**
+     * Load the table information about the history table and append it into the
+     * metadata cache.
+     *
+     * @param m Metadata cache
+     */
     private void appendDictHist(MvMetadata m) {
-        String historyTableName = ydb.getProperty(
+        String historyTableName = input.getProperty(
                 MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
-        var tableInfo = new MvDescriberYdb(ydb).describeTable(historyTableName);
-        m.getTables().put(tableInfo.getName(), tableInfo);
+        var tableInfo = new MvDescriberYdb(input).describeTable(historyTableName);
+        m.getInputTables().put(tableInfo.getName(), tableInfo);
     }
 
-    private static MvMetadata loadMetadata(YdbConnector ydb, String handlerName) {
-        MvMetadata m = MvConfigReader.read(ydb, ydb.getConfig().getProperties());
+    private static MvMetadata loadMetadata(YdbConnector ydbFrom, YdbConnector ydbTo, String handlerName) {
+        MvMetadata m = MvConfigReader.read(ydbFrom, ydbFrom.getConfig().getProperties());
         if (handlerName != null) {
             MvHandler h = m.getHandlers().get(handlerName);
             if (h == null) {
@@ -397,7 +418,12 @@ public class MvService implements MvApi {
             LOG.warn("Parser produced errors, metadata retrieval skipped.");
         } else {
             LOG.info("Loading metadata and performing validation...");
-            m.linkAndValidate(new MvDescriberYdb(ydb));
+            var metaFrom = new MvDescriberYdb(ydbFrom);
+            var metaTo = metaFrom;
+            if (ydbTo != null && ydbTo != ydbFrom) {
+                metaTo = new MvDescriberYdb(ydbTo);
+            }
+            m.linkAndValidate(metaFrom, metaTo);
         }
         return m;
     }
