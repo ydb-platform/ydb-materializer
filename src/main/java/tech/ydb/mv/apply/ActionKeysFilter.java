@@ -39,7 +39,15 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         }
         var source = target.getTopMostSource();
         if (source != null) {
-            setMetricsScope(target.getName(), source.getTableName(), source.getTableAlias());
+            String targetAlias = target.getAlias();
+            if (targetAlias == null || targetAlias.isBlank()) {
+                targetAlias = "default";
+            }
+            String itemAlias = request.getAlias();
+            if (itemAlias == null || itemAlias.isBlank()) {
+                itemAlias = "default";
+            }
+            setMetricsScope("filter", target.getName(), targetAlias, null, itemAlias);
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
                 instance, context.getMetadata().getName(), target.getName(),

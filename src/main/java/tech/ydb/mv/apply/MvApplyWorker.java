@@ -133,16 +133,18 @@ class MvApplyWorker implements Runnable {
 
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
         ActionBase base = (action instanceof ActionBase) ? (ActionBase) action : null;
-        String mvName = (base == null) ? null : base.getMetricsMvName();
-        String sourceTable = (base == null) ? null : base.getMetricsSourceTable();
-        String sourceAlias = (base == null) ? null : base.getMetricsSourceAlias();
+        String type = (base == null) ? null : base.getMetricsType();
+        String target = (base == null) ? null : base.getMetricsTarget();
+        String alias = (base == null) ? null : base.getMetricsAlias();
+        String source = (base == null) ? null : base.getMetricsSource();
+        String item = (base == null) ? null : base.getMetricsItem();
         long startNs = System.nanoTime();
         try {
             action.apply(tasks);
-            MvMetrics.recordProcessedCount(mvName, sourceTable, sourceAlias, tasks.size());
+            MvMetrics.recordProcessedCount(type, target, alias, source, item, tasks.size());
         } catch (Exception ex) {
             retries.addItems(tasks, action);
-            MvMetrics.recordProcessingError(mvName, sourceTable, sourceAlias, tasks.size());
+            MvMetrics.recordProcessingError(type, target, alias, source, item, tasks.size());
             String lastSql = ActionBase.getLastSqlStatement();
             if (lastSql != null) {
                 LOG.error("Execution failed for action {}, scheduling for retry {} tasks."
@@ -153,7 +155,7 @@ class MvApplyWorker implements Runnable {
             }
         } finally {
             long durationNs = System.nanoTime() - startNs;
-            MvMetrics.recordProcessingTime(mvName, sourceTable, sourceAlias, durationNs);
+            MvMetrics.recordProcessingTime(type, target, alias, source, item, durationNs);
         }
     }
 

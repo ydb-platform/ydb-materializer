@@ -35,6 +35,11 @@ class ActionKeysTransform extends ActionKeysAbstract {
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        setMetricsScope("transform", target.getName(), alias, src.getTableName(), null);
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as {}, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(),
                 target.getName(), target.getAlias(),

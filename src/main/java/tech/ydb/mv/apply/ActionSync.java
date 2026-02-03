@@ -60,8 +60,12 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 this.rowType = sg.toRowType();
             }
         }
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        setMetricsScope("sync", target.getName(), alias, null, null);
         MvJoinSource src = target.getTopMostSource();
-        setMetricsScope(target.getName(), src.getTableName(), src.getTableAlias());
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(),
                 target.getName(), target.getAlias(),
@@ -183,11 +187,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
             currentStatement.remove();
             timing.future.join().getStatus().expectSuccess();
             long durationNs = System.nanoTime() - timing.startNs;
-            if (getMetricsMvName() != null) {
+            if (getMetricsTarget() != null) {
                 MvMetrics.recordSqlTime(
-                        getMetricsMvName(),
-                        getMetricsSourceTable(),
-                        getMetricsSourceAlias(),
+                        getMetricsType(),
+                        getMetricsTarget(),
+                        getMetricsAlias(),
                         timing.operation,
                         durationNs
                 );

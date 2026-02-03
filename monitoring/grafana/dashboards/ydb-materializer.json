@@ -38,10 +38,10 @@
         }
       },
       {
-        "name": "mv",
+        "name": "type",
         "type": "query",
         "datasource": "Prometheus",
-        "query": "label_values(ydbmv_mv_records_processed_total, mv)",
+        "query": "label_values(ydbmv_mv_records_processed_total, type)",
         "includeAll": true,
         "multi": true,
         "refresh": 1,
@@ -52,10 +52,10 @@
         }
       },
       {
-        "name": "source_alias",
+        "name": "target",
         "type": "query",
         "datasource": "Prometheus",
-        "query": "label_values(ydbmv_mv_records_processed_total, source_alias)",
+        "query": "label_values(ydbmv_mv_records_processed_total, target)",
         "includeAll": true,
         "multi": true,
         "refresh": 1,
@@ -66,10 +66,38 @@
         }
       },
       {
-        "name": "source_table",
+        "name": "alias",
         "type": "query",
         "datasource": "Prometheus",
-        "query": "label_values(ydbmv_mv_records_processed_total, source_table)",
+        "query": "label_values(ydbmv_mv_records_processed_total, alias)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "source",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_records_processed_total, source)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "item",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(ydbmv_mv_records_processed_total, item)",
         "includeAll": true,
         "multi": true,
         "refresh": 1,
@@ -163,8 +191,8 @@
       "gridPos": { "x": 12, "y": 14, "w": 12, "h": 7 },
       "targets": [
         {
-          "expr": "sum by (mv, source_alias, source_table) (rate(ydbmv_mv_records_processed_total{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m]))",
-          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+          "expr": "sum by (type, target, alias, source, item) (rate(ydbmv_mv_records_processed_total{type=~\"$type\",target=~\"$target\",alias=~\"$alias\",source=~\"$source\",item=~\"$item\"}[5m]))",
+          "legendFormat": "{{type}} / {{target}} / {{alias}} / {{source}} / {{item}}"
         }
       ]
     },
@@ -175,8 +203,8 @@
       "gridPos": { "x": 0, "y": 21, "w": 12, "h": 7 },
       "targets": [
         {
-          "expr": "sum by (mv, source_alias, source_table) (rate(ydbmv_mv_processing_errors_total{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m]))",
-          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+          "expr": "sum by (type, target, alias, source, item) (rate(ydbmv_mv_processing_errors_total{type=~\"$type\",target=~\"$target\",alias=~\"$alias\",source=~\"$source\",item=~\"$item\"}[5m]))",
+          "legendFormat": "{{type}} / {{target}} / {{alias}} / {{source}} / {{item}}"
         }
       ]
     },
@@ -187,8 +215,8 @@
       "gridPos": { "x": 12, "y": 21, "w": 12, "h": 7 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, mv, source_alias, source_table) (rate(ydbmv_mv_processing_seconds_bucket{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\"}[5m])))",
-          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}}"
+          "expr": "histogram_quantile(0.95, sum by (le, type, target, alias, source, item) (rate(ydbmv_mv_processing_seconds_bucket{type=~\"$type\",target=~\"$target\",alias=~\"$alias\",source=~\"$source\",item=~\"$item\"}[5m])))",
+          "legendFormat": "{{type}} / {{target}} / {{alias}} / {{source}} / {{item}}"
         }
       ]
     },
@@ -199,8 +227,8 @@
       "gridPos": { "x": 0, "y": 28, "w": 24, "h": 7 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, mv, source_alias, source_table, operation) (rate(ydbmv_mv_sql_seconds_bucket{mv=~\"$mv\",source_alias=~\"$source_alias\",source_table=~\"$source_table\",operation=~\"$operation\"}[5m])))",
-          "legendFormat": "{{mv}} / {{source_alias}} / {{source_table}} / {{operation}}"
+          "expr": "histogram_quantile(0.95, sum by (le, type, target, alias, operation) (rate(ydbmv_mv_sql_seconds_bucket{type=~\"$type\",target=~\"$target\",alias=~\"$alias\",operation=~\"$operation\"}[5m])))",
+          "legendFormat": "{{type}} / {{target}} / {{alias}} / {{operation}}"
         }
       ]
     }

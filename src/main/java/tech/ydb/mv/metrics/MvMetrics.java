@@ -31,6 +31,10 @@ public final class MvMetrics {
     }
 
     public static synchronized void init(Properties props) {
+        init(props, null);
+    }
+
+    public static synchronized void init(Properties props, Metrics provided) {
         if (props == null) {
             return;
         }
@@ -45,8 +49,17 @@ public final class MvMetrics {
         String host = props.getProperty(MvConfig.CONF_METRICS_HOST, "0.0.0.0");
         int port = Integer.parseInt(
                 props.getProperty(MvConfig.CONF_METRICS_PORT, "9090"));
-        CollectorRegistry registry = new CollectorRegistry();
-        metrics = new Metrics(registry);
+        Metrics localMetrics = provided;
+        CollectorRegistry registry = (localMetrics == null)
+                ? new CollectorRegistry()
+                : localMetrics.getRegistry();
+        if (localMetrics == null) {
+            localMetrics = new Metrics(registry);
+        } else if (registry == null) {
+            LOG.error("Failed to initialize Prometheus metrics server: registry is null");
+            return;
+        }
+        metrics = localMetrics;
         try {
             InetSocketAddress address = new InetSocketAddress(host, port);
             HttpServer httpServer = HttpServer.create(address, 3);
@@ -108,55 +121,76 @@ public final class MvMetrics {
         }
     }
 
-    public static void recordProcessedCount(String mvName,
-                                            String sourceTable, String sourceAlias, int count) {
+    public static void recordProcessedCount(String type,
+                                            String target,
+                                            String alias,
+                                            String source,
+                                            String item,
+                                            int count) {
         Metrics m = metrics;
         if (m == null || count <= 0) {
             return;
         }
         m.processedRecords.labels(
-                safeLabel(mvName),
-                safeLabel(sourceAlias),
-                safeLabel(sourceTable)
+                safeLabel(type),
+                safeLabel(target),
+                safeLabel(alias),
+                safeLabel(source),
+                safeLabel(item)
         ).inc(count);
     }
 
-    public static void recordProcessingTime(String mvName,
-                                            String sourceTable, String sourceAlias, long durationNs) {
+    public static void recordProcessingTime(String type,
+                                            String target,
+                                            String alias,
+                                            String source,
+                                            String item,
+                                            long durationNs) {
         Metrics m = metrics;
         if (m == null) {
             return;
         }
         m.processingTime.labels(
-                safeLabel(mvName),
-                safeLabel(sourceAlias),
-                safeLabel(sourceTable)
+                safeLabel(type),
+                safeLabel(target),
+                safeLabel(alias),
+                safeLabel(source),
+                safeLabel(item)
         ).observe(toSeconds(durationNs));
     }
 
-    public static void recordProcessingError(String mvName,
-                                             String sourceTable, String sourceAlias, int count) {
+    public static void recordProcessingError(String type,
+                                             String target,
+                                             String alias,
+                                             String source,
+                                             String item,
+                                             int count) {
         Metrics m = metrics;
         if (m == null || count <= 0) {
             return;
         }
         m.processingErrors.labels(
-                safeLabel(mvName),
-                safeLabel(sourceAlias),
-                safeLabel(sourceTable)
+                safeLabel(type),
+                safeLabel(target),
+                safeLabel(alias),
+                safeLabel(source),
+                safeLabel(item)
         ).inc(count);
     }
 
-    public static void recordSqlTime(String mvName, String sourceTable,
-                                     String sourceAlias, String operation, long durationNs) {
+    public static void recordSqlTime(String type,
+                                     String target,
+                                     String alias,
+                                     String operation,
+                                     long durationNs) {
         Metrics m = metrics;
         if (m == null) {
             return;
         }
         m.sqlTime.labels(
-                safeLabel(mvName),
-                safeLabel(sourceAlias),
-                safeLabel(sourceTable),
+                safeLabel(type),
+                safeLabel(target),
+                safeLabel(alias),
                 safeLabel(operation)
         ).observe(toSeconds(durationNs));
     }
@@ -180,8 +214,9 @@ public final class MvMetrics {
     }
 
 
-    private static class Metrics {
+    public static class Metrics {
 
+        private final CollectorRegistry registry;
         final Counter cdcRead;
         final Counter cdcParseErrors;
         final Counter cdcSubmitted;
@@ -193,7 +228,8 @@ public final class MvMetrics {
         final Histogram processingTime;
         final Histogram sqlTime;
 
-        Metrics(CollectorRegistry registry) {
+        public Metrics(CollectorRegistry registry) {
+            this.registry = registry;
             cdcRead = Counter.build()
                     .name("ydbmv_cdc_records_read_total")
                     .help("CDC records read from topics")
@@ -221,24 +257,28 @@ public final class MvMetrics {
                     .register(registry);
             processedRecords = Counter.build()
                     .name("ydbmv_mv_records_processed_total")
-                    .help("Records processed per MV and source")
-                    .labelNames("mv", "source_alias", "source_table")
+                    .help("Records processed per action and target")
+                    .labelNames("type", "target", "alias", "source", "item")
                     .register(registry);
             processingErrors = Counter.build()
                     .name("ydbmv_mv_processing_errors_total")
-                    .help("Processing errors per MV and source")
-                    .labelNames("mv", "source_alias", "source_table")
+                    .help("Processing errors per action and target")
+                    .labelNames("type", "target", "alias", "source", "item")
                     .register(registry);
             processingTime = Histogram.build()
                     .name("ydbmv_mv_processing_seconds")
-                    .help("Processing time per MV and source")
-                    .labelNames("mv", "source_alias", "source_table")
+                    .help("Processing time per action and target")
+                    .labelNames("type", "target", "alias", "source", "item")
                     .register(registry);
             sqlTime = Histogram.build()
                     .name("ydbmv_mv_sql_seconds")
-                    .help("SQL execution time per MV and source")
-                    .labelNames("mv", "source_alias", "source_table", "operation")
+                    .help("SQL execution time per action and target")
+                    .labelNames("type", "target", "alias", "operation")
                     .register(registry);
+        }
+
+        public CollectorRegistry getRegistry() {
+            return registry;
         }
     }
 }

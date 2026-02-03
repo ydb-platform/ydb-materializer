@@ -30,6 +30,11 @@ class ActionKeysGrab extends ActionKeysAbstract {
         try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();
         }
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        setMetricsScope("grabKeys", target.getName(), alias, src.getTableName(), null);
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(),
                 target.getName(), target.getAlias(),

@@ -33,7 +33,6 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
         this.inputTableName = src.getTableName();
         this.inputTableAlias = src.getTableAlias();
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
-        setMetricsScope(target.getName(), inputTableName, inputTableAlias);
         if (this.keyInfo.size() != transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + ", got " + this.keyInfo.size());

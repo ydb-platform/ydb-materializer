@@ -38,9 +38,11 @@ abstract class ActionBase {
     protected final SessionRetryContext retryCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
-    private String metricsMvName;
-    private String metricsSourceTable;
-    private String metricsSourceAlias;
+    private String metricsType;
+    private String metricsTarget;
+    private String metricsAlias;
+    private String metricsSource;
+    private String metricsItem;
 
     protected ActionBase(MvActionContext context) {
         this.instance = COUNTER.incrementAndGet();
@@ -53,22 +55,33 @@ abstract class ActionBase {
                 .build();
     }
 
-    protected final void setMetricsScope(String mvName, String sourceTable, String sourceAlias) {
-        this.metricsMvName = mvName;
-        this.metricsSourceTable = sourceTable;
-        this.metricsSourceAlias = sourceAlias;
+    protected final void setMetricsScope(String type, String target,
+                                         String alias, String source, String item) {
+        this.metricsType = type;
+        this.metricsTarget = target;
+        this.metricsAlias = alias;
+        this.metricsSource = source;
+        this.metricsItem = item;
     }
 
-    String getMetricsMvName() {
-        return metricsMvName;
+    String getMetricsType() {
+        return metricsType;
     }
 
-    String getMetricsSourceTable() {
-        return metricsSourceTable;
+    String getMetricsTarget() {
+        return metricsTarget;
     }
 
-    String getMetricsSourceAlias() {
-        return metricsSourceAlias;
+    String getMetricsAlias() {
+        return metricsAlias;
+    }
+
+    String getMetricsSource() {
+        return metricsSource;
+    }
+
+    String getMetricsItem() {
+        return metricsItem;
     }
 
     public static String getLastSqlStatement() {
@@ -121,8 +134,8 @@ abstract class ActionBase {
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
         long durationNs = System.nanoTime() - startNs;
-        if (metricsMvName != null) {
-            MvMetrics.recordSqlTime(metricsMvName, metricsSourceTable, metricsSourceAlias,
+        if (metricsTarget != null) {
+            MvMetrics.recordSqlTime(metricsType, metricsTarget, metricsAlias,
                     "select", durationNs);
         }
         lastSqlStatement.set(null);
