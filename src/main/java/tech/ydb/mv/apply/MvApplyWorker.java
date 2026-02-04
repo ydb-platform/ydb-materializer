@@ -142,10 +142,10 @@ class MvApplyWorker implements Runnable {
         long startNs = System.nanoTime();
         try {
             action.apply(tasks);
-            MvMetrics.recordProcessedCount(type, target, alias, source, item, tasks.size());
+            MvMetrics.recordProcessedCount(type, target, alias, source, item, "all", tasks.size());
         } catch (Exception ex) {
             retries.addItems(tasks, action);
-            MvMetrics.recordProcessingError(type, target, alias, source, item, tasks.size());
+            MvMetrics.recordProcessingError(type, target, alias, source, item, "all", tasks.size());
             String lastSql = ActionBase.getLastSqlStatement();
             if (lastSql != null) {
                 LOG.error("Execution failed for action {}, scheduling for retry {} tasks."
@@ -156,7 +156,7 @@ class MvApplyWorker implements Runnable {
             }
         } finally {
             long durationNs = System.nanoTime() - startNs;
-            MvMetrics.recordProcessingTime(type, target, alias, source, item, durationNs);
+            MvMetrics.recordProcessingTime(type, target, alias, source, item, "all", durationNs);
         }
     }
 

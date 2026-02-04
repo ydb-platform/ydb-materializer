@@ -126,6 +126,7 @@ public final class MvMetrics {
                                             String alias,
                                             String source,
                                             String item,
+                                            String action,
                                             int count) {
         Metrics m = metrics;
         if (m == null || count <= 0) {
@@ -136,7 +137,8 @@ public final class MvMetrics {
                 safeLabel(target),
                 safeLabel(alias),
                 safeLabel(source),
-                safeLabel(item)
+                safeLabel(item),
+                safeLabel(action)
         ).inc(count);
     }
 
@@ -145,6 +147,7 @@ public final class MvMetrics {
                                             String alias,
                                             String source,
                                             String item,
+                                            String action,
                                             long durationNs) {
         Metrics m = metrics;
         if (m == null) {
@@ -155,7 +158,8 @@ public final class MvMetrics {
                 safeLabel(target),
                 safeLabel(alias),
                 safeLabel(source),
-                safeLabel(item)
+                safeLabel(item),
+                safeLabel(action)
         ).observe(toSeconds(durationNs));
     }
 
@@ -164,6 +168,7 @@ public final class MvMetrics {
                                              String alias,
                                              String source,
                                              String item,
+                                             String action,
                                              int count) {
         Metrics m = metrics;
         if (m == null || count <= 0) {
@@ -174,14 +179,15 @@ public final class MvMetrics {
                 safeLabel(target),
                 safeLabel(alias),
                 safeLabel(source),
-                safeLabel(item)
+                safeLabel(item),
+                safeLabel(action)
         ).inc(count);
     }
 
     public static void recordSqlTime(String type,
                                      String target,
                                      String alias,
-                                     String operation,
+                                     String action,
                                      long durationNs) {
         Metrics m = metrics;
         if (m == null) {
@@ -191,17 +197,17 @@ public final class MvMetrics {
                 safeLabel(type),
                 safeLabel(target),
                 safeLabel(alias),
-                safeLabel(operation)
+                safeLabel(action)
         ).observe(toSeconds(durationNs));
     }
 
     private static String safeLabel(String value) {
         if (value == null) {
-            return "unknown";
+            return "";
         }
         String v = value.trim();
         if (v.isEmpty()) {
-            return "unknown";
+            return "";
         }
         return v;
     }
@@ -258,22 +264,22 @@ public final class MvMetrics {
             processedRecords = Counter.build()
                     .name("ydbmv_mv_records_processed_total")
                     .help("Records processed per action and target")
-                    .labelNames("type", "target", "alias", "source", "item")
+                    .labelNames("type", "target", "alias", "source", "item", "action")
                     .register(registry);
             processingErrors = Counter.build()
                     .name("ydbmv_mv_processing_errors_total")
                     .help("Processing errors per action and target")
-                    .labelNames("type", "target", "alias", "source", "item")
+                    .labelNames("type", "target", "alias", "source", "item", "action")
                     .register(registry);
             processingTime = Histogram.build()
                     .name("ydbmv_mv_processing_seconds")
                     .help("Processing time per action and target")
-                    .labelNames("type", "target", "alias", "source", "item")
+                    .labelNames("type", "target", "alias", "source", "item", "action")
                     .register(registry);
             sqlTime = Histogram.build()
                     .name("ydbmv_mv_sql_seconds")
                     .help("SQL execution time per action and target")
-                    .labelNames("type", "target", "alias", "operation")
+                    .labelNames("type", "target", "alias", "action")
                     .register(registry);
         }
 
