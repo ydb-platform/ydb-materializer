@@ -133,11 +133,12 @@ class MvApplyWorker implements Runnable {
 
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
         ActionBase base = (action instanceof ActionBase) ? (ActionBase) action : null;
-        String type = (base == null) ? null : base.getMetricsType();
-        String target = (base == null) ? null : base.getMetricsTarget();
-        String alias = (base == null) ? null : base.getMetricsAlias();
-        String source = (base == null) ? null : base.getMetricsSource();
-        String item = (base == null) ? null : base.getMetricsItem();
+        ActionBase.MetricsScope scope = (base == null) ? null : base.getMetricsScope();
+        String type = (scope == null) ? null : scope.type();
+        String target = (scope == null) ? null : scope.target();
+        String alias = (scope == null) ? null : scope.alias();
+        String source = (scope == null) ? null : scope.source();
+        String item = (scope == null) ? null : scope.item();
         long startNs = System.nanoTime();
         try {
             action.apply(tasks);

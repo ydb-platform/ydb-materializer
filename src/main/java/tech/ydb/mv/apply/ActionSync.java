@@ -44,7 +44,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
     public ActionSync(MvViewExpr target, MvActionContext context) {
-        super(context);
+        super(context, metricsScopeForSync(target));
         if (target == null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {
             throw new IllegalArgumentException("Missing input");
@@ -60,11 +60,6 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 this.rowType = sg.toRowType();
             }
         }
-        String alias = target.getAlias();
-        if (alias == null || alias.isBlank()) {
-            alias = "default";
-        }
-        setMetricsScope("sync", target.getName(), alias, null, null);
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(),
@@ -72,6 +67,14 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
+    }
+
+    private static MetricsScope metricsScopeForSync(MvViewExpr target) {
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        return new MetricsScope("sync", target.getName(), alias, null, null);
     }
 
     public String getTargetTableName() {
@@ -187,11 +190,12 @@ class ActionSync extends ActionBase implements MvApplyAction {
             currentStatement.remove();
             timing.future.join().getStatus().expectSuccess();
             long durationNs = System.nanoTime() - timing.startNs;
-            if (getMetricsTarget() != null) {
+            MetricsScope scope = getMetricsScope();
+            if (scope != null && scope.target() != null) {
                 MvMetrics.recordSqlTime(
-                        getMetricsType(),
-                        getMetricsTarget(),
-                        getMetricsAlias(),
+                        scope.type(),
+                        scope.target(),
+                        scope.alias(),
                         timing.operation,
                         durationNs
                 );

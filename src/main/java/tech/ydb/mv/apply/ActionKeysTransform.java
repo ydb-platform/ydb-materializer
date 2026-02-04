@@ -25,7 +25,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
 
     public ActionKeysTransform(MvViewExpr target, MvJoinSource src,
             MvViewExpr transformation, MvActionContext context) {
-        super(target, src, transformation, context);
+        super(target, src, transformation, context, metricsScopeForTransform(target, src));
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");
         }
@@ -35,17 +35,20 @@ class ActionKeysTransform extends ActionKeysAbstract {
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
-        String alias = target.getAlias();
-        if (alias == null || alias.isBlank()) {
-            alias = "default";
-        }
-        setMetricsScope("transform", target.getName(), alias, src.getTableName(), null);
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as {}, changefeed `{}` mode {}",
                 instance, context.getMetadata().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
+    }
+
+    private static MetricsScope metricsScopeForTransform(MvViewExpr target, MvJoinSource src) {
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        return new MetricsScope("transform", target.getName(), alias, src.getTableName(), null);
     }
 
     @Override

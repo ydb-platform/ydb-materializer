@@ -23,8 +23,8 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
     protected final int selectBatchSize;
 
     public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
-            MvViewExpr transformation, MvActionContext context) {
-        super(context);
+            MvViewExpr transformation, MvActionContext context, MetricsScope metricsScope) {
+        super(context, metricsScope);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {
             throw new IllegalArgumentException("Missing input");

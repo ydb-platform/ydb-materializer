@@ -17,7 +17,7 @@ import tech.ydb.mv.MvConfig;
 /**
  * Prometheus metrics for YDB Materializer.
  *
- * @author zinal
+ * @author Kirill Kurdyukov
  */
 public final class MvMetrics {
 

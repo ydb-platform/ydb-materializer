@@ -32,56 +32,29 @@ abstract class ActionBase {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
+    private final MetricsScope metricsScope;
+
     protected final long instance;
     protected final MvActionContext context;
     protected final MvApplyManager applyManager;
     protected final SessionRetryContext retryCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
-    private String metricsType;
-    private String metricsTarget;
-    private String metricsAlias;
-    private String metricsSource;
-    private String metricsItem;
 
-    protected ActionBase(MvActionContext context) {
+    protected ActionBase(MvActionContext context, MetricsScope metricsScope) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.applyManager = context.getApplyManager();
         this.retryCtx = context.getRetryCtx();
+        this.metricsScope = metricsScope;
         var queryTimeout = context.getSettings().getQueryTimeoutSeconds();
         this.querySettings = ExecuteQuerySettings.newBuilder()
                 .withRequestTimeout(Duration.ofSeconds(queryTimeout))
                 .build();
     }
 
-    protected final void setMetricsScope(String type, String target,
-                                         String alias, String source, String item) {
-        this.metricsType = type;
-        this.metricsTarget = target;
-        this.metricsAlias = alias;
-        this.metricsSource = source;
-        this.metricsItem = item;
-    }
-
-    String getMetricsType() {
-        return metricsType;
-    }
-
-    String getMetricsTarget() {
-        return metricsTarget;
-    }
-
-    String getMetricsAlias() {
-        return metricsAlias;
-    }
-
-    String getMetricsSource() {
-        return metricsSource;
-    }
-
-    String getMetricsItem() {
-        return metricsItem;
+    public MetricsScope getMetricsScope() {
+        return metricsScope;
     }
 
     public static String getLastSqlStatement() {
@@ -134,8 +107,9 @@ abstract class ActionBase {
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
         long durationNs = System.nanoTime() - startNs;
-        if (metricsTarget != null) {
-            MvMetrics.recordSqlTime(metricsType, metricsTarget, metricsAlias,
+        MetricsScope scope = metricsScope;
+        if (scope != null && scope.target() != null) {
+            MvMetrics.recordSqlTime(scope.type(), scope.target(), scope.alias(),
                     "select", durationNs);
         }
         lastSqlStatement.set(null);
@@ -194,5 +168,8 @@ abstract class ActionBase {
         public void apply(BiConsumer<MvCommitHandler, List<MvApplyTask>> consumer) {
             items.forEach((handler, tasks) -> consumer.accept(handler, tasks));
         }
+    }
+
+    record MetricsScope(String type, String target, String alias, String source, String item) {
     }
 }
