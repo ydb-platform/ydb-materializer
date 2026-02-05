@@ -209,7 +209,7 @@ public class MvConfig {
     public static String getAllModes() {
         var sb = new StringBuilder();
         for (var mode : Mode.values()) {
-            if (sb.length() == 0) {
+            if (sb.length() > 0) {
                 sb.append('|');
             }
             sb.append(mode.toString());

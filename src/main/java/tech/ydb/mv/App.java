@@ -1,5 +1,8 @@
 package tech.ydb.mv;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvRunner;
@@ -80,6 +83,10 @@ public class App {
             case SQL -> {
                 LOG.info("SQL output requested.");
                 api.printSql(System.out);
+            }
+            case STREAMS -> {
+                LOG.info("CDC streams generation requested.");
+                api.generateStreams(true, new PrintStream(new ByteArrayOutputStream()));
             }
             case LOCAL -> {
                 LOG.info("Local service requested.");
