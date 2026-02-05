@@ -1,15 +1,14 @@
 package tech.ydb.mv.metrics;
 
 import java.io.Serializable;
-import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
-import io.prometheus.client.Histogram;
-import io.prometheus.client.exporter.HTTPServer;
+import io.prometheus.metrics.core.metrics.Counter;
+import io.prometheus.metrics.core.metrics.Gauge;
+import io.prometheus.metrics.core.metrics.Histogram;
+import io.prometheus.metrics.exporter.httpserver.HTTPServer;
 import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
+import io.prometheus.metrics.model.registry.PrometheusRegistry;
 
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
@@ -35,15 +34,15 @@ public final class MvMetrics {
         init(config, null);
     }
 
-    public static synchronized void init(Config config, CollectorRegistry provided) {
+    public static synchronized void init(Config config, PrometheusRegistry provided) {
         if (config == null || !config.isEnabled()) {
             return;
         }
         if (ENABLED.get()) {
             return;
         }
-        CollectorRegistry registry = (provided == null)
-                ? new CollectorRegistry()
+        PrometheusRegistry registry = (provided == null)
+                ? PrometheusRegistry.defaultRegistry
                 : provided;
         metrics = new Metrics(registry);
         if (provided != null) {
@@ -51,11 +50,13 @@ public final class MvMetrics {
             server = null;
         } else {
             // Provide JVM metrics
-            JvmMetrics.builder().register();
+            JvmMetrics.builder().register(registry);
             // Start a dedicated HTTP collector instance
             try {
-                InetSocketAddress address = new InetSocketAddress(config.getHost(), config.getPort());
-                server = new HTTPServer(address, registry);
+                server = HTTPServer.builder()
+                        .hostname(config.getHost())
+                        .port(config.getPort())
+                        .buildAndStart();
             } catch (Exception ex) {
                 LOG.error("Failed to start Prometheus metrics server on {}:{}",
                         config.getHost(), config.getPort(), ex);
@@ -84,8 +85,8 @@ public final class MvMetrics {
             return;
         }
         String[] labels = {handler};
-        m.jobActive.labels(labels).set(running ? 1 : 0);
-        m.jobLocked.labels(labels).set(running && locked ? 1 : 0);
+        m.jobActive.labelValues(labels).set(running ? 1 : 0);
+        m.jobLocked.labelValues(labels).set(running && locked ? 1 : 0);
     }
 
     public static void recordHandlerStats(String handler,
@@ -95,9 +96,9 @@ public final class MvMetrics {
             return;
         }
         String[] labels = {handler};
-        m.jobThreads.labels(labels).set(nthreads);
-        m.jobQueueSize.labels(labels).set(queueSize);
-        m.jobQueueLimit.labels(labels).set(queueLimit);
+        m.jobThreads.labelValues(labels).set(nthreads);
+        m.jobQueueSize.labelValues(labels).set(queueSize);
+        m.jobQueueLimit.labelValues(labels).set(queueLimit);
     }
 
     public static void recordQueueWait(String handler) {
@@ -106,7 +107,7 @@ public final class MvMetrics {
             return;
         }
         String[] labels = {handler};
-        m.jobQueueWait.labels(labels).inc();
+        m.jobQueueWait.labelValues(labels).inc();
     }
 
     public static void recordCdcRead(CdcScope scope, int count) {
@@ -115,7 +116,7 @@ public final class MvMetrics {
             return;
         }
         String[] labels = getCdcLabels(scope);
-        m.cdcRead.labels(labels).inc(count);
+        m.cdcRead.labelValues(labels).inc(count);
     }
 
     public static void recordCdcParse(CdcScope scope, long startNs, int input, int output) {
@@ -125,10 +126,10 @@ public final class MvMetrics {
         }
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getCdcLabels(scope);
-        m.cdcParseTime.labels(labels).observe(toSeconds(durationNs));
-        m.cdcParseTimeTotal.labels(labels).inc(durationNs / 1000L);
+        m.cdcParseTime.labelValues(labels).observe(toSeconds(durationNs));
+        m.cdcParseTimeTotal.labelValues(labels).inc(durationNs / 1000L);
         if (output < input) {
-            m.cdcParseErrors.labels(labels).inc(input - output);
+            m.cdcParseErrors.labelValues(labels).inc(input - output);
         }
     }
 
@@ -139,10 +140,10 @@ public final class MvMetrics {
         }
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getCdcLabels(scope);
-        m.cdcSubmitTime.labels(labels).observe(toSeconds(durationNs));
-        m.cdcSubmitTimeTotal.labels(labels).inc(durationNs / 1000L);
+        m.cdcSubmitTime.labelValues(labels).observe(toSeconds(durationNs));
+        m.cdcSubmitTimeTotal.labelValues(labels).inc(durationNs / 1000L);
         if (count > 0) {
-            m.cdcSubmitted.labels(labels).inc(count);
+            m.cdcSubmitted.labelValues(labels).inc(count);
         }
     }
 
@@ -153,7 +154,7 @@ public final class MvMetrics {
         }
         String[] labels = getActionLabels(scope, action);
         recordProcessingTime(m, labels, startNs);
-        m.processedRecords.labels(labels).inc(count);
+        m.processedRecords.labelValues(labels).inc(count);
     }
 
     public static void recordProcessedError(ActionScope scope, String action, long startNs, int count) {
@@ -163,13 +164,13 @@ public final class MvMetrics {
         }
         String[] labels = getActionLabels(scope, action);
         recordProcessingTime(m, labels, startNs);
-        m.processingErrors.labels(labels).inc(count);
+        m.processingErrors.labelValues(labels).inc(count);
     }
 
     private static void recordProcessingTime(Metrics m, String labels[], long startNs) {
         long durationNs = System.nanoTime() - startNs;
-        m.processingTime.labels(labels).observe(toSeconds(durationNs));
-        m.processingTimeTotal.labels(labels).inc(durationNs / 1000L);
+        m.processingTime.labelValues(labels).observe(toSeconds(durationNs));
+        m.processingTimeTotal.labelValues(labels).inc(durationNs / 1000L);
     }
 
     public static void recordSqlTime(ActionScope scope, String action, long startNs) {
@@ -179,8 +180,8 @@ public final class MvMetrics {
         }
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getActionLabels(scope, action);
-        m.sqlTime.labels(labels).observe(toSeconds(durationNs));
-        m.sqlTimeTotal.labels(labels).inc(durationNs / 1000L);
+        m.sqlTime.labelValues(labels).observe(toSeconds(durationNs));
+        m.sqlTimeTotal.labelValues(labels).inc(durationNs / 1000L);
     }
 
     private static String[] getActionLabels(ActionScope scope, String action) {
@@ -275,103 +276,103 @@ public final class MvMetrics {
         final Gauge jobQueueLimit;
         final Counter jobQueueWait;
 
-        public Metrics(CollectorRegistry registry) {
+        public Metrics(PrometheusRegistry registry) {
             String[] cdcLabels = {"handler", "consumer", "topic"};
-            cdcRead = Counter.build()
+            cdcRead = Counter.builder()
                     .name("ydbmv_cdc_records_read_total")
                     .help("CDC records read from topics")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcParseErrors = Counter.build()
+            cdcParseErrors = Counter.builder()
                     .name("ydbmv_cdc_parse_errors_total")
                     .help("CDC parsing errors")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcSubmitted = Counter.build()
+            cdcSubmitted = Counter.builder()
                     .name("ydbmv_cdc_records_submitted_total")
                     .help("CDC records submitted for processing")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcParseTimeTotal = Counter.build()
+            cdcParseTimeTotal = Counter.builder()
                     .name("ydbmv_cdc_parse_time_micros")
                     .help("CDC message parsing time in microseconds")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcParseTime = Histogram.build()
+            cdcParseTime = Histogram.builder()
                     .name("ydbmv_cdc_parse_seconds")
                     .help("CDC message parsing time histogram")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcSubmitTimeTotal = Counter.build()
+            cdcSubmitTimeTotal = Counter.builder()
                     .name("ydbmv_cdc_submit_time_micros")
                     .help("CDC message submission time in microseconds")
                     .labelNames(cdcLabels)
                     .register(registry);
-            cdcSubmitTime = Histogram.build()
+            cdcSubmitTime = Histogram.builder()
                     .name("ydbmv_cdc_submit_seconds")
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
                     .register(registry);
 
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
-            processedRecords = Counter.build()
+            processedRecords = Counter.builder()
                     .name("ydbmv_mv_records_processed_total")
                     .help("Records processed per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            processingErrors = Counter.build()
+            processingErrors = Counter.builder()
                     .name("ydbmv_mv_processing_errors_total")
                     .help("Processing errors per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            processingTimeTotal = Counter.build()
+            processingTimeTotal = Counter.builder()
                     .name("ydbmv_mv_processing_time_micros")
                     .help("Processing time in microseconds per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            processingTime = Histogram.build()
+            processingTime = Histogram.builder()
                     .name("ydbmv_mv_processing_seconds")
                     .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            sqlTimeTotal = Counter.build()
+            sqlTimeTotal = Counter.builder()
                     .name("ydbmv_mv_sql_time_micros")
                     .help("SQL execution time in microseconds per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            sqlTime = Histogram.build()
+            sqlTime = Histogram.builder()
                     .name("ydbmv_mv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
 
             String[] jobLabels = {"handler"};
-            jobActive = Gauge.build()
+            jobActive = Gauge.builder()
                     .name("ydbmv_handler_active")
                     .help("Reports the number of active handlers (jobs)")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobLocked = Gauge.build()
+            jobLocked = Gauge.builder()
                     .name("ydbmv_handler_locked")
                     .help("Reports the number of locked handlers (jobs)")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobThreads = Gauge.build()
+            jobThreads = Gauge.builder()
                     .name("ydbmv_handler_threads")
                     .help("Reports the number of active threads per handler")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobQueueSize = Gauge.build()
+            jobQueueSize = Gauge.builder()
                     .name("ydbmv_handler_queue_size")
                     .help("Reports the size of input queue per handler")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobQueueLimit = Gauge.build()
+            jobQueueLimit = Gauge.builder()
                     .name("ydbmv_handler_queue_limit")
                     .help("Reports the limit on input queue size per handler")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobQueueWait = Counter.build()
+            jobQueueWait = Counter.builder()
                     .name("ydbmv_handler_queue_wait")
                     .help("Reports the number of waits on input queue per handler")
                     .labelNames(jobLabels)
