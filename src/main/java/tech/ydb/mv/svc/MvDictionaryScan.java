@@ -90,7 +90,8 @@ public class MvDictionaryScan {
         MvKey curKey = startKey;
         result.setScanPosition(startKey);
 
-        LOG.info("\t...dictionary `{}` at position {}", tableName, startKey);
+        LOG.info("[{}] Scanning dictionary `{}` at position {}",
+                handler.getName(), tableName, startKey);
 
         long changeRowsScanned = 0;
         var pTableName = PrimitiveValue.newText(tableName);
@@ -116,9 +117,9 @@ public class MvDictionaryScan {
                 ++changeRowsScanned;
             }
             if (changeRowsScanned > scanLimit) {
-                LOG.warn("Dictionary changes scan for table `{}` stopped "
+                LOG.warn("[{}] Dictionary changes scan for table `{}` stopped "
                         + "before reaching EOF because it got {} rows, limit is {} rows.",
-                        tableName, changeRowsScanned, scanLimit);
+                        handler.getName(), tableName, changeRowsScanned, scanLimit);
                 break;
             }
         } while (rsr.getRowCount() > 0);
@@ -136,7 +137,7 @@ public class MvDictionaryScan {
     }
 
     public MvChangesMultiDict scanAll() {
-        LOG.info("Performing regular dictionary changes scan.");
+        LOG.info("[{}] Performing regular dictionary changes scan.", handler.getName());
         MvChangesMultiDict ret = new MvChangesMultiDict();
         handler.getInputs().values().stream()
                 .filter(i -> i.isBatchMode())
@@ -148,9 +149,10 @@ public class MvDictionaryScan {
                     .filter(i -> !i.isEmpty())
                     .map(i -> i.getTableName())
                     .toList();
-            LOG.info("Relevant changes in the following dictionaries: {}", items);
+            LOG.info("[{}] Relevant changes in the following dictionaries: {}",
+                    handler.getName(), items);
         }
-        LOG.info("Regular dictionary changes scan completed.");
+        LOG.info("[{}] Regular dictionary changes scan completed.", handler.getName());
         return ret;
     }
 
@@ -209,9 +211,9 @@ public class MvDictionaryScan {
             String diffStr = rsr.getColumn(5).getJsonDocument();
             if (diffStr == null) {
                 if (!result.isMissingDiffFieldRows()) {
-                    LOG.warn("Missing value in the `diff_val` field with key {} "
+                    LOG.warn("[{}] Missing value in the `diff_val` field with key {} "
                             + "of the `{}` table, row skipped. Further messages suppressed.",
-                            curKey, historyTableName);
+                            handler.getName(), curKey, historyTableName);
                     result.setMissingDiffFieldRows(true);
                 }
                 return curKey;
@@ -219,9 +221,9 @@ public class MvDictionaryScan {
             JsonElement diffObj = JsonParser.parseString(diffStr);
             if (!diffObj.isJsonObject()) {
                 if (!result.isMissingDiffFieldRows()) {
-                    LOG.warn("Illegal format value in the `diff_val` field with key {} "
+                    LOG.warn("[{}] Illegal format value in the `diff_val` field with key {} "
                             + "of the `{}` table, row skipped. Further messages suppressed.",
-                            curKey, historyTableName);
+                            handler.getName(), curKey, historyTableName);
                     result.setMissingDiffFieldRows(true);
                 }
                 return curKey;
