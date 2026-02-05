@@ -68,6 +68,10 @@ public class MvApplyManager implements MvSink {
         return context.getSettings();
     }
 
+    public int getQueueLimit() {
+        return queueLimit;
+    }
+
     public int getQueueSize() {
         return queueSize.get();
     }
@@ -80,7 +84,7 @@ public class MvApplyManager implements MvSink {
         int temp = queueSize.addAndGet(-1 * count);
         if (temp < 0) {
             LOG.warn("Queue size below zero: {}", temp);
-            queueSize.set(0);
+            queueSize.addAndGet(-1 * temp);
             return 0;
         }
         return temp;

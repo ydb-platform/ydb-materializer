@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvDictionarySettings;
 import tech.ydb.mv.model.MvHandler;
@@ -45,6 +46,7 @@ public class MvService implements MvApi {
     private final AtomicReference<MvScanSettings> scanSettings;
     private final ScheduledExecutorService scheduler;
     private final AtomicReference<ScheduledFuture<?>> refreshFuture = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> metricsFuture = new AtomicReference<>();
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
 
@@ -140,7 +142,7 @@ public class MvService implements MvApi {
 
     @Override
     public void shutdown() {
-        cancelPartitionsRefresh();
+        cancelRegularJobs();
         List<MvJobController> currentJobs;
         synchronized (this) {
             currentJobs = new ArrayList<>(handlers.values());
@@ -227,7 +229,7 @@ public class MvService implements MvApi {
         }
         c = new MvJobController(this, m, handler, settings);
         handlers.put(name, c);
-        ensurePartitionsRefresh();
+        scheduleRegularJobs();
         return c.start();
     }
 
@@ -344,24 +346,39 @@ public class MvService implements MvApi {
         return Arrays.asList(v.split("[,]"));
     }
 
-    private void ensurePartitionsRefresh() {
-        if (refreshFuture.get() != null) {
-            return;
+    private void scheduleRegularJobs() {
+        if (metricsFuture.get() == null) {
+            var f = scheduler.scheduleWithFixedDelay(
+                    this::metricsRefresh,
+                    5,
+                    5,
+                    TimeUnit.SECONDS
+            );
+            f = metricsFuture.getAndSet(f);
+            if (f != null) {
+                f.cancel(false);
+            }
         }
-        var f = scheduler.scheduleWithFixedDelay(
-                this::partitionsRefresh,
-                60,
-                60,
-                TimeUnit.SECONDS
-        );
-        f = refreshFuture.getAndSet(f);
-        if (f != null) {
-            f.cancel(false);
+        if (refreshFuture.get() == null) {
+            var f = scheduler.scheduleWithFixedDelay(
+                    this::partitionsRefresh,
+                    60,
+                    60,
+                    TimeUnit.SECONDS
+            );
+            f = refreshFuture.getAndSet(f);
+            if (f != null) {
+                f.cancel(false);
+            }
         }
     }
 
-    private void cancelPartitionsRefresh() {
+    private void cancelRegularJobs() {
         var f = refreshFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(true);
+        }
+        f = metricsFuture.getAndSet(null);
         if (f != null) {
             f.cancel(true);
         }
@@ -370,6 +387,12 @@ public class MvService implements MvApi {
     private void partitionsRefresh() {
         for (MvJobController c : grabControllers()) {
             c.getApplyManager().refreshSelectors(ydb.getTableClient());
+        }
+    }
+
+    private void metricsRefresh() {
+        for (MvJobController c : grabControllers()) {
+            MvMetrics.recordHandlerState(c.getName(), c.isRunning(), c.isLocked());
         }
     }
 

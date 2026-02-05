@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
 import io.prometheus.client.Histogram;
 import io.prometheus.client.exporter.HTTPServer;
 import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
@@ -67,7 +68,7 @@ public final class MvMetrics {
     }
 
     public static synchronized void shutdown() {
-        HTTPServer current = server;
+        var current = server;
         server = null;
         metrics = null;
         if (current != null) {
@@ -76,8 +77,40 @@ public final class MvMetrics {
         ENABLED.set(false);
     }
 
+    public static void recordHandlerState(String handler,
+            boolean running, boolean locked) {
+        var m = metrics;
+        if (handler == null || m == null) {
+            return;
+        }
+        String[] labels = {handler};
+        m.jobActive.labels(labels).set(running ? 1 : 0);
+        m.jobLocked.labels(labels).set(running && locked ? 1 : 0);
+    }
+
+    public static void recordHandlerStats(String handler,
+            int nthreads, int queueSize, int queueLimit) {
+        var m = metrics;
+        if (handler == null || m == null) {
+            return;
+        }
+        String[] labels = {handler};
+        m.jobThreads.labels(labels).set(nthreads);
+        m.jobQueueSize.labels(labels).set(queueSize);
+        m.jobQueueLimit.labels(labels).set(queueLimit);
+    }
+
+    public static void recordQueueWait(String handler) {
+        var m = metrics;
+        if (handler == null || m == null) {
+            return;
+        }
+        String[] labels = {handler};
+        m.jobQueueWait.labels(labels).inc();
+    }
+
     public static void recordCdcRead(CdcScope scope, int count) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null || count <= 0) {
             return;
         }
@@ -86,7 +119,7 @@ public final class MvMetrics {
     }
 
     public static void recordCdcParse(CdcScope scope, long startNs, int input, int output) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null || input <= 0) {
             return;
         }
@@ -100,7 +133,7 @@ public final class MvMetrics {
     }
 
     public static void recordCdcSubmit(CdcScope scope, long startNs, int count) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null) {
             return;
         }
@@ -114,7 +147,7 @@ public final class MvMetrics {
     }
 
     public static void recordProcessedSuccess(ActionScope scope, String action, long startNs, int count) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null || count <= 0) {
             return;
         }
@@ -124,7 +157,7 @@ public final class MvMetrics {
     }
 
     public static void recordProcessedError(ActionScope scope, String action, long startNs, int count) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null || count <= 0) {
             return;
         }
@@ -140,7 +173,7 @@ public final class MvMetrics {
     }
 
     public static void recordSqlTime(ActionScope scope, String action, long startNs) {
-        Metrics m = metrics;
+        var m = metrics;
         if (scope == null || m == null) {
             return;
         }
@@ -235,6 +268,13 @@ public final class MvMetrics {
         final Counter sqlTimeTotal;
         final Histogram sqlTime;
 
+        final Gauge jobActive;
+        final Gauge jobLocked;
+        final Gauge jobThreads;
+        final Gauge jobQueueSize;
+        final Gauge jobQueueLimit;
+        final Counter jobQueueWait;
+
         public Metrics(CollectorRegistry registry) {
             String[] cdcLabels = {"handler", "consumer", "topic"};
             cdcRead = Counter.build()
@@ -272,6 +312,7 @@ public final class MvMetrics {
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
                     .register(registry);
+
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
             processedRecords = Counter.build()
                     .name("ydbmv_mv_records_processed_total")
@@ -302,6 +343,38 @@ public final class MvMetrics {
                     .name("ydbmv_mv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
+                    .register(registry);
+
+            String[] jobLabels = {"handler"};
+            jobActive = Gauge.build()
+                    .name("ydbmv_handler_active")
+                    .help("Reports the number of active handlers (jobs)")
+                    .labelNames(jobLabels)
+                    .register(registry);
+            jobLocked = Gauge.build()
+                    .name("ydbmv_handler_locked")
+                    .help("Reports the number of locked handlers (jobs)")
+                    .labelNames(jobLabels)
+                    .register(registry);
+            jobThreads = Gauge.build()
+                    .name("ydbmv_handler_threads")
+                    .help("Reports the number of active threads per handler")
+                    .labelNames(jobLabels)
+                    .register(registry);
+            jobQueueSize = Gauge.build()
+                    .name("ydbmv_handler_queue_size")
+                    .help("Reports the size of input queue per handler")
+                    .labelNames(jobLabels)
+                    .register(registry);
+            jobQueueLimit = Gauge.build()
+                    .name("ydbmv_handler_queue_limit")
+                    .help("Reports the limit on input queue size per handler")
+                    .labelNames(jobLabels)
+                    .register(registry);
+            jobQueueWait = Counter.build()
+                    .name("ydbmv_handler_queue_wait")
+                    .help("Reports the number of waits on input queue per handler")
+                    .labelNames(jobLabels)
                     .register(registry);
         }
     }
