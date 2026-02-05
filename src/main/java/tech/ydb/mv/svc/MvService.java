@@ -281,7 +281,7 @@ public class MvService implements MvApi {
     @Override
     public void generateStreams(boolean create, PrintStream pw) {
         for (var handler : metadata.getHandlers().values()) {
-            new MvStreamBuilder(ydb, pw, handler, create).apply();
+            new MvStreamBuilder(ydb, metadata, handler, pw, create).apply();
         }
     }
 

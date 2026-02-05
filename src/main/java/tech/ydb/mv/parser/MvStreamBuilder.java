@@ -10,6 +10,7 @@ import tech.ydb.query.QuerySession;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvInput;
+import tech.ydb.mv.model.MvMetadata;
 
 /**
  *
@@ -20,14 +21,17 @@ public class MvStreamBuilder {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvStreamBuilder.class);
 
     private final YdbConnector conn;
-    private final PrintStream pw;
+    private final MvMetadata metadata;
     private final MvHandler handler;
+    private final PrintStream pw;
     private final boolean create;
 
-    public MvStreamBuilder(YdbConnector conn, PrintStream pw, MvHandler handler, boolean create) {
+    public MvStreamBuilder(YdbConnector conn, MvMetadata metadata, MvHandler handler,
+            PrintStream pw, boolean create) {
         this.conn = conn;
-        this.pw = pw;
+        this.metadata = metadata;
         this.handler = handler;
+        this.pw = pw;
         this.create = create;
     }
 
@@ -48,6 +52,9 @@ public class MvStreamBuilder {
             runDdl(sql);
         }
         String consumerName = handler.getConsumerNameAlways();
+        if (input.isBatchMode()) {
+            consumerName = metadata.getDictionaryConsumer();
+        }
         sql = generateConsumerSql(input, consumerName);
         pw.println(sql);
         pw.println();

@@ -112,18 +112,18 @@ public class MvValidateSql {
         Status status = conn.getTableRetryCtx().supplyStatus(
                 sess -> validateSql(sess, sql))
                 .join();
-        return extractErrors(status);
+        return extractErrors(status, sql);
     }
 
     private CompletableFuture<Status> validateSql(Session sess, String sql) {
         return sess.prepareDataQuery(sql).thenApply(result -> result.getStatus());
     }
 
-    private String extractErrors(Status status) {
+    private String extractErrors(Status status, String sql) {
         if (status.isSuccess()) {
             return null;
         }
-        return status.toString();
+        return status.toString() + "\n\t*** SQL text ***\n" + sql;
     }
 
     private List<MvColumn> collectExpressionColumns(MvViewExpr target) {

@@ -523,7 +523,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Custom SQL expression at " + sqlPos
+            return "Custom SQL column expression at " + sqlPos
                     + " for output column `" + column.getName()
                     + "` of target `" + target.getName()
                     + "` cannot be executed: " + issues;
@@ -545,7 +545,7 @@ public interface MvIssue extends MvSqlPosHolder {
 
         @Override
         public String getMessage() {
-            return "Custom SQL expression at " + filter.getSqlPos()
+            return "Custom SQL filter expression at " + filter.getSqlPos()
                     + " for output filtering"
                     + " of target `" + target.getName()
                     + "` cannot be executed: " + issues;
