@@ -76,35 +76,40 @@ public final class MvMetrics {
         ENABLED.set(false);
     }
 
-    public static void recordCdcRead(String consumer, String topic, int count) {
+    public static void recordCdcRead(CdcScope scope, int count) {
         Metrics m = metrics;
-        if (m == null || count <= 0) {
+        if (scope == null || m == null || count <= 0) {
             return;
         }
-        m.cdcRead.labels(safeLabel(consumer), safeLabel(topic)).inc(count);
+        String[] labels = getCdcLabels(scope);
+        m.cdcRead.labels(labels).inc(count);
     }
 
-    public static void recordCdcParse(String consumer, String topic, long durationNs, boolean error) {
+    public static void recordCdcParse(CdcScope scope, long startNs, int input, int output) {
         Metrics m = metrics;
-        if (m == null) {
+        if (scope == null || m == null || input <= 0) {
             return;
         }
-        m.cdcParseTime.labels(safeLabel(consumer), safeLabel(topic))
-                .observe(toSeconds(durationNs));
-        if (error) {
-            m.cdcParseErrors.labels(safeLabel(consumer), safeLabel(topic)).inc();
+        long durationNs = System.nanoTime() - startNs;
+        String[] labels = getCdcLabels(scope);
+        m.cdcParseTime.labels(labels).observe(toSeconds(durationNs));
+        m.cdcParseTimeTotal.labels(labels).inc(durationNs / 1000L);
+        if (output < input) {
+            m.cdcParseErrors.labels(labels).inc(input - output);
         }
     }
 
-    public static void recordCdcSubmit(String consumer, String topic, long durationNs, int count) {
+    public static void recordCdcSubmit(CdcScope scope, long startNs, int count) {
         Metrics m = metrics;
-        if (m == null) {
+        if (scope == null || m == null) {
             return;
         }
-        m.cdcSubmitTime.labels(safeLabel(consumer), safeLabel(topic))
-                .observe(toSeconds(durationNs));
+        long durationNs = System.nanoTime() - startNs;
+        String[] labels = getCdcLabels(scope);
+        m.cdcSubmitTime.labels(labels).observe(toSeconds(durationNs));
+        m.cdcSubmitTimeTotal.labels(labels).inc(durationNs / 1000L);
         if (count > 0) {
-            m.cdcSubmitted.labels(safeLabel(consumer), safeLabel(topic)).inc(count);
+            m.cdcSubmitted.labels(labels).inc(count);
         }
     }
 
@@ -134,6 +139,17 @@ public final class MvMetrics {
         m.processingTimeTotal.labels(labels).inc(durationNs / 1000L);
     }
 
+    public static void recordSqlTime(ActionScope scope, String action, long startNs) {
+        Metrics m = metrics;
+        if (scope == null || m == null) {
+            return;
+        }
+        long durationNs = System.nanoTime() - startNs;
+        String[] labels = getActionLabels(scope, action);
+        m.sqlTime.labels(labels).observe(toSeconds(durationNs));
+        m.sqlTimeTotal.labels(labels).inc(durationNs / 1000L);
+    }
+
     private static String[] getActionLabels(ActionScope scope, String action) {
         String[] labels = {
             safeLabel(scope.type()),
@@ -147,15 +163,13 @@ public final class MvMetrics {
         return labels;
     }
 
-    public static void recordSqlTime(ActionScope scope, String action, long startNs) {
-        Metrics m = metrics;
-        if (m == null) {
-            return;
-        }
-        long durationNs = System.nanoTime() - startNs;
-        String[] labels = getActionLabels(scope, action);
-        m.sqlTime.labels(labels).observe(toSeconds(durationNs));
-        m.sqlTimeTotal.labels(labels).inc(durationNs / 1000L);
+    private static String[] getCdcLabels(CdcScope scope) {
+        String[] labels = {
+            safeLabel(scope.handler()),
+            safeLabel(scope.consumer()),
+            safeLabel(scope.topic())
+        };
+        return labels;
     }
 
     private static String safeLabel(String value) {
@@ -209,8 +223,10 @@ public final class MvMetrics {
         final Counter cdcRead;
         final Counter cdcParseErrors;
         final Counter cdcSubmitted;
+        final Counter cdcParseTimeTotal;
         final Histogram cdcParseTime;
         final Histogram cdcSubmitTime;
+        final Counter cdcSubmitTimeTotal;
 
         final Counter processedRecords;
         final Counter processingErrors;
@@ -220,7 +236,7 @@ public final class MvMetrics {
         final Histogram sqlTime;
 
         public Metrics(CollectorRegistry registry) {
-            String[] cdcLabels = {"consumer", "topic"};
+            String[] cdcLabels = {"handler", "consumer", "topic"};
             cdcRead = Counter.build()
                     .name("ydbmv_cdc_records_read_total")
                     .help("CDC records read from topics")
@@ -236,14 +252,24 @@ public final class MvMetrics {
                     .help("CDC records submitted for processing")
                     .labelNames(cdcLabels)
                     .register(registry);
+            cdcParseTimeTotal = Counter.build()
+                    .name("ydbmv_cdc_parse_time_micros")
+                    .help("CDC message parsing time in microseconds")
+                    .labelNames(cdcLabels)
+                    .register(registry);
             cdcParseTime = Histogram.build()
                     .name("ydbmv_cdc_parse_seconds")
-                    .help("Time spent parsing CDC records")
+                    .help("CDC message parsing time histogram")
+                    .labelNames(cdcLabels)
+                    .register(registry);
+            cdcSubmitTimeTotal = Counter.build()
+                    .name("ydbmv_cdc_submit_time_micros")
+                    .help("CDC message submission time in microseconds")
                     .labelNames(cdcLabels)
                     .register(registry);
             cdcSubmitTime = Histogram.build()
                     .name("ydbmv_cdc_submit_seconds")
-                    .help("Time spent submitting CDC records for processing")
+                    .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
                     .register(registry);
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
@@ -264,7 +290,7 @@ public final class MvMetrics {
                     .register(registry);
             processingTime = Histogram.build()
                     .name("ydbmv_mv_processing_seconds")
-                    .help("Processing time per action and target")
+                    .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
             sqlTimeTotal = Counter.build()
@@ -274,7 +300,7 @@ public final class MvMetrics {
                     .register(registry);
             sqlTime = Histogram.build()
                     .name("ydbmv_mv_sql_seconds")
-                    .help("SQL execution time per action and target")
+                    .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
         }
@@ -335,6 +361,13 @@ public final class MvMetrics {
             String alias,
             String source,
             String item) {
+
+    }
+
+    public record CdcScope(
+            String handler,
+            String consumer,
+            String topic) {
 
     }
 

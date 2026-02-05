@@ -60,8 +60,22 @@ public class MvCdcFeeder implements AutoCloseable {
         return adapter.getFeederName();
     }
 
+    /**
+     * Get the consumer name configured for the CDC feeder.
+     *
+     * @return Consumer name.
+     */
     public String getConsumerName() {
         return adapter.getConsumerName();
+    }
+
+    /**
+     * Get the name for the handler (job) which runs the CDC feeder.
+     *
+     * @return Handler (e.g. job) name for the CDC feeder.
+     */
+    public String getFeederName() {
+        return adapter.getFeederName();
     }
 
     /**

@@ -57,8 +57,12 @@ class MvCdcEventReader extends AbstractReadEventHandler {
     @Override
     public void onMessages(DataReceivedEvent event) {
         String topicPath = event.getPartitionSession().getPath();
-        String consumerName = owner.getConsumerName();
-        MvMetrics.recordCdcRead(consumerName, topicPath, event.getMessages().size());
+        MvMetrics.CdcScope scope = new MvMetrics.CdcScope(
+                owner.getFeederName(),
+                owner.getConsumerName(),
+                topicPath);
+        MvMetrics.recordCdcRead(scope, event.getMessages().size());
+
         MvCdcParser parser = owner.findParser(topicPath);
         if (parser == null) {
             LOG.warn("Feeder `{}` skipping {} message(s) for unhandled topic `{}`",
@@ -67,6 +71,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
             return;
         }
 
+        long parseStart = System.nanoTime();
         ArrayList<MvChangeRecord> records = new ArrayList<>(event.getMessages().size());
         for (Message m : event.getMessages()) {
             Instant tv = m.getCreatedAt();
@@ -76,15 +81,14 @@ class MvCdcEventReader extends AbstractReadEventHandler {
             if (tv == null) {
                 tv = Instant.now();
             }
-            long parseStart = System.nanoTime();
             MvCdcParser.ParseResult result = parser.parse(m.getData(), tv);
-            long parseTime = System.nanoTime() - parseStart;
-            MvMetrics.recordCdcParse(consumerName, topicPath, parseTime, result.isError());
             if (result.getRecord() != null) {
                 records.add(result.getRecord());
             }
         }
         LOG.trace("Topic `{}` parsed input: {}", topicPath, records);
+
+        MvMetrics.recordCdcParse(scope, parseStart, event.getMessages().size(), records.size());
 
         if (records.isEmpty()) {
             LOG.warn("Feeder `{}` skipping {} message(s) for topic `{}` - nothing to process",
@@ -96,8 +100,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         long submitStart = System.nanoTime();
         try {
             sink.submit(records, new MvCdcCommitHandler(event, records.size()));
-            long submitTime = System.nanoTime() - submitStart;
-            MvMetrics.recordCdcSubmit(consumerName, topicPath, submitTime, records.size());
+            MvMetrics.recordCdcSubmit(scope, submitStart, records.size());
         } catch (Exception ex) {
             // We should not throw from onMessages(), as it stops the CDC reader.
             LOG.error("Feeder `{}` for topic `{}` SUBMIT FAILED",
