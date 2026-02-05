@@ -10,6 +10,7 @@ import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -30,24 +31,17 @@ class ActionKeysGrab extends ActionKeysAbstract {
             MvViewExpr transformation,
             MvActionContext context
     ) {
-        super(target, src, transformation, context, metricsScopeForGrab(target, src));
+        super(target, src, transformation, context,
+                MvMetrics.scopeForActionGrab(context.getHandler(), target, src));
         try (MvSqlGen sg = new MvSqlGen(transformation)) {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(),
+                instance, context.getHandler().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
-    }
-
-    private static MetricsScope metricsScopeForGrab(MvViewExpr target, MvJoinSource src) {
-        String alias = target.getAlias();
-        if (alias == null || alias.isBlank()) {
-            alias = "default";
-        }
-        return new MetricsScope("grabKeys", target.getName(), alias, src.getTableName(), null);
     }
 
     @Override

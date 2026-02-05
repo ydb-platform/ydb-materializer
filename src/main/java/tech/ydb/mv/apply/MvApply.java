@@ -131,7 +131,7 @@ class MvApply {
 
         public Configurator(MvActionContext context) {
             this.context = context;
-            this.metadata = context.getMetadata();
+            this.metadata = context.getHandler();
             this.workersCount = context.getSettings().getApplyThreads();
             this.partitioning = context.getPartitioning();
         }

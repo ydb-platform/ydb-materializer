@@ -6,6 +6,7 @@ import java.util.List;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
@@ -25,30 +26,23 @@ class ActionKeysTransform extends ActionKeysAbstract {
 
     public ActionKeysTransform(MvViewExpr target, MvJoinSource src,
             MvViewExpr transformation, MvActionContext context) {
-        super(target, src, transformation, context, metricsScopeForTransform(target, src));
+        super(target, src, transformation, context,
+                MvMetrics.scopeForActionTransform(context.getHandler(), target, src));
         if (!transformation.isSingleStepTransformation()) {
             throw new IllegalArgumentException("Single step transformation should be passed");
         }
         if (this.keyInfo.size() != transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
-                    + this.keyInfo.size() + ", got " + this.keyInfo.size());
+                    + this.keyInfo.size() + " keys, got " + this.keyInfo.size());
         }
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as {}, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(),
+                instance, context.getHandler().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
-    }
-
-    private static MetricsScope metricsScopeForTransform(MvViewExpr target, MvJoinSource src) {
-        String alias = target.getAlias();
-        if (alias == null || alias.isBlank()) {
-            alias = "default";
-        }
-        return new MetricsScope("transform", target.getName(), alias, src.getTableName(), null);
     }
 
     @Override

@@ -9,6 +9,7 @@ import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -30,7 +31,7 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
 
     public ActionKeysFilter(MvActionContext context, MvViewExpr target,
             MvViewExpr request, MvRowFilter filter) {
-        super(context, metricsScopeForFilter(target, request));
+        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target, request));
         this.target = target;
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.filter = filter;
@@ -38,20 +39,8 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
-                instance, context.getMetadata().getName(), target.getName(),
+                instance, context.getHandler().getName(), target.getName(),
                 target.getAlias(), filter.getBlocks().size());
-    }
-
-    private static MetricsScope metricsScopeForFilter(MvViewExpr target, MvViewExpr request) {
-        String targetAlias = target.getAlias();
-        if (targetAlias == null || targetAlias.isBlank()) {
-            targetAlias = "default";
-        }
-        String itemAlias = request.getAlias();
-        if (itemAlias == null || itemAlias.isBlank()) {
-            itemAlias = "default";
-        }
-        return new MetricsScope("filter", target.getName(), targetAlias, null, itemAlias);
     }
 
     @Override

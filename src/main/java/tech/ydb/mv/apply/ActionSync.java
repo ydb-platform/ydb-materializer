@@ -9,7 +9,6 @@ import com.google.common.collect.Lists;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
-import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
 import tech.ydb.table.result.ResultSetReader;
@@ -22,6 +21,7 @@ import tech.ydb.table.values.Value;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -44,7 +44,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
     public ActionSync(MvViewExpr target, MvActionContext context) {
-        super(context, metricsScopeForSync(target));
+        super(context, MvMetrics.scopeForActionSync(context.getHandler(), target));
         if (target == null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {
             throw new IllegalArgumentException("Missing input");
@@ -62,19 +62,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
         }
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(),
+                instance, context.getHandler().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
-    }
-
-    private static MetricsScope metricsScopeForSync(MvViewExpr target) {
-        String alias = target.getAlias();
-        if (alias == null || alias.isBlank()) {
-            alias = "default";
-        }
-        return new MetricsScope("sync", target.getName(), alias, null, null);
     }
 
     public String getTargetTableName() {
@@ -190,7 +182,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             currentStatement.remove();
             timing.future.join().getStatus().expectSuccess();
             long durationNs = System.nanoTime() - timing.startNs;
-            MetricsScope scope = getMetricsScope();
+            var scope = getMetricsScope();
             if (scope != null && scope.target() != null) {
                 MvMetrics.recordSqlTime(
                         scope.type(),

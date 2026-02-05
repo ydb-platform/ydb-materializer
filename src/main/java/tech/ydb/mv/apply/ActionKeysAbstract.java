@@ -5,6 +5,7 @@ import java.util.List;
 import com.google.common.collect.Lists;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvViewExpr;
@@ -23,7 +24,8 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
     protected final int selectBatchSize;
 
     public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
-            MvViewExpr transformation, MvActionContext context, MetricsScope metricsScope) {
+            MvViewExpr transformation, MvActionContext context,
+            MvMetrics.Scope metricsScope) {
         super(context, metricsScope);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {

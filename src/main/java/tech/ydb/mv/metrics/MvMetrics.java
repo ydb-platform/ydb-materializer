@@ -1,18 +1,18 @@
 package tech.ydb.mv.metrics;
 
-import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import io.prometheus.client.exporter.HTTPServer;
+import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
 
-import com.sun.net.httpserver.HttpServer;
-
-import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.model.MvHandler;
+import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvViewExpr;
 
 /**
  * Prometheus metrics for YDB Materializer.
@@ -30,61 +30,48 @@ public final class MvMetrics {
     private MvMetrics() {
     }
 
-    public static synchronized void init(Properties props) {
-        init(props, null);
+    public static synchronized void init(Config config) {
+        init(config, null);
     }
 
-    public static synchronized void init(Properties props, Metrics provided) {
-        if (props == null) {
+    public static synchronized void init(Config config, CollectorRegistry provided) {
+        if (config == null || !config.isEnabled()) {
             return;
         }
         if (ENABLED.get()) {
             return;
         }
-        boolean enabled = Boolean.parseBoolean(
-                props.getProperty(MvConfig.CONF_METRICS_ENABLED, "false"));
-        if (!enabled) {
-            return;
-        }
-        String host = props.getProperty(MvConfig.CONF_METRICS_HOST, "0.0.0.0");
-        int port = Integer.parseInt(
-                props.getProperty(MvConfig.CONF_METRICS_PORT, "9090"));
-        Metrics localMetrics = provided;
-        CollectorRegistry registry = (localMetrics == null)
+        CollectorRegistry registry = (provided == null)
                 ? new CollectorRegistry()
-                : localMetrics.getRegistry();
-        if (localMetrics == null) {
-            localMetrics = new Metrics(registry);
-        } else if (registry == null) {
-            LOG.error("Failed to initialize Prometheus metrics server: registry is null");
-            return;
-        }
-        metrics = localMetrics;
-        try {
-            InetSocketAddress address = new InetSocketAddress(host, port);
-            HttpServer httpServer = HttpServer.create(address, 3);
-            server = new HTTPServer(httpServer, registry, true);
-        } catch (IOException ex) {
-            LOG.error("Failed to start Prometheus metrics server on {}:{}",
-                    host, port, ex);
-            metrics = null;
-            return;
-        } catch (Exception ex) {
-            LOG.error("Failed to initialize Prometheus metrics server", ex);
-            metrics = null;
-            return;
+                : provided;
+        metrics = new Metrics(registry);
+        if (provided != null) {
+            LOG.info("Prometheus metrics collector configured.");
+            server = null;
+        } else {
+            // Provide JVM metrics
+            JvmMetrics.builder().register();
+            // Start a dedicated HTTP collector instance
+            try {
+                InetSocketAddress address = new InetSocketAddress(config.getHost(), config.getPort());
+                server = new HTTPServer(address, registry);
+            } catch (Exception ex) {
+                LOG.error("Failed to start Prometheus metrics server on {}:{}",
+                        config.getHost(), config.getPort(), ex);
+                metrics = null;
+                return;
+            }
+            LOG.info("Prometheus metrics enabled on http://{}:{}", config.getHost(), config.getPort());
         }
         ENABLED.set(true);
-        LOG.info("Prometheus metrics enabled on http://{}:{}", host, port);
     }
 
-    @SuppressWarnings("deprecation")
     public static synchronized void shutdown() {
         HTTPServer current = server;
         server = null;
         metrics = null;
         if (current != null) {
-            current.stop();
+            current.close();
         }
         ENABLED.set(false);
     }
@@ -121,74 +108,59 @@ public final class MvMetrics {
         }
     }
 
-    public static void recordProcessedCount(String type,
-                                            String target,
-                                            String alias,
-                                            String source,
-                                            String item,
-                                            String action,
-                                            int count) {
+    public static void recordProcessedSuccess(Scope scope, String action, long startNs, int count) {
         Metrics m = metrics;
-        if (m == null || count <= 0) {
+        if (scope == null || m == null || count <= 0) {
             return;
         }
+        long durationNs = System.nanoTime() - startNs;
         m.processedRecords.labels(
-                safeLabel(type),
-                safeLabel(target),
-                safeLabel(alias),
-                safeLabel(source),
-                safeLabel(item),
+                safeLabel(scope.type()),
+                safeLabel(scope.target()),
+                safeLabel(scope.alias()),
+                safeLabel(scope.source()),
+                safeLabel(scope.item()),
                 safeLabel(action)
         ).inc(count);
-    }
-
-    public static void recordProcessingTime(String type,
-                                            String target,
-                                            String alias,
-                                            String source,
-                                            String item,
-                                            String action,
-                                            long durationNs) {
-        Metrics m = metrics;
-        if (m == null) {
-            return;
-        }
         m.processingTime.labels(
-                safeLabel(type),
-                safeLabel(target),
-                safeLabel(alias),
-                safeLabel(source),
-                safeLabel(item),
+                safeLabel(scope.type()),
+                safeLabel(scope.target()),
+                safeLabel(scope.alias()),
+                safeLabel(scope.source()),
+                safeLabel(scope.item()),
                 safeLabel(action)
         ).observe(toSeconds(durationNs));
     }
 
-    public static void recordProcessingError(String type,
-                                             String target,
-                                             String alias,
-                                             String source,
-                                             String item,
-                                             String action,
-                                             int count) {
+    public static void recordProcessedError(Scope scope, String action, long startNs, int count) {
         Metrics m = metrics;
-        if (m == null || count <= 0) {
+        if (scope == null || m == null || count <= 0) {
             return;
         }
+        long durationNs = System.nanoTime() - startNs;
         m.processingErrors.labels(
-                safeLabel(type),
-                safeLabel(target),
-                safeLabel(alias),
-                safeLabel(source),
-                safeLabel(item),
+                safeLabel(scope.type()),
+                safeLabel(scope.target()),
+                safeLabel(scope.alias()),
+                safeLabel(scope.source()),
+                safeLabel(scope.item()),
                 safeLabel(action)
         ).inc(count);
+        m.processingTime.labels(
+                safeLabel(scope.type()),
+                safeLabel(scope.target()),
+                safeLabel(scope.alias()),
+                safeLabel(scope.source()),
+                safeLabel(scope.item()),
+                safeLabel(action)
+        ).observe(toSeconds(durationNs));
     }
 
     public static void recordSqlTime(String type,
-                                     String target,
-                                     String alias,
-                                     String action,
-                                     long durationNs) {
+            String target,
+            String alias,
+            String action,
+            long durationNs) {
         Metrics m = metrics;
         if (m == null) {
             return;
@@ -219,10 +191,35 @@ public final class MvMetrics {
         return durationNs / 1_000_000_000D;
     }
 
+    private static String getAlias(MvViewExpr target) {
+        String alias = target.getAlias();
+        if (alias == null || alias.isBlank()) {
+            alias = "default";
+        }
+        return alias;
+    }
 
-    public static class Metrics {
+    public static Scope scopeForActionFilter(MvHandler handler, MvViewExpr target, MvViewExpr request) {
+        return new Scope("filter", handler.getName(), target.getName(), getAlias(target), null, getAlias(request));
+    }
 
-        private final CollectorRegistry registry;
+    public static Scope scopeForActionGrab(MvHandler handler, MvViewExpr target, MvJoinSource src) {
+        return new Scope("grabKeys", handler.getName(), target.getName(), getAlias(target),
+                src.getTableName(), null);
+    }
+
+    public static Scope scopeForActionTransform(MvHandler handler, MvViewExpr target, MvJoinSource src) {
+        return new Scope("transform", handler.getName(), target.getName(), getAlias(target),
+                src.getTableName(), null);
+    }
+
+    public static Scope scopeForActionSync(MvHandler handler, MvViewExpr target) {
+        return new Scope("sync", handler.getName(), target.getName(), getAlias(target),
+                target.getView().getName(), null);
+    }
+
+    private static class Metrics {
+
         final Counter cdcRead;
         final Counter cdcParseErrors;
         final Counter cdcSubmitted;
@@ -235,7 +232,6 @@ public final class MvMetrics {
         final Histogram sqlTime;
 
         public Metrics(CollectorRegistry registry) {
-            this.registry = registry;
             cdcRead = Counter.build()
                     .name("ydbmv_cdc_records_read_total")
                     .help("CDC records read from topics")
@@ -264,27 +260,82 @@ public final class MvMetrics {
             processedRecords = Counter.build()
                     .name("ydbmv_mv_records_processed_total")
                     .help("Records processed per action and target")
-                    .labelNames("type", "target", "alias", "source", "item", "action")
+                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
                     .register(registry);
             processingErrors = Counter.build()
                     .name("ydbmv_mv_processing_errors_total")
                     .help("Processing errors per action and target")
-                    .labelNames("type", "target", "alias", "source", "item", "action")
+                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
                     .register(registry);
             processingTime = Histogram.build()
                     .name("ydbmv_mv_processing_seconds")
                     .help("Processing time per action and target")
-                    .labelNames("type", "target", "alias", "source", "item", "action")
+                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
                     .register(registry);
             sqlTime = Histogram.build()
                     .name("ydbmv_mv_sql_seconds")
                     .help("SQL execution time per action and target")
-                    .labelNames("type", "target", "alias", "action")
+                    .labelNames("type", "handler", "target", "alias", "action")
                     .register(registry);
         }
-
-        public CollectorRegistry getRegistry() {
-            return registry;
-        }
     }
+
+    public static final class Config implements Serializable {
+
+        private boolean enabled;
+        private String host;
+        private int port;
+
+        public Config() {
+            this.enabled = false;
+        }
+
+        public Config(boolean enabled) {
+            this.enabled = enabled;
+            this.host = "0.0.0.0";
+            this.port = 7311;
+        }
+
+        public Config(boolean enabled, String host, int port) {
+            this.enabled = enabled;
+            this.host = host;
+            this.port = port;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public void setPort(int port) {
+            this.port = port;
+        }
+
+    }
+
+    public record Scope(
+            String type,
+            String handler,
+            String target,
+            String alias,
+            String source,
+            String item) {
+
+    }
+
 }

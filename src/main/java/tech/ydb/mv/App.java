@@ -55,6 +55,16 @@ public class App {
         }
     }
 
+    private void initMetrics() {
+        var config = new MvMetrics.Config();
+        config.setEnabled(conn.getProperty(MvConfig.CONF_METRICS_ENABLED, false));
+        if (config.isEnabled()) {
+            config.setHost(conn.getProperty(MvConfig.CONF_METRICS_HOST, "0.0.0.0"));
+            config.setPort(conn.getProperty(MvConfig.CONF_METRICS_PORT, 7311));
+        }
+        MvMetrics.init(config);
+    }
+
     /**
      * Run the configured application in the mode specified.
      *
@@ -62,34 +72,37 @@ public class App {
      */
     public void run(MvConfig.Mode mode) {
         api.applyDefaults(conn.getConfig().getProperties());
-        if (MvConfig.Mode.LOCAL.equals(mode) || MvConfig.Mode.JOB.equals(mode)) {
-            MvMetrics.init(conn.getConfig().getProperties());
-        }
-        try {
-            switch (mode) {
-                case CHECK -> {
-                    LOG.info("Issues output requested.");
-                    api.printIssues(System.out);
-                }
-                case SQL -> {
-                    LOG.info("SQL output requested.");
-                    api.printSql(System.out);
-                }
-                case LOCAL -> {
-                    LOG.info("Local service requested.");
-                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                        api.shutdown();
-                        MvMetrics.shutdown();
-                    }));
+        switch (mode) {
+            case CHECK -> {
+                LOG.info("Issues output requested.");
+                api.printIssues(System.out);
+            }
+            case SQL -> {
+                LOG.info("SQL output requested.");
+                api.printSql(System.out);
+            }
+            case LOCAL -> {
+                LOG.info("Local service requested.");
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    api.shutdown();
+                    MvMetrics.shutdown();
+                }));
+                initMetrics();
+                try {
                     api.runDefaultHandlers();
-                }
-                case JOB -> {
-                    LOG.info("Distributed job service requested.");
-                    runJobService();
+                } finally {
+                    MvMetrics.shutdown();
                 }
             }
-        } finally {
-            MvMetrics.shutdown();
+            case JOB -> {
+                LOG.info("Distributed job service requested.");
+                initMetrics();
+                try {
+                    runJobService();
+                } finally {
+                    MvMetrics.shutdown();
+                }
+            }
         }
     }
 
