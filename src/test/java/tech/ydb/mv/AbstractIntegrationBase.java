@@ -283,7 +283,6 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         props.setProperty(MvBatchSettings.CONF_COORD_STARTUP_MS, "2000");
         props.setProperty(MvBatchSettings.CONF_SCAN_PERIOD_MS, "2000");
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
-        props.setProperty(MvConfig.CONF_METRICS_ENABLED, "true");
         return props;
     }
 

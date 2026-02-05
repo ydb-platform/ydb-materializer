@@ -91,7 +91,7 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
 
     protected static Properties getMgtProperties() {
         Properties props = new Properties();
-        props.setProperty("ydb.url", "grpc://localhost:2136/local");
+        props.setProperty("ydb.url", getConnectionUrl());
         props.setProperty("ydb.auth.mode", "NONE");
         props.setProperty(MvBatchSettings.CONF_TABLE_JOBS, "test1/mv_jobs");
         props.setProperty(MvBatchSettings.CONF_TABLE_SCANS, "test1/mv_job_scans");
