@@ -32,7 +32,7 @@ abstract class ActionBase {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
-    private final MvMetrics.Scope metricsScope;
+    private final MvMetrics.ActionScope metricsScope;
 
     protected final long instance;
     protected final MvActionContext context;
@@ -41,7 +41,7 @@ abstract class ActionBase {
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
 
-    protected ActionBase(MvActionContext context, MvMetrics.Scope metricsScope) {
+    protected ActionBase(MvActionContext context, MvMetrics.ActionScope metricsScope) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.applyManager = context.getApplyManager();
@@ -53,7 +53,7 @@ abstract class ActionBase {
                 .build();
     }
 
-    public MvMetrics.Scope getMetricsScope() {
+    public MvMetrics.ActionScope getMetricsScope() {
         return metricsScope;
     }
 
@@ -106,11 +106,9 @@ abstract class ActionBase {
         ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
-        MvMetrics.Scope scope = metricsScope;
+        MvMetrics.ActionScope scope = metricsScope;
         if (scope != null && scope.target() != null) {
-            long durationNs = System.nanoTime() - startNs;
-            MvMetrics.recordSqlTime(scope.type(), scope.target(), scope.alias(),
-                    "select", durationNs);
+            MvMetrics.recordSqlTime(scope, "select", startNs);
         }
         lastSqlStatement.set(null);
         return rsr;

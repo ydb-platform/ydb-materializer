@@ -181,16 +181,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         if (timing != null) {
             currentStatement.remove();
             timing.future.join().getStatus().expectSuccess();
-            long durationNs = System.nanoTime() - timing.startNs;
             var scope = getMetricsScope();
             if (scope != null && scope.target() != null) {
-                MvMetrics.recordSqlTime(
-                        scope.type(),
-                        scope.target(),
-                        scope.alias(),
-                        timing.operation,
-                        durationNs
-                );
+                MvMetrics.recordSqlTime(scope, timing.operation, timing.startNs);
             }
         }
         lastSqlStatement.set(null);

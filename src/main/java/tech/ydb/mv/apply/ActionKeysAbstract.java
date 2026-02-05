@@ -25,7 +25,7 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
 
     public ActionKeysAbstract(MvViewExpr target, MvJoinSource src,
             MvViewExpr transformation, MvActionContext context,
-            MvMetrics.Scope metricsScope) {
+            MvMetrics.ActionScope metricsScope) {
         super(context, metricsScope);
         if (target == null || src == null || src.getChangefeedInfo() == null
                 || transformation == null) {

@@ -30,7 +30,7 @@ public final class MvMetrics {
     private MvMetrics() {
     }
 
-    public static synchronized void init(Config config) {
+    public static void init(Config config) {
         init(config, null);
     }
 
@@ -108,69 +108,54 @@ public final class MvMetrics {
         }
     }
 
-    public static void recordProcessedSuccess(Scope scope, String action, long startNs, int count) {
+    public static void recordProcessedSuccess(ActionScope scope, String action, long startNs, int count) {
         Metrics m = metrics;
         if (scope == null || m == null || count <= 0) {
             return;
         }
-        long durationNs = System.nanoTime() - startNs;
-        m.processedRecords.labels(
-                safeLabel(scope.type()),
-                safeLabel(scope.target()),
-                safeLabel(scope.alias()),
-                safeLabel(scope.source()),
-                safeLabel(scope.item()),
-                safeLabel(action)
-        ).inc(count);
-        m.processingTime.labels(
-                safeLabel(scope.type()),
-                safeLabel(scope.target()),
-                safeLabel(scope.alias()),
-                safeLabel(scope.source()),
-                safeLabel(scope.item()),
-                safeLabel(action)
-        ).observe(toSeconds(durationNs));
+        String[] labels = getActionLabels(scope, action);
+        recordProcessingTime(m, labels, startNs);
+        m.processedRecords.labels(labels).inc(count);
     }
 
-    public static void recordProcessedError(Scope scope, String action, long startNs, int count) {
+    public static void recordProcessedError(ActionScope scope, String action, long startNs, int count) {
         Metrics m = metrics;
         if (scope == null || m == null || count <= 0) {
             return;
         }
-        long durationNs = System.nanoTime() - startNs;
-        m.processingErrors.labels(
-                safeLabel(scope.type()),
-                safeLabel(scope.target()),
-                safeLabel(scope.alias()),
-                safeLabel(scope.source()),
-                safeLabel(scope.item()),
-                safeLabel(action)
-        ).inc(count);
-        m.processingTime.labels(
-                safeLabel(scope.type()),
-                safeLabel(scope.target()),
-                safeLabel(scope.alias()),
-                safeLabel(scope.source()),
-                safeLabel(scope.item()),
-                safeLabel(action)
-        ).observe(toSeconds(durationNs));
+        String[] labels = getActionLabels(scope, action);
+        recordProcessingTime(m, labels, startNs);
+        m.processingErrors.labels(labels).inc(count);
     }
 
-    public static void recordSqlTime(String type,
-            String target,
-            String alias,
-            String action,
-            long durationNs) {
+    private static void recordProcessingTime(Metrics m, String labels[], long startNs) {
+        long durationNs = System.nanoTime() - startNs;
+        m.processingTime.labels(labels).observe(toSeconds(durationNs));
+        m.processingTimeTotal.labels(labels).inc(durationNs / 1000L);
+    }
+
+    private static String[] getActionLabels(ActionScope scope, String action) {
+        String[] labels = {
+            safeLabel(scope.type()),
+            safeLabel(scope.handler()),
+            safeLabel(scope.target()),
+            safeLabel(scope.alias()),
+            safeLabel(scope.source()),
+            safeLabel(scope.item()),
+            safeLabel(action)
+        };
+        return labels;
+    }
+
+    public static void recordSqlTime(ActionScope scope, String action, long startNs) {
         Metrics m = metrics;
         if (m == null) {
             return;
         }
-        m.sqlTime.labels(
-                safeLabel(type),
-                safeLabel(target),
-                safeLabel(alias),
-                safeLabel(action)
-        ).observe(toSeconds(durationNs));
+        long durationNs = System.nanoTime() - startNs;
+        String[] labels = getActionLabels(scope, action);
+        m.sqlTime.labels(labels).observe(toSeconds(durationNs));
+        m.sqlTimeTotal.labels(labels).inc(durationNs / 1000L);
     }
 
     private static String safeLabel(String value) {
@@ -199,23 +184,24 @@ public final class MvMetrics {
         return alias;
     }
 
-    public static Scope scopeForActionFilter(MvHandler handler, MvViewExpr target, MvViewExpr request) {
-        return new Scope("filter", handler.getName(), target.getName(), getAlias(target), null, getAlias(request));
+    public static ActionScope scopeForActionFilter(MvHandler handler, MvViewExpr target, MvViewExpr request) {
+        return new ActionScope("filter", handler.getName(), target.getName(),
+                getAlias(target), null, getAlias(request));
     }
 
-    public static Scope scopeForActionGrab(MvHandler handler, MvViewExpr target, MvJoinSource src) {
-        return new Scope("grabKeys", handler.getName(), target.getName(), getAlias(target),
-                src.getTableName(), null);
+    public static ActionScope scopeForActionGrab(MvHandler handler, MvViewExpr target, MvJoinSource src) {
+        return new ActionScope("grabKeys", handler.getName(), target.getName(),
+                getAlias(target), src.getTableName(), null);
     }
 
-    public static Scope scopeForActionTransform(MvHandler handler, MvViewExpr target, MvJoinSource src) {
-        return new Scope("transform", handler.getName(), target.getName(), getAlias(target),
-                src.getTableName(), null);
+    public static ActionScope scopeForActionTransform(MvHandler handler, MvViewExpr target, MvJoinSource src) {
+        return new ActionScope("transform", handler.getName(), target.getName(),
+                getAlias(target), src.getTableName(), null);
     }
 
-    public static Scope scopeForActionSync(MvHandler handler, MvViewExpr target) {
-        return new Scope("sync", handler.getName(), target.getName(), getAlias(target),
-                target.getView().getName(), null);
+    public static ActionScope scopeForActionSync(MvHandler handler, MvViewExpr target) {
+        return new ActionScope("sync", handler.getName(), target.getName(),
+                getAlias(target), target.getView().getName(), null);
     }
 
     private static class Metrics {
@@ -228,54 +214,68 @@ public final class MvMetrics {
 
         final Counter processedRecords;
         final Counter processingErrors;
+        final Counter processingTimeTotal;
         final Histogram processingTime;
+        final Counter sqlTimeTotal;
         final Histogram sqlTime;
 
         public Metrics(CollectorRegistry registry) {
+            String[] cdcLabels = {"consumer", "topic"};
             cdcRead = Counter.build()
                     .name("ydbmv_cdc_records_read_total")
                     .help("CDC records read from topics")
-                    .labelNames("consumer", "topic")
+                    .labelNames(cdcLabels)
                     .register(registry);
             cdcParseErrors = Counter.build()
                     .name("ydbmv_cdc_parse_errors_total")
                     .help("CDC parsing errors")
-                    .labelNames("consumer", "topic")
+                    .labelNames(cdcLabels)
                     .register(registry);
             cdcSubmitted = Counter.build()
                     .name("ydbmv_cdc_records_submitted_total")
                     .help("CDC records submitted for processing")
-                    .labelNames("consumer", "topic")
+                    .labelNames(cdcLabels)
                     .register(registry);
             cdcParseTime = Histogram.build()
                     .name("ydbmv_cdc_parse_seconds")
                     .help("Time spent parsing CDC records")
-                    .labelNames("consumer", "topic")
+                    .labelNames(cdcLabels)
                     .register(registry);
             cdcSubmitTime = Histogram.build()
                     .name("ydbmv_cdc_submit_seconds")
                     .help("Time spent submitting CDC records for processing")
-                    .labelNames("consumer", "topic")
+                    .labelNames(cdcLabels)
                     .register(registry);
+            String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
             processedRecords = Counter.build()
                     .name("ydbmv_mv_records_processed_total")
                     .help("Records processed per action and target")
-                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
+                    .labelNames(procLabels)
                     .register(registry);
             processingErrors = Counter.build()
                     .name("ydbmv_mv_processing_errors_total")
                     .help("Processing errors per action and target")
-                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
+                    .labelNames(procLabels)
+                    .register(registry);
+            processingTimeTotal = Counter.build()
+                    .name("ydbmv_mv_processing_time_micros")
+                    .help("Processing time in microseconds per action and target")
+                    .labelNames(procLabels)
                     .register(registry);
             processingTime = Histogram.build()
                     .name("ydbmv_mv_processing_seconds")
                     .help("Processing time per action and target")
-                    .labelNames("type", "handler", "target", "alias", "source", "item", "action")
+                    .labelNames(procLabels)
+                    .register(registry);
+            sqlTimeTotal = Counter.build()
+                    .name("ydbmv_mv_sql_time_micros")
+                    .help("SQL execution time in microseconds per action and target")
+                    .labelNames(procLabels)
                     .register(registry);
             sqlTime = Histogram.build()
                     .name("ydbmv_mv_sql_seconds")
                     .help("SQL execution time per action and target")
-                    .labelNames("type", "handler", "target", "alias", "action")
+                    .labelNames(procLabels)
                     .register(registry);
         }
     }
@@ -328,7 +328,7 @@ public final class MvMetrics {
 
     }
 
-    public record Scope(
+    public record ActionScope(
             String type,
             String handler,
             String target,
