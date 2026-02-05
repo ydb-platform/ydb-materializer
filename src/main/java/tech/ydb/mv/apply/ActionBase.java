@@ -19,6 +19,7 @@ import tech.ydb.table.values.Value;
 
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -31,6 +32,8 @@ abstract class ActionBase {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionBase.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
+    private final MvMetrics.ActionScope metricsScope;
+
     protected final long instance;
     protected final MvActionContext context;
     protected final MvApplyManager applyManager;
@@ -38,15 +41,20 @@ abstract class ActionBase {
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
 
-    protected ActionBase(MvActionContext context) {
+    protected ActionBase(MvActionContext context, MvMetrics.ActionScope metricsScope) {
         this.instance = COUNTER.incrementAndGet();
         this.context = context;
         this.applyManager = context.getApplyManager();
         this.retryCtx = context.getRetryCtx();
+        this.metricsScope = metricsScope;
         var queryTimeout = context.getSettings().getQueryTimeoutSeconds();
         this.querySettings = ExecuteQuerySettings.newBuilder()
                 .withRequestTimeout(Duration.ofSeconds(queryTimeout))
                 .build();
+    }
+
+    public MvMetrics.ActionScope getMetricsScope() {
+        return metricsScope;
     }
 
     public static String getLastSqlStatement() {
@@ -94,9 +102,14 @@ abstract class ActionBase {
         }
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
+        long startNs = System.nanoTime();
         ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
+        MvMetrics.ActionScope scope = metricsScope;
+        if (scope != null && scope.target() != null) {
+            MvMetrics.recordSqlTime(scope, "select", startNs);
+        }
         lastSqlStatement.set(null);
         return rsr;
     }
@@ -154,4 +167,5 @@ abstract class ActionBase {
             items.forEach((handler, tasks) -> consumer.accept(handler, tasks));
         }
     }
+
 }

@@ -1,15 +1,17 @@
 package tech.ydb.mv.feeder;
 
 /**
- * Adapter interface for CDC (change data capture) sources feeding changes into the materializer.
+ * Adapter interface for CDC (change data capture) sources feeding changes into
+ * the materializer.
+ *
  * @author zinal
  */
 public interface MvCdcAdapter {
 
     /**
-     * Get a human-readable identifier for this feeder.
+     * Get the name for the handler (job) which runs the CDC feeder.
      *
-     * @return Unique name of this feeder instance (used for logging/identification).
+     * @return Handler (e.g. job) name for the CDC feeder.
      */
     String getFeederName();
 
@@ -30,7 +32,8 @@ public interface MvCdcAdapter {
     /**
      * Check whether adapter is running.
      *
-     * @return {@code true} if the adapter is currently running (actively consuming changes).
+     * @return {@code true} if the adapter is currently running (actively
+     * consuming changes).
      */
     boolean isRunning();
 

@@ -21,6 +21,7 @@ import tech.ydb.table.values.Value;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbConv;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -40,11 +41,10 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final String sqlDelete;
     private final StructType rowType;
 
-    private final ThreadLocal<CompletableFuture<Result<QueryInfo>>> currentStatement
-            = new ThreadLocal<>();
+    private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
     public ActionSync(MvViewExpr target, MvActionContext context) {
-        super(context);
+        super(context, MvMetrics.scopeForActionSync(context.getHandler(), target));
         if (target == null || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {
             throw new IllegalArgumentException("Missing input");
@@ -54,11 +54,15 @@ class ActionSync extends ActionBase implements MvApplyAction {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.sqlDelete = sg.makePlainDelete();
-            this.rowType = sg.toRowType();
+            if (target.getTableInfo() != null) {
+                this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+            } else {
+                this.rowType = sg.toRowType();
+            }
         }
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
-                instance, context.getMetadata().getName(),
+                instance, context.getHandler().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
@@ -131,11 +135,12 @@ class ActionSync extends ActionBase implements MvApplyAction {
         finishStatement();
         // submit the new query
         lastSqlStatement.set(sqlDelete);
+        long startNs = System.nanoTime();
         var statement = retryCtx.supplyResult(
                 qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
-        currentStatement.set(statement);
+        currentStatement.set(new StatementTiming(statement, startNs, "delete"));
     }
 
     private void upsertRows(List<MvKey> workUpsert) {
@@ -163,18 +168,23 @@ class ActionSync extends ActionBase implements MvApplyAction {
         finishStatement();
         // submit the new query
         lastSqlStatement.set(sqlUpsert);
+        long startNs = System.nanoTime();
         var statement = retryCtx.supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
-        currentStatement.set(statement);
+        currentStatement.set(new StatementTiming(statement, startNs, "upsert"));
     }
 
     private void finishStatement() {
-        var statement = currentStatement.get();
-        if (statement != null) {
+        var timing = currentStatement.get();
+        if (timing != null) {
             currentStatement.remove();
-            statement.join().getStatus().expectSuccess();
+            timing.future.join().getStatus().expectSuccess();
+            var scope = getMetricsScope();
+            if (scope != null && scope.target() != null) {
+                MvMetrics.recordSqlTime(scope, timing.operation, timing.startNs);
+            }
         }
         lastSqlStatement.set(null);
     }
@@ -203,6 +213,19 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 }
             }
             output.add(rowType.newValueUnsafe(members));
+        }
+    }
+
+    private static class StatementTiming {
+
+        final CompletableFuture<Result<QueryInfo>> future;
+        final long startNs;
+        final String operation;
+
+        StatementTiming(CompletableFuture<Result<QueryInfo>> future, long startNs, String operation) {
+            this.future = future;
+            this.startNs = startNs;
+            this.operation = operation;
         }
     }
 }

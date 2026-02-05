@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.metrics.MvMetrics;
 
 /**
  * The apply worker is an active object (thread) with the input queue to
@@ -131,9 +132,13 @@ class MvApplyWorker implements Runnable {
     }
 
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
+        var scope = (action instanceof ActionBase) ? ((ActionBase) action).getMetricsScope() : null;
+        long startNs = System.nanoTime();
         try {
             action.apply(tasks);
+            MvMetrics.recordProcessedSuccess(scope, "all", startNs, tasks.size());
         } catch (Exception ex) {
+            MvMetrics.recordProcessedError(scope, "all", startNs, tasks.size());
             retries.addItems(tasks, action);
             String lastSql = ActionBase.getLastSqlStatement();
             if (lastSql != null) {

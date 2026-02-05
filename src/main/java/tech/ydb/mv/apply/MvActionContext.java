@@ -45,7 +45,7 @@ class MvActionContext {
         return base.getSettings();
     }
 
-    public MvHandler getMetadata() {
+    public MvHandler getHandler() {
         return base.getHandler();
     }
 

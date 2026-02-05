@@ -3,6 +3,7 @@ package tech.ydb.mv;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvRunner;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -54,6 +55,16 @@ public class App {
         }
     }
 
+    private void initMetrics() {
+        var config = new MvMetrics.Config();
+        config.setEnabled(conn.getProperty(MvConfig.CONF_METRICS_ENABLED, false));
+        if (config.isEnabled()) {
+            config.setHost(conn.getProperty(MvConfig.CONF_METRICS_HOST, "0.0.0.0"));
+            config.setPort(conn.getProperty(MvConfig.CONF_METRICS_PORT, 7311));
+        }
+        MvMetrics.init(config);
+    }
+
     /**
      * Run the configured application in the mode specified.
      *
@@ -70,19 +81,27 @@ public class App {
                 LOG.info("SQL output requested.");
                 api.printSql(System.out);
             }
-            case STREAMS -> {
-                LOG.info("Stream generation requested.");
-                boolean create = conn.getProperty(MvConfig.CONF_STREAMS_CREATE, false);
-                api.generateStreams(create, System.out);
-            }
             case LOCAL -> {
                 LOG.info("Local service requested.");
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> api.shutdown()));
-                api.runDefaultHandlers();
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    api.shutdown();
+                    MvMetrics.shutdown();
+                }));
+                initMetrics();
+                try {
+                    api.runDefaultHandlers();
+                } finally {
+                    MvMetrics.shutdown();
+                }
             }
             case JOB -> {
                 LOG.info("Distributed job service requested.");
-                runJobService();
+                initMetrics();
+                try {
+                    runJobService();
+                } finally {
+                    MvMetrics.shutdown();
+                }
             }
         }
     }
@@ -110,8 +129,8 @@ public class App {
         theRunner.stop();
         theCoord.stop();
         api.shutdown();
+        MvMetrics.shutdown();
         // YDB connection should not be closed here,
         // as it is managed on the upper level.
     }
-
 }

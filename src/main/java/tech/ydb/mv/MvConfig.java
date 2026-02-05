@@ -88,6 +88,21 @@ public class MvConfig {
     public static final String CONF_QUERY_TIMEOUT = "job.query.seconds";
 
     /**
+     * Enable Prometheus metrics endpoint.
+     */
+    public static final String CONF_METRICS_ENABLED = "metrics.enabled";
+
+    /**
+     * Port for Prometheus metrics endpoint.
+     */
+    public static final String CONF_METRICS_PORT = "metrics.port";
+
+    /**
+     * Host/interface for Prometheus metrics endpoint.
+     */
+    public static final String CONF_METRICS_HOST = "metrics.host";
+
+    /**
      * Path to coordination service node.
      */
     public static final String CONF_COORD_PATH = "job.coordination.path";

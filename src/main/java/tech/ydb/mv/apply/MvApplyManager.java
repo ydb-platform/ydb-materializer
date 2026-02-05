@@ -53,7 +53,7 @@ public class MvApplyManager implements MvSink {
     }
 
     public String getJobName() {
-        return context.getMetadata().getName();
+        return context.getHandler().getName();
     }
 
     public boolean isRunning() {
@@ -68,6 +68,10 @@ public class MvApplyManager implements MvSink {
         return context.getSettings();
     }
 
+    public int getQueueLimit() {
+        return queueLimit;
+    }
+
     public int getQueueSize() {
         return queueSize.get();
     }
@@ -80,7 +84,7 @@ public class MvApplyManager implements MvSink {
         int temp = queueSize.addAndGet(-1 * count);
         if (temp < 0) {
             LOG.warn("Queue size below zero: {}", temp);
-            queueSize.set(0);
+            queueSize.addAndGet(-1 * temp);
             return 0;
         }
         return temp;
@@ -133,7 +137,7 @@ public class MvApplyManager implements MvSink {
             w.start();
         }
         LOG.info("Started {} apply worker(s) for handler `{}`.",
-                workers.length, context.getMetadata().getName());
+                workers.length, context.getHandler().getName());
     }
 
     public void awaitTermination(Duration timeout) {
@@ -162,7 +166,7 @@ public class MvApplyManager implements MvSink {
 
     @Override
     public Collection<MvInput> getInputs() {
-        return context.getMetadata().getInputs().values().stream()
+        return context.getHandler().getInputs().values().stream()
                 .filter(mi -> !mi.isBatchMode())
                 .toList();
     }
@@ -187,7 +191,7 @@ public class MvApplyManager implements MvSink {
             int count = changes.size();
             handler.commit(count);
             LOG.warn("Skipping {} changes for unexpected table `{}` in handler `{}`",
-                    count, sourceTableName, context.getMetadata().getName());
+                    count, sourceTableName, context.getHandler().getName());
             return null;
         }
         return src;

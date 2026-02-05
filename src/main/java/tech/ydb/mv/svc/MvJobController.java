@@ -13,6 +13,7 @@ import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.feeder.MvScanCompletion;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
 import tech.ydb.mv.model.MvMetadata;
@@ -36,6 +37,7 @@ public class MvJobController implements AutoCloseable {
     private final AtomicReference<MvCdcFeeder> cdcFeeder = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> dictCheckFuture = new AtomicReference<>();
     private final AtomicLong dictCheckTime = new AtomicLong(0);
+    private final AtomicReference<ScheduledFuture<?>> metricsFuture = new AtomicReference<>();
 
     public MvJobController(MvService service, MvMetadata metadata,
             MvHandler handler, MvHandlerSettings settings) {
@@ -95,7 +97,7 @@ public class MvJobController implements AutoCloseable {
         cdcFeederTemp = new MvCdcFeeder(context, context.getYdb(), applyManager);
         cdcFeederTemp.start();
         cdcFeeder.set(cdcFeederTemp);
-        scheduleDictionaryChecks();
+        scheduleRegularJobs();
         return true;
     }
 
@@ -106,7 +108,7 @@ public class MvJobController implements AutoCloseable {
         }
         LOG.info("Stopping the controller `{}`", getName());
         context.setStopped();
-        cancelDictionaryChecks();
+        cancelRegularJobs();
         var cdcFeederTemp = cdcFeeder.get();
         if (cdcFeederTemp != null) {
             cdcFeeder.set(null);
@@ -173,7 +175,8 @@ public class MvJobController implements AutoCloseable {
         }
     }
 
-    private void scheduleDictionaryChecks() {
+    private void scheduleRegularJobs() {
+        // Dictionary re-scan scheduler checker
         var f = context.getService().getScheduler().scheduleAtFixedRate(
                 this::analyzeDictionaryChecks,
                 10,
@@ -184,13 +187,37 @@ public class MvJobController implements AutoCloseable {
         if (f != null) {
             f.cancel(true);
         }
+        // Job metrics publisher
+        f = context.getService().getScheduler().scheduleAtFixedRate(
+                this::updateJobMetrics,
+                5,
+                5,
+                TimeUnit.SECONDS
+        );
+        f = metricsFuture.getAndSet(f);
+        if (f != null) {
+            f.cancel(true);
+        }
     }
 
-    private void cancelDictionaryChecks() {
+    private void cancelRegularJobs() {
         var f = dictCheckFuture.getAndSet(null);
         if (f != null) {
             f.cancel(true);
         }
+        f = metricsFuture.getAndSet(null);
+        if (f != null) {
+            f.cancel(true);
+        }
+    }
+
+    private void updateJobMetrics() {
+        MvMetrics.recordHandlerStats(
+                context.getFeederName(),
+                applyManager.getWorkersCount(),
+                applyManager.getQueueSize(),
+                applyManager.getQueueLimit()
+        );
     }
 
     private void analyzeDictionaryChecks() {
