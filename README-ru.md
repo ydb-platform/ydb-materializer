@@ -12,6 +12,12 @@ YDB Materializer — это Java-приложение, которое обесп
 
 [Скачать приложение можно на странице релизов](https://github.com/ydb-platform/ydb-materializer/releases).
 
+## Минимальный исполняемый пример
+Файлы для простого примера на одной таблице:
+- `scripts/example-tables.sql` (создание таблиц и changefeed)
+- `scripts/example-job1.sql` (определение MV и задания обработки)
+- `scripts/example-job1.xml` (настройки приложения)
+
 ## Системные требования и порядок сборки
 
 - Java 17 или выше.
@@ -314,12 +320,6 @@ java -jar ydb-materializer-*.jar config.xml JOB
 
 </properties>
 ```
-
-### Минимальный исполняемый пример
-Файлы для простого примера на одной таблице:
-- `scripts/example-tables.sql` (создание таблиц и changefeed)
-- `scripts/example-job1.sql` (определение MV и задания обработки)
-- `scripts/example-job1.xml` (настройки приложения)
 
 ### Справочная информация о параметрах конфигурации
 

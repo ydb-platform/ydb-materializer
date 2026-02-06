@@ -12,6 +12,12 @@ The destination tables for MVs, source tables, required indexes and CDC streams 
 
 [See the Releases page for downloads](https://github.com/ydb-platform/ydb-materializer/releases).
 
+## Minimal runnable example
+Use these files for a single-table MV example:
+- `scripts/example-tables.sql` (create tables and changefeed)
+- `scripts/example-job1.sql` (MV + handler definition)
+- `scripts/example-job1.xml` (application config)
+
 ## Requirements and building
 
 - Java 17 or higher
@@ -314,12 +320,6 @@ The configuration file is an XML properties file that defines connection paramet
 
 </properties>
 ```
-
-### Minimal runnable example
-Use these files for a single-table MV example:
-- `scripts/example-tables.sql` (create tables and changefeed)
-- `scripts/example-job1.sql` (MV + handler definition)
-- `scripts/example-job1.xml` (application config)
 
 ### Configuration Parameters Reference
 
