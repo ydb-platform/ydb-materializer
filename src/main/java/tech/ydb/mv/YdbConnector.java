@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.management.ManagementFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.common.transaction.TxMode;
@@ -224,6 +225,7 @@ public class YdbConnector implements AutoCloseable {
     @Override
     public void close() {
         opened.set(false);
+        dumpThreadsIfConfigured();
         LOG.info("Closing YDB connections...");
         // coordinationClient does not support closing, so we leave it as is
         if (topicClient != null) {
@@ -262,6 +264,22 @@ public class YdbConnector implements AutoCloseable {
             }
         }
         LOG.info("Disconnected from YDB.");
+    }
+
+    private void dumpThreadsIfConfigured() {
+        if (!getProperty("dump.threads.on.close", false)) {
+            return;
+        }
+        LOG.info("Performing pre-closure thread dump.");
+        var threadMXBean = ManagementFactory.getThreadMXBean();
+        var threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
+        for (var threadInfo : threadInfos) {
+            LOG.info("{} -> {}", threadInfo.getThreadName(), threadInfo.getThreadState());
+            for (var ste : threadInfo.getStackTrace()) {
+                LOG.info("\t {}", ste);
+            }
+            LOG.info("***");
+        }
     }
 
     public boolean isOpen() {

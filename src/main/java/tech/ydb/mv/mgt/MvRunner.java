@@ -321,9 +321,9 @@ public class MvRunner implements AutoCloseable {
 
             tableOps.upsertRunnerJob(runnerJob);
 
-            LOG.info("[{}] Started handler `{}`", runnerId, jobName);
+            LOG.info("[{}] Started job `{}`", runnerId, jobName);
         } else {
-            throw new RuntimeException("Start request rejected for handler `"
+            throw new RuntimeException("Start request rejected for job `"
                     + jobName + "` - already running.");
         }
     }
@@ -341,7 +341,7 @@ public class MvRunner implements AutoCloseable {
 
         tableOps.deleteRunnerJob(runnerId, jobName);
 
-        LOG.info("[{}] Stopped handler `{}`", runnerId, jobName);
+        LOG.info("[{}] Stopped job `{}`", runnerId, jobName);
     }
 
     private void startScan(String jobName, String targetName, String settingsJson) {
@@ -352,22 +352,22 @@ public class MvRunner implements AutoCloseable {
                 api.setScanSettings(newSettings);
             }
             if (!api.startScan(jobName, targetName)) {
-                throw new IllegalStateException("Scan was not started for handler `"
+                throw new IllegalStateException("Scan was not started for job `"
                         + jobName + "`, table `" + targetName + "`");
             }
         } finally {
             api.setScanSettings(oldSettings);
         }
 
-        LOG.info("[{}] Started scan, handler `{}`, table `{}`", runnerId, jobName, targetName);
+        LOG.info("[{}] Started scan, job `{}`, table `{}`", runnerId, jobName, targetName);
     }
 
     private void stopScan(String jobName, String targetName) {
         if (!api.stopScan(jobName, targetName)) {
-            throw new IllegalStateException("Scan was not stopped for handler `"
+            throw new IllegalStateException("Scan was not stopped for job `"
                     + jobName + "`, table `" + targetName + "`");
         }
-        LOG.info("[{}] Stopped scan, handler `{}`, table `{}`", runnerId, jobName, targetName);
+        LOG.info("[{}] Stopped scan, job `{}`, table `{}`", runnerId, jobName, targetName);
     }
 
     /**
