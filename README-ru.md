@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ydb-platform/ydb-materializer/blob/master/LICENSE)
+[![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo1.maven.org%2Fmaven2%2Ftech%2Fydb%2Fapps%2Fydb-materializer%2Fmaven-metadata.xml)](https://mvnrepository.com/artifact/tech.ydb.apps/ydb-materializer)
+[![Publish](https://img.shields.io/github/actions/workflow/status/ydb-platform/ydb-materializer/publish.yaml)](https://github.com/ydb-platform/ydb-materializer/actions/workflows/publish.yaml)
+
 # Процессор материализованных представлений YDB
 
 YDB Materializer — это Java-приложение, которое обеспечивает наполнение данными управляемых пользователем материализованных представлений в YDB.
@@ -361,6 +365,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.batch.upsert` — размер пакета для операций UPSERT или DELETE
 - `job.max.row.changes` — максимальное количество изменений по отдельной таблице, обрабатываемых за одну итерацию
 - `job.query.seconds` — максимальное время выполнения запроса на выборку, вставку или удаление данных, секунд
+- `job.scan.rate` - Ограничение скорости операций сканирования, строк в секунду
 
 #### Настройки системы управления заданиями
 - `mv.jobs.table` - Альтернативное имя таблицы `mv/jobs`
@@ -588,7 +593,7 @@ ORDER BY updated_at DESC;
 
 Эти специальные имена нельзя использовать для обычных обработчиков (на самом деле имя обработчика не может начинаться с префикса «ydbmv»).
 
-## Отказоустойчивость
+### Отказоустойчивость
 
 Система обеспечивает автоматическую отказоустойчивость:
 
@@ -597,7 +602,7 @@ ORDER BY updated_at DESC;
 - Повтор команд — неудачные команды остаются в очереди для повторной попытки.
 - Выбор лидера — одновременно активен только один экземпляр координатора.
 
-## Развёртывание
+### Развёртывание
 
 1. **Создание управляющих таблиц** — используйте предоставленный скрипт `example-tables.sql`. Имена таблиц можно настроить по мере необходимости.
 1. **Развёртывание исполнителей** — запустите несколько экземпляров в режиме JOB.
