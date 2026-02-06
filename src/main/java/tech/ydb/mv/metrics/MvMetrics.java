@@ -180,6 +180,24 @@ public final class MvMetrics {
         m.sqlTime.labelValues(labels).observe(toSeconds(durationNs));
     }
 
+    public static void recordScanSubmit(ScanScope scope, int count) {
+        var m = metrics;
+        if (scope == null || m == null || count <= 0) {
+            return;
+        }
+        String[] labels = getScanLabels(scope);
+        m.scanRecords.labelValues(labels).inc(count);
+    }
+
+    public static void recordScanDelay(ScanScope scope, long delayMillis) {
+        var m = metrics;
+        if (scope == null || m == null || delayMillis <= 0L) {
+            return;
+        }
+        String[] labels = getScanLabels(scope);
+        m.scanDelays.labelValues(labels).inc(delayMillis);
+    }
+
     private static String[] getActionLabels(ActionScope scope, String action) {
         String[] labels = {
             safeLabel(scope.type()),
@@ -198,6 +216,15 @@ public final class MvMetrics {
             safeLabel(scope.handler()),
             safeLabel(scope.consumer()),
             safeLabel(scope.topic())
+        };
+        return labels;
+    }
+
+    private static String[] getScanLabels(ScanScope scope) {
+        String[] labels = {
+            safeLabel(scope.handler()),
+            safeLabel(scope.target()),
+            safeLabel(scope.alias())
         };
         return labels;
     }
@@ -257,6 +284,8 @@ public final class MvMetrics {
         final Histogram cdcParseTime;
         final Histogram cdcSubmitTime;
 
+        final Counter scanRecords;
+        final Counter scanDelays;
         final Counter processedRecords;
         final Counter processingErrors;
         final Histogram processingTime;
@@ -304,6 +333,18 @@ public final class MvMetrics {
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
                     .classicUpperBounds(timingBounds)
+                    .register(registry);
+
+            String[] scanLabels = {"handler", "target", "alias"};
+            scanRecords = Counter.builder()
+                    .name("ydbmv_scan_records_submitted")
+                    .help("Records submitted by scan")
+                    .labelNames(scanLabels)
+                    .register(registry);
+            scanDelays = Counter.builder()
+                    .name("ydbmv_scan_delay_millis")
+                    .help("Total milliseconds of scan delays due to rate limiter")
+                    .labelNames(scanLabels)
                     .register(registry);
 
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
@@ -426,6 +467,13 @@ public final class MvMetrics {
             String handler,
             String consumer,
             String topic) {
+
+    }
+
+    public record ScanScope(
+            String handler,
+            String target,
+            String alias) {
 
     }
 
