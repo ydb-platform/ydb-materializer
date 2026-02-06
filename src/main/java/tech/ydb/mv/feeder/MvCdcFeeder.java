@@ -119,10 +119,10 @@ public class MvCdcFeeder implements AutoCloseable {
         }
     }
 
-    @Override
     /**
      * Stop CDC reader and shutdown worker threads.
      */
+    @Override
     public void close() {
         stop();
         executor.shutdown();

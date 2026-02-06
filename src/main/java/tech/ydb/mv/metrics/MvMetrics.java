@@ -205,7 +205,6 @@ public final class MvMetrics {
             safeLabel(scope.target()),
             safeLabel(scope.alias()),
             safeLabel(scope.source()),
-            safeLabel(scope.item()),
             safeLabel(action)
         };
         return labels;
@@ -257,23 +256,23 @@ public final class MvMetrics {
 
     public static ActionScope scopeForActionFilter(MvHandler handler, MvViewExpr target, MvViewExpr request) {
         return new ActionScope("filter", handler.getName(), target.getName(),
-                getAlias(target), null, getAlias(request));
+                getAlias(target), null);
     }
 
     public static ActionScope scopeForActionGrab(MvHandler handler, MvViewExpr target, MvJoinSource src) {
         return new ActionScope("grabKeys", handler.getName(), target.getName(),
-                getAlias(target), src.getTableName(), null);
+                getAlias(target), src.getTableName());
     }
 
     public static ActionScope scopeForActionTransform(MvHandler handler,
             MvViewExpr target, MvJoinSource src) {
         return new ActionScope("transform", handler.getName(), target.getName(),
-                getAlias(target), src.getTableName(), null);
+                getAlias(target), src.getTableName());
     }
 
     public static ActionScope scopeForActionSync(MvHandler handler, MvViewExpr target) {
         return new ActionScope("sync", handler.getName(), target.getName(),
-                getAlias(target), target.getTopMostSource().getTableName(), null);
+                getAlias(target), target.getTopMostSource().getTableName());
     }
 
     private static class Metrics {
@@ -458,8 +457,7 @@ public final class MvMetrics {
             String handler,
             String target,
             String alias,
-            String source,
-            String item) {
+            String source) {
 
     }
 

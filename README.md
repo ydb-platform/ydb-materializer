@@ -386,6 +386,92 @@ Use these files for a single-table MV example:
 
 For a ready-to-use Prometheus + Grafana stack, see `monitoring/README.md`.
 
+### Collected metrics
+
+When metrics are enabled (`metrics.enabled=true`), the application exposes the following Prometheus metrics. All metric names use the `ydbmv_` prefix.
+
+#### Handler (job) metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_handler_active` | Gauge | 1 if the handler (job) is active, 0 otherwise, for each handler |
+| `ydbmv_handler_locked` | Gauge | 1 if the active handler cannot progress due to some processing issue, 0 otherwise |
+| `ydbmv_handler_threads` | Gauge | Number of worker threads for the handler |
+| `ydbmv_handler_queue_size` | Gauge | Current size of the input queue for the handler |
+| `ydbmv_handler_queue_limit` | Gauge | Maximum allowed size of the input queue |
+| `ydbmv_handler_queue_wait` | Counter | Number of waits on the full queue during the message submission |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+
+#### CDC metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_cdc_records_read` | Counter | Number of CDC records read from topics |
+| `ydbmv_cdc_records_submitted` | Counter | Number of parsed CDC records submitted for processing |
+| `ydbmv_cdc_parse_errors` | Counter | Number of CDC message parsing errors |
+| `ydbmv_cdc_parse_seconds` | Histogram | Time spent parsing CDC messages |
+| `ydbmv_cdc_submit_seconds` | Histogram | Time spent submitting CDC messages to the queue, including the time waiting for space in the queue to become available |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+| `consumer` | Name of the CDC consumer |
+| `topic` | Full CDC topic path |
+
+#### Scan metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_scan_records_submitted` | Counter | Records submitted by initial/backfill scan |
+| `ydbmv_scan_delay_millis` | Counter | Total milliseconds of scan delays caused by the rate limiter |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+| `target` | Name of MV being processed |
+| `alias` | Name of the MV component for `UNION ALL` style MVs |
+
+#### Processing metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_processing_records` | Counter | Records successfully processed per action |
+| `ydbmv_processing_errors` | Counter | Processing errors per action |
+| `ydbmv_processing_seconds` | Histogram | End-to-end processing time per action |
+| `ydbmv_sql_seconds` | Histogram | SQL execution time per action |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `type` | Processing stage (e.g. `filter`, `grabKeys`, `transform`, `sync`) |
+| `handler` | Handler name |
+| `target` | Name of MV being processed |
+| `alias` | Name of the MV component for `UNION ALL` style MVs |
+| `source` | Name of the input table for the processing stage |
+| `action` | Action name (`select`, `upsert`, `delete` for SQL times, and `all` for other metrics) |
+
+#### JVM metrics
+
+When the default Prometheus server is used, standard JVM metrics (memory, GC, threads, etc.) are also registered automatically.
+
 ## Distributed Job Management (JOB Mode)
 
 The JOB mode provides distributed job management capabilities, allowing to manage materialized view processing tasks across multiple instances. This mode is invoked using:
