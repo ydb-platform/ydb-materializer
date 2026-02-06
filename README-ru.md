@@ -297,11 +297,11 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.query.seconds">30</entry>
 
 <!-- Настройки средств управления -->
-<entry key="mv.jobs.table">mv_jobs</entry>
-<entry key="mv.scans.table">mv_job_scans</entry>
-<entry key="mv.runners.table">mv_runners</entry>
-<entry key="mv.runner.jobs.table">mv_runner_jobs</entry>
-<entry key="mv.commands.table">mv_commands</entry>
+<entry key="mv.jobs.table">mv/jobs</entry>
+<entry key="mv.scans.table">mv/job_scans</entry>
+<entry key="mv.runners.table">mv/runners</entry>
+<entry key="mv.runner.jobs.table">mv/runner_jobs</entry>
+<entry key="mv.commands.table">mv/commands</entry>
 <entry key="mv.scan.period.ms">5000</entry>
 <entry key="mv.report.period.ms">10000</entry>
 <entry key="mv.runner.timeout.ms">30000</entry>
@@ -349,7 +349,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 
 #### Настройки сканера справочников
 - `job.dict.consumer` - имя консьюмера для сбора информации об изменениях справочников
-- `job.dict.hist.table` - альтернативное имя таблицы MV_DICT_HIST
+- `job.dict.hist.table` - альтернативное имя таблицы `mv/dict_hist`
 - `job.dict.scan.seconds` - период между проверками изменений справочников
 
 #### Настройка производительности
@@ -363,11 +363,11 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.query.seconds` — максимальное время выполнения запроса на выборку, вставку или удаление данных, секунд
 
 #### Настройки системы управления заданиями
-- `mv.jobs.table` - Альтернативное имя таблицы MV_JOBS
-- `mv.scans.table` - Альтернативное имя таблицы MV_JOB_SCANS
-- `mv.runners.table` - Альтернативное имя таблицы MV_RUNNERS
-- `mv.runner.jobs.table` - Альтернативное имя таблицы MV_RUNNER_JOBS
-- `mv.commands.table` - Альтернативное имя таблицы MV_COMMANDS
+- `mv.jobs.table` - Альтернативное имя таблицы `mv/jobs`
+- `mv.scans.table` - Альтернативное имя таблицы `mv/job_scans`
+- `mv.runners.table` - Альтернативное имя таблицы `mv/runners`
+- `mv.runner.jobs.table` - Альтернативное имя таблицы `mv/runner_jobs`
+- `mv.commands.table` - Альтернативное имя таблицы `mv/commands`
 - `mv.scan.period.ms` - Период сканирования Исполнителя и Координатора, миллисекунды
 - `mv.report.period.ms` - Период обновления состояния Исполнителя, миллисекунды
 - `mv.runner.timeout.ms` - Таймаут отсутствия обновлений Координатора и Исполнителя, миллисекунды
@@ -406,10 +406,10 @@ java -jar ydb-materializer.jar config.xml JOB
 
 #### Таблицы конфигурации
 
-**`mv_jobs`**  — определения задач и желаемое состояние:
+**`mv/jobs`**  — определения задач и желаемое состояние:
 
 ```sql
-CREATE TABLE `mv_jobs` (
+CREATE TABLE `mv/jobs` (
     job_name Text NOT NULL,           -- Имя обработчика
     job_settings JsonDocument,        -- Конфигурация обработчика
     should_run Bool,                  -- Должна ли задача выполняться
@@ -417,10 +417,10 @@ CREATE TABLE `mv_jobs` (
 );
 ```
 
-**`mv_job_scans`** - запросы на сканирование определённых целей:
+**`mv/job_scans`** - запросы на сканирование определённых целей:
 
 ```sql
-CREATE TABLE `mv_job_scans` (
+CREATE TABLE `mv/job_scans` (
     job_name Text NOT NULL,           -- Имя обработчика
     target_name Text NOT NULL,        -- Имя целевой таблицы
     scan_settings JsonDocument,       -- Конфигурация сканирования
@@ -434,10 +434,10 @@ CREATE TABLE `mv_job_scans` (
 
 #### Рабочие таблицы
 
-**`mv_runners`** - активные экземпляры исполнителей:
+**`mv/runners`** - активные экземпляры исполнителей:
 
 ```sql
-CREATE TABLE `mv_runners` (
+CREATE TABLE `mv/runners` (
     runner_id Text NOT NULL,          -- Уникальный идентификатор исполнителя
     runner_identity Text,             -- Информация о хосте, PID, времени запуска
     updated_at Timestamp,             -- Последнее обновление статуса
@@ -445,10 +445,10 @@ CREATE TABLE `mv_runners` (
 );
 ```
 
-**`mv_runner_jobs`** - задачи, выполняемые в данный момент каждым исполнителем:
+**`mv/runner_jobs`** - задачи, выполняемые в данный момент каждым исполнителем:
 
 ```sql
-CREATE TABLE `mv_runner_jobs` (
+CREATE TABLE `mv/runner_jobs` (
     runner_id Text NOT NULL,          -- Идентификатор исполнителя
     job_name Text NOT NULL,           -- Имя задачи
     job_settings JsonDocument,        -- Конфигурация задачи
@@ -458,10 +458,10 @@ CREATE TABLE `mv_runner_jobs` (
 );
 ```
 
-**`mv_commands`** - очередь команд для исполнителей:
+**`mv/commands`** - очередь команд для исполнителей:
 
 ```sql
-CREATE TABLE `mv_commands` (
+CREATE TABLE `mv/commands` (
     runner_id Text NOT NULL,          -- Целевой исполнитель
     command_no Uint64 NOT NULL,       -- Номер последовательности команды
     created_at Timestamp,             -- Время создания команды
@@ -481,10 +481,10 @@ CREATE TABLE `mv_commands` (
 
 #### Добавление задач
 
-Чтобы добавить новую задачу, вставьте запись в таблицу `mv_jobs`:
+Чтобы добавить новую задачу, вставьте запись в таблицу `mv/jobs`:
 
 ```sql
-INSERT INTO `mv_jobs` (job_name, job_settings, should_run)
+INSERT INTO `mv/jobs` (job_name, job_settings, should_run)
 VALUES ('my_handler', NULL, true);
 ```
 
@@ -520,9 +520,9 @@ VALUES ('my_handler', NULL, true);
 Чтобы остановить и удалить задачу:
 
 ```sql
-UPDATE `mv_jobs` SET should_run = false WHERE job_name = 'my_handler';
+UPDATE `mv/jobs` SET should_run = false WHERE job_name = 'my_handler';
 -- или
-DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
+DELETE FROM `mv/jobs` WHERE job_name = 'my_handler';
 ```
 
 #### Запрос на сканирование
@@ -530,7 +530,7 @@ DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
 Чтобы запросить сканирование определённой целевой таблицы:
 
 ```sql
-INSERT INTO `mv_job_scans` (job_name, target_name, scan_settings, requested_at)
+INSERT INTO `mv/job_scans` (job_name, target_name, scan_settings, requested_at)
 VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtcTimestamp());
 ```
 
@@ -540,8 +540,8 @@ VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtc
 
 ```sql
 SELECT rj.runner_id, rj.job_name, rj.started_at, r.runner_identity
-FROM `mv_runner_jobs` rj
-JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
+FROM `mv/runner_jobs` rj
+JOIN `mv/runners` r ON rj.runner_id = r.runner_id;
 ```
 
 #### Проверка состояния задачи
@@ -549,15 +549,15 @@ JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
 ```sql
 SELECT j.job_name, j.should_run,
        CASE WHEN rj.job_name IS NOT NULL THEN 'RUNNING'u ELSE 'STOPPED'u END as status
-FROM `mv_jobs` j
-LEFT JOIN `mv_runner_jobs` rj ON j.job_name = rj.job_name;
+FROM `mv/jobs` j
+LEFT JOIN `mv/runner_jobs` rj ON j.job_name = rj.job_name;
 ```
 
 #### Проверка очереди команд:
 
 ```sql
 SELECT runner_id, command_no, command_type, job_name, command_status, created_at
-FROM `mv_commands`
+FROM `mv/commands`
 WHERE command_status IN ('CREATED'u, 'TAKEN'u)
 ORDER BY created_at;
 ```
@@ -566,7 +566,7 @@ ORDER BY created_at;
 
 ```sql
 SELECT runner_id, runner_identity, updated_at
-FROM `mv_runners`
+FROM `mv/runners`
 ORDER BY updated_at DESC;
 ```
 
@@ -601,7 +601,7 @@ ORDER BY updated_at DESC;
 
 1. **Создание управляющих таблиц** — используйте предоставленный скрипт `example-tables.sql`. Имена таблиц можно настроить по мере необходимости.
 1. **Развёртывание исполнителей** — запустите несколько экземпляров в режиме JOB.
-1. **Настройка задач** — вставьте определения задач в таблицу `mv_jobs`. Добавьте определения сканирования в таблицу mv_job_scans.
+1. **Настройка задач** — вставьте определения задач в таблицу `mv/jobs`. Добавьте определения сканирования в таблицу mv/job_scans.
 1. **Мониторинг операций** — используйте запросы для мониторинга, перечисленные выше.
 
 Система автоматически распределит задачи между доступными исполнителями и поддержит желаемое состояние.

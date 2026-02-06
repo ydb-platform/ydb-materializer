@@ -127,7 +127,6 @@ public final class MvMetrics {
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getCdcLabels(scope);
         m.cdcParseTime.labelValues(labels).observe(toSeconds(durationNs));
-        m.cdcParseTimeTotal.labelValues(labels).inc(durationNs / 1000L);
         if (output < input) {
             m.cdcParseErrors.labelValues(labels).inc(input - output);
         }
@@ -141,7 +140,6 @@ public final class MvMetrics {
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getCdcLabels(scope);
         m.cdcSubmitTime.labelValues(labels).observe(toSeconds(durationNs));
-        m.cdcSubmitTimeTotal.labelValues(labels).inc(durationNs / 1000L);
         if (count > 0) {
             m.cdcSubmitted.labelValues(labels).inc(count);
         }
@@ -170,7 +168,6 @@ public final class MvMetrics {
     private static void recordProcessingTime(Metrics m, String labels[], long startNs) {
         long durationNs = System.nanoTime() - startNs;
         m.processingTime.labelValues(labels).observe(toSeconds(durationNs));
-        m.processingTimeTotal.labelValues(labels).inc(durationNs / 1000L);
     }
 
     public static void recordSqlTime(ActionScope scope, String action, long startNs) {
@@ -181,7 +178,6 @@ public final class MvMetrics {
         long durationNs = System.nanoTime() - startNs;
         String[] labels = getActionLabels(scope, action);
         m.sqlTime.labelValues(labels).observe(toSeconds(durationNs));
-        m.sqlTimeTotal.labelValues(labels).inc(durationNs / 1000L);
     }
 
     private static String[] getActionLabels(ActionScope scope, String action) {
@@ -242,14 +238,15 @@ public final class MvMetrics {
                 getAlias(target), src.getTableName(), null);
     }
 
-    public static ActionScope scopeForActionTransform(MvHandler handler, MvViewExpr target, MvJoinSource src) {
+    public static ActionScope scopeForActionTransform(MvHandler handler,
+            MvViewExpr target, MvJoinSource src) {
         return new ActionScope("transform", handler.getName(), target.getName(),
                 getAlias(target), src.getTableName(), null);
     }
 
     public static ActionScope scopeForActionSync(MvHandler handler, MvViewExpr target) {
         return new ActionScope("sync", handler.getName(), target.getName(),
-                getAlias(target), target.getView().getName(), null);
+                getAlias(target), target.getTopMostSource().getTableName(), null);
     }
 
     private static class Metrics {
@@ -257,16 +254,12 @@ public final class MvMetrics {
         final Counter cdcRead;
         final Counter cdcParseErrors;
         final Counter cdcSubmitted;
-        final Counter cdcParseTimeTotal;
         final Histogram cdcParseTime;
         final Histogram cdcSubmitTime;
-        final Counter cdcSubmitTimeTotal;
 
         final Counter processedRecords;
         final Counter processingErrors;
-        final Counter processingTimeTotal;
         final Histogram processingTime;
-        final Counter sqlTimeTotal;
         final Histogram sqlTime;
 
         final Gauge jobActive;
@@ -279,33 +272,23 @@ public final class MvMetrics {
         public Metrics(PrometheusRegistry registry) {
             String[] cdcLabels = {"handler", "consumer", "topic"};
             cdcRead = Counter.builder()
-                    .name("ydbmv_cdc_records_read_total")
+                    .name("ydbmv_cdc_records_read")
                     .help("CDC records read from topics")
                     .labelNames(cdcLabels)
                     .register(registry);
             cdcParseErrors = Counter.builder()
-                    .name("ydbmv_cdc_parse_errors_total")
+                    .name("ydbmv_cdc_parse_errors")
                     .help("CDC parsing errors")
                     .labelNames(cdcLabels)
                     .register(registry);
             cdcSubmitted = Counter.builder()
-                    .name("ydbmv_cdc_records_submitted_total")
+                    .name("ydbmv_cdc_records_submitted")
                     .help("CDC records submitted for processing")
-                    .labelNames(cdcLabels)
-                    .register(registry);
-            cdcParseTimeTotal = Counter.builder()
-                    .name("ydbmv_cdc_parse_time_micros")
-                    .help("CDC message parsing time in microseconds")
                     .labelNames(cdcLabels)
                     .register(registry);
             cdcParseTime = Histogram.builder()
                     .name("ydbmv_cdc_parse_seconds")
                     .help("CDC message parsing time histogram")
-                    .labelNames(cdcLabels)
-                    .register(registry);
-            cdcSubmitTimeTotal = Counter.builder()
-                    .name("ydbmv_cdc_submit_time_micros")
-                    .help("CDC message submission time in microseconds")
                     .labelNames(cdcLabels)
                     .register(registry);
             cdcSubmitTime = Histogram.builder()
@@ -316,32 +299,22 @@ public final class MvMetrics {
 
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
             processedRecords = Counter.builder()
-                    .name("ydbmv_mv_records_processed_total")
+                    .name("ydbmv_processing_records")
                     .help("Records processed per action and target")
                     .labelNames(procLabels)
                     .register(registry);
             processingErrors = Counter.builder()
-                    .name("ydbmv_mv_processing_errors_total")
+                    .name("ydbmv_processing_errors")
                     .help("Processing errors per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            processingTimeTotal = Counter.builder()
-                    .name("ydbmv_mv_processing_time_micros")
-                    .help("Processing time in microseconds per action and target")
-                    .labelNames(procLabels)
-                    .register(registry);
             processingTime = Histogram.builder()
-                    .name("ydbmv_mv_processing_seconds")
+                    .name("ydbmv_processing_seconds")
                     .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
-            sqlTimeTotal = Counter.builder()
-                    .name("ydbmv_mv_sql_time_micros")
-                    .help("SQL execution time in microseconds per action and target")
-                    .labelNames(procLabels)
-                    .register(registry);
             sqlTime = Histogram.builder()
-                    .name("ydbmv_mv_sql_seconds")
+                    .name("ydbmv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
                     .register(registry);
