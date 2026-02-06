@@ -301,11 +301,11 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="job.query.seconds">30</entry>
 
 <!-- Management settings -->
-<entry key="mv.jobs.table">mv_jobs</entry>
-<entry key="mv.scans.table">mv_job_scans</entry>
-<entry key="mv.runners.table">mv_runners</entry>
-<entry key="mv.runner.jobs.table">mv_runner_jobs</entry>
-<entry key="mv.commands.table">mv_commands</entry>
+<entry key="mv.jobs.table">mv/jobs</entry>
+<entry key="mv.scans.table">mv/job_scans</entry>
+<entry key="mv.runners.table">mv/runners</entry>
+<entry key="mv.runner.jobs.table">mv/runner_jobs</entry>
+<entry key="mv.commands.table">mv/commands</entry>
 <entry key="mv.scan.period.ms">5000</entry>
 <entry key="mv.report.period.ms">10000</entry>
 <entry key="mv.runner.timeout.ms">30000</entry>
@@ -353,7 +353,7 @@ Use these files for a single-table MV example:
 
 #### Dictionary scanner configuration
 - `job.dict.consumer` - consumer name to be used for dictionary table changefeeds
-- `job.dict.hist.table` - alternative name for MV_DICT_HIST table
+- `job.dict.hist.table` - alternative name for `mv/dict_hist` table
 - `job.dict.scan.seconds` - period between the dictionary changes checks
 
 #### Performance Tuning
@@ -368,11 +368,11 @@ Use these files for a single-table MV example:
 - `job.scan.rate` - Speed limit for scan operations, in rows per second
 
 #### Management Settings
-- `mv.jobs.table` - Custom MV_JOBS table name
-- `mv.scans.table` - Custom MV_JOB_SCANS table name
-- `mv.runners.table` - Custom MV_RUNNERS table name
-- `mv.runner.jobs.table` - Custom MV_RUNNER_JOBS table name
-- `mv.commands.table` - Custom MV_COMMANDS table name
+- `mv.jobs.table` - Custom `mv/jobs` table name
+- `mv.scans.table` - Custom `mv/job_scans` table name
+- `mv.runners.table` - Custom `mv/runners` table name
+- `mv.runner.jobs.table` - Custom `mv/runner_jobs` table name
+- `mv.commands.table` - Custom `mv/commands` table name
 - `mv.scan.period.ms` - Runner and Coordinator re-scan period, in milliseconds
 - `mv.report.period.ms` - Runner status report period, in milliseconds
 - `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
@@ -385,6 +385,92 @@ Use these files for a single-table MV example:
 - `metrics.host` - Host/interface to bind metrics endpoint (default: 0.0.0.0)
 
 For a ready-to-use Prometheus + Grafana stack, see `monitoring/README.md`.
+
+### Collected metrics
+
+When metrics are enabled (`metrics.enabled=true`), the application exposes the following Prometheus metrics. All metric names use the `ydbmv_` prefix.
+
+#### Handler (job) metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_handler_active` | Gauge | 1 if the handler (job) is active, 0 otherwise, for each handler |
+| `ydbmv_handler_locked` | Gauge | 1 if the active handler cannot progress due to some processing issue, 0 otherwise |
+| `ydbmv_handler_threads` | Gauge | Number of worker threads for the handler |
+| `ydbmv_handler_queue_size` | Gauge | Current size of the input queue for the handler |
+| `ydbmv_handler_queue_limit` | Gauge | Maximum allowed size of the input queue |
+| `ydbmv_handler_queue_wait` | Counter | Number of waits on the full queue during the message submission |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+
+#### CDC metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_cdc_records_read` | Counter | Number of CDC records read from topics |
+| `ydbmv_cdc_records_submitted` | Counter | Number of parsed CDC records submitted for processing |
+| `ydbmv_cdc_parse_errors` | Counter | Number of CDC message parsing errors |
+| `ydbmv_cdc_parse_seconds` | Histogram | Time spent parsing CDC messages |
+| `ydbmv_cdc_submit_seconds` | Histogram | Time spent submitting CDC messages to the queue, including the time waiting for space in the queue to become available |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+| `consumer` | Name of the CDC consumer |
+| `topic` | Full CDC topic path |
+
+#### Scan metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_scan_records_submitted` | Counter | Records submitted by initial/backfill scan |
+| `ydbmv_scan_delay_millis` | Counter | Total milliseconds of scan delays caused by the rate limiter |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `handler` | Handler name |
+| `target` | Name of MV being processed |
+| `alias` | Name of the MV component for `UNION ALL` style MVs |
+
+#### Processing metrics
+
+See the table below for metric definitions.
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `ydbmv_processing_records` | Counter | Records successfully processed per action |
+| `ydbmv_processing_errors` | Counter | Processing errors per action |
+| `ydbmv_processing_seconds` | Histogram | End-to-end processing time per action |
+| `ydbmv_sql_seconds` | Histogram | SQL execution time per action |
+
+Labels description is provided below.
+
+| Label | Description |
+|-------|-------------|
+| `type` | Processing stage (e.g. `filter`, `grabKeys`, `transform`, `sync`) |
+| `handler` | Handler name |
+| `target` | Name of MV being processed |
+| `alias` | Name of the MV component for `UNION ALL` style MVs |
+| `source` | Name of the input table for the processing stage |
+| `action` | Action name (`select`, `upsert`, `delete` for SQL times, and `all` for other metrics) |
+
+#### JVM metrics
+
+When the default Prometheus server is used, standard JVM metrics (memory, GC, threads, etc.) are also registered automatically.
 
 ## Distributed Job Management (JOB Mode)
 
@@ -411,9 +497,9 @@ The system uses several YDB tables to manage distributed operations:
 
 #### Configuration Tables
 
-**`mv_jobs`** - Job definitions and desired state
+**`mv/jobs`** - Job definitions and desired state
 ```sql
-CREATE TABLE `mv_jobs` (
+CREATE TABLE `mv/jobs` (
     job_name Text NOT NULL,           -- Handler name
     job_settings JsonDocument,        -- Handler configuration
     should_run Bool,                  -- Whether job should be running
@@ -421,9 +507,9 @@ CREATE TABLE `mv_jobs` (
 );
 ```
 
-**`mv_job_scans`** - Scan requests for specific targets
+**`mv/job_scans`** - Scan requests for specific targets
 ```sql
-CREATE TABLE `mv_job_scans` (
+CREATE TABLE `mv/job_scans` (
     job_name Text NOT NULL,           -- Handler name
     target_name Text NOT NULL,        -- Target table name
     scan_settings JsonDocument,       -- Scan configuration
@@ -437,9 +523,9 @@ CREATE TABLE `mv_job_scans` (
 
 #### Working Tables
 
-**`mv_runners`** - Active runner instances
+**`mv/runners`** - Active runner instances
 ```sql
-CREATE TABLE `mv_runners` (
+CREATE TABLE `mv/runners` (
     runner_id Text NOT NULL,          -- Unique runner identifier
     runner_identity Text,             -- Host, PID, start time info
     updated_at Timestamp,             -- Last status update
@@ -447,9 +533,9 @@ CREATE TABLE `mv_runners` (
 );
 ```
 
-**`mv_runner_jobs`** - Currently running jobs per runner
+**`mv/runner_jobs`** - Currently running jobs per runner
 ```sql
-CREATE TABLE `mv_runner_jobs` (
+CREATE TABLE `mv/runner_jobs` (
     runner_id Text NOT NULL,          -- Runner identifier
     job_name Text NOT NULL,           -- Job name
     job_settings JsonDocument,        -- Job configuration
@@ -459,9 +545,9 @@ CREATE TABLE `mv_runner_jobs` (
 );
 ```
 
-**`mv_commands`** - Command queue for runners
+**`mv/commands`** - Command queue for runners
 ```sql
-CREATE TABLE `mv_commands` (
+CREATE TABLE `mv/commands` (
     runner_id Text NOT NULL,          -- Target runner
     command_no Uint64 NOT NULL,       -- Command sequence number
     created_at Timestamp,             -- Command creation time
@@ -481,10 +567,10 @@ CREATE TABLE `mv_commands` (
 
 #### Adding Jobs
 
-To add a new job, insert a record into the `mv_jobs` table:
+To add a new job, insert a record into the `mv/jobs` table:
 
 ```sql
-INSERT INTO `mv_jobs` (job_name, job_settings, should_run)
+INSERT INTO `mv/jobs` (job_name, job_settings, should_run)
 VALUES ('my_handler', NULL, true);
 ```
 
@@ -520,9 +606,9 @@ The example above shows the defaults for regular jobs. For special dictionary sc
 To stop and remove a job:
 
 ```sql
-UPDATE `mv_jobs` SET should_run = false WHERE job_name = 'my_handler';
+UPDATE `mv/jobs` SET should_run = false WHERE job_name = 'my_handler';
 -- or
-DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
+DELETE FROM `mv/jobs` WHERE job_name = 'my_handler';
 ```
 
 #### Requesting Scans
@@ -530,7 +616,7 @@ DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
 To request a scan of a specific target table:
 
 ```sql
-INSERT INTO `mv_job_scans` (job_name, target_name, scan_settings, requested_at)
+INSERT INTO `mv/job_scans` (job_name, target_name, scan_settings, requested_at)
 VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtcTimestamp());
 ```
 
@@ -539,22 +625,22 @@ VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtc
 **Check running jobs:**
 ```sql
 SELECT rj.runner_id, rj.job_name, rj.started_at, r.runner_identity
-FROM `mv_runner_jobs` rj
-JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
+FROM `mv/runner_jobs` rj
+JOIN `mv/runners` r ON rj.runner_id = r.runner_id;
 ```
 
 **Check job status:**
 ```sql
 SELECT j.job_name, j.should_run,
        CASE WHEN rj.job_name IS NOT NULL THEN 'RUNNING'u ELSE 'STOPPED'u END as status
-FROM `mv_jobs` j
-LEFT JOIN `mv_runner_jobs` rj ON j.job_name = rj.job_name;
+FROM `mv/jobs` j
+LEFT JOIN `mv/runner_jobs` rj ON j.job_name = rj.job_name;
 ```
 
 **Check command queue:**
 ```sql
 SELECT runner_id, command_no, command_type, job_name, command_status, created_at
-FROM `mv_commands`
+FROM `mv/commands`
 WHERE command_status IN ('CREATED'u, 'TAKEN'u)
 ORDER BY created_at;
 ```
@@ -562,7 +648,7 @@ ORDER BY created_at;
 **Check runner status:**
 ```sql
 SELECT runner_id, runner_identity, updated_at
-FROM `mv_runners`
+FROM `mv/runners`
 ORDER BY updated_at DESC;
 ```
 
@@ -597,7 +683,7 @@ The system provides automatic fault tolerance:
 
 1. **Create Control Tables** - Use the provided `example-tables.sql` script. Table names can be customized as needed
 2. **Deploy Runners** - Start multiple instances with `JOB` mode
-3. **Configure Jobs** - Insert job definitions into `mv_jobs` table. Add the scan definitions to the `mv_job_scans` table
+3. **Configure Jobs** - Insert job definitions into `mv/jobs` table. Add the scan definitions to the `mv/job_scans` table
 4. **Monitor Operations** - Use the monitoring queries listed above
 
 The system will automatically distribute jobs across available runners and maintain the desired state.

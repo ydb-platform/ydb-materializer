@@ -146,6 +146,7 @@ public class MvApplyManager implements MvSink {
                     + "calling awaitTermination()");
         }
         Instant waitUntil = Instant.now().plus(timeout);
+        LOG.info("Waiting for shutdown of apply workers until {}", waitUntil);
         boolean running;
         do {
             running = false;
@@ -156,12 +157,15 @@ public class MvApplyManager implements MvSink {
                 }
             }
             if (running) {
-                YdbMisc.sleep(50L);
+                YdbMisc.sleep(100L);
             }
             if (Instant.now().isAfter(waitUntil)) {
                 break;
             }
         } while (running);
+        if (running) {
+            LOG.warn("Apply workers still running, moving forward with shutdown.");
+        }
     }
 
     @Override

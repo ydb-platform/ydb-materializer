@@ -128,7 +128,7 @@ public class MvConfig {
     public static final String CONF_APPLY_THREADS = "job.apply.threads";
 
     /**
-     * Handler setting: max number of elements in the apply queue, per thread.
+     * Handler setting: max number of elements in the apply queue.
      */
     public static final String CONF_APPLY_QUEUE = "job.apply.queue";
 

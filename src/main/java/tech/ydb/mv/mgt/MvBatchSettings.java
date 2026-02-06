@@ -62,23 +62,23 @@ public class MvBatchSettings implements Serializable {
     /**
      * The default name for MV_JOBS table.
      */
-    public static final String DEF_TABLE_JOBS = "mv_jobs";
+    public static final String DEF_TABLE_JOBS = "mv/jobs";
     /**
      * The default name for MV_JOB_SCANS table.
      */
-    public static final String DEF_TABLE_SCANS = "mv_job_scans";
+    public static final String DEF_TABLE_SCANS = "mv/job_scans";
     /**
      * The default name for MV_RUNNERS table.
      */
-    public static final String DEF_TABLE_RUNNERS = "mv_runners";
+    public static final String DEF_TABLE_RUNNERS = "mv/runners";
     /**
      * The default name for MV_RUNNER_JOBS table.
      */
-    public static final String DEF_TABLE_RUNNER_JOBS = "mv_runner_jobs";
+    public static final String DEF_TABLE_RUNNER_JOBS = "mv/runner_jobs";
     /**
      * The default name for MV_COMMANDS table.
      */
-    public static final String DEF_TABLE_COMMANDS = "mv_commands";
+    public static final String DEF_TABLE_COMMANDS = "mv/commands";
 
     /**
      * The default value for mv.scan.period.ms.
@@ -298,7 +298,8 @@ public class MvBatchSettings implements Serializable {
     /**
      * Set runner timeout.
      *
-     * @param runnerTimeoutMs Timeout (ms) after which a runner is considered missing.
+     * @param runnerTimeoutMs Timeout (ms) after which a runner is considered
+     * missing.
      */
     public void setRunnerTimeoutMs(long runnerTimeoutMs) {
         this.runnerTimeoutMs = runnerTimeoutMs;
@@ -316,7 +317,8 @@ public class MvBatchSettings implements Serializable {
     /**
      * Set coordinator startup delay.
      *
-     * @param coordStartupMs Delay (ms) between coordinator startup and activation.
+     * @param coordStartupMs Delay (ms) between coordinator startup and
+     * activation.
      */
     public void setCoordStartupMs(long coordStartupMs) {
         this.coordStartupMs = coordStartupMs;
@@ -325,7 +327,8 @@ public class MvBatchSettings implements Serializable {
     /**
      * Get minimal number of runners required for distribution.
      *
-     * @return Minimal number of runners required for job distribution (0 means "no minimum").
+     * @return Minimal number of runners required for job distribution (0 means
+     * "no minimum").
      */
     public int getRunnersCount() {
         return runnersCount;
@@ -334,7 +337,8 @@ public class MvBatchSettings implements Serializable {
     /**
      * Set minimal number of runners required for distribution.
      *
-     * @param runnersCount Minimal number of runners required for job distribution.
+     * @param runnersCount Minimal number of runners required for job
+     * distribution.
      */
     public void setRunnersCount(int runnersCount) {
         this.runnersCount = runnersCount;

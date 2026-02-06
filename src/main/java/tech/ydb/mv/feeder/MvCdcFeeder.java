@@ -108,16 +108,21 @@ public class MvCdcFeeder implements AutoCloseable {
             return;
         }
         AsyncReader theReader = reader.getAndSet(null);
-        if (theReader != null) {
-            LOG.info("Stopping the CDC reader for feeder `{}`", adapter.getFeederName());
-            theReader.shutdown();
+        if (theReader == null) {
+            return;
+        }
+        LOG.info("Stopping the CDC reader for feeder `{}`", adapter.getFeederName());
+        try {
+            theReader.shutdown().get(10L, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            LOG.warn("CDC reader shutdown was not successful or timed out", ex);
         }
     }
 
-    @Override
     /**
      * Stop CDC reader and shutdown worker threads.
      */
+    @Override
     public void close() {
         stop();
         executor.shutdown();

@@ -1,3 +1,7 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ydb-platform/ydb-materializer/blob/master/LICENSE)
+[![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo1.maven.org%2Fmaven2%2Ftech%2Fydb%2Fapps%2Fydb-materializer%2Fmaven-metadata.xml)](https://mvnrepository.com/artifact/tech.ydb.apps/ydb-materializer)
+[![Publish](https://img.shields.io/github/actions/workflow/status/ydb-platform/ydb-materializer/publish.yaml)](https://github.com/ydb-platform/ydb-materializer/actions/workflows/publish.yaml)
+
 # Процессор материализованных представлений YDB
 
 YDB Materializer — это Java-приложение, которое обеспечивает наполнение данными управляемых пользователем материализованных представлений в YDB.
@@ -297,11 +301,11 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.query.seconds">30</entry>
 
 <!-- Настройки средств управления -->
-<entry key="mv.jobs.table">mv_jobs</entry>
-<entry key="mv.scans.table">mv_job_scans</entry>
-<entry key="mv.runners.table">mv_runners</entry>
-<entry key="mv.runner.jobs.table">mv_runner_jobs</entry>
-<entry key="mv.commands.table">mv_commands</entry>
+<entry key="mv.jobs.table">mv/jobs</entry>
+<entry key="mv.scans.table">mv/job_scans</entry>
+<entry key="mv.runners.table">mv/runners</entry>
+<entry key="mv.runner.jobs.table">mv/runner_jobs</entry>
+<entry key="mv.commands.table">mv/commands</entry>
 <entry key="mv.scan.period.ms">5000</entry>
 <entry key="mv.report.period.ms">10000</entry>
 <entry key="mv.runner.timeout.ms">30000</entry>
@@ -349,7 +353,7 @@ java -jar ydb-materializer-*.jar config.xml JOB
 
 #### Настройки сканера справочников
 - `job.dict.consumer` - имя консьюмера для сбора информации об изменениях справочников
-- `job.dict.hist.table` - альтернативное имя таблицы MV_DICT_HIST
+- `job.dict.hist.table` - альтернативное имя таблицы `mv/dict_hist`
 - `job.dict.scan.seconds` - период между проверками изменений справочников
 
 #### Настройка производительности
@@ -361,13 +365,14 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.batch.upsert` — размер пакета для операций UPSERT или DELETE
 - `job.max.row.changes` — максимальное количество изменений по отдельной таблице, обрабатываемых за одну итерацию
 - `job.query.seconds` — максимальное время выполнения запроса на выборку, вставку или удаление данных, секунд
+- `job.scan.rate` - Ограничение скорости операций сканирования, строк в секунду
 
 #### Настройки системы управления заданиями
-- `mv.jobs.table` - Альтернативное имя таблицы MV_JOBS
-- `mv.scans.table` - Альтернативное имя таблицы MV_JOB_SCANS
-- `mv.runners.table` - Альтернативное имя таблицы MV_RUNNERS
-- `mv.runner.jobs.table` - Альтернативное имя таблицы MV_RUNNER_JOBS
-- `mv.commands.table` - Альтернативное имя таблицы MV_COMMANDS
+- `mv.jobs.table` - Альтернативное имя таблицы `mv/jobs`
+- `mv.scans.table` - Альтернативное имя таблицы `mv/job_scans`
+- `mv.runners.table` - Альтернативное имя таблицы `mv/runners`
+- `mv.runner.jobs.table` - Альтернативное имя таблицы `mv/runner_jobs`
+- `mv.commands.table` - Альтернативное имя таблицы `mv/commands`
 - `mv.scan.period.ms` - Период сканирования Исполнителя и Координатора, миллисекунды
 - `mv.report.period.ms` - Период обновления состояния Исполнителя, миллисекунды
 - `mv.runner.timeout.ms` - Таймаут отсутствия обновлений Координатора и Исполнителя, миллисекунды
@@ -380,6 +385,92 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `metrics.host` - Адрес/интерфейс для endpoint метрик (по умолчанию: 0.0.0.0)
 
 Готовый стенд Prometheus + Grafana описан в `monitoring/README.md`.
+
+### Собираемые метрики
+
+При включённых метриках (`metrics.enabled=true`) приложение отдаёт следующие метрики Prometheus. Все имена метрик имеют префикс `ydbmv_`.
+
+#### Метрики обработчика (задания)
+
+Описание метрик см. в таблице ниже.
+
+| Метрика | Тип | Описание |
+|--------|-----|----------|
+| `ydbmv_handler_active` | Gauge | 1, если обработчик (задание) активен, 0 иначе, для каждого обработчика |
+| `ydbmv_handler_locked` | Gauge | 1, если активный обработчик не может продолжать работу из-за проблемы обработки, 0 иначе |
+| `ydbmv_handler_threads` | Gauge | Количество рабочих потоков обработчика |
+| `ydbmv_handler_queue_size` | Gauge | Текущий размер входной очереди обработчика |
+| `ydbmv_handler_queue_limit` | Gauge | Максимально допустимый размер входной очереди |
+| `ydbmv_handler_queue_wait` | Counter | Количество ожиданий на вставке данных в очередь из-за её переполнения |
+
+Описание меток приведено ниже.
+
+| Метка | Описание |
+|-------|----------|
+| `handler` | Имя обработчика |
+
+#### Метрики CDC
+
+Описание метрик см. в таблице ниже.
+
+| Метрика | Тип | Описание |
+|--------|-----|----------|
+| `ydbmv_cdc_records_read` | Counter | Количество записей CDC, прочитанных из топиков |
+| `ydbmv_cdc_records_submitted` | Counter | Количество разобранных записей CDC, переданных в обработку |
+| `ydbmv_cdc_parse_errors` | Counter | Количество ошибок разбора сообщений CDC |
+| `ydbmv_cdc_parse_seconds` | Histogram | Время разбора сообщений CDC |
+| `ydbmv_cdc_submit_seconds` | Histogram | Время постановки сообщений CDC в очередь, включая ожидание освобождения места в очереди |
+
+Описание меток приведено ниже.
+
+| Метка | Описание |
+|-------|----------|
+| `handler` | Имя обработчика |
+| `consumer` | Имя консьюмера CDC |
+| `topic` | Полный путь топика CDC |
+
+#### Метрики операций сканирования
+
+Описание метрик см. в таблице ниже.
+
+| Метрика | Тип | Описание |
+|--------|-----|----------|
+| `ydbmv_scan_records_submitted` | Counter | Количество записей, переданных на обработку при начальном/фоновом сканировании |
+| `ydbmv_scan_delay_millis` | Counter | Суммарная задержка сканирования в миллисекундах из-за ограничителя скорости |
+
+Описание меток приведено ниже.
+
+| Метка | Описание |
+|-------|----------|
+| `handler` | Имя обработчика |
+| `target` | Имя обрабатываемого MV |
+| `alias` | Имя компонента MV для MV в стиле `UNION ALL` |
+
+#### Метрики обработки
+
+Описание метрик см. в таблице ниже.
+
+| Метрика | Тип | Описание |
+|--------|-----|----------|
+| `ydbmv_processing_records` | Counter | Успешно обработано записей по действию |
+| `ydbmv_processing_errors` | Counter | Ошибки обработки по действию |
+| `ydbmv_processing_seconds` | Histogram | Полное время обработки по действию |
+| `ydbmv_sql_seconds` | Histogram | Время выполнения SQL по действию |
+
+Описание меток приведено ниже.
+
+| Метка | Описание |
+|-------|----------|
+| `type` | Этап обработки (например, `filter`, `grabKeys`, `transform`, `sync`) |
+| `handler` | Имя обработчика |
+| `target` | Имя обрабатываемого MV |
+| `alias` | Имя компонента MV для MV в стиле `UNION ALL` |
+| `source` | Имя входной таблицы для этапа обработки |
+| `action` | Имя действия (`select`, `upsert`, `delete` для времени SQL и `all` для остальных метрик) |
+
+#### Метрики JVM
+
+При использовании встроенного сервера Prometheus дополнительно автоматически регистрируются стандартные метрики JVM (память, GC, потоки и т.д.).
 
 ## Управление распределёнными задачами (режим JOB)
 
@@ -406,10 +497,10 @@ java -jar ydb-materializer.jar config.xml JOB
 
 #### Таблицы конфигурации
 
-**`mv_jobs`**  — определения задач и желаемое состояние:
+**`mv/jobs`**  — определения задач и желаемое состояние:
 
 ```sql
-CREATE TABLE `mv_jobs` (
+CREATE TABLE `mv/jobs` (
     job_name Text NOT NULL,           -- Имя обработчика
     job_settings JsonDocument,        -- Конфигурация обработчика
     should_run Bool,                  -- Должна ли задача выполняться
@@ -417,10 +508,10 @@ CREATE TABLE `mv_jobs` (
 );
 ```
 
-**`mv_job_scans`** - запросы на сканирование определённых целей:
+**`mv/job_scans`** - запросы на сканирование определённых целей:
 
 ```sql
-CREATE TABLE `mv_job_scans` (
+CREATE TABLE `mv/job_scans` (
     job_name Text NOT NULL,           -- Имя обработчика
     target_name Text NOT NULL,        -- Имя целевой таблицы
     scan_settings JsonDocument,       -- Конфигурация сканирования
@@ -434,10 +525,10 @@ CREATE TABLE `mv_job_scans` (
 
 #### Рабочие таблицы
 
-**`mv_runners`** - активные экземпляры исполнителей:
+**`mv/runners`** - активные экземпляры исполнителей:
 
 ```sql
-CREATE TABLE `mv_runners` (
+CREATE TABLE `mv/runners` (
     runner_id Text NOT NULL,          -- Уникальный идентификатор исполнителя
     runner_identity Text,             -- Информация о хосте, PID, времени запуска
     updated_at Timestamp,             -- Последнее обновление статуса
@@ -445,10 +536,10 @@ CREATE TABLE `mv_runners` (
 );
 ```
 
-**`mv_runner_jobs`** - задачи, выполняемые в данный момент каждым исполнителем:
+**`mv/runner_jobs`** - задачи, выполняемые в данный момент каждым исполнителем:
 
 ```sql
-CREATE TABLE `mv_runner_jobs` (
+CREATE TABLE `mv/runner_jobs` (
     runner_id Text NOT NULL,          -- Идентификатор исполнителя
     job_name Text NOT NULL,           -- Имя задачи
     job_settings JsonDocument,        -- Конфигурация задачи
@@ -458,10 +549,10 @@ CREATE TABLE `mv_runner_jobs` (
 );
 ```
 
-**`mv_commands`** - очередь команд для исполнителей:
+**`mv/commands`** - очередь команд для исполнителей:
 
 ```sql
-CREATE TABLE `mv_commands` (
+CREATE TABLE `mv/commands` (
     runner_id Text NOT NULL,          -- Целевой исполнитель
     command_no Uint64 NOT NULL,       -- Номер последовательности команды
     created_at Timestamp,             -- Время создания команды
@@ -481,10 +572,10 @@ CREATE TABLE `mv_commands` (
 
 #### Добавление задач
 
-Чтобы добавить новую задачу, вставьте запись в таблицу `mv_jobs`:
+Чтобы добавить новую задачу, вставьте запись в таблицу `mv/jobs`:
 
 ```sql
-INSERT INTO `mv_jobs` (job_name, job_settings, should_run)
+INSERT INTO `mv/jobs` (job_name, job_settings, should_run)
 VALUES ('my_handler', NULL, true);
 ```
 
@@ -520,9 +611,9 @@ VALUES ('my_handler', NULL, true);
 Чтобы остановить и удалить задачу:
 
 ```sql
-UPDATE `mv_jobs` SET should_run = false WHERE job_name = 'my_handler';
+UPDATE `mv/jobs` SET should_run = false WHERE job_name = 'my_handler';
 -- или
-DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
+DELETE FROM `mv/jobs` WHERE job_name = 'my_handler';
 ```
 
 #### Запрос на сканирование
@@ -530,7 +621,7 @@ DELETE FROM `mv_jobs` WHERE job_name = 'my_handler';
 Чтобы запросить сканирование определённой целевой таблицы:
 
 ```sql
-INSERT INTO `mv_job_scans` (job_name, target_name, scan_settings, requested_at)
+INSERT INTO `mv/job_scans` (job_name, target_name, scan_settings, requested_at)
 VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtcTimestamp());
 ```
 
@@ -540,8 +631,8 @@ VALUES ('my_handler', 'target_table', '{"rowsPerSecondLimit": 5000}', CurrentUtc
 
 ```sql
 SELECT rj.runner_id, rj.job_name, rj.started_at, r.runner_identity
-FROM `mv_runner_jobs` rj
-JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
+FROM `mv/runner_jobs` rj
+JOIN `mv/runners` r ON rj.runner_id = r.runner_id;
 ```
 
 #### Проверка состояния задачи
@@ -549,15 +640,15 @@ JOIN `mv_runners` r ON rj.runner_id = r.runner_id;
 ```sql
 SELECT j.job_name, j.should_run,
        CASE WHEN rj.job_name IS NOT NULL THEN 'RUNNING'u ELSE 'STOPPED'u END as status
-FROM `mv_jobs` j
-LEFT JOIN `mv_runner_jobs` rj ON j.job_name = rj.job_name;
+FROM `mv/jobs` j
+LEFT JOIN `mv/runner_jobs` rj ON j.job_name = rj.job_name;
 ```
 
 #### Проверка очереди команд:
 
 ```sql
 SELECT runner_id, command_no, command_type, job_name, command_status, created_at
-FROM `mv_commands`
+FROM `mv/commands`
 WHERE command_status IN ('CREATED'u, 'TAKEN'u)
 ORDER BY created_at;
 ```
@@ -566,7 +657,7 @@ ORDER BY created_at;
 
 ```sql
 SELECT runner_id, runner_identity, updated_at
-FROM `mv_runners`
+FROM `mv/runners`
 ORDER BY updated_at DESC;
 ```
 
@@ -588,7 +679,7 @@ ORDER BY updated_at DESC;
 
 Эти специальные имена нельзя использовать для обычных обработчиков (на самом деле имя обработчика не может начинаться с префикса «ydbmv»).
 
-## Отказоустойчивость
+### Отказоустойчивость
 
 Система обеспечивает автоматическую отказоустойчивость:
 
@@ -597,11 +688,11 @@ ORDER BY updated_at DESC;
 - Повтор команд — неудачные команды остаются в очереди для повторной попытки.
 - Выбор лидера — одновременно активен только один экземпляр координатора.
 
-## Развёртывание
+### Развёртывание
 
 1. **Создание управляющих таблиц** — используйте предоставленный скрипт `example-tables.sql`. Имена таблиц можно настроить по мере необходимости.
 1. **Развёртывание исполнителей** — запустите несколько экземпляров в режиме JOB.
-1. **Настройка задач** — вставьте определения задач в таблицу `mv_jobs`. Добавьте определения сканирования в таблицу mv_job_scans.
+1. **Настройка задач** — вставьте определения задач в таблицу `mv/jobs`. Добавьте определения сканирования в таблицу mv/job_scans.
 1. **Мониторинг операций** — используйте запросы для мониторинга, перечисленные выше.
 
 Система автоматически распределит задачи между доступными исполнителями и поддержит желаемое состояние.

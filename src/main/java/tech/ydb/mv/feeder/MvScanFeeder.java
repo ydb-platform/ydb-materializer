@@ -13,6 +13,7 @@ import tech.ydb.mv.svc.MvJobContext;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
+import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvViewExpr;
@@ -35,6 +36,7 @@ public class MvScanFeeder {
     private final MvApplyActionList actions;
     private final MvScanCompletion completion;
     private final String controlTable;
+    private final MvMetrics.ScanScope metricsScope;
     private final int rateLimiterLimit;
     private int rateLimiterCounter;
     private long rateLimiterStamp;
@@ -57,6 +59,8 @@ public class MvScanFeeder {
         this.controlTable = job.getYdb().getProperty(
                 MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
+        this.metricsScope = new MvMetrics.ScanScope(job.getFeederName(),
+                target.getName(), target.getAlias());
     }
 
     public boolean isRunning() {
@@ -120,7 +124,7 @@ public class MvScanFeeder {
                 run();
                 return;
             } catch (Exception ex) {
-                LOG.info("Failed scan feeder for target `{}` as {} in handler `{}` - retry pending...",
+                LOG.warn("Failed scan feeder for target `{}` as {} in handler `{}` - retry pending...",
                         target.getName(), target.getAlias(), job.getHandler().getName(), ex);
             }
             sleepSome();
@@ -211,6 +215,8 @@ public class MvScanFeeder {
         ctx.setCurrentHandler(handler);
         // apply check for the case when the final commit is already performed
         handler.commit(0);
+        // report the metrics
+        MvMetrics.recordScanSubmit(metricsScope, rsr.getRowCount());
     }
 
     private void rateLimiter(int count) {
@@ -224,12 +230,15 @@ public class MvScanFeeder {
         rateLimiterCounter = 0;
         rateLimiterStamp = tv;
         if (fullTime > diff) {
-            diff = fullTime - diff;
-            long period = 50L;
+            final long howmuch = fullTime - diff;
+            final long period = 50L;
+            diff = howmuch;
             while (isRunning() && diff > 0L) {
                 YdbMisc.sleep(period);
                 diff -= period;
             }
+            // report the total delay in metrics
+            MvMetrics.recordScanDelay(metricsScope, howmuch);
         }
     }
 

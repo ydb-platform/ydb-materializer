@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.management.ManagementFactory;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.common.transaction.TxMode;
@@ -88,6 +89,9 @@ public class YdbConnector implements AutoCloseable {
             builder = builder.withBalancingSettings(BalancingSettings.detectLocalDs());
         }
 
+        builder = builder.withApplicationName("ydb-materializer");
+        builder = builder.withClientProcessId(String.valueOf(ProcessHandle.current().pid()));
+
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
@@ -95,9 +99,12 @@ public class YdbConnector implements AutoCloseable {
             this.topicClient = TopicClient.newClient(tempTransport)
                     .setCompressionExecutor(Runnable::run) // Prevent OOM
                     .build();
-            this.tableClient = QueryClient.newTableClient(tempTransport).build();
+            this.tableClient = QueryClient.newTableClient(tempTransport)
+                    .sessionPoolSize(1, config.getPoolSize())
+                    .build();
             this.tableRetryCtx = tech.ydb.table.SessionRetryContext
                     .create(this.tableClient)
+                    .sessionCreationTimeout(Duration.ofSeconds(5L))
                     .idempotent(true)
                     .build();
             this.queryClient = QueryClient.newClient(tempTransport)
@@ -106,6 +113,7 @@ public class YdbConnector implements AutoCloseable {
                     .build();
             this.queryRetryCtx = tech.ydb.query.tools.SessionRetryContext
                     .create(this.queryClient)
+                    .sessionCreationTimeout(Duration.ofSeconds(5L))
                     .idempotent(true)
                     .build();
             this.schemeClient = SchemeClient.newClient(tempTransport).build();
@@ -217,6 +225,7 @@ public class YdbConnector implements AutoCloseable {
     @Override
     public void close() {
         opened.set(false);
+        dumpThreadsIfConfigured();
         LOG.info("Closing YDB connections...");
         // coordinationClient does not support closing, so we leave it as is
         if (topicClient != null) {
@@ -255,6 +264,22 @@ public class YdbConnector implements AutoCloseable {
             }
         }
         LOG.info("Disconnected from YDB.");
+    }
+
+    private void dumpThreadsIfConfigured() {
+        if (!getProperty("dump.threads.on.close", false)) {
+            return;
+        }
+        LOG.info("Performing pre-closure thread dump.");
+        var threadMXBean = ManagementFactory.getThreadMXBean();
+        var threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
+        for (var threadInfo : threadInfos) {
+            LOG.info("{} -> {}", threadInfo.getThreadName(), threadInfo.getThreadState());
+            for (var ste : threadInfo.getStackTrace()) {
+                LOG.info("\t {}", ste);
+            }
+            LOG.info("***");
+        }
     }
 
     public boolean isOpen() {
