@@ -214,16 +214,16 @@ The language works with standard YDB data types:
 java -jar ydb-materializer-*.jar <config.xml> <MODE>
 ```
 
+**Parameters:**
+- `<config.xml>` - Path to the XML configuration file
+- `<MODE>` - Operation mode, as listed below
+
 The application supports the following operational modes:
 - CHECK: configuration validation;
 - SQL: generating SQL statements representing the materialization logic;
 - STREAMS: actual MV synchronization;
 - LOCAL: single-instance execution of actual MV synchronization;
-- JOB: actual MV synchronization under the control of the distirubuted job manager.
-
-**Parameters:**
-- `<config.xml>` - Path to the XML configuration file
-- `<MODE>` - Operation mode: `CHECK`, `SQL`, `STREAMS`, `LOCAL`, or `RUN`
+- JOB: actual MV synchronization under the control of the distributed job manager.
 
 ### Operation Modes
 
@@ -383,7 +383,7 @@ The configuration file is an XML properties file that defines connection paramet
 
 #### Metrics
 - `metrics.enabled` - Enable Prometheus metrics endpoint (default: false)
-- `metrics.port` - Port for Prometheus metrics endpoint (default: 9090)
+- `metrics.port` - Port for Prometheus metrics endpoint (default: 7311)
 - `metrics.host` - Host/interface to bind metrics endpoint (default: 0.0.0.0)
 
 For a ready-to-use Prometheus + Grafana stack, see `monitoring/README.md`.
@@ -683,7 +683,7 @@ The system provides automatic fault tolerance:
 
 ### Deployment
 
-1. **Create Control Tables** - Use the provided `example-tables.sql` script. Table names can be customized as needed
+1. **Create Control Tables** - Use the provided `scripts/example-tables.sql` script. Table names can be customized as needed
 2. **Deploy Runners** - Start multiple instances with `JOB` mode
 3. **Configure Jobs** - Insert job definitions into `mv/jobs` table. Add the scan definitions to the `mv/job_scans` table
 4. **Monitor Operations** - Use the monitoring queries listed above
