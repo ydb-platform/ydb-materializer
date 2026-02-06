@@ -123,13 +123,13 @@ public class MvLocker implements AutoCloseable {
         }
         boolean success = true;
         try {
-            lease.semaphore.release().get(30L, TimeUnit.SECONDS);
+            lease.semaphore.release().get(10L, TimeUnit.SECONDS);
         } catch (Exception ex) {
             success = false;
             LOG.warn("Failed to release the lock `{}`", name, ex);
         }
         try {
-            lease.session.close();
+            lease.session.stop().get(10L, TimeUnit.SECONDS);
         } catch (Exception ex) {
             success = false;
             LOG.warn("Failed to close the session for lock `{}`", name, ex);
