@@ -214,10 +214,12 @@ The language works with standard YDB data types:
 java -jar ydb-materializer-*.jar <config.xml> <MODE>
 ```
 
-The application supports three operational modes:
+The application supports the following operational modes:
 - CHECK: configuration validation;
 - SQL: generating SQL statements representing the materialization logic;
-- RUN: actual MV synchronization.
+- STREAMS: actual MV synchronization;
+- LOCAL: single-instance execution of actual MV synchronization;
+- JOB: actual MV synchronization under the control of the distirubuted job manager.
 
 **Parameters:**
 - `<config.xml>` - Path to the XML configuration file
