@@ -90,14 +90,12 @@ public class App {
             }
             case LOCAL -> {
                 LOG.info("Local service requested.");
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    api.shutdown();
-                    MvMetrics.shutdown();
-                }));
                 initMetrics();
+                setupHandler(() -> api.shutdown());
                 try {
                     api.runDefaultHandlers();
                 } finally {
+                    api.shutdown();
                     MvMetrics.shutdown();
                 }
             }
@@ -124,20 +122,26 @@ public class App {
             )) {
                 theRunner.start();
                 theCoord.start();
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> shutdown(theRunner, theCoord)));
+                setupHandler(() -> shutdown(theRunner, theCoord));
                 while (theRunner.isRunning()) {
                     YdbMisc.sleep(200L);
                 }
             }
+        } finally {
+            MvMetrics.shutdown();
+            // YDB connection should not be closed here,
+            // as it is managed on the upper level.
         }
     }
 
     private void shutdown(MvRunner theRunner, MvCoordinator theCoord) {
-        theRunner.stop();
         theCoord.stop();
-        api.shutdown();
-        MvMetrics.shutdown();
-        // YDB connection should not be closed here,
-        // as it is managed on the upper level.
+        theRunner.stop();
+    }
+
+    @SuppressWarnings("sunapi")
+    private void setupHandler(Runnable handler) {
+        sun.misc.Signal.handle(new sun.misc.Signal("TERM"), (signal) -> handler.run());
+        sun.misc.Signal.handle(new sun.misc.Signal("INT"), (signal) -> handler.run());
     }
 }
