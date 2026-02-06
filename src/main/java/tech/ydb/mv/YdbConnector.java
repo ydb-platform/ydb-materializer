@@ -88,6 +88,9 @@ public class YdbConnector implements AutoCloseable {
             builder = builder.withBalancingSettings(BalancingSettings.detectLocalDs());
         }
 
+        builder = builder.withApplicationName("ydb-materializer");
+        builder = builder.withClientProcessId(String.valueOf(ProcessHandle.current().pid()));
+
         GrpcTransport tempTransport = builder.build();
         this.database = tempTransport.getDatabase();
         try {
@@ -106,6 +109,7 @@ public class YdbConnector implements AutoCloseable {
                     .build();
             this.queryRetryCtx = tech.ydb.query.tools.SessionRetryContext
                     .create(this.queryClient)
+                    .sessionCreationTimeout(Duration.ofSeconds(5L))
                     .idempotent(true)
                     .build();
             this.schemeClient = SchemeClient.newClient(tempTransport).build();

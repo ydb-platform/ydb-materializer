@@ -102,7 +102,7 @@ class MvApplyWorker implements Runnable {
 
     private boolean processRetries(PerAction retries) {
         if (retries.isEmpty()) {
-            return true;
+            return owner.isRunning();
         }
         // we have retries pending, so switch to locked mode
         locked.set(true);
@@ -116,7 +116,7 @@ class MvApplyWorker implements Runnable {
         }
         // retries succeeded, we unlock and move forward
         locked.set(false);
-        return true;
+        return owner.isRunning();
     }
 
     private boolean makeDelay(int retryNumber) {
@@ -134,15 +134,24 @@ class MvApplyWorker implements Runnable {
     private void applyAction(MvApplyAction action, List<MvApplyTask> tasks, PerAction retries) {
         var scope = (action instanceof ActionBase) ? ((ActionBase) action).getMetricsScope() : null;
         long startNs = System.nanoTime();
+
         try {
             action.apply(tasks);
+
             MvMetrics.recordProcessedSuccess(scope, "all", startNs, tasks.size());
         } catch (Exception ex) {
-            MvMetrics.recordProcessedError(scope, "all", startNs, tasks.size());
             retries.addItems(tasks, action);
+
+            if (!owner.isRunning()) {
+                // No need to report errors on stop.
+                return;
+            }
+
+            MvMetrics.recordProcessedError(scope, "all", startNs, tasks.size());
+
             String lastSql = ActionBase.getLastSqlStatement();
             if (lastSql != null) {
-                LOG.error("Execution failed for action {}, scheduling for retry {} tasks."
+                LOG.error("Execution failed for action {}, scheduling for retry {} tasks. "
                         + "Last SQL:\n{}\n", action, lastSql, tasks.size(), ex);
             } else {
                 LOG.error("Execution failed for action {}, scheduling for retry {} tasks",

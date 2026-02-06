@@ -1,12 +1,11 @@
 package tech.ydb.mv.apply;
 
-import tech.ydb.mv.MvConfig;
-import tech.ydb.query.QueryClient;
 import tech.ydb.query.tools.SessionRetryContext;
 
-import tech.ydb.mv.svc.MvJobContext;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
+import tech.ydb.mv.svc.MvJobContext;
 
 /**
  * The context to execute the apply actions.
@@ -17,15 +16,12 @@ class MvActionContext {
 
     private final MvJobContext base;
     private final MvApplyManager applyManager;
-    private final QueryClient queryClient;
     private final SessionRetryContext retryCtx;
 
     public MvActionContext(MvJobContext base, MvApplyManager applyManager) {
         this.base = base;
         this.applyManager = applyManager;
-        this.queryClient = base.getYdb().getQueryClient();
-        this.retryCtx = SessionRetryContext.create(this.queryClient)
-                .idempotent(true).build();
+        this.retryCtx = base.getYdb().getQueryRetryCtx();
     }
 
     public MvConfig.PartitioningStrategy getPartitioning() {
@@ -47,10 +43,6 @@ class MvActionContext {
 
     public MvHandler getHandler() {
         return base.getHandler();
-    }
-
-    public QueryClient getQueryClient() {
-        return queryClient;
     }
 
     public SessionRetryContext getRetryCtx() {

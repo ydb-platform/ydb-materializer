@@ -115,7 +115,7 @@ public class MvJobController implements AutoCloseable {
             cdcFeederTemp.close();
         }
         // no explicit stop for applyManager - threads are stopped by context flag
-        applyManager.awaitTermination(Duration.ofSeconds(10));
+        applyManager.awaitTermination(Duration.ofSeconds(120));
         releaseLock();
         return true;
     }

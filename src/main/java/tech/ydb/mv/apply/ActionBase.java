@@ -61,6 +61,14 @@ abstract class ActionBase {
         return lastSqlStatement.get();
     }
 
+    public void checkRunning() {
+        if (!context.isRunning()) {
+            throw new IllegalStateException("Context stopped, terminating "
+                    + "execution of action " + getClass().getSimpleName()
+                    + " #" + String.valueOf(instance));
+        }
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;

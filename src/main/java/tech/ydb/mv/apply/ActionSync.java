@@ -122,6 +122,8 @@ class ActionSync extends ActionBase implements MvApplyAction {
         for (List<MvKey> dr : Lists.partition(workUpsert, writeBatchSize)) {
             // delete some records by keys
             runDelete(dr);
+            // check whether the context is running, and throw if not
+            checkRunning();
         }
     }
 
@@ -154,6 +156,8 @@ class ActionSync extends ActionBase implements MvApplyAction {
             for (List<StructValue> wr : Lists.partition(output, writeBatchSize)) {
                 // write the portion of data
                 runUpsert(wr);
+                // check whether the context is running, and throw if not
+                checkRunning();
             }
         }
     }
