@@ -98,9 +98,12 @@ public class YdbConnector implements AutoCloseable {
             this.topicClient = TopicClient.newClient(tempTransport)
                     .setCompressionExecutor(Runnable::run) // Prevent OOM
                     .build();
-            this.tableClient = QueryClient.newTableClient(tempTransport).build();
+            this.tableClient = QueryClient.newTableClient(tempTransport)
+                    .sessionPoolSize(1, config.getPoolSize())
+                    .build();
             this.tableRetryCtx = tech.ydb.table.SessionRetryContext
                     .create(this.tableClient)
+                    .sessionCreationTimeout(Duration.ofSeconds(5L))
                     .idempotent(true)
                     .build();
             this.queryClient = QueryClient.newClient(tempTransport)
