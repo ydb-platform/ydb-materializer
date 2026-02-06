@@ -2,6 +2,7 @@ package tech.ydb.mv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.mgt.MvCoordinator;
@@ -20,6 +21,7 @@ public class App {
 
     private final YdbConnector conn;
     private final MvApi api;
+    private final AtomicBoolean running = new AtomicBoolean(false);
 
     /**
      * Create the application instance.
@@ -122,8 +124,9 @@ public class App {
             )) {
                 theRunner.start();
                 theCoord.start();
-                setupHandler(() -> shutdown(theRunner, theCoord));
-                while (theRunner.isRunning()) {
+                running.set(true);
+                setupHandler(() -> running.set(false));
+                while (running.get() && theRunner.isRunning()) {
                     YdbMisc.sleep(200L);
                 }
             }
@@ -132,11 +135,6 @@ public class App {
             // YDB connection should not be closed here,
             // as it is managed on the upper level.
         }
-    }
-
-    private void shutdown(MvRunner theRunner, MvCoordinator theCoord) {
-        theCoord.stop();
-        theRunner.stop();
     }
 
     @SuppressWarnings("sunapi")

@@ -172,8 +172,9 @@ public class MvCoordinator implements AutoCloseable {
     }
 
     private void startLeaderLoop() {
-        LOG.info("[{}] Became leader, tick={}ms",
-                runnerId, settings.getScanPeriodMs());
+        LOG.info("[{}] Became leader. Tick={}ms, minRunners={}, stabilization={}ms",
+                runnerId, settings.getScanPeriodMs(), settings.getRunnersCount(),
+                settings.getCoordStartupMs());
 
         ScheduledFuture<?> f;
         try {

@@ -190,6 +190,8 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
+        unregisterRunner();
+
         LOG.debug("[{}] Worker thread finished", runnerId);
     }
 
@@ -200,6 +202,16 @@ public class MvRunner implements AutoCloseable {
         MvRunnerInfo runnerInfo = new MvRunnerInfo(runnerId, runnerIdentity, Instant.now());
         tableOps.upsertRunner(runnerInfo);
         LOG.info("[{}] Registered runner", runnerId);
+    }
+
+    private void unregisterRunner() {
+        try {
+            tableOps.deleteRunnerJobs(runnerId);
+            tableOps.deleteRunner(runnerId);
+            LOG.info("[{}] Unregistered runner", runnerId);
+        } catch (Exception ex) {
+            LOG.error("[{}] Failed to unregister runner", runnerId, ex);
+        }
     }
 
     /**

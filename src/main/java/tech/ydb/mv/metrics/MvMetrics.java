@@ -270,6 +270,12 @@ public final class MvMetrics {
         final Counter jobQueueWait;
 
         public Metrics(PrometheusRegistry registry) {
+            double[] timingBounds = {
+                0.05, 0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0,
+                6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 20.0,
+                25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 75.0, 100.0
+            };
+
             String[] cdcLabels = {"handler", "consumer", "topic"};
             cdcRead = Counter.builder()
                     .name("ydbmv_cdc_records_read")
@@ -290,11 +296,13 @@ public final class MvMetrics {
                     .name("ydbmv_cdc_parse_seconds")
                     .help("CDC message parsing time histogram")
                     .labelNames(cdcLabels)
+                    .classicUpperBounds(timingBounds)
                     .register(registry);
             cdcSubmitTime = Histogram.builder()
                     .name("ydbmv_cdc_submit_seconds")
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
+                    .classicUpperBounds(timingBounds)
                     .register(registry);
 
             String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
@@ -312,11 +320,13 @@ public final class MvMetrics {
                     .name("ydbmv_processing_seconds")
                     .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
+                    .classicUpperBounds(timingBounds)
                     .register(registry);
             sqlTime = Histogram.builder()
                     .name("ydbmv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
+                    .classicUpperBounds(timingBounds)
                     .register(registry);
 
             String[] jobLabels = {"handler"};
