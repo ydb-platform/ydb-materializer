@@ -317,9 +317,9 @@ The configuration file is an XML properties file that defines connection paramet
 
 ### Minimal runnable example
 Use these files for a single-table MV example:
-- `scripts/example-simple-ddl.sql` (create tables and changefeed)
-- `scripts/example-simple.sql` (MV + handler definition)
-- `scripts/example-simple.xml` (config)
+- `scripts/example-tables.sql` (create tables and changefeed)
+- `scripts/example-job1.sql` (MV + handler definition)
+- `scripts/example-job1.xml` (application config)
 
 ### Configuration Parameters Reference
 

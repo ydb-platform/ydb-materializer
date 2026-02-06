@@ -317,9 +317,9 @@ java -jar ydb-materializer-*.jar config.xml JOB
 
 ### Минимальный исполняемый пример
 Файлы для простого примера на одной таблице:
-- `scripts/example-simple-ddl.sql` (создание таблиц и changefeed)
-- `scripts/example-simple.sql` (определение MV и handler)
-- `scripts/example-simple.xml` (конфиг)
+- `scripts/example-tables.sql` (создание таблиц и changefeed)
+- `scripts/example-job1.sql` (определение MV и задания обработки)
+- `scripts/example-job1.xml` (настройки приложения)
 
 ### Справочная информация о параметрах конфигурации
 
