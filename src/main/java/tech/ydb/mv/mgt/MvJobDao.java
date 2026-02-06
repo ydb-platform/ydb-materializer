@@ -157,7 +157,6 @@ public class MvJobDao extends MvDaoHelpers {
             """, tabRunnerJobs
         );
         this.sqlGetAllRunnerJobs = String.format("""
-            DECLARE $runner_id AS Text;
             SELECT runner_id, job_name, job_settings, started_at FROM `%s`;
             """, tabRunnerJobs
         );

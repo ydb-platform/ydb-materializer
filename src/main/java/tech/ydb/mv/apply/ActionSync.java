@@ -117,9 +117,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         delete.addAll(tempDelete);
     }
 
-    private void deleteRows(List<MvKey> workUpsert) {
+    private void deleteRows(List<MvKey> rowKeys) {
         int writeBatchSize = getWriteBatchSize();
-        for (List<MvKey> dr : Lists.partition(workUpsert, writeBatchSize)) {
+        for (List<MvKey> dr : Lists.partition(rowKeys, writeBatchSize)) {
             // delete some records by keys
             runDelete(dr);
             // check whether the context is running, and throw if not
@@ -127,8 +127,8 @@ class ActionSync extends ActionBase implements MvApplyAction {
         }
     }
 
-    private void runDelete(List<MvKey> items) {
-        Value<?> keys = keysToParam(items);
+    private void runDelete(List<MvKey> rowKeys) {
+        Value<?> keys = keysToParam(rowKeys);
         if (LOG.isDebugEnabled()) {
             LOG.debug("DELETE FROM {}: {}", targetTableName, keys);
         }
@@ -145,11 +145,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
         currentStatement.set(new StatementTiming(statement, startNs, "delete"));
     }
 
-    private void upsertRows(List<MvKey> workUpsert) {
+    private void upsertRows(List<MvKey> rowKeys) {
         int readBatchSize = getReadBatchSize();
         int writeBatchSize = getWriteBatchSize();
         ArrayList<StructValue> output = new ArrayList<>(readBatchSize);
-        for (List<MvKey> rd : Lists.partition(workUpsert, readBatchSize)) {
+        for (List<MvKey> rd : Lists.partition(rowKeys, readBatchSize)) {
             // read the portion of data
             output.clear();
             readRows(rd, output);

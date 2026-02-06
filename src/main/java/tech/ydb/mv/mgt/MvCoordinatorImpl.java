@@ -59,7 +59,7 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
             if (hasSelfCleanup) {
                 if (!selfCleanupDetected) {
                     selfCleanupDetected = true;
-                    LOG.warn("[{}] Delected inactivity for self-runner, cleanup DELAYED.", runnerId);
+                    LOG.warn("[{}] Detected inactivity for self-runner, cleanup DELAYED.", runnerId);
                 }
                 return;
             } else {

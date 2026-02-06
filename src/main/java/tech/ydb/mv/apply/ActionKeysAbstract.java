@@ -37,7 +37,7 @@ abstract class ActionKeysAbstract extends ActionBase implements MvApplyAction {
         this.keyInfo = target.getTopMostSource().getTableInfo().getKeyInfo();
         if (this.keyInfo.size() != transformation.getColumns().size()) {
             throw new IllegalArgumentException("Illegal key setup, expected "
-                    + this.keyInfo.size() + ", got " + this.keyInfo.size());
+                    + this.keyInfo.size() + ", got " + transformation.getColumns().size());
         }
         this.selectBatchSize = context.getSettings().getSelectBatchSize();
     }
