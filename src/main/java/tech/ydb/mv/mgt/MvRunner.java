@@ -55,6 +55,12 @@ public class MvRunner implements AutoCloseable {
         this(ydb, api, new MvBatchSettings(), null);
     }
 
+    public int getJobsCount() {
+        synchronized (localJobs) {
+            return localJobs.size();
+        }
+    }
+
     /**
      * Start the runner.
      *
@@ -89,7 +95,7 @@ public class MvRunner implements AutoCloseable {
             return false;
         }
 
-        LOG.info("[{}] Stopping MvRunner", runnerId);
+        LOG.info("[{}] Stopping MvRunner, {} jobs still running", runnerId, getJobsCount());
 
         stopAllJobs();
 

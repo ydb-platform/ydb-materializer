@@ -74,7 +74,8 @@ class MvCoordinatorImpl implements MvCoordinatorActions {
                 jobDao.deleteRunnerJobs(ir.getRunnerId());
                 jobDao.deleteRunner(ir.getRunnerId());
 
-                LOG.info("[{}] Cleaned up inactive runner: {}", runnerId, ir.getRunnerId());
+                LOG.info("[{}] Cleaned up inactive runner {}, which was last active at {} as {}",
+                        runnerId, ir.getRunnerId(), ir.getUpdatedAt(), ir.getIdentity());
             }
 
         } catch (Exception ex) {
