@@ -124,7 +124,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     }
 
     @Override
-    protected YdbConnector.Config getNewConfig() {
+    protected MvConfig getNewConfig() {
         var ret = super.getNewConfig();
         ret.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
         return ret;
@@ -180,9 +180,9 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         Assertions.assertEquals(2, successCounter.get());
     }
 
-    private void handler(YdbConnector.Config cfg, String name, AtomicInteger successCounter) {
+    private void handler(MvConfig cfg, String name, AtomicInteger successCounter) {
         var batchSettings = new MvBatchSettings(cfg.getProperties());
-        try (var conn = new YdbConnector(cfg); var api = MvApi.newInstance(conn)) {
+        try (var conn = new YdbConnector(cfg, true); var api = MvApi.newInstance(conn)) {
             try (var runner = new MvRunner(conn, api, name)) {
                 api.applyDefaults(conn.getConfig().getProperties());
                 try (var coord = MvCoordinator.newInstance(conn, batchSettings, name)) {

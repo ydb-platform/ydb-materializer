@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -38,7 +39,7 @@ public class MvRunner implements AutoCloseable {
     public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings, String runnerId) {
         this.api = api;
         this.settings = settings;
-        this.tableOps = new MvJobDao(ydb, settings);
+        this.tableOps = new MvJobDao(ydb.getConnMgt(), settings);
         this.runnerId = (runnerId == null) ? generateRunnerId() : runnerId;
         this.runnerIdentity = generateRunnerIdentity();
     }

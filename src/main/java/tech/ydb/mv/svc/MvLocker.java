@@ -11,7 +11,6 @@ import tech.ydb.core.Result;
 import tech.ydb.query.tools.SessionRetryContext;
 
 import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.YdbConnector;
 
 /**
  *
@@ -27,11 +26,11 @@ public class MvLocker implements AutoCloseable {
     private final HashMap<String, Lease> leases = new HashMap<>();
     private final Duration timeout;
 
-    public MvLocker(YdbConnector conn) {
+    public MvLocker(MvConnector.ConnMgt conn) {
         this.retryCtx = conn.getQueryRetryCtx();
         this.client = conn.getCoordinationClient();
         this.nodePath = conn.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
-        prepareNode(conn, this.nodePath);
+        prepareCoordNode(conn, this.nodePath);
         int seconds = conn.getProperty(MvConfig.CONF_COORD_TIMEOUT, 10);
         if (seconds < 5) {
             seconds = 5;
@@ -48,7 +47,7 @@ public class MvLocker implements AutoCloseable {
         releaseAll();
     }
 
-    private static void prepareNode(YdbConnector conn, String nodePath) {
+    private static void prepareCoordNode(MvConnector.ConnMgt conn, String nodePath) {
         // QueryRetryContext used for retry processing here,
         // QuerySession is not actually needed
         conn.getQueryRetryCtx().supplyStatus(
@@ -88,7 +87,7 @@ public class MvLocker implements AutoCloseable {
     }
 
     public boolean lock(String name, Duration timeout) {
-        name = YdbConnector.safe(name);
+        name = MvConfig.safe(name);
         LOG.debug("Ensuring the single `{}` job instance "
                 + "through lock with timeout {}...", name, timeout);
         Lease lease;
@@ -113,7 +112,7 @@ public class MvLocker implements AutoCloseable {
     }
 
     public boolean release(String name) {
-        name = YdbConnector.safe(name);
+        name = MvConfig.safe(name);
         Lease lease;
         synchronized (leases) {
             lease = leases.remove(name);

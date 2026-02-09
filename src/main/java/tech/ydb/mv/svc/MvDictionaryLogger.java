@@ -60,8 +60,7 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
         this.context = context;
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
-        this.historyTable = conn.getProperty(
-                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
+        this.historyTable = conn.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         this.seqno = new AtomicLong(100L * System.currentTimeMillis());
         this.sqlUpsert = """
             DECLARE $input AS List<Struct<

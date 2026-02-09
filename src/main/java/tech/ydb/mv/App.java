@@ -9,6 +9,7 @@ import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvRunner;
 import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.svc.MvConnector;
 
 /**
  * Default application for YDB Materializer.
@@ -32,32 +33,6 @@ public class App {
     public App(YdbConnector conn, MvApi api) {
         this.conn = conn;
         this.api = api;
-    }
-
-    /**
-     * Application entry point.
-     *
-     * @param args Command line arguments
-     */
-    public static void main(String[] args) {
-        if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
-            System.out.println("USAGE: tech.ydb.mv.App job.xml " + MvConfig.getAllModes());
-            System.exit(1);
-        }
-        try {
-            YdbConnector.Config ycc = YdbConnector.Config.fromFile(args[0]);
-            LOG.info("Starting the YDB Materializer...");
-            try (YdbConnector conn = new YdbConnector(ycc)) {
-                LOG.info("Database connection established.");
-                try (MvApi api = MvApi.newInstance(conn)) {
-                    new App(conn, api).run(MvConfig.parseMode(args[1]));
-                }
-            }
-            LOG.info("Completed successfully.");
-        } catch (Exception ex) {
-            LOG.error("Execution failed", ex);
-            System.exit(1);
-        }
     }
 
     private void initMetrics() {
@@ -142,4 +117,43 @@ public class App {
         sun.misc.Signal.handle(new sun.misc.Signal("TERM"), (signal) -> handler.run());
         sun.misc.Signal.handle(new sun.misc.Signal("INT"), (signal) -> handler.run());
     }
+
+    // Check if management style connection is required
+    private static boolean isManagementMode(MvConfig.Mode mode) {
+        switch (mode) {
+            case JOB:
+            case LOCAL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Application entry point.
+     *
+     * @param args Command line arguments
+     */
+    public static void main(String[] args) {
+        if (args.length != 2 || MvConfig.parseMode(args[1]) == null) {
+            System.out.println("USAGE: tech.ydb.mv.App job.xml " + MvConfig.getAllModes());
+            System.exit(1);
+        }
+        try {
+            var mode = MvConfig.parseMode(args[1]);
+            MvConfig ycc = MvConfig.fromFile(args[0]);
+            LOG.info("Starting the YDB Materializer...");
+            try (YdbConnector conn = new YdbConnector(ycc, isManagementMode(mode))) {
+                LOG.info("Database connection established.");
+                try (MvApi api = MvApi.newInstance(conn)) {
+                    new App(conn, api).run(mode);
+                }
+            }
+            LOG.info("Completed successfully.");
+        } catch (Exception ex) {
+            LOG.error("Execution failed", ex);
+            System.exit(1);
+        }
+    }
+
 }

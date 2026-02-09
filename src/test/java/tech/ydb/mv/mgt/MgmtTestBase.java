@@ -3,6 +3,7 @@ package tech.ydb.mv.mgt;
 import java.util.Properties;
 
 import tech.ydb.mv.AbstractIntegrationBase;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 
 /**
@@ -75,8 +76,8 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
 
     protected static void prepareMgtDb() {
         System.err.println("[AbstractMgtTest] Setting up management tables...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getMgtConfig(), "config.xml", null);
-        ydbConnector = new YdbConnector(cfg);
+        var cfg = MvConfig.fromBytes(getMgtConfig(), "config.xml", null);
+        ydbConnector = new YdbConnector(cfg, true);
         runDdl(ydbConnector, CREATE_MGT_TABLES);
     }
 
@@ -119,7 +120,7 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
         runDdl(ydbConnector, "DELETE FROM `test1/mv_runner_jobs`");
         runDdl(ydbConnector, "DELETE FROM `test1/mv_commands`");
 
-        jobDao = new MvJobDao(ydbConnector,
+        jobDao = new MvJobDao(ydbConnector.getConnMgt(),
                 new MvBatchSettings(ydbConnector.getConfig().getProperties()));
     }
 

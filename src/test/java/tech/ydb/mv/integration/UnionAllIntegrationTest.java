@@ -214,7 +214,7 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
         pause(5000L);
         // init database
         System.err.println("[UUU] Database setup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             System.err.println("[UUU] Preparation: creating tables...");
             runDdl(conn, CREATE_TABLES_BASE);
@@ -227,7 +227,7 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
     @AfterEach
     public void cleanup() {
         System.err.println("[UUU] Database cleanup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, DROP_TABLES_BASE);
             runDdl(conn, DROP_TABLES_UA);
@@ -237,8 +237,8 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
     @Test
     public void unionAllIntegrationTest() {
         System.err.println("[UUU] Starting up...");
-        var cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        try (var conn = new YdbConnector(cfg)) {
+        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
+        try (var conn = new YdbConnector(cfg, true)) {
             try (var svc = new MvService(conn)) {
                 svc.applyDefaults(conn.getConfig().getProperties());
                 System.err.println("[UUU] Creating CDC streams...");

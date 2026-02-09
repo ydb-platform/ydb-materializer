@@ -1,296 +1,177 @@
 package tech.ydb.mv;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Properties;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 /**
- * Configuration setting names.
- *
- * @author zinal
+ * Configuration class for YDB database connections. It holds various properties
+ * for connection strings, authentication settings, TLS certificate files,
+ * connection pool size, and a prefix used for property lookups. The
+ * configuration can be initialized with or without a set of Java Properties,
+ * optionally using a custom prefix for property names. A static method provided
+ * by the class allows loading configuration from an external XML properties
+ * file.
  */
-public class MvConfig {
+public class MvConfig extends MvConfigBase {
 
-    /**
-     * Gson instance for basic conversions.
-     */
-    public static final Gson GSON = new GsonBuilder().create();
+    private String connectionString;
+    private MvConfigBase.AuthMode authMode = MvConfigBase.AuthMode.NONE;
+    private String saKeyFile;
+    private String staticLogin;
+    private String staticPassword;
+    private String tlsCertificateFile;
+    private int poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
+    private boolean preferLocalDc = false;
+    private final String prefix;
 
-    /**
-     * System-used prefix for job names / handler names.
-     */
-    public static final String SYS_PREFIX = "ydbmv";
-
-    /**
-     * Name for the dictionary change logging handler.
-     */
-    public static final String HANDLER_DICTIONARY = "ydbmv$dictionary";
-
-    /**
-     * Name for the global job coordinator handler.
-     */
-    public static final String HANDLER_COORDINATOR = "ydbmv$coordinator";
-
-    /**
-     * FILE read input statements from file TABLE read input statements from
-     * database table
-     */
-    public static final String CONF_INPUT_MODE = "job.input.mode";
-
-    /**
-     * Path to file, in case FILE mode is chosen.
-     */
-    public static final String CONF_INPUT_FILE = "job.input.file";
-
-    /**
-     * Name of the table, in case TABLE mode is chosen.
-     */
-    public static final String CONF_INPUT_TABLE = "job.input.table";
-
-    /**
-     * If set to "true", attempt to create CDC streams and consumers.
-     */
-    public static final String CONF_STREAMS_CREATE = "job.streams.create";
-
-    /**
-     * Comma-separated list of handler names to be activated on RUN action.
-     */
-    public static final String CONF_HANDLERS = "job.handlers";
-
-    /**
-     * Scan rate limiter, rows per second.
-     */
-    public static final String CONF_SCAN_RATE = "job.scan.rate";
-
-    /**
-     * Path to scan feeder position table.
-     */
-    public static final String CONF_SCAN_TABLE = "job.scan.table";
-
-    /**
-     * Path to dictionary history table.
-     */
-    public static final String CONF_DICT_HIST_TABLE = "job.dict.hist.table";
-
-    /**
-     * Dictionary history consumer.
-     */
-    public static final String CONF_DICT_CONSUMER = "job.dict.consumer";
-
-    /**
-     * Handler setting: period between dictionary scans, seconds.
-     */
-    public static final String CONF_DICT_SCAN_SECONDS = "job.dict.scan.seconds";
-
-    /**
-     * Handler setting: query timeout, seconds.
-     */
-    public static final String CONF_QUERY_TIMEOUT = "job.query.seconds";
-
-    /**
-     * Enable Prometheus metrics endpoint.
-     */
-    public static final String CONF_METRICS_ENABLED = "metrics.enabled";
-
-    /**
-     * Port for Prometheus metrics endpoint.
-     */
-    public static final String CONF_METRICS_PORT = "metrics.port";
-
-    /**
-     * Host/interface for Prometheus metrics endpoint.
-     */
-    public static final String CONF_METRICS_HOST = "metrics.host";
-
-    /**
-     * Path to coordination service node.
-     */
-    public static final String CONF_COORD_PATH = "job.coordination.path";
-
-    /**
-     * Lock timeout for job coordination in seconds.
-     */
-    public static final String CONF_COORD_TIMEOUT = "job.coordination.timeout";
-
-    /**
-     * Handler setting: partitioning strategy (default HASH, possible RANGE).
-     */
-    public static final String CONF_PARTITIONING = "job.apply.partitioning";
-
-    /**
-     * Handler setting: number of threads in the CDC reader pool.
-     */
-    public static final String CONF_CDC_THREADS = "job.cdc.threads";
-
-    /**
-     * Handler setting: number of threads in the apply pool.
-     */
-    public static final String CONF_APPLY_THREADS = "job.apply.threads";
-
-    /**
-     * Handler setting: max number of elements in the apply queue.
-     */
-    public static final String CONF_APPLY_QUEUE = "job.apply.queue";
-
-    /**
-     * Handler setting: number of rows to be selected for batch processing.
-     */
-    public static final String CONF_BATCH_SELECT = "job.batch.select";
-
-    /**
-     * Handler setting: number of rows to be applied in a batch.
-     */
-    public static final String CONF_BATCH_UPSERT = "job.batch.upsert";
-
-    /**
-     * Handler setting: max number of changes to be scanned in a single batch.
-     */
-    public static final String CONF_MAX_ROW_CHANGES = "job.max.row.changes";
-
-    /**
-     * Default input SQL file name.
-     */
-    public static final String DEF_STMT_FILE = "mv.sql";
-
-    /**
-     * Default input SQL table name.
-     */
-    public static final String DEF_STMT_TABLE = "mv/statements";
-
-    /**
-     * Scan position control table name.
-     */
-    public static final String DEF_SCAN_TABLE = "mv/scans_state";
-
-    /**
-     * Dictionary history table name.
-     */
-    public static final String DEF_DICT_HIST_TABLE = "mv/dict_hist";
-
-    /**
-     * Coordination node path.
-     */
-    public static final String DEF_COORD_PATH = "mv/coordination";
-
-    public static int parseInt(Properties props, String propName, int defval) {
-        String v = props.getProperty(propName);
-        if (v == null || v.length() == 0) {
-            return defval;
-        }
-        return parseInt(v, propName);
+    public MvConfig() {
+        this.prefix = "ydb.";
+        this.connectionString = "/local";
     }
 
-    public static int parseInt(String value, String comment) {
+    public MvConfig(Properties props) {
+        this(props, null);
+    }
+
+    public MvConfig(Properties props, String prefix) {
+        super(props);
+        if (prefix == null) {
+            prefix = "ydb.";
+        }
+        this.prefix = prefix;
+        this.connectionString = props.getProperty(prefix + "url");
+        if (this.connectionString == null || this.connectionString.length() == 0) {
+            this.connectionString = "/local";
+        }
+        this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
+        this.saKeyFile = props.getProperty(prefix + "auth.sakey");
+        this.staticLogin = props.getProperty(prefix + "auth.username");
+        this.staticPassword = props.getProperty(prefix + "auth.password");
+        this.tlsCertificateFile = props.getProperty(prefix + "cafile");
+        this.preferLocalDc = super.getProperty(prefix + "preferLocalDc", false);
+        this.poolSize = super.getProperty(prefix + "poolSize", this.poolSize);
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public String getConnectionString() {
+        return connectionString;
+    }
+
+    public void setConnectionString(String connectionString) {
+        this.connectionString = connectionString;
+    }
+
+    public MvConfigBase.AuthMode getAuthMode() {
+        return authMode;
+    }
+
+    public void setAuthMode(MvConfigBase.AuthMode authMode) {
+        if (authMode == null) {
+            this.authMode = MvConfigBase.AuthMode.NONE;
+        } else {
+            this.authMode = authMode;
+        }
+    }
+
+    public String getSaKeyFile() {
+        return saKeyFile;
+    }
+
+    public void setSaKeyFile(String saKeyFile) {
+        this.saKeyFile = saKeyFile;
+    }
+
+    public String getStaticLogin() {
+        return staticLogin;
+    }
+
+    public void setStaticLogin(String staticLogin) {
+        this.staticLogin = staticLogin;
+    }
+
+    public String getStaticPassword() {
+        return staticPassword;
+    }
+
+    public void setStaticPassword(String staticPassword) {
+        this.staticPassword = staticPassword;
+    }
+
+    public String getTlsCertificateFile() {
+        return tlsCertificateFile;
+    }
+
+    public void setTlsCertificateFile(String tlsCertificateFile) {
+        this.tlsCertificateFile = tlsCertificateFile;
+    }
+
+    public int getPoolSize() {
+        return poolSize;
+    }
+
+    public void setPoolSize(int poolSize) {
+        if (poolSize <= 0) {
+            poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
+        }
+        this.poolSize = poolSize;
+    }
+
+    public boolean isPreferLocalDc() {
+        return preferLocalDc;
+    }
+
+    public void setPreferLocalDc(boolean preferLocalDc) {
+        this.preferLocalDc = preferLocalDc;
+    }
+
+    /**
+     * Loads a configuration from the specified file. This is a convenience
+     * method that delegates to the overloaded version without an explicit
+     * property name prefix parameter.
+     *
+     * @param fname the file path to load the configuration from
+     * @return the parsed configuration object
+     */
+    public static MvConfig fromFile(String fname) {
+        return fromFile(fname, null);
+    }
+
+    /**
+     * Reads and parses a configuration file into a {@link MvConfig}
+     * object.The file is read as bytes, then parsed as XML properties.A custom
+     * prefix for property names can be applied during configuration processing.
+     *
+     * @param fname the path to the configuration file
+     * @param prefix the custom prefix for property names to be read when
+     * constructing the Config object
+     * @return a new {@link MvConfig} object loaded with the specified
+     * properties
+     * @throws RuntimeException if the file cannot be read or parsed
+     */
+    public static MvConfig fromFile(String fname, String prefix) {
+        byte[] data;
         try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException nfe) {
-            throw new RuntimeException("[" + comment + "] "
-                    + "Failed to parse integer " + value, nfe);
+            data = Files.readAllBytes(Paths.get(fname));
+        } catch (IOException ix) {
+            throw new RuntimeException("Failed to read file " + fname, ix);
         }
+        return fromBytes(data, fname, prefix);
     }
 
-    public static long parseLong(Properties props, String propName, long defval) {
-        String v = props.getProperty(propName);
-        if (v == null || v.length() == 0) {
-            return defval;
-        }
-        return parseLong(v, propName);
-    }
-
-    public static long parseLong(String value, String comment) {
+    public static MvConfig fromBytes(byte[] data, String fname, String prefix) {
+        Properties props = new Properties();
         try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException nfe) {
-            throw new RuntimeException("[" + comment + "] "
-                    + "Failed to parse long " + value, nfe);
+            props.loadFromXML(new ByteArrayInputStream(data));
+        } catch (IOException ix) {
+            throw new RuntimeException("Failed to parse properties file " + fname, ix);
         }
-    }
-
-    public static String getAllModes() {
-        var sb = new StringBuilder();
-        for (var mode : Mode.values()) {
-            if (sb.length() > 0) {
-                sb.append('|');
-            }
-            sb.append(mode.toString());
-        }
-        return sb.toString();
-    }
-
-    public static Mode parseMode(String v) {
-        if (v == null) {
-            return null;
-        }
-        v = v.trim();
-        for (var m : Mode.values()) {
-            if (m.name().equalsIgnoreCase(v)) {
-                return m;
-            }
-        }
-        return null;
-    }
-
-    public static Input parseInput(String v) {
-        if (v == null) {
-            return null;
-        }
-        v = v.trim();
-        for (var i : Input.values()) {
-            if (i.name().equalsIgnoreCase(v)) {
-                return i;
-            }
-        }
-        return null;
-    }
-
-    public static PartitioningStrategy parsePartitioning(String v) {
-        if (v == null) {
-            return null;
-        }
-        v = v.trim();
-        for (var s : PartitioningStrategy.values()) {
-            if (s.name().equalsIgnoreCase(v)) {
-                return s;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Application execution mode.
-     */
-    public static enum Mode {
-        /**
-         * Validate configuration and report issues.
-         */
-        CHECK,
-        /**
-         * Generate and print SQL queries used by the Materializer.
-         */
-        SQL,
-        /**
-         * Generate and print (and optionally apply) SQL queries for CDC streams
-         * and consumers.
-         */
-        STREAMS,
-        /**
-         * Run application in the local (single-instance) mode.
-         */
-        LOCAL,
-        /**
-         * Run application in the distributed (multi-instance) mode.
-         */
-        JOB,
-    }
-
-    public static enum Input {
-        FILE,
-        TABLE
-    }
-
-    public static enum PartitioningStrategy {
-        RANGE,
-        HASH
+        return new MvConfig(props, prefix);
     }
 
 }

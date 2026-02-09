@@ -47,10 +47,8 @@ public class MvDictionaryScan {
         this.conn = conn;
         this.settings = new MvDictionarySettings(settings);
         this.describer = describer;
-        this.controlTableName = conn.getProperty(
-                MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
-        this.historyTableName = conn.getProperty(
-                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
+        this.controlTableName = conn.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+        this.historyTableName = conn.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         this.historyTableInfo = describer.describeTable(this.historyTableName);
         this.sqlSelectInitial = getSelectInitial(this.historyTableName);
         this.sqlSelectNext = getSelectNext(this.historyTableName);

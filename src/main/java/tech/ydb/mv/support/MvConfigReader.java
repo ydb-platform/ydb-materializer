@@ -7,7 +7,7 @@ import java.util.Properties;
 
 import tech.ydb.table.query.Params;
 
-import tech.ydb.mv.MvConfig;
+import tech.ydb.mv.MvConfigBase;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.parser.MvSqlParser;
@@ -17,14 +17,14 @@ import tech.ydb.mv.parser.MvSqlParser;
  *
  * @author zinal
  */
-public class MvConfigReader extends MvConfig {
+public class MvConfigReader extends MvConfigBase {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConfigReader.class);
 
     public static MvMetadata read(YdbConnector ydb, Properties props) {
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
         MvMetadata metadata;
-        switch (MvConfig.parseInput(mode)) {
+        switch (MvConfigBase.parseInput(mode)) {
             case FILE -> {
                 metadata = readFile(ydb, props);
             }
@@ -33,8 +33,9 @@ public class MvConfigReader extends MvConfig {
             }
             default -> {
                 throw new IllegalArgumentException("Illegal value [" + mode + "] for "
-                        + "property " + MvConfig.CONF_INPUT_MODE);
+                        + "property " + MvConfigBase.CONF_INPUT_MODE);
             }
+
         }
         metadata.setDictionaryConsumer(props.getProperty(CONF_DICT_CONSUMER, HANDLER_DICTIONARY));
         return metadata;
@@ -63,7 +64,7 @@ public class MvConfigReader extends MvConfig {
 
     private static String readStatements(YdbConnector ydb, String tabname) {
         String stmt = "SELECT statement_text, statement_no FROM `"
-                + YdbConnector.safe(tabname) + "` ORDER BY statement_no";
+                + safe(tabname) + "` ORDER BY statement_no";
         var result = ydb.sqlRead(stmt, Params.empty()).getResultSet(0);
         final StringBuilder sb = new StringBuilder();
         while (result.next()) {

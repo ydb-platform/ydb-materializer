@@ -35,9 +35,9 @@ class MvWorkerSelector {
         this.tableInfo = tableInfo;
         this.workerCount = (workerCount > 0) ? workerCount : 1;
         this.chooser = new AtomicReference<>(
-                MvConfig.PartitioningStrategy.HASH.equals(partitioning) ?
-                new ChooserHash(this.workerCount) :
-                new ChooserRange(this.workerCount)
+                MvConfig.PartitioningStrategy.HASH.equals(partitioning)
+                ? new ChooserHash(this.workerCount)
+                : new ChooserRange(this.workerCount)
         );
         this.partitioning = partitioning;
     }
@@ -123,6 +123,7 @@ class MvWorkerSelector {
     }
 
     public interface Chooser {
+
         int choose(MvKey key);
     }
 

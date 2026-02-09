@@ -8,7 +8,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.values.PrimitiveType;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.support.MvDaoHelpers;
 
 /**
@@ -20,7 +20,7 @@ import tech.ydb.mv.support.MvDaoHelpers;
  */
 public class MvJobDao extends MvDaoHelpers {
 
-    private final YdbConnector ydb;
+    private final MvConnector.ConnMgt ydb;
 
     // Pre-generated SQL statements
     private final String sqlGetAllJobs;
@@ -46,7 +46,7 @@ public class MvJobDao extends MvDaoHelpers {
     private final String sqlUpdateCommandStatus;
     private final String sqlMaxCommandNo;
 
-    public MvJobDao(YdbConnector ydb, MvBatchSettings settings) {
+    public MvJobDao(MvConnector.ConnMgt ydb, MvBatchSettings settings) {
         this.ydb = ydb;
 
         String tabJobs = settings.getTableJobs();

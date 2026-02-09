@@ -23,6 +23,7 @@ import tech.ydb.test.junit5.YdbHelperExtension;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.table.query.Params;
 
@@ -296,14 +297,14 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         }
     }
 
-    private final AtomicReference<YdbConnector.Config> configRef
+    private final AtomicReference<MvConfig> configRef
             = new AtomicReference<>();
 
-    protected YdbConnector.Config getNewConfig() {
-        return YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+    protected MvConfig getNewConfig() {
+        return MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
     }
 
-    protected YdbConnector.Config getConfig() {
+    protected MvConfig getConfig() {
         return configRef.updateAndGet((v) -> (v != null) ? v : getNewConfig());
     }
 
@@ -312,7 +313,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         pause(5000L);
         // init database
         System.err.println("[AAA] Database setup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
         }
@@ -320,7 +321,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     protected void clearDb() {
         System.err.println("[AAA] Database cleanup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, DROP_TABLES_BASE);
             runDdl(conn, DROP_TABLES_DATA);

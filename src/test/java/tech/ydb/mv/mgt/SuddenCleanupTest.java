@@ -132,7 +132,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
     private int workerThread() {
         System.out.println("Worker entry");
         try {
-            YdbConnector.Config cfg = new YdbConnector.Config(getConfigProps(), null);
+            var cfg = new MvConfig(getConfigProps(), null);
             try (YdbConnector conn = new YdbConnector(cfg)) {
                 try (MvApi api = MvApi.newInstance(conn)) {
                     var batchSettings = new MvBatchSettings(api.getYdb().getConfig().getProperties());

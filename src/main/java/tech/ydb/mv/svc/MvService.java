@@ -53,7 +53,7 @@ public class MvService implements MvApi {
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
         this.metadata = loadMetadata(ydb, null);
-        this.locker = new MvLocker(ydb);
+        this.locker = new MvLocker(ydb.getConnMgt());
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
@@ -401,8 +401,7 @@ public class MvService implements MvApi {
     }
 
     private void appendDictHist(MvMetadata m) {
-        String historyTableName = ydb.getProperty(
-                MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
+        String historyTableName = ydb.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
         var tableInfo = new MvDescriberYdb(ydb).describeTable(historyTableName);
         m.getTables().put(tableInfo.getName(), tableInfo);
     }
