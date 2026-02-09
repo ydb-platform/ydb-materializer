@@ -19,7 +19,6 @@ import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.query.QueryClient;
 import tech.ydb.query.QuerySession;
 import tech.ydb.query.tools.QueryReader;
-import tech.ydb.scheme.SchemeClient;
 import tech.ydb.table.TableClient;
 import tech.ydb.table.query.Params;
 import tech.ydb.topic.TopicClient;
@@ -34,7 +33,6 @@ public class YdbConnector implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbConnector.class);
 
     private final GrpcTransport transport;
-    private final SchemeClient schemeClient;
     private final TableClient tableClient;
     private final QueryClient queryClient;
     private final tech.ydb.table.SessionRetryContext tableRetryCtx;
@@ -116,7 +114,6 @@ public class YdbConnector implements AutoCloseable {
                     .sessionCreationTimeout(Duration.ofSeconds(5L))
                     .idempotent(true)
                     .build();
-            this.schemeClient = SchemeClient.newClient(tempTransport).build();
             this.transport = tempTransport;
             tempTransport = null; // to avoid closing below
         } finally {
@@ -170,10 +167,6 @@ public class YdbConnector implements AutoCloseable {
 
     public QueryClient getQueryClient() {
         return queryClient;
-    }
-
-    public SchemeClient getSchemeClient() {
-        return schemeClient;
     }
 
     public String getDatabase() {
@@ -247,13 +240,6 @@ public class YdbConnector implements AutoCloseable {
                 queryClient.close();
             } catch (Exception ex) {
                 LOG.warn("QueryClient closing threw an exception", ex);
-            }
-        }
-        if (schemeClient != null) {
-            try {
-                schemeClient.close();
-            } catch (Exception ex) {
-                LOG.warn("SchemeClient closing threw an exception", ex);
             }
         }
         if (transport != null) {
