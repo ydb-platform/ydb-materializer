@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntSupplier;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 
@@ -91,15 +92,17 @@ public class MvCoordinatorTest extends MgmtTestBase {
             });
 
             coord.start();
+            waitForLeader(coord, 20_000L);
 
             for (int i = 1; i <= 10; i++) {
                 pause(1_001);
                 coord.stop();
                 pause(1_002);
                 coord.start();
+                waitForLeader(coord, 20_000L);
                 pause(1_003);
-                Assertions.assertEquals(i + 1, queue.size());
-                Assertions.assertEquals(i + 1, deque.size());
+                assertSizeEventually("queue", i + 1, 20_000L, queue::size);
+                assertSizeEventually("deque", i + 1, 20_000L, deque::size);
             }
         } finally {
             if (coord != null) {
@@ -158,12 +161,14 @@ public class MvCoordinatorTest extends MgmtTestBase {
         }
 
         try {
+            waitForLeader(coords, 20_000L);
             for (int i = 1; i <= 10; i++) {
                 pause(1_001);
+                waitForLeader(coords, 20_000L);
                 stopActive(coords);
                 pause(1_002);
-                Assertions.assertEquals(i + 1, queue.size());
-                Assertions.assertEquals(i + 1, deque.size());
+                assertSizeEventually("queue", i + 1, 20_000L, queue::size);
+                assertSizeEventually("deque", i + 1, 20_000L, deque::size);
             }
         } finally {
             for (var c : coords) {
@@ -189,6 +194,43 @@ public class MvCoordinatorTest extends MgmtTestBase {
             active.stop();
         }
         Assertions.assertNotNull(active, "Missing active coordinator");
+    }
+
+    private void waitForLeader(MvCoordinator coord, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            if (coord.isLeader()) {
+                return;
+            }
+            pause(100L);
+        }
+        Assertions.fail("Leader was not elected within " + timeoutMs + "ms");
+    }
+
+    private void waitForLeader(ArrayList<MvCoordinator> coords, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            for (var c : coords) {
+                if (c.isLeader()) {
+                    return;
+                }
+            }
+            pause(100L);
+        }
+        Assertions.fail("Leader was not elected within " + timeoutMs + "ms");
+    }
+
+    private void assertSizeEventually(String name, int expected, long timeoutMs, IntSupplier actual) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        int value = actual.getAsInt();
+        while (System.currentTimeMillis() < deadline) {
+            if (value == expected) {
+                return;
+            }
+            pause(100L);
+            value = actual.getAsInt();
+        }
+        Assertions.assertEquals(expected, value, "Unexpected size for " + name);
     }
 
 }

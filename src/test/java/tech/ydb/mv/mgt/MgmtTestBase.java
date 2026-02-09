@@ -78,6 +78,7 @@ public abstract class MgmtTestBase extends AbstractIntegrationBase {
         System.err.println("[AbstractMgtTest] Setting up management tables...");
         var cfg = MvConfig.fromBytes(getMgtConfig());
         ydbConnector = new YdbConnector(cfg, true);
+        pause(5_000);
         runDdl(ydbConnector, CREATE_MGT_TABLES);
     }
 

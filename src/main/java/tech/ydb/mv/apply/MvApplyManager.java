@@ -296,12 +296,12 @@ public class MvApplyManager implements MvSink {
             throw new IllegalArgumentException("Cannot produce filter action "
                     + "for unknown target " + target.getName() + " as " + target.getAlias());
         }
-        if (targetConfig.getDictTrans() == null) {
+        if (filter.getTransformation() == null) {
             throw new IllegalArgumentException(
-                    "Cannot produce filter action for non-dictionary target "
+                    "Cannot produce filter action without transformation for target "
                     + target.getName() + " as " + target.getAlias());
         }
-        return new ActionKeysFilter(context, target, targetConfig.getDictTrans(), filter);
+        return new ActionKeysFilter(context, target, filter.getTransformation(), filter);
     }
 
 }
