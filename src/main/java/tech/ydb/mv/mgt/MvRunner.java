@@ -98,14 +98,12 @@ public class MvRunner implements AutoCloseable {
 
         LOG.info("[{}] Stopping MvRunner, {} jobs still running", runnerId, getJobsCount());
 
-        stopAllJobs();
-
         // Wait for runner thread to finish
         if (runnerThread != null) {
             try {
-                runnerThread.join(5000); // Wait up to 5 seconds
+                runnerThread.join(20000L); // Wait up to 20 seconds
+                runnerThread = null;
             } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
                 LOG.warn("[{}] Interrupted while waiting for runner thread to stop", runnerId);
             }
         }
@@ -191,6 +189,7 @@ public class MvRunner implements AutoCloseable {
             }
         }
 
+        stopAllJobs();
         unregisterRunner();
 
         LOG.debug("[{}] Worker thread finished", runnerId);

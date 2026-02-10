@@ -5,9 +5,9 @@ import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import tech.ydb.mv.MvApi;
@@ -25,6 +25,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
     private static final int NUM_THREADS = 3;
     private final ArrayList<WorkerInfo> workers = new ArrayList<>();
+    private YdbConnector workerConn = null;
 
     private ArrayList<WorkerInfo> copyWorkers() {
         synchronized (workers) {
@@ -54,18 +55,21 @@ public class SuddenCleanupTest extends MgmtTestBase {
         return null;
     }
 
-    @BeforeAll
-    public static void setup() {
+    @BeforeEach
+    public void setup() {
         prepareMgtDb();
         runDdl(ydbConnector, CREATE_TABLES_BASE);
         for (int i = 0; i < NUM_THREADS; ++i) {
             createDataTables(i);
             configureMv(i);
         }
+        var cfg = new MvConfig(getConfigProps(), null);
+        workerConn = new YdbConnector(cfg, true);
     }
 
-    @AfterAll
-    public static void cleanup() {
+    @AfterEach
+    public void cleanup() {
+        workerConn.close();
         for (int i = 0; i < NUM_THREADS; ++i) {
             dropDataTables(i);
         }
@@ -77,7 +81,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
     public void testSuddenCleanup() {
         var pool = Executors.newFixedThreadPool(NUM_THREADS);
         for (int ix = 0; ix < NUM_THREADS; ++ix) {
-            pool.submit(() -> workerThread());
+            pool.submit(() -> workerThread(workerConn));
         }
 
         pause(10000L);
@@ -129,34 +133,32 @@ public class SuddenCleanupTest extends MgmtTestBase {
                 Params.of("$runner_id", PrimitiveValue.newText(runnerId)));
     }
 
-    private int workerThread() {
+    private int workerThread(YdbConnector conn) {
         System.out.println("Worker entry");
         try {
-            var cfg = new MvConfig(getConfigProps(), null);
-            try (YdbConnector conn = new YdbConnector(cfg)) {
-                try (MvApi api = MvApi.newInstance(conn)) {
-                    var batchSettings = new MvBatchSettings(api.getYdb().getConfig().getProperties());
-                    try (var theRunner = new MvRunner(api.getYdb(), api, batchSettings)) {
-                        WorkerInfo wi = null;
-                        try (var theCoord = MvCoordinator.newInstance(
-                                api.getYdb(),
-                                batchSettings,
-                                theRunner.getRunnerId(),
-                                api.getScheduler()
-                        )) {
-                            wi = new WorkerInfo(theRunner, theCoord);
-                            synchronized (workers) {
-                                workers.add(wi);
-                            }
-                            theRunner.start();
-                            theCoord.start();
-                            while (theRunner.isRunning()) {
-                                YdbMisc.sleep(200L);
-                            }
-                        } finally {
-                            synchronized (workers) {
-                                workers.remove(wi);
-                            }
+            try (MvApi api = MvApi.newInstance(conn)) {
+                var batchSettings = new MvBatchSettings(conn.getConfig().getProperties());
+                try (var theRunner = new MvRunner(api.getYdb(), api, batchSettings)) {
+                    WorkerInfo wi = null;
+                    try (var theCoord = MvCoordinator.newInstance(
+                            api.getYdb(),
+                            batchSettings,
+                            theRunner.getRunnerId(),
+                            api.getScheduler()
+                    )) {
+                        wi = new WorkerInfo(theRunner, theCoord);
+                        synchronized (workers) {
+                            workers.add(wi);
+                        }
+                        theRunner.start();
+                        theCoord.start();
+                        while (theRunner.isRunning()) {
+                            YdbMisc.sleep(200L);
+                        }
+                        theCoord.stop();
+                    } finally {
+                        synchronized (workers) {
+                            workers.remove(wi);
                         }
                     }
                 }
@@ -179,6 +181,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
         props.remove(MvConfig.CONF_HANDLERS);
         props.setProperty(MvBatchSettings.CONF_REPORT_PERIOD_MS, "20000");
         props.setProperty(MvBatchSettings.CONF_RUNNER_TIMEOUT_MS, "40000");
+//        props.setProperty("dump.threads.on.close", "true");
         return props;
     }
 

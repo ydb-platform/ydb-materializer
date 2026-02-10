@@ -65,7 +65,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
     }
 
     private void handler(MvConfig cfg, String name) {
-        try (YdbConnector conn = new YdbConnector(cfg); MvApi api = MvApi.newInstance(conn)) {
+        try (YdbConnector conn = new YdbConnector(cfg, true); MvApi api = MvApi.newInstance(conn)) {
             api.applyDefaults(conn.getConfig().getProperties());
 
             System.err.println("[CCC] Checking context for handler " + name);

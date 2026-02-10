@@ -23,7 +23,6 @@ import tech.ydb.test.junit5.YdbHelperExtension;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.mgt.MvBatchSettings;
 import tech.ydb.mv.support.YdbMisc;
-import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.table.query.Params;
 

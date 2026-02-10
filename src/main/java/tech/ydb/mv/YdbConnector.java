@@ -197,11 +197,15 @@ public class YdbConnector implements AutoCloseable {
         }
         LOG.info("Performing pre-closure thread dump.");
         var threadMXBean = ManagementFactory.getThreadMXBean();
-        var threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
-        for (var threadInfo : threadInfos) {
-            LOG.info("{} -> {}", threadInfo.getThreadName(), threadInfo.getThreadState());
-            for (var ste : threadInfo.getStackTrace()) {
+        var tis = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
+        for (var ti : tis) {
+            LOG.info("#{} {} -> {}", ti.getThreadId(), ti.getThreadName(), ti.getThreadState());
+            int counter = 0;
+            for (var ste : ti.getStackTrace()) {
                 LOG.info("\t {}", ste);
+                if (++counter > 10) {
+                    break;
+                }
             }
             LOG.info("***");
         }

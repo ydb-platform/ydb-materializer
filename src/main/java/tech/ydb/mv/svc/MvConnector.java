@@ -158,13 +158,7 @@ public class MvConnector implements AutoCloseable {
                 LOG.warn("QueryClient closing threw an exception", ex);
             }
         }
-        if (transport != null) {
-            try {
-                transport.close();
-            } catch (Exception ex) {
-                LOG.warn("GrpcTransport closing threw an exception", ex);
-            }
-        }
+        // transport should not be closed here - it is managed on the upper context
     }
 
     public static GrpcTransport configure(MvConfig config) {

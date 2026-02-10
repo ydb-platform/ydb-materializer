@@ -38,14 +38,14 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     private void createExtraTables() {
         try (YdbConnector conn = new YdbConnector(getConfig())) {
             runDdl(conn, """
-            CREATE TABLE `mv_jobs` (
+            CREATE TABLE `mv/jobs` (
                 job_name Text NOT NULL,
                 job_settings JsonDocument,
                 should_run Bool,
                 PRIMARY KEY(job_name)
             );
 
-            CREATE TABLE `mv_job_scans` (
+            CREATE TABLE `mv/job_scans` (
                 job_name Text NOT NULL,
                 target_name Text NOT NULL,
                 scan_settings JsonDocument,
@@ -56,14 +56,14 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(job_name, target_name)
             );
 
-            CREATE TABLE `mv_runners` (
+            CREATE TABLE `mv/runners` (
                 runner_id Text NOT NULL,
                 runner_identity Text,
                 updated_at Timestamp,
                 PRIMARY KEY(runner_id)
             );
 
-            CREATE TABLE `mv_runner_jobs` (
+            CREATE TABLE `mv/runner_jobs` (
                 runner_id Text NOT NULL,
                 job_name Text NOT NULL,
                 job_settings JsonDocument,
@@ -72,7 +72,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(runner_id, job_name)
             );
 
-            CREATE TABLE `mv_commands` (
+            CREATE TABLE `mv/commands` (
                 runner_id Text NOT NULL,
                 command_no Uint64 NOT NULL,
                 created_at Timestamp,

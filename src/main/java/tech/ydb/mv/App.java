@@ -9,7 +9,6 @@ import tech.ydb.mv.mgt.MvCoordinator;
 import tech.ydb.mv.mgt.MvRunner;
 import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.support.YdbMisc;
-import tech.ydb.mv.svc.MvConnector;
 
 /**
  * Default application for YDB Materializer.
