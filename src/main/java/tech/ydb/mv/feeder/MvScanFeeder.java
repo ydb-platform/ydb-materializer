@@ -3,13 +3,12 @@ package tech.ydb.mv.feeder;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
-import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
-import tech.ydb.mv.svc.MvJobContext;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
@@ -18,6 +17,7 @@ import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvScanSettings;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.support.YdbMisc;
+import tech.ydb.mv.svc.MvJobContext;
 
 /**
  * Scan feeder reads the keys from the topmost-left source of a MV.
@@ -56,8 +56,7 @@ public class MvScanFeeder {
         this.sink = sink;
         this.actions = actions;
         this.completion = completion;
-        this.controlTable = job.getYdb().getProperty(
-                MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+        this.controlTable = job.getYdb().getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         this.rateLimiterLimit = settings.getRowsPerSecondLimit();
         this.metricsScope = new MvMetrics.ScanScope(job.getFeederName(),
                 target.getName(), target.getAlias());

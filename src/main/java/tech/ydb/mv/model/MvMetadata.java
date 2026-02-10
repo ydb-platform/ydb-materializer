@@ -114,10 +114,16 @@ public class MvMetadata {
             return false;
         }
         tables.clear();
-        for (String tabname : collectTables()) {
-            MvTableInfo ti = describer.describeTable(tabname);
+        for (String tabname : collectSourceTables()) {
+            MvTableInfo ti = describer.describeTable(tabname, null);
             if (ti != null) {
                 tables.put(tabname, ti);
+            }
+        }
+        for (MvView v : views.values()) {
+            MvTableInfo ti = describer.describeTable(v.getName(), v.getDestination());
+            if (ti != null) {
+                tables.put(v.getName(), ti);
             }
         }
         linkTables();
@@ -129,11 +135,9 @@ public class MvMetadata {
         return true;
     }
 
-    private TreeSet<String> collectTables() {
+    private TreeSet<String> collectSourceTables() {
         TreeSet<String> ret = new TreeSet<>();
         for (MvView v : views.values()) {
-            // target table
-            ret.add(v.getName());
             for (var t : v.getParts().values()) {
                 // source tables
                 for (var r : t.getSources()) {

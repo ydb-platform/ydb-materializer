@@ -7,6 +7,7 @@ import tech.ydb.mv.MvConfig;
 
 /**
  * Settings for full table scans (batch mode).
+ *
  * @author zinal
  */
 public class MvScanSettings implements Serializable {

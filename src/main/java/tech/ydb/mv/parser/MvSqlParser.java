@@ -91,7 +91,12 @@ public class MvSqlParser {
     }
 
     private void fillView(MvMetadata mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        var view = new MvView(unquote(stmt.identifier()), toSqlPos(stmt));
+        String viewName = unquote(stmt.view_name());
+        String destinationName = null;
+        if (stmt.destination_name() != null) {
+            destinationName = unquote(stmt.destination_name());
+        }
+        var view = new MvView(viewName, destinationName, toSqlPos(stmt));
         var expr = stmt.some_select_stmt();
         if (expr.simple_select_stmt() != null) {
             fillTarget(mc, view, MvViewExpr.ALIAS_DEFAULT, expr.simple_select_stmt());
@@ -253,7 +258,7 @@ public class MvSqlParser {
         if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateHandler(mh, prev));
         }
-        if (mh.getName().toLowerCase().startsWith(MvConfig.SYS_PREFIX)) {
+        if (mh.getName().toLowerCase().startsWith(MvConfig.SYS_NAME_PREFIX)) {
             mc.addIssue(new MvIssue.IllegalHandlerName(mh));
         }
     }

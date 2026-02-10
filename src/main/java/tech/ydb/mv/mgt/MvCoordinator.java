@@ -1,6 +1,5 @@
 package tech.ydb.mv.mgt;
 
-import tech.ydb.mv.svc.MvLocker;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Executors;
@@ -12,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.svc.MvLocker;
 
 /**
  * Coordinator controls and manages the actual state of the jobs. In case the
@@ -64,8 +64,8 @@ public class MvCoordinator implements AutoCloseable {
             MvBatchSettings settings, String runnerId,
             ScheduledExecutorService scheduler,
             MvCoordinatorActions job) {
-        MvLocker locker = new MvLocker(ydb);
-        MvJobDao jobDao = new MvJobDao(ydb, settings);
+        MvLocker locker = new MvLocker(ydb.getConnMgt());
+        MvJobDao jobDao = new MvJobDao(ydb.getConnMgt(), settings);
         if (scheduler == null) {
             scheduler = Executors.newScheduledThreadPool(1);
         }

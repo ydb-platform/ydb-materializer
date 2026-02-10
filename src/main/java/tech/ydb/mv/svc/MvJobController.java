@@ -299,8 +299,7 @@ public class MvJobController implements AutoCloseable {
         final String controlTable;
 
         TempScanDaoAdapter() {
-            this.controlTable = context.getService().getYdb().getProperty(
-                    MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
+            this.controlTable = context.getService().getYdb().getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         }
 
         @Override

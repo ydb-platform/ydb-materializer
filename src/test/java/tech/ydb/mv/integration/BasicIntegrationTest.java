@@ -9,6 +9,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.topic.settings.DescribeConsumerSettings;
 
 import tech.ydb.mv.AbstractIntegrationBase;
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.svc.MvService;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvViewExpr;
@@ -79,8 +80,8 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     public void basicIntegrationTest() {
         // now the work
         System.err.println("[AAA] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
+        var cfg = MvConfig.fromBytes(getConfigBytes());
+        try (YdbConnector conn = new YdbConnector(cfg, true)) {
             MvService wc = new MvService(conn);
             try {
                 wc.applyDefaults(conn.getConfig().getProperties());

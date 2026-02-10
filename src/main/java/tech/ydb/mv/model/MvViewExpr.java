@@ -41,7 +41,7 @@ public class MvViewExpr implements MvSqlPosHolder {
     }
 
     public MvViewExpr(String name) {
-        this(new MvView(name, MvSqlPos.EMPTY));
+        this(new MvView(name, null, MvSqlPos.EMPTY));
         this.view.addPart(this);
     }
 

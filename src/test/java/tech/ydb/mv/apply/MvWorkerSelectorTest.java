@@ -2,10 +2,10 @@ package tech.ydb.mv.apply;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import tech.ydb.mv.MvConfig;
 
 import tech.ydb.table.values.PrimitiveType;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.data.MvKeyPrefix;
@@ -109,6 +109,7 @@ public class MvWorkerSelectorTest {
     }
 
     private static class SW extends MvWorkerSelector {
+
         public SW(int workerCount) {
             super(makeTableInfo(), workerCount, MvConfig.PartitioningStrategy.RANGE);
         }

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 
 /**
@@ -49,8 +49,8 @@ public class MvCoordinatorTest extends MgmtTestBase {
     public void checkSingleThreaded() {
         System.out.println("========= Start single-threaded coordination test");
 
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
+        var cfg = MvConfig.fromBytes(getConfigBytes());
+        try (YdbConnector conn = new YdbConnector(cfg, true)) {
             runSingle(conn);
         }
     }
@@ -112,8 +112,8 @@ public class MvCoordinatorTest extends MgmtTestBase {
     public void checkMultiThreaded() {
         System.out.println("========= Start multi-threaded coordination test");
 
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
-        try (YdbConnector conn = new YdbConnector(cfg)) {
+        var cfg = MvConfig.fromBytes(getConfigBytes());
+        try (YdbConnector conn = new YdbConnector(cfg, true)) {
             runMulti(conn);
         }
     }

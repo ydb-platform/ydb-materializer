@@ -11,6 +11,7 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
+import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.StructType;
@@ -40,6 +41,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final String sqlUpsert;
     private final String sqlDelete;
     private final StructType rowType;
+    private final SessionRetryContext targetCtx;
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
@@ -59,6 +61,16 @@ class ActionSync extends ActionBase implements MvApplyAction {
             } else {
                 this.rowType = sg.toRowType();
             }
+        }
+        if (target.getView().isDefaultDestination()) {
+            // default destination means to execute writes over the source database
+            this.targetCtx = context.getJobContext().getYdb().getQueryRetryCtx();
+        } else {
+            // non-default destination means there should be a separate connection
+            // configured to access the target table
+            this.targetCtx = context.getJobContext().getYdb()
+                    .getConnExt(target.getView().getDestination())
+                    .getQueryRetryCtx();
         }
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
@@ -138,7 +150,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlDelete);
         long startNs = System.nanoTime();
-        var statement = retryCtx.supplyResult(
+        var statement = targetCtx.supplyResult(
                 qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
@@ -173,7 +185,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlUpsert);
         long startNs = System.nanoTime();
-        var statement = retryCtx.supplyResult(
+        var statement = targetCtx.supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );

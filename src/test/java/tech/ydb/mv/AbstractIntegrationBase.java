@@ -270,8 +270,8 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     protected Properties getConfigProps() {
         Properties props = new Properties();
-        props.setProperty("ydb.url", getConnectionUrl());
-        props.setProperty("ydb.auth.mode", "NONE");
+        props.setProperty(MvConfig.CONF_YDB_URL, getConnectionUrl());
+        props.setProperty(MvConfig.CONF_YDB_AUTH_MODE, MvConfig.AuthMode.NONE.name());
         props.setProperty(MvConfig.CONF_INPUT_MODE, MvConfig.Input.TABLE.name());
         props.setProperty(MvConfig.CONF_INPUT_TABLE, "test1/statements");
         props.setProperty(MvConfig.CONF_APPLY_THREADS, "1");
@@ -296,14 +296,14 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         }
     }
 
-    private final AtomicReference<YdbConnector.Config> configRef
+    private final AtomicReference<MvConfig> configRef
             = new AtomicReference<>();
 
-    protected YdbConnector.Config getNewConfig() {
-        return YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+    protected MvConfig getNewConfig() {
+        return MvConfig.fromBytes(getConfigBytes());
     }
 
-    protected YdbConnector.Config getConfig() {
+    protected MvConfig getConfig() {
         return configRef.updateAndGet((v) -> (v != null) ? v : getNewConfig());
     }
 
@@ -312,7 +312,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
         pause(5000L);
         // init database
         System.err.println("[AAA] Database setup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes());
         try (YdbConnector conn = new YdbConnector(cfg)) {
             fillDatabase(conn);
         }
@@ -320,7 +320,7 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     protected void clearDb() {
         System.err.println("[AAA] Database cleanup...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes());
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, DROP_TABLES_BASE);
             runDdl(conn, DROP_TABLES_DATA);

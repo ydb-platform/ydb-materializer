@@ -33,7 +33,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
     @Test
     public void concurrencyIntegrationTest() {
         System.err.println("[CCC] Starting up...");
-        YdbConnector.Config cfg = YdbConnector.Config.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes());
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
 
         Thread t1 = new Thread(() -> handler(cfg, "handler1"));
@@ -64,8 +64,8 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
         Assertions.assertEquals(1, numSuccess.get("handler2").intValue());
     }
 
-    private void handler(YdbConnector.Config cfg, String name) {
-        try (YdbConnector conn = new YdbConnector(cfg); MvApi api = MvApi.newInstance(conn)) {
+    private void handler(MvConfig cfg, String name) {
+        try (YdbConnector conn = new YdbConnector(cfg, true); MvApi api = MvApi.newInstance(conn)) {
             api.applyDefaults(conn.getConfig().getProperties());
 
             System.err.println("[CCC] Checking context for handler " + name);

@@ -9,6 +9,7 @@ import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvPathGenerator;
+import tech.ydb.mv.svc.MvJobContext;
 
 /**
  * The apply configuration includes the settings to process the change records
@@ -123,17 +124,17 @@ class MvApply {
     static class Configurator {
 
         final MvActionContext context;
-        final MvHandler metadata;
         final int workersCount;
+        final String handlerName;
         final MvConfig.PartitioningStrategy partitioning;
         final HashMap<String, SourceBuilder> sources = new HashMap<>();
         final HashMap<MvViewExpr, TargetBuilder> targets = new HashMap<>();
 
         public Configurator(MvActionContext context) {
             this.context = context;
-            this.metadata = context.getHandler();
             this.workersCount = context.getSettings().getApplyThreads();
-            this.partitioning = context.getPartitioning();
+            this.handlerName = context.getHandler().getName();
+            this.partitioning = context.getJobContext().getPartitioning();
         }
 
         void build(HashMap<String, Source> src, HashMap<MvViewExpr, Target> trg) {
@@ -162,7 +163,7 @@ class MvApply {
         }
 
         void prepare() {
-            for (var view : metadata.getViews().values()) {
+            for (var view : context.getHandler().getViews().values()) {
                 for (var target : view.getParts().values()) {
                     configureTarget(target);
                 }
@@ -181,11 +182,11 @@ class MvApply {
                 LOG.warn("Missing changefeed for main input table `{}`, "
                         + "skipping for target `{}` as {} in handler `{}`.",
                         source.getTableName(), target.getName(), target.getAlias(),
-                        metadata.getName());
+                        handlerName);
                 return;
             }
             LOG.info("Configuring handler `{}`, target `{}` as {} ...",
-                    metadata.getName(), target.getName(), target.getAlias());
+                    handlerName, target.getName(), target.getAlias());
             // Add sync action for the current target
             ActionSync actionSync = new ActionSync(target, context);
             makeSource(source.getTableInfo()).addAction(actionSync);

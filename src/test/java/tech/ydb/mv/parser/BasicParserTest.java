@@ -376,7 +376,7 @@ public class BasicParserTest {
 
         MvDescriber dummy = new MvDescriber() {
             @Override
-            public MvTableInfo describeTable(String tabname) {
+            public MvTableInfo describeTable(String tabname, String destination) {
                 return info.get(tabname);
             }
         };

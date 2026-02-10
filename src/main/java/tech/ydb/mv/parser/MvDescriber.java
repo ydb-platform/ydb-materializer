@@ -9,7 +9,7 @@ import tech.ydb.mv.model.MvTableInfo;
  */
 public interface MvDescriber {
 
-    MvTableInfo describeTable(String tabname);
+    MvTableInfo describeTable(String table, String destination);
 
     default YdbConnector getYdb() {
         return null;

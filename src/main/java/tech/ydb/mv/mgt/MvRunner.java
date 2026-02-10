@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
+import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -32,13 +33,14 @@ public class MvRunner implements AutoCloseable {
     private final String runnerIdentity;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean failing = new AtomicBoolean(false);
     private final Map<String, MvRunnerJobInfo> localJobs = new HashMap<>();
     private volatile Thread runnerThread = null;
 
     public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings, String runnerId) {
         this.api = api;
         this.settings = settings;
-        this.tableOps = new MvJobDao(ydb, settings);
+        this.tableOps = new MvJobDao(ydb.getConnMgt(), settings);
         this.runnerId = (runnerId == null) ? generateRunnerId() : runnerId;
         this.runnerIdentity = generateRunnerIdentity();
     }
@@ -97,14 +99,12 @@ public class MvRunner implements AutoCloseable {
 
         LOG.info("[{}] Stopping MvRunner, {} jobs still running", runnerId, getJobsCount());
 
-        stopAllJobs();
-
         // Wait for runner thread to finish
         if (runnerThread != null) {
             try {
-                runnerThread.join(5000); // Wait up to 5 seconds
+                runnerThread.join(20000L); // Wait up to 20 seconds
+                runnerThread = null;
             } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
                 LOG.warn("[{}] Interrupted while waiting for runner thread to stop", runnerId);
             }
         }
@@ -152,6 +152,8 @@ public class MvRunner implements AutoCloseable {
         long lastCommandCheckTime = 0;
         boolean registered = false;
 
+        failing.set(false);
+
         while (running.get()) {
             long currentTime = System.currentTimeMillis();
             try {
@@ -181,15 +183,19 @@ public class MvRunner implements AutoCloseable {
                     lastCommandCheckTime = currentTime;
                 }
 
+                failing.set(false);
+
                 // Sleep for a short time to avoid busy waiting
                 YdbMisc.sleep(200L);
 
             } catch (Exception ex) {
+                failing.set(true);
                 LOG.error("[{}] Error in MvRunner main loop", runnerId, ex);
                 YdbMisc.sleep(5000); // Sleep longer on error
             }
         }
 
+        stopAllJobs();
         unregisterRunner();
 
         LOG.debug("[{}] Worker thread finished", runnerId);
@@ -425,6 +431,13 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean isRunning() {
         return running.get();
+    }
+
+    /**
+     * Check if the runner is failing.
+     */
+    public boolean isFailing() {
+        return failing.get();
     }
 
     /**

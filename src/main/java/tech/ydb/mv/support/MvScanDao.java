@@ -4,6 +4,7 @@ import tech.ydb.table.query.Params;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.PrimitiveValue;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbStruct;
@@ -92,7 +93,7 @@ public class MvScanDao {
         return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
                 + "DECLARE $key_position AS JsonDocument; "
-                + "UPSERT INTO `" + YdbConnector.safe(adapter.getControlTable()) + "` "
+                + "UPSERT INTO `" + MvConfig.safe(adapter.getControlTable()) + "` "
                 + "(job_name, table_name, updated_at, key_position) "
                 + "VALUES ($job_name, $table_name, CurrentUtcTimestamp(), $key_position);";
     }
@@ -100,14 +101,14 @@ public class MvScanDao {
     private static String makePosDelete(MvScanAdapter adapter) {
         return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
-                + "DELETE FROM `" + YdbConnector.safe(adapter.getControlTable()) + "` "
+                + "DELETE FROM `" + MvConfig.safe(adapter.getControlTable()) + "` "
                 + "WHERE job_name=$job_name AND table_name=$table_name;";
     }
 
     private static String makePosSelect(MvScanAdapter adapter) {
         return "DECLARE $job_name AS Text; "
                 + "DECLARE $table_name AS Text; "
-                + "SELECT key_position FROM `" + YdbConnector.safe(adapter.getControlTable()) + "` "
+                + "SELECT key_position FROM `" + MvConfig.safe(adapter.getControlTable()) + "` "
                 + "WHERE job_name=$job_name AND table_name=$table_name;";
     }
 
