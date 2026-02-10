@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import tech.ydb.auth.iam.CloudAuthHelper;
 import tech.ydb.common.transaction.TxMode;
@@ -31,7 +32,9 @@ import tech.ydb.topic.TopicClient;
 public class MvConnector implements AutoCloseable {
 
     protected static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConnector.class);
+    private static final AtomicLong INSTANCE = new AtomicLong(0);
 
+    protected final long instanceId;
     protected final MvConfig config;
     protected final GrpcTransport transport;
     protected final String database;
@@ -40,6 +43,7 @@ public class MvConnector implements AutoCloseable {
     private final AtomicBoolean opened = new AtomicBoolean(false);
 
     protected MvConnector(MvConfig config, GrpcTransport transport, int maxSessions) {
+        this.instanceId = INSTANCE.incrementAndGet();
         this.config = config;
         this.transport = transport;
         this.database = transport.getDatabase();
@@ -60,6 +64,10 @@ public class MvConnector implements AutoCloseable {
 
     protected final void unsetOpened() {
         this.opened.set(false);
+    }
+
+    public long getInstanceId() {
+        return instanceId;
     }
 
     public boolean isOpen() {
@@ -152,13 +160,11 @@ public class MvConnector implements AutoCloseable {
     public void close() {
         unsetOpened();
         if (queryClient != null) {
-            try {
-                queryClient.close();
-            } catch (Exception ex) {
-                LOG.warn("QueryClient closing threw an exception", ex);
-            }
+            queryClient.close();
         }
-        // transport should not be closed here - it is managed on the upper context
+        if (transport != null) {
+            transport.close();
+        }
     }
 
     public static GrpcTransport configure(MvConfig config) {
@@ -251,18 +257,10 @@ public class MvConnector implements AutoCloseable {
         public void close() {
             unsetOpened();
             if (topicClient != null) {
-                try {
-                    topicClient.close();
-                } catch (Exception ex) {
-                    LOG.warn("TopicClient closing threw an exception", ex);
-                }
+                topicClient.close();
             }
             if (tableClient != null) {
-                try {
-                    tableClient.close();
-                } catch (Exception ex) {
-                    LOG.warn("TableClient closing threw an exception", ex);
-                }
+                tableClient.close();
             }
             super.close();
         }
@@ -326,17 +324,9 @@ public class MvConnector implements AutoCloseable {
         public void close() {
             unsetOpened();
             if (tableClient != null) {
-                try {
-                    tableClient.close();
-                } catch (Exception ex) {
-                    LOG.warn("TableClient closing threw an exception", ex);
-                }
+                tableClient.close();
             }
             super.close();
-            // In this case transport is controlled "inside", so it should be closed.
-            if (transport != null) {
-                transport.close();
-            }
         }
     }
 }

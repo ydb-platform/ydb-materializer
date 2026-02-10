@@ -25,9 +25,7 @@ public class YdbConnector implements AutoCloseable {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(YdbConnector.class);
 
     private final MvConfig config;
-    private final GrpcTransport transStd;
     private final MvConnector.ConnStd connStd;
-    private final GrpcTransport transMgt;
     private final MvConnector.ConnMgt connMgt;
     private final HashMap<String, MvConnector.ConnExt> connExt = new HashMap<>();
 
@@ -44,11 +42,13 @@ public class YdbConnector implements AutoCloseable {
         try {
             transStd = MvConnector.configure(config);
             connStd = new MvConnector.ConnStd(config, transStd);
-            LOG.info("Main connection has been established.");
+            transStd = null;
+            LOG.info("Main connection has been established with id #{}.", connStd.getInstanceId());
             if (management) {
                 transMgt = MvConnector.configure(config);
                 connMgt = new MvConnector.ConnMgt(config, transMgt);
-                LOG.info("Management connection has been established.");
+                transMgt = null;
+                LOG.info("Management connection has been established with id #{}.", connMgt.getInstanceId());
             }
         } catch (Exception ex) {
             if (connMgt != null) {
@@ -65,9 +65,7 @@ public class YdbConnector implements AutoCloseable {
             }
             throw ex;
         }
-        this.transStd = transStd;
         this.connStd = connStd;
-        this.transMgt = transMgt;
         this.connMgt = connMgt;
     }
 
@@ -114,19 +112,22 @@ public class YdbConnector implements AutoCloseable {
         // check if connection is known
         String url = config.getProperty(name + "." + MvName.CONF_YDB_URL);
         if (url == null) {
-            throw new IllegalArgumentException("Connection has not been configured: " + name);
+            throw new IllegalArgumentException("Connection is not known: " + name);
         }
         // configure and store the connection
         var namedConf = new MvConfig(config.getProperties(), name);
         synchronized (connExt) {
+            LOG.info("Configuring secondary connection {} as {}", name, namedConf.getConnectionString());
             var transport = MvConnector.configure(namedConf);
             try {
-                conn = new MvConnector.ConnExt(namedConf, transMgt);
+                conn = new MvConnector.ConnExt(namedConf, transport);
             } catch (Exception ex) {
                 transport.close();
                 throw ex;
             }
             connExt.put(name, conn);
+            LOG.info("Secondary connection {} has been established with id #{}.",
+                    name, conn.getInstanceId());
             return conn;
         }
     }
@@ -212,20 +213,20 @@ public class YdbConnector implements AutoCloseable {
         dumpThreadsIfConfigured(true);
         LOG.info("Closing YDB connections...");
         synchronized (connExt) {
-            connExt.forEach((name, conn) -> conn.close());
+            for (var me : connExt.entrySet()) {
+                LOG.info("Closing secondary connection {} with id #{}...",
+                        me.getKey(), me.getValue().getInstanceId());
+                me.getValue().close();
+            }
             connExt.clear();
         }
         if (connMgt != null) {
+            LOG.info("Closing management connection with id #{}...", connMgt.getInstanceId());
             connMgt.close();
         }
         if (connStd != null) {
+            LOG.info("Closing main connection with id #{}...", connStd.getInstanceId());
             connStd.close();
-        }
-        if (transMgt != null) {
-            transMgt.close();
-        }
-        if (transStd != null) {
-            transStd.close();
         }
         LOG.info("Disconnected from YDB.");
         dumpThreadsIfConfigured(false);

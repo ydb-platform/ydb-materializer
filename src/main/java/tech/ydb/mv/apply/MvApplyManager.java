@@ -165,6 +165,7 @@ public class MvApplyManager implements MvSink {
         if (running) {
             LOG.warn("Apply workers still running, moving forward with shutdown.");
         }
+        LOG.info("Apply manager has been fully stopped.");
     }
 
     @Override

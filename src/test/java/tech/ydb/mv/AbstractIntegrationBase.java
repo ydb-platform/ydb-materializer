@@ -388,18 +388,16 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
     protected static String generateThreadDump() {
         final StringBuilder dump = new StringBuilder();
         final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 100);
-        for (ThreadInfo threadInfo : threadInfos) {
-            dump.append('"');
-            dump.append(threadInfo.getThreadName());
-            dump.append("\" ");
-            final Thread.State state = threadInfo.getThreadState();
-            dump.append("\n   java.lang.Thread.State: ");
-            dump.append(state);
-            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
-            for (final StackTraceElement stackTraceElement : stackTraceElements) {
+        final ThreadInfo[] tis = threadMXBean.getThreadInfo(threadMXBean.getAllThreadIds(), 20);
+        for (var ti : tis) {
+            dump.append("#").append(ti.getThreadId()).append(" ");
+            dump.append(ti.getThreadName());
+            var state = ti.getThreadState();
+            dump.append(" -> ").append(state);
+            final StackTraceElement[] stes = ti.getStackTrace();
+            for (final StackTraceElement ste : stes) {
                 dump.append("\n        at ");
-                dump.append(stackTraceElement);
+                dump.append(ste);
             }
             dump.append("\n\n");
         }

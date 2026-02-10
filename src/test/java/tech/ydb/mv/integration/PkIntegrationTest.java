@@ -1,6 +1,8 @@
 package tech.ydb.mv.integration;
 
+import java.util.HashMap;
 import java.util.Properties;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,7 +101,7 @@ ALTER TOPIC `pk_test/sub2/cf3` ADD CONSUMER `consumer3`;
     public static final String UPSERT_CONFIG_PK
             = """
 UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
-  (1, @@CREATE ASYNC MATERIALIZED VIEW `pk_test/mv1` AS
+  (1, @@CREATE ASYNC MATERIALIZED VIEW `pk_test/mv1` DESTINATION `altdest1` AS
 
 (
 SELECT
@@ -215,6 +217,16 @@ UPSERT INTO `pk_test/main2` (id,c4,c6) VALUES
     protected Properties getConfigProps() {
         var props = super.getConfigProps();
         props.setProperty(MvConfig.CONF_HANDLERS, "pk_test");
+        // Copy primary connection config for a secondary connection
+        String prefix = "altdest1.";
+        var temp = new HashMap<String, String>();
+        for (var pair : props.entrySet()) {
+            String key = pair.getKey().toString();
+            if (key.startsWith("ydb.")) {
+                temp.put(prefix + key, pair.getValue().toString());
+            }
+        }
+        props.putAll(temp);
         return props;
     }
 
@@ -264,6 +276,7 @@ UPSERT INTO `pk_test/main2` (id,c4,c6) VALUES
                 System.err.println("[UUU] Entering main test...");
                 testLogic(svc);
             }
+            // System.err.println(generateThreadDump());
         }
     }
 
