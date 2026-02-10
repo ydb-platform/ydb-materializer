@@ -43,17 +43,17 @@ public class MvName {
 
     /**
      * Path to YDB authentication service account key file, for
-     * {@link AuthMode.SAKEY}
+     * {@link AuthMode#SAKEY}
      */
     public static final String CONF_YDB_AUTH_SAKEY = "ydb.auth.sakey";
 
     /**
-     * YDB username, for {@link AuthMode.STATIC}
+     * YDB username, for {@link AuthMode#STATIC}
      */
     public static final String CONF_YDB_AUTH_USERNAME = "ydb.auth.username";
 
     /**
-     * YDB password, for {@link AuthMode.STATIC}
+     * YDB password, for {@link AuthMode#STATIC}
      */
     public static final String CONF_YDB_AUTH_PASSWORD = "ydb.auth.password";
 

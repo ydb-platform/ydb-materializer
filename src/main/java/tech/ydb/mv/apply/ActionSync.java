@@ -11,6 +11,7 @@ import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
 import tech.ydb.table.query.Params;
 import tech.ydb.query.result.QueryInfo;
+import tech.ydb.query.tools.SessionRetryContext;
 import tech.ydb.table.result.ResultSetReader;
 import tech.ydb.table.values.OptionalType;
 import tech.ydb.table.values.StructType;
@@ -40,6 +41,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final String sqlUpsert;
     private final String sqlDelete;
     private final StructType rowType;
+    private final SessionRetryContext targetCtx;
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
@@ -60,6 +62,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 this.rowType = sg.toRowType();
             }
         }
+        this.targetCtx = context.getJobContext().getYdb().getQueryRetryCtx(); // FIXME
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getHandler().getName(),
@@ -138,7 +141,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlDelete);
         long startNs = System.nanoTime();
-        var statement = retryCtx.supplyResult(
+        var statement = targetCtx.supplyResult(
                 qs -> qs.createQuery(sqlDelete, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );
@@ -173,7 +176,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
         // submit the new query
         lastSqlStatement.set(sqlUpsert);
         long startNs = System.nanoTime();
-        var statement = retryCtx.supplyResult(
+        var statement = targetCtx.supplyResult(
                 qs -> qs.createQuery(sqlUpsert, TxMode.SERIALIZABLE_RW, params, querySettings)
                         .execute()
         );

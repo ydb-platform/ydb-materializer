@@ -39,15 +39,15 @@ public class MvApplyManager implements MvSink {
     // target -> refresh action singleton list
     private final HashMap<MvViewExpr, MvApply.Target> targetConfigs = new HashMap<>();
 
-    public MvApplyManager(MvJobContext context) {
-        this.context = new MvActionContext(context, this);
-        int workerCount = context.getSettings().getApplyThreads();
+    public MvApplyManager(MvJobContext jobContext) {
+        this.context = new MvActionContext(jobContext, this);
+        int workerCount = jobContext.getSettings().getApplyThreads();
         this.workers = new MvApplyWorker[workerCount];
         for (int i = 0; i < workerCount; ++i) {
             workers[i] = new MvApplyWorker(this, i);
         }
         this.queueSize = new AtomicInteger(0);
-        this.queueLimit = context.getSettings().getApplyQueueSize();
+        this.queueLimit = jobContext.getSettings().getApplyQueueSize();
         new MvApply.Configurator(this.context)
                 .build(this.sourceConfigs, this.targetConfigs);
     }
@@ -83,9 +83,8 @@ public class MvApplyManager implements MvSink {
     protected final int decrementQueueSize(int count) {
         int temp = queueSize.addAndGet(-1 * count);
         if (temp < 0) {
-            LOG.warn("Queue size below zero: {}", temp);
-            queueSize.addAndGet(-1 * temp);
-            return 0;
+            LOG.error("Queue size below zero: {}", temp);
+            return queueSize.addAndGet(-1 * temp);
         }
         return temp;
     }

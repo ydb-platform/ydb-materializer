@@ -21,6 +21,7 @@ import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.feeder.MvCommitHandler;
 import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.parser.MvSqlGen;
+import tech.ydb.mv.svc.MvJobContext;
 
 /**
  * Common parts of action handlers in the form of a base class.
@@ -35,22 +36,26 @@ abstract class ActionBase {
     private final MvMetrics.ActionScope metricsScope;
 
     protected final long instance;
-    protected final MvActionContext context;
+    protected final MvJobContext jobContext;
     protected final MvApplyManager applyManager;
-    protected final SessionRetryContext retryCtx;
+    protected final SessionRetryContext sourceCtx;
     protected static final ThreadLocal<String> lastSqlStatement = new ThreadLocal<>();
     protected final ExecuteQuerySettings querySettings;
 
-    protected ActionBase(MvActionContext context, MvMetrics.ActionScope metricsScope) {
+    protected ActionBase(MvActionContext actionContext, MvMetrics.ActionScope metricsScope) {
         this.instance = COUNTER.incrementAndGet();
-        this.context = context;
-        this.applyManager = context.getApplyManager();
-        this.retryCtx = context.getRetryCtx();
+        this.jobContext = actionContext.getJobContext();
+        this.applyManager = actionContext.getApplyManager();
+        this.sourceCtx = actionContext.getJobContext().getYdb().getQueryRetryCtx();
         this.metricsScope = metricsScope;
-        var queryTimeout = context.getSettings().getQueryTimeoutSeconds();
+        var queryTimeout = jobContext.getSettings().getQueryTimeoutSeconds();
         this.querySettings = ExecuteQuerySettings.newBuilder()
                 .withRequestTimeout(Duration.ofSeconds(queryTimeout))
                 .build();
+    }
+
+    public SessionRetryContext getSourceCtx() {
+        return sourceCtx;
     }
 
     public MvMetrics.ActionScope getMetricsScope() {
@@ -62,7 +67,7 @@ abstract class ActionBase {
     }
 
     public void checkRunning() {
-        if (!context.isRunning()) {
+        if (!jobContext.isRunning()) {
             throw new IllegalStateException("Context stopped, terminating "
                     + "execution of action " + getClass().getSimpleName()
                     + " #" + String.valueOf(instance));
@@ -92,7 +97,7 @@ abstract class ActionBase {
     }
 
     protected String getSqlSelect() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("ActionBase.getSqlSelect()");
     }
 
     protected final ResultSetReader readTaskRows(List<MvApplyTask> tasks) {
@@ -111,7 +116,7 @@ abstract class ActionBase {
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         lastSqlStatement.set(statement);
         long startNs = System.nanoTime();
-        ResultSetReader rsr = retryCtx.supplyResult(session -> QueryReader.readFrom(
+        ResultSetReader rsr = sourceCtx.supplyResult(session -> QueryReader.readFrom(
                 session.createQuery(statement, TxMode.SNAPSHOT_RO, params, querySettings)
         )).join().getValue().getResultSet(0);
         MvMetrics.ActionScope scope = metricsScope;
@@ -136,7 +141,7 @@ abstract class ActionBase {
     }
 
     protected final int getReadBatchSize() {
-        int readBatchSize = context.getSettings().getSelectBatchSize();
+        int readBatchSize = jobContext.getSettings().getSelectBatchSize();
         if (readBatchSize < 1) {
             readBatchSize = 1;
         }
@@ -145,7 +150,7 @@ abstract class ActionBase {
 
     protected final int getWriteBatchSize() {
         int readBatchSize = getReadBatchSize();
-        int writeBatchSize = context.getSettings().getUpsertBatchSize();
+        int writeBatchSize = jobContext.getSettings().getUpsertBatchSize();
         if (writeBatchSize > readBatchSize) {
             writeBatchSize = readBatchSize;
         }

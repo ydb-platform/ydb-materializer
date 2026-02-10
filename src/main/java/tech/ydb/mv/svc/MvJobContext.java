@@ -3,6 +3,7 @@ package tech.ydb.mv.svc;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
@@ -91,6 +92,15 @@ public class MvJobContext implements MvCdcAdapter {
     @Override
     public String getConsumerName() {
         return handler.getConsumerNameAlways();
+    }
+
+    public MvConfig.PartitioningStrategy getPartitioning() {
+        String v = service.getYdb().getProperty(MvConfig.CONF_PARTITIONING);
+        MvConfig.PartitioningStrategy partitioning = MvConfig.parsePartitioning(v);
+        if (partitioning == null) {
+            return MvConfig.PartitioningStrategy.HASH;
+        }
+        return MvConfig.PartitioningStrategy.RANGE;
     }
 
     public synchronized boolean isAnyScanRunning() {
