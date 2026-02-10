@@ -45,57 +45,69 @@ public class MvSqlPrinter {
     }
 
     public void write(PrintStream pw, MvViewExpr mt) {
-        MvSqlGen sg = new MvSqlGen(mt);
-        pw.println("-------------------------------------------------------");
-        pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
-        pw.println("-------------------------------------------------------");
-        pw.println();
-        pw.println("  ** Equivalent view DDL:");
-        pw.println();
-        pw.println(sg.makeCreateView());
-        pw.println("  ** Destination table DDL:");
-        pw.println();
-        pw.println(sg.makeCreateTable());
-        pw.println("  ** Refresh statement:");
-        pw.println();
-        pw.println(sg.makeSelect());
-        pw.println("  ** Upsert statement:");
-        pw.println();
-        if (mt.getTableInfo() == null) {
-            pw.println("  ** Skipped - no target table information.");
+        try (MvSqlGen sg = new MvSqlGen(mt)) {
+            pw.println("-------------------------------------------------------");
+            pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
+            pw.println("-------------------------------------------------------");
             pw.println();
-        } else {
-            pw.println(sg.makePlainUpsert());
-        }
-        pw.println("  ** Delete statement:");
-        pw.println();
-        pw.println(sg.makePlainDelete());
-        pw.println("  ** Topmost scan start:");
-        pw.println();
-        pw.println(sg.makeScanStart());
-        pw.println("  ** Topmost scan next:");
-        pw.println();
-        pw.println(sg.makeScanNext());
-        MvPathGenerator pathGenerator = new MvPathGenerator(mt);
-        for (int pos = 1; pos < mt.getSources().size(); ++pos) {
-            MvJoinSource js = mt.getSources().get(pos);
-            if (!js.isTableKnown() || js.getInput() == null) {
-                pw.println("  ** Skipped key extraction for incomplete "
-                        + "join source " + js.getTableName() + " as " + js.getTableAlias());
-                continue;
-            }
-            if (js.getInput().isBatchMode()) {
-                // Key extraction not needed in batch mode
-                continue;
-            }
-            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
-            pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
+            pw.println("  ** Equivalent view DDL:");
             pw.println();
-            if (temp != null) {
-                pw.println(new MvSqlGen(temp).makeSelect());
-            } else {
-                pw.println("<mapping is not possible>");
+            pw.println(sg.makeCreateView());
+            pw.println("  ** Destination table DDL:");
+            pw.println();
+            pw.println(sg.makeCreateTable());
+            pw.println("  ** Refresh statement:");
+            pw.println();
+            pw.println(sg.makeSelect());
+            pw.println("  ** Upsert statement:");
+            pw.println();
+            if (mt.getTableInfo() == null) {
+                pw.println("  ** Skipped - no target table information.");
                 pw.println();
+            } else {
+                pw.println(sg.makePlainUpsert());
+            }
+            pw.println("  ** Delete statement:");
+            pw.println();
+            if (sg.canDeleteKeysFromInput()) {
+                pw.println(sg.makePlainDelete());
+            } else {
+                pw.println("  ** Delete keys select (source):");
+                pw.println();
+                pw.println(sg.makeSelectDeleteKeys());
+                pw.println("  ** Delete by target keys (target):");
+                pw.println();
+                pw.println(sg.makePlainDeleteByTargetKeys());
+            }
+            pw.println("  ** Topmost scan start:");
+            pw.println();
+            pw.println(sg.makeScanStart());
+            pw.println("  ** Topmost scan next:");
+            pw.println();
+            pw.println(sg.makeScanNext());
+            MvPathGenerator pathGenerator = new MvPathGenerator(mt);
+            for (int pos = 1; pos < mt.getSources().size(); ++pos) {
+                MvJoinSource js = mt.getSources().get(pos);
+                if (!js.isTableKnown() || js.getInput() == null) {
+                    pw.println("  ** Skipped key extraction for incomplete "
+                            + "join source " + js.getTableName() + " as " + js.getTableAlias());
+                    continue;
+                }
+                if (js.getInput().isBatchMode()) {
+                    // Key extraction not needed in batch mode
+                    continue;
+                }
+                MvViewExpr temp = pathGenerator.extractKeysReverse(js);
+                pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
+                pw.println();
+                if (temp != null) {
+                    try (MvSqlGen tempGen = new MvSqlGen(temp)) {
+                        pw.println(tempGen.makeSelect());
+                    }
+                } else {
+                    pw.println("<mapping is not possible>");
+                    pw.println();
+                }
             }
         }
     }

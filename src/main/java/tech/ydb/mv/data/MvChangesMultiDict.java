@@ -119,7 +119,7 @@ public class MvChangesMultiDict {
         for (var tableAlias : dictChecks.keySet()) {
             pathFilter.add(target.getSourceByAlias(tableAlias));
         }
-        MvViewExpr transformation = new MvPathGenerator(target).applyFilter(pathFilter);
+        MvViewExpr transformation = new MvPathGenerator(target).applyFilterForDictionary(pathFilter);
         if (transformation == null) {
             LOG.error("DICTIONARY CHANGES LOST. Unable to build transformation "
                     + "for target {}, filter {}", target, pathFilter);

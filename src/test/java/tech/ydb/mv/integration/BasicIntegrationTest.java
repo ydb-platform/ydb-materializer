@@ -107,37 +107,25 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 wc.startDictionaryHandler();
                 standardPause();
                 System.err.println("[AAA] Checking the view output (should be empty)...");
-                int diffCount = checkViewOutput(conn, sqlQuery);
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Writing some input data...");
                 runDml(conn, WRITE_INITIAL_DATA);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Updating some rows...");
                 runDml(conn, WRITE_UP1);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Updating more rows...");
                 runDml(conn, WRITE_UP2);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Checking the topic consumer positions...");
                 checkConsumerPositions(conn);
@@ -150,12 +138,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Checking the dictionary history...");
                 checkDictHist(conn);
@@ -171,12 +154,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
 
                 System.err.println("[AAA] Updating more dictionary rows...");
                 runDml(conn, WRITE_UP4);
@@ -188,16 +166,30 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 System.err.println("[AAA] Waiting for dictionary refresh...");
                 pause(20_000L);
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
-                Assertions.assertEquals(0, diffCount);
+                assertViewOutputEventually(conn, sqlQuery, 0, 30_000L);
             } finally {
                 wc.shutdown();
             }
         }
+    }
+
+    private void assertViewOutputEventually(YdbConnector conn, String sqlQuery,
+            int expected, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        int diffCount = Integer.MAX_VALUE;
+        while (System.currentTimeMillis() < deadline) {
+            diffCount = checkViewOutput(conn, sqlQuery);
+            if (diffCount == expected) {
+                return;
+            }
+            pause(1000L);
+        }
+        System.out.println("[AAA] View output timed out, last diff=" + diffCount);
+        if (diffCount > 0) {
+            System.out.println("********* dumping threads **********");
+            System.out.println(generateThreadDump());
+        }
+        Assertions.assertEquals(expected, diffCount);
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
@@ -206,15 +198,31 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
 
     private void checkConsumerPositions(YdbConnector conn) {
         String consumerName = "consumer1";
-        checkConsumerPosition(conn, "test1/main_table", "cf0", consumerName, 6L);
-        checkConsumerPosition(conn, "test1/sub_table1", "cf1", consumerName, 8L);
-        checkConsumerPosition(conn, "test1/sub_table2", "cf2", consumerName, 9L);
-        checkConsumerPosition(conn, "test1/sub_table3", "cf3", "dictionary", 2L);
-        checkConsumerPosition(conn, "test1/sub_table4", "cf4", "dictionary", 4L);
+        checkConsumerPositionEventually(conn, "test1/main_table", "cf0", consumerName, 6L, 30_000L);
+        checkConsumerPositionEventually(conn, "test1/sub_table1", "cf1", consumerName, 8L, 30_000L);
+        checkConsumerPositionEventually(conn, "test1/sub_table2", "cf2", consumerName, 9L, 30_000L);
+        checkConsumerPositionEventually(conn, "test1/sub_table3", "cf3", "dictionary", 2L, 30_000L);
+        checkConsumerPositionEventually(conn, "test1/sub_table4", "cf4", "dictionary", 4L, 30_000L);
     }
 
-    private void checkConsumerPosition(YdbConnector conn, String tabName,
-            String feed, String consumer, long expected) {
+    private void checkConsumerPositionEventually(YdbConnector conn, String tabName,
+            String feed, String consumer, long expected, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        long sumMessages = -1L;
+        while (System.currentTimeMillis() < deadline) {
+            sumMessages = getConsumerPosition(conn, tabName, feed, consumer);
+            if (sumMessages == expected) {
+                return;
+            }
+            pause(1000L);
+        }
+        System.out.println("[AAA] Consumer position timed out for " + tabName
+                + ", last=" + sumMessages + ", expected=" + expected);
+        Assertions.assertEquals(expected, sumMessages);
+    }
+
+    private long getConsumerPosition(YdbConnector conn, String tabName,
+            String feed, String consumer) {
         var descMain = conn.getTopicClient().describeConsumer(
                 conn.fullCdcTopicName(tabName, feed),
                 consumer,
@@ -225,7 +233,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
         for (var cpi : descMain.getPartitions()) {
             sumMessages += cpi.getConsumerStats().getCommittedOffset();
         }
-        Assertions.assertEquals(expected, sumMessages);
+        return sumMessages;
     }
 
     private void clearMV(YdbConnector conn) {

@@ -38,14 +38,14 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     private void createExtraTables() {
         try (YdbConnector conn = new YdbConnector(getConfig())) {
             runDdl(conn, """
-            CREATE TABLE `mv/jobs` (
+            CREATE TABLE `test1/mv_jobs` (
                 job_name Text NOT NULL,
                 job_settings JsonDocument,
                 should_run Bool,
                 PRIMARY KEY(job_name)
             );
 
-            CREATE TABLE `mv/job_scans` (
+            CREATE TABLE `test1/mv_job_scans` (
                 job_name Text NOT NULL,
                 target_name Text NOT NULL,
                 scan_settings JsonDocument,
@@ -56,14 +56,14 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(job_name, target_name)
             );
 
-            CREATE TABLE `mv/runners` (
+            CREATE TABLE `test1/mv_runners` (
                 runner_id Text NOT NULL,
                 runner_identity Text,
                 updated_at Timestamp,
                 PRIMARY KEY(runner_id)
             );
 
-            CREATE TABLE `mv/runner_jobs` (
+            CREATE TABLE `test1/mv_runner_jobs` (
                 runner_id Text NOT NULL,
                 job_name Text NOT NULL,
                 job_settings JsonDocument,
@@ -72,7 +72,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 PRIMARY KEY(runner_id, job_name)
             );
 
-            CREATE TABLE `mv/commands` (
+            CREATE TABLE `test1/mv_commands` (
                 runner_id Text NOT NULL,
                 command_no Uint64 NOT NULL,
                 created_at Timestamp,
@@ -86,7 +86,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                 INDEX ix_command_status GLOBAL SYNC ON (command_status, runner_id),
                 PRIMARY KEY(runner_id, command_no)
             );
-                    """);
+            """);
             System.err.println("[FFF] Exta tables created!");
         }
     }
@@ -95,27 +95,27 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         System.err.println("[FFF] Database cleanup phase 2...");
         try (YdbConnector conn = new YdbConnector(getConfig())) {
             try {
-                runDdl(conn, "DROP TABLE `mv/jobs`;");
+                runDdl(conn, "DROP TABLE `test1/mv_jobs`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_JOBS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE `mv/job_scans`;");
+                runDdl(conn, "DROP TABLE `test1/mv_job_scans`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_JOB_SCANS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE `mv/runners`;");
+                runDdl(conn, "DROP TABLE `test1/mv_runners`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_RUNNERS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE `mv/runner_jobs`;");
+                runDdl(conn, "DROP TABLE `test1/mv_runner_jobs`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_RUNNER_JOBS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE `mv/commands`;");
+                runDdl(conn, "DROP TABLE `test1/mv_commands`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_COMMANDS: " + ex.toString());
             }
@@ -127,6 +127,11 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     protected MvConfig getNewConfig() {
         var ret = super.getNewConfig();
         ret.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
+        ret.getProperties().setProperty(MvBatchSettings.CONF_TABLE_JOBS, "test1/mv_jobs");
+        ret.getProperties().setProperty(MvBatchSettings.CONF_TABLE_SCANS, "test1/mv_job_scans");
+        ret.getProperties().setProperty(MvBatchSettings.CONF_TABLE_RUNNERS, "test1/mv_runners");
+        ret.getProperties().setProperty(MvBatchSettings.CONF_TABLE_RUNNER_JOBS, "test1/mv_runner_jobs");
+        ret.getProperties().setProperty(MvBatchSettings.CONF_TABLE_COMMANDS, "test1/mv_commands");
         return ret;
     }
 
@@ -154,7 +159,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
 
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, """
-                    INSERT INTO `mv/jobs` (job_name, should_run) VALUES
+                    INSERT INTO `test1/mv_jobs` (job_name, should_run) VALUES
                         ('handler1', true),
                         ('handler2', true);
                         """);
@@ -183,7 +188,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
     private void handler(MvConfig cfg, String name, AtomicInteger successCounter) {
         var batchSettings = new MvBatchSettings(cfg.getProperties());
         try (var conn = new YdbConnector(cfg, true); var api = MvApi.newInstance(conn)) {
-            try (var runner = new MvRunner(conn, api, name)) {
+            try (var runner = new MvRunner(conn, api, batchSettings, name)) {
                 api.applyDefaults(conn.getConfig().getProperties());
                 try (var coord = MvCoordinator.newInstance(conn, batchSettings, name)) {
                     System.err.println("[FFF] Instance starting: " + name);

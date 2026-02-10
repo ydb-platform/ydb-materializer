@@ -176,7 +176,11 @@ public class MvDictionaryLogger extends MvDaoHelpers implements MvSink, MvCdcAda
 
     private Value<?> convertData(YdbStruct before, YdbStruct after) {
         if (after == null || after.isEmpty()) {
-            return NULL_JSON;
+            if (before == null || before.isEmpty()) {
+                return NULL_JSON;
+            }
+            // Deletion: mark all known fields as affected.
+            return fieldNamesToJson(before.keySet());
         }
         if (before == null) {
             return fieldNamesToJson(after.keySet());

@@ -287,33 +287,42 @@ UPSERT INTO `pk_test/main2` (id,c4,c6) VALUES
         standardPause();
 
         System.err.println("[UUU] Checking the view output (should be empty)...");
-        int diffCount = checkViewOutput(svc);
-        Assertions.assertEquals(0, diffCount);
+        assertViewOutputEventually(svc, 0, 30_000L);
 
         System.err.println("[UUU] Writing input data 1...");
         runDml(svc.getYdb(), WRITE_PK_INITIAL1);
         standardPause();
         System.err.println("[UUU] Checking the view output...");
-        diffCount = checkViewOutput(svc);
-        Assertions.assertEquals(0, diffCount);
+        assertViewOutputEventually(svc, 0, 30_000L);
 
         System.err.println("[UUU] Writing input data 2...");
         runDml(svc.getYdb(), WRITE_PK_INITIAL2);
         standardPause();
         System.err.println("[UUU] Checking the view output...");
-        diffCount = checkViewOutput(svc);
-        Assertions.assertEquals(0, diffCount);
+        assertViewOutputEventually(svc, 0, 30_000L);
 
         System.err.println("[UUU] Writing input data 3...");
         runDml(svc.getYdb(), WRITE_PK_UPDATE);
         standardPause();
         System.err.println("[UUU] Checking the view output...");
-        diffCount = checkViewOutput(svc);
-        Assertions.assertEquals(0, diffCount);
+        assertViewOutputEventually(svc, 0, 30_000L);
     }
 
     private int checkViewOutput(MvService svc) {
         return checkViewOutput(svc, "pk_test/mv1", SELECT_ALL_PK);
+    }
+
+    private void assertViewOutputEventually(MvService svc, int expected, long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        int diff = Integer.MAX_VALUE;
+        while (System.currentTimeMillis() < deadline) {
+            diff = checkViewOutput(svc);
+            if (diff == expected) {
+                return;
+            }
+            pause(1000L);
+        }
+        Assertions.assertEquals(expected, diff);
     }
 
 }

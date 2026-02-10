@@ -211,7 +211,7 @@ class MvApply {
                         pg.getExpr().getName(), pg.getExpr().getAlias());
                 return;
             }
-            MvViewExpr transformation = pg.extractKeysReverse(source);
+            MvViewExpr transformation = pg.extractTopmostKeysReverse(source);
             if (transformation == null) {
                 LOG.info("Keys from input table `{}` cannot be transformed "
                         + "to keys for table `{}`, skipping for target `{}` as {}",
@@ -249,7 +249,7 @@ class MvApply {
             for (var js : batchSources) {
                 filter.add(js, js.getKeyColumnNames());
             }
-            return pathGenerator.applyFilter(filter);
+            return pathGenerator.applyFilterForDictionary(filter);
         }
     }
 }

@@ -35,6 +35,7 @@ public class MvPathGenerator {
     private final MvViewExpr expr;
     private final MvJoinSource topMostSource;
     private final MvTableInfo topMostTable;
+    private final List<MvColumn> targetKeyColumns;
     private final Map<MvJoinSource, List<MvJoinSource>> adjacencyMap;
 
     public MvPathGenerator(MvViewExpr expr) {
@@ -44,6 +45,7 @@ public class MvPathGenerator {
         this.expr = expr;
         this.topMostSource = expr.getTopMostSource();
         this.topMostTable = this.topMostSource.getTableInfo();
+        this.targetKeyColumns = resolveTargetKeyColumns();
         this.adjacencyMap = buildAdjacencyMap(expr);
     }
 
@@ -65,6 +67,14 @@ public class MvPathGenerator {
      * @throws IllegalArgumentException if parameters are invalid
      */
     public MvViewExpr extractKeysReverse(MvJoinSource point) {
+        return extractKeysReverse(point, targetKeyColumns);
+    }
+
+    public MvViewExpr extractTopmostKeysReverse(MvJoinSource point) {
+        return extractKeysReverse(point, buildTopmostKeyColumns());
+    }
+
+    private MvViewExpr extractKeysReverse(MvJoinSource point, List<MvColumn> keyColumns) {
         // Validate that inputSource is part of the originalTarget
         if (!expr.getSources().contains(point)) {
             throw new IllegalArgumentException("Input source must be part of the original target");
@@ -72,19 +82,19 @@ public class MvPathGenerator {
 
         // If input source is already the top-most source, create a simple target
         if (point == topMostSource) {
-            return createSimpleTarget(point, point.getTableInfo().getKey());
+            return createSimpleTarget(point, keyColumns);
         }
 
         // Check if the input source already contains all primary key fields of the top-most source
-        if (canDirectlyMapKeys(point)) {
-            return createDirectTarget(point, topMostTable.getKey(), true);
+        if (canDirectlyMapKeys(point, keyColumns)) {
+            return createDirectTarget(point, keyColumns);
         }
 
         List<MvJoinSource> path = findPath(point, topMostSource);
         if (path == null || path.isEmpty()) {
             return null; // No path found
         }
-        return createTarget(path, path.get(0), topMostTable.getKey());
+        return createTarget(path, keyColumns);
     }
 
     /**
@@ -96,6 +106,14 @@ public class MvPathGenerator {
      * @return Transformation after the filter is applied
      */
     public MvViewExpr applyFilter(Filter filter) {
+        return applyFilter(filter, false);
+    }
+
+    public MvViewExpr applyFilterForDictionary(Filter filter) {
+        return applyFilter(filter, true);
+    }
+
+    private MvViewExpr applyFilter(Filter filter, boolean mapForeignKeys) {
         if (filter == null || filter.items.isEmpty()) {
             throw new IllegalArgumentException("Empty filter passed");
         }
@@ -162,10 +180,24 @@ public class MvPathGenerator {
             }
             for (String fieldName : item.fieldNames) {
                 MvColumn column = new MvColumn("c" + String.valueOf(index++));
-                column.setSourceAlias(ref.getTableAlias());
-                column.setSourceRef(ref);
-                column.setSourceColumn(fieldName);
-                column.setType(ref.getTableInfo().getColumns().get(fieldName));
+                if (mapForeignKeys && isKeyColumn(ref, fieldName)) {
+                    Mapping mapped = findJoinMapping(ref, fieldName, result);
+                    if (mapped != null) {
+                        column.setSourceAlias(mapped.alias);
+                        column.setSourceRef(result.getSourceByAlias(mapped.alias));
+                        column.setSourceColumn(mapped.column);
+                        var src = result.getSourceByAlias(mapped.alias);
+                        if (src != null && src.getTableInfo() != null) {
+                            column.setType(src.getTableInfo().getColumns().get(mapped.column));
+                        }
+                    }
+                }
+                if (column.getSourceAlias() == null) {
+                    column.setSourceAlias(ref.getTableAlias());
+                    column.setSourceRef(ref);
+                    column.setSourceColumn(fieldName);
+                    column.setType(ref.getTableInfo().getColumns().get(fieldName));
+                }
                 if (column.getType() == null) {
                     throw new IllegalArgumentException("Filter requested column"
                             + "`" + fieldName + "` which is missing in the join source "
@@ -179,14 +211,50 @@ public class MvPathGenerator {
         return result;
     }
 
+    private static boolean isKeyColumn(MvJoinSource source, String fieldName) {
+        if (source == null || source.getTableInfo() == null) {
+            return false;
+        }
+        return source.getTableInfo().getKey().contains(fieldName);
+    }
+
+    private static Mapping findJoinMapping(MvJoinSource source,
+            String fieldName, MvViewExpr target) {
+        if (source == null || target == null) {
+            return null;
+        }
+        for (MvJoinCondition condition : source.getConditions()) {
+            if (condition.getFirstLiteral() != null || condition.getSecondLiteral() != null) {
+                continue;
+            }
+            if (source.getTableAlias().equals(condition.getFirstAlias())
+                    && fieldName.equals(condition.getFirstColumn())) {
+                if (condition.getSecondAlias() != null
+                        && target.getSourceByAlias(condition.getSecondAlias()) != null) {
+                    return new Mapping(condition.getSecondAlias(), condition.getSecondColumn());
+                }
+            }
+            if (source.getTableAlias().equals(condition.getSecondAlias())
+                    && fieldName.equals(condition.getSecondColumn())) {
+                if (condition.getFirstAlias() != null
+                        && target.getSourceByAlias(condition.getFirstAlias()) != null) {
+                    return new Mapping(condition.getFirstAlias(), condition.getFirstColumn());
+                }
+            }
+        }
+        return null;
+    }
+
+    private record Mapping(String alias, String column) {
+    }
+
     /**
      * Checks if the input source can directly map to the target primary key
      * without joins. This analyzes join conditions to find direct mappings
      * between columns or literal values.
      */
-    private boolean canDirectlyMapKeys(MvJoinSource inputSource) {
-        List<String> targetKeys = topMostTable.getKey();
-        for (String targetKey : targetKeys) {
+    private boolean canDirectlyMapKeys(MvJoinSource inputSource, List<MvColumn> keyColumns) {
+        for (MvColumn targetKey : keyColumns) {
             if (!canMapTargetKey(inputSource, targetKey)) {
                 return false;
             }
@@ -198,15 +266,29 @@ public class MvPathGenerator {
      * Checks if a specific target key can be mapped directly from the input
      * source by analyzing join conditions. Used by key path generator.
      */
-    private boolean canMapTargetKey(MvJoinSource source, String fieldName) {
-        if (source == topMostSource
+    private boolean canMapTargetKey(MvJoinSource source, MvColumn targetKey) {
+        if (targetKey == null) {
+            return false;
+        }
+        if (targetKey.isComputation()) {
+            return isComputationCompatible(targetKey.getComputation(), source);
+        }
+        if (!targetKey.isReference()) {
+            return false;
+        }
+        String fieldName = targetKey.getSourceColumn();
+        MvJoinSource targetRef = expr.getSourceByAlias(targetKey.getSourceAlias());
+        if (targetRef == null) {
+            return false;
+        }
+        if (targetRef == source
                 && source.getTableInfo().getColumns().containsKey(fieldName)) {
             return true;
         }
 
         // Look through all join conditions in the input source
         for (MvJoinCondition condition : source.getConditions()) {
-            if (isMappingCondition(condition, source, topMostSource, fieldName)) {
+            if (isMappingCondition(condition, source, targetRef, fieldName)) {
                 return true;
             }
         }
@@ -246,6 +328,7 @@ public class MvPathGenerator {
      * Checks if the target fields can be directly mapped from the top-most
      * source without joins by analyzing join conditions.
      */
+    @SuppressWarnings("unused")
     private boolean canDirectlyMapFields(MvJoinSource targetSource, List<String> fieldNames) {
         for (String fieldName : fieldNames) {
             if (!canMapTargetField(targetSource, fieldName)) {
@@ -280,7 +363,7 @@ public class MvPathGenerator {
      * Creates a simple direct target for the case where target source is the
      * top-most source.
      */
-    private static MvViewExpr createSimpleTarget(MvJoinSource source, List<String> fieldNames) {
+    private static MvViewExpr createSimpleTarget(MvJoinSource source, List<MvColumn> keyColumns) {
         MvViewExpr result = new MvViewExpr(source.getTableName() + "_simple");
         result.setTableInfo(source.getTableInfo());
 
@@ -290,14 +373,7 @@ public class MvPathGenerator {
         result.getSources().add(newSource);
 
         // Add columns for all requested fields
-        for (String fieldName : fieldNames) {
-            MvColumn column = new MvColumn(fieldName);
-            column.setSourceAlias(newSource.getTableAlias());
-            column.setSourceColumn(fieldName);
-            column.setSourceRef(newSource);
-            column.setType(source.getTableInfo().getColumns().get(fieldName));
-            result.getColumns().add(column);
-        }
+        fillTargetColumns(result, keyColumns);
 
         return result;
     }
@@ -305,7 +381,7 @@ public class MvPathGenerator {
     /**
      * Creates a direct target that maps fields without any joins.
      */
-    private MvViewExpr createDirectTarget(MvJoinSource source, List<String> fieldNames, boolean forward) {
+    private MvViewExpr createDirectTarget(MvJoinSource source, List<MvColumn> keyColumns) {
         MvViewExpr result = new MvViewExpr(source.getTableName() + "_direct");
         result.setTableInfo(source.getTableInfo());
 
@@ -315,31 +391,49 @@ public class MvPathGenerator {
         result.getSources().add(newSource);
 
         // Add columns for the requested fields, mapping from join conditions
-        for (String fieldName : fieldNames) {
-            String sourceColumn = findSourceColumn(source, fieldName, forward);
+        for (MvColumn keyColumn : keyColumns) {
+            MvColumn column = new MvColumn(keyColumn.getName());
+            if (keyColumn.isComputation()) {
+                if (!isComputationCompatible(keyColumn.getComputation(), source)) {
+                    throw new IllegalStateException("Cannot map computed column for "
+                            + keyColumn.getName() + " at source " + source.getTableName());
+                }
+                column.setComputation(keyColumn.getComputation());
+                column.setType(keyColumn.getType());
+                result.getColumns().add(column);
+                continue;
+            }
+            if (!keyColumn.isReference()) {
+                throw new IllegalStateException("Cannot map key column without a source: "
+                        + keyColumn.getName());
+            }
+            MvJoinSource targetRef = expr.getSourceByAlias(keyColumn.getSourceAlias());
+            String sourceColumn = findSourceColumn(source, targetRef, keyColumn.getSourceColumn());
             if (sourceColumn != null) {
-                MvColumn column = new MvColumn(fieldName);
                 column.setSourceAlias(newSource.getTableAlias());
                 column.setSourceColumn(sourceColumn);
                 column.setSourceRef(newSource);
-                column.setType(source.getTableInfo().getColumns().get(sourceColumn));
+                if (keyColumn.getType() != null) {
+                    column.setType(keyColumn.getType());
+                } else {
+                    column.setType(source.getTableInfo().getColumns().get(sourceColumn));
+                }
                 result.getColumns().add(column);
-            } else {
-                MvLiteral literalValue = findMappedLiteral(source, fieldName);
+                continue;
+            }
+            if (targetRef == topMostSource) {
+                MvLiteral literalValue = findMappedLiteral(source, keyColumn.getSourceColumn());
                 if (literalValue != null) {
-                    // Handle literal/constant values
-                    MvColumn column = new MvColumn(fieldName);
                     MvLiteral targetValue = result.addLiteral(literalValue.getValue());
                     column.setComputation(new MvComputation(targetValue));
-                    // Type will be determined from the target field
-                    column.setType(source.getTableInfo().getColumns().get(fieldName));
+                    column.setType(keyColumn.getType());
                     result.getColumns().add(column);
-                } else {
-                    throw new IllegalStateException("Cannot map column for " + fieldName
-                            + " at source " + source.getTableName() + ", target "
-                            + topMostSource.getTableName());
+                    continue;
                 }
             }
+            throw new IllegalStateException("Cannot map column for " + keyColumn.getName()
+                    + " at source " + source.getTableName() + ", target "
+                    + topMostSource.getTableName());
         }
 
         return result;
@@ -350,7 +444,8 @@ public class MvPathGenerator {
      * specific fields.
      */
     private static MvViewExpr createTarget(List<MvJoinSource> path,
-            MvJoinSource point, List<String> fieldNames) {
+            List<MvColumn> keyColumns) {
+        MvJoinSource point = path.get(path.size() - 1);
         MvViewExpr result = new MvViewExpr(point.getTableName() + "_full");
         result.setTableInfo(point.getTableInfo());
 
@@ -377,8 +472,7 @@ public class MvPathGenerator {
         }
 
         // Add columns for the requested fields from the desired point
-        MvJoinSource pointInResult = result.getSources().get(result.getSources().size() - 1);
-        fillTargetColumns(result, pointInResult, fieldNames);
+        fillTargetColumns(result, keyColumns);
 
         return result;
     }
@@ -390,14 +484,17 @@ public class MvPathGenerator {
      * @param tableRef Source table reference
      * @param fieldNames List of field names to be added
      */
-    private static void fillTargetColumns(MvViewExpr result,
-            MvJoinSource tableRef, List<String> fieldNames) {
-        for (String fieldName : fieldNames) {
-            MvColumn column = new MvColumn(fieldName);
-            column.setSourceAlias(tableRef.getTableAlias());
-            column.setSourceColumn(fieldName);
-            column.setSourceRef(tableRef);
-            column.setType(tableRef.getTableInfo().getColumns().get(fieldName));
+    private static void fillTargetColumns(MvViewExpr result, List<MvColumn> keyColumns) {
+        for (MvColumn keyColumn : keyColumns) {
+            MvColumn column = new MvColumn(keyColumn.getName());
+            column.setType(keyColumn.getType());
+            if (keyColumn.isComputation()) {
+                column.setComputation(keyColumn.getComputation());
+            } else if (keyColumn.isReference()) {
+                column.setSourceAlias(keyColumn.getSourceAlias());
+                column.setSourceColumn(keyColumn.getSourceColumn());
+                column.setSourceRef(result.getSourceByAlias(keyColumn.getSourceAlias()));
+            }
             result.getColumns().add(column);
         }
     }
@@ -550,24 +647,17 @@ public class MvPathGenerator {
      * Finds the source column in inputSource that maps to the target key
      * through join conditions.
      */
-    private String findSourceColumn(MvJoinSource source, String fieldName, boolean forward) {
-        if (source == topMostSource
+    private String findSourceColumn(MvJoinSource source, MvJoinSource target, String fieldName) {
+        if (target == null) {
+            return null;
+        }
+        if (source == target
                 && source.getTableInfo().getColumns().containsKey(fieldName)) {
             return fieldName;
         }
-
-        MvJoinSource j1, j2;
-        if (forward) {
-            j1 = topMostSource;
-            j2 = source;
-        } else {
-            j1 = source;
-            j2 = topMostSource;
-        }
-
         // Check join conditions for column mappings
         for (MvJoinCondition condition : source.getConditions()) {
-            String sourceColumn = getSourceColumn(condition, j1, j2, fieldName);
+            String sourceColumn = getSourceColumn(condition, source, target, fieldName);
             if (sourceColumn != null) {
                 return sourceColumn;
             }
@@ -583,16 +673,77 @@ public class MvPathGenerator {
     private static String getSourceColumn(MvJoinCondition condition,
             MvJoinSource source, MvJoinSource target, String fieldName) {
         if (condition.getFirstRef() == target && condition.getSecondRef() == source) {
-            if (fieldName.equals(condition.getSecondColumn())) {
-                return condition.getFirstColumn();
-            }
-        }
-        if (condition.getFirstRef() == source && condition.getSecondRef() == target) {
             if (fieldName.equals(condition.getFirstColumn())) {
                 return condition.getSecondColumn();
             }
         }
+        if (condition.getFirstRef() == source && condition.getSecondRef() == target) {
+            if (fieldName.equals(condition.getSecondColumn())) {
+                return condition.getFirstColumn();
+            }
+        }
         return null;
+    }
+
+    private List<MvColumn> resolveTargetKeyColumns() {
+        if (expr.getTableInfo() == null || expr.getTableInfo().getKey().isEmpty()) {
+            return buildFallbackKeyColumns();
+        }
+        ArrayList<MvColumn> output = new ArrayList<>();
+        for (String keyName : expr.getTableInfo().getKey()) {
+            MvColumn column = findColumnByName(expr.getColumns(), keyName);
+            if (column == null) {
+                return buildFallbackKeyColumns();
+            }
+            output.add(column);
+        }
+        return output;
+    }
+
+    private List<MvColumn> buildFallbackKeyColumns() {
+        ArrayList<MvColumn> output = new ArrayList<>();
+        for (String name : topMostTable.getKey()) {
+            MvColumn column = new MvColumn(name);
+            column.setSourceAlias(topMostSource.getTableAlias());
+            column.setSourceRef(topMostSource);
+            column.setSourceColumn(name);
+            if (topMostTable.getColumns() != null) {
+                column.setType(topMostTable.getColumns().get(name));
+            }
+            output.add(column);
+        }
+        return output;
+    }
+
+    private List<MvColumn> buildTopmostKeyColumns() {
+        return buildFallbackKeyColumns();
+    }
+
+    private static MvColumn findColumnByName(List<MvColumn> columns, String name) {
+        for (MvColumn column : columns) {
+            if (name.equals(column.getName())) {
+                return column;
+            }
+        }
+        return null;
+    }
+
+    private boolean isComputationCompatible(MvComputation comp, MvJoinSource source) {
+        if (comp == null) {
+            return false;
+        }
+        if (comp.isLiteral()) {
+            return true;
+        }
+        if (comp.getSources().isEmpty()) {
+            return true;
+        }
+        for (var src : comp.getSources()) {
+            if (!source.getTableAlias().equalsIgnoreCase(src.getAlias())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

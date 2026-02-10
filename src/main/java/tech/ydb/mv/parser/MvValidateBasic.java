@@ -242,7 +242,7 @@ public class MvValidateBasic {
             if (js.getInput().isBatchMode()) {
                 continue;
             }
-            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
+            MvViewExpr temp = pathGenerator.extractTopmostKeysReverse(js);
             if (temp == null) {
                 context.addIssue(new MvIssue.KeyExtractionImpossible(mt, js));
             } else {

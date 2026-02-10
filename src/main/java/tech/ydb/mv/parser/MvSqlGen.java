@@ -3,6 +3,7 @@ package tech.ydb.mv.parser;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -157,15 +158,45 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String makePlainDelete() {
-        // FIXME: the implementation below only works for the case when
-        // the PK for the MV is exactly the same as the PK for the topmost
-        // join source. It needs to be extended for the case when PK is
-        // computed based on some input columns.
         final StringBuilder sb = new StringBuilder();
         genDeclareMainKeyList(sb);
         sb.append("DELETE FROM ");
         safeId(sb, target.getName()).append(EOL);
+        if (canDeleteByInputKeys()) {
+            sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
+        } else if (canDeleteKeysFromInput()) {
+            sb.append(" ON SELECT").append(EOL);
+            genDeleteKeySelectList(sb);
+            sb.append("FROM AS_TABLE(").append(SYS_KEYS_VAR).append(") AS ");
+            safeId(sb, target.getTopMostSource().getTableAlias()).append(EOL);
+        } else {
+            throw new IllegalStateException("Delete keys require source-side computation");
+        }
+        sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
+    public String makePlainDeleteByTargetKeys() {
+        final StringBuilder sb = new StringBuilder();
+        genDeclareTargetKeyList(sb);
+        sb.append("DELETE FROM ");
+        safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
+        sb.append(";").append(EOL);
+        return sb.toString();
+    }
+
+    public String makeSelectDeleteKeys() {
+        final StringBuilder sb = new StringBuilder();
+        genDeclareMainKeyList(sb);
+        sb.append("SELECT").append(EOL);
+        genTargetKeySelectList(sb);
+        genSourcesPart(sb, true);
+        if (target.getFilter() != null) {
+            sb.append("WHERE ");
+            genExpression(sb, target.getFilter(), PrimitiveType.Bool);
+            sb.append(EOL);
+        }
         sb.append(";").append(EOL);
         return sb.toString();
     }
@@ -189,7 +220,7 @@ public class MvSqlGen implements AutoCloseable {
         keyNamesByComma(sb, topmost);
         sb.append(") > (");
         index = 0;
-        for (String name : topmost.getKey()) {
+        for (int i = 0; i < topmost.getKey().size(); ++i) {
             if (index++ > 0) {
                 sb.append(", ");
             }
@@ -546,6 +577,9 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     private ArrayList<String> findMappedKeyColumns() {
+        if (target.getTableInfo() != null && !target.getTableInfo().getKey().isEmpty()) {
+            return new ArrayList<>(target.getTableInfo().getKey());
+        }
         MvJoinSource topmost = target.getTopMostSource();
         if (topmost == null || topmost.getTableInfo() == null) {
             return null;
@@ -560,6 +594,201 @@ public class MvSqlGen implements AutoCloseable {
                     break;
                 }
             }
+        }
+        return output;
+    }
+
+    public boolean canDeleteByInputKeys() {
+        ArrayList<MvColumn> keyColumns = resolveTargetKeyColumns();
+        MvJoinSource topmost = target.getTopMostSource();
+        List<String> inputKeys = topmost.getTableInfo().getKey();
+        if (keyColumns.size() != inputKeys.size()) {
+            return false;
+        }
+        for (int i = 0; i < inputKeys.size(); ++i) {
+            MvColumn keyColumn = keyColumns.get(i);
+            String inputKey = inputKeys.get(i);
+            if (!keyColumn.isReference()) {
+                return false;
+            }
+            if (!inputKey.equals(keyColumn.getName())) {
+                return false;
+            }
+            if (!topmost.getTableAlias().equals(keyColumn.getSourceAlias())) {
+                return false;
+            }
+            if (!inputKey.equals(keyColumn.getSourceColumn())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean canDeleteKeysFromInput() {
+        ArrayList<MvColumn> keyColumns = resolveTargetKeyColumns();
+        for (MvColumn keyColumn : keyColumns) {
+            if (keyColumn.isComputation()) {
+                if (!isDeleteComputationFromInput(keyColumn.getComputation())) {
+                    return false;
+                }
+            } else if (keyColumn.isReference()) {
+                if (!isDeleteKeyFromInput(keyColumn)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void genDeleteKeySelectList(StringBuilder sb) {
+        ArrayList<MvColumn> keyColumns = resolveTargetKeyColumns();
+        boolean comma = false;
+        for (MvColumn column : keyColumns) {
+            if (comma) {
+                sb.append("  ,");
+            } else {
+                sb.append("   ");
+                comma = true;
+            }
+            genDeleteKeyExpression(sb, column);
+            sb.append(" AS ");
+            safeId(sb, column.getName());
+            sb.append(EOL);
+        }
+    }
+
+    private void genTargetKeySelectList(StringBuilder sb) {
+        ArrayList<MvColumn> keyColumns = resolveTargetKeyColumns();
+        boolean comma = false;
+        for (MvColumn column : keyColumns) {
+            if (comma) {
+                sb.append("  ,");
+            } else {
+                sb.append("   ");
+                comma = true;
+            }
+            genColumn(sb, column);
+            sb.append(EOL);
+        }
+    }
+
+    private void genDeleteKeyExpression(StringBuilder sb, MvColumn column) {
+        if (column.isComputation()) {
+            MvComputation comp = column.getComputation();
+            if (comp != null && comp.isLiteral()) {
+                sb.append(comp.getLiteral().getSafeValue());
+            } else if (comp != null) {
+                if (!isDeleteComputationFromInput(comp)) {
+                    throw new IllegalStateException("Delete keys depend on unsupported computation: "
+                            + column.getName());
+                }
+                sb.append(comp.getExpression());
+            } else {
+                genExpressionPlaceholder(sb, column.getType());
+            }
+            return;
+        }
+        if (!column.isReference()) {
+            genExpressionPlaceholder(sb, column.getType());
+            return;
+        }
+        if (!isDeleteKeyFromInput(column)) {
+            throw new IllegalStateException("Delete keys depend on unsupported columns: "
+                    + column.getName());
+        }
+        safeId(sb, column.getSourceAlias());
+        sb.append(".");
+        safeId(sb, column.getSourceColumn());
+    }
+
+    private void genDeclareTargetKeyList(StringBuilder sb) {
+        sb.append("DECLARE ").append(SYS_KEYS_VAR).append(" AS ");
+        sb.append("List<");
+        formatType(sb, toTargetKeyType());
+        sb.append(">;").append(EOL);
+    }
+
+    private StructType toTargetKeyType() {
+        if (target.getTableInfo() != null && !target.getTableInfo().getKey().isEmpty()) {
+            return toKeyType(target.getTableInfo());
+        }
+        ArrayList<MvColumn> keyColumns = resolveTargetKeyColumns();
+        HashMap<String, Type> m = new HashMap<>();
+        for (MvColumn column : keyColumns) {
+            if (column.getType() == null) {
+                throw new IllegalStateException("Missing key type for " + column.getName());
+            }
+            m.put(column.getName(), column.getType());
+        }
+        return StructType.of(m);
+    }
+
+    private boolean isDeleteKeyFromInput(MvColumn column) {
+        if (!column.isReference()) {
+            return false;
+        }
+        MvJoinSource topmost = target.getTopMostSource();
+        if (!topmost.getTableAlias().equals(column.getSourceAlias())) {
+            return false;
+        }
+        return topmost.getTableInfo().getKey().contains(column.getSourceColumn());
+    }
+
+    private boolean isDeleteComputationFromInput(MvComputation comp) {
+        if (comp == null) {
+            return false;
+        }
+        if (comp.isLiteral() || comp.getSources().isEmpty()) {
+            return true;
+        }
+        MvJoinSource topmost = target.getTopMostSource();
+        for (var src : comp.getSources()) {
+            if (!topmost.getTableAlias().equals(src.getAlias())) {
+                return false;
+            }
+            if (!topmost.getTableInfo().getKey().contains(src.getColumn())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ArrayList<MvColumn> resolveTargetKeyColumns() {
+        ArrayList<MvColumn> output = new ArrayList<>();
+        if (target.getTableInfo() != null && !target.getTableInfo().getKey().isEmpty()) {
+            for (String keyName : target.getTableInfo().getKey()) {
+                MvColumn column = findColumnByName(keyName);
+                if (column == null) {
+                    return buildFallbackKeyColumns();
+                }
+                output.add(column);
+            }
+            return output;
+        }
+        return buildFallbackKeyColumns();
+    }
+
+    private MvColumn findColumnByName(String name) {
+        for (MvColumn column : target.getColumns()) {
+            if (name.equals(column.getName())) {
+                return column;
+            }
+        }
+        return null;
+    }
+
+    private ArrayList<MvColumn> buildFallbackKeyColumns() {
+        ArrayList<MvColumn> output = new ArrayList<>();
+        MvJoinSource topmost = target.getTopMostSource();
+        for (String keyName : topmost.getTableInfo().getKey()) {
+            MvColumn column = new MvColumn(keyName);
+            column.setSourceAlias(topmost.getTableAlias());
+            column.setSourceColumn(keyName);
+            column.setSourceRef(topmost);
+            column.setType(topmost.getTableInfo().getColumns().get(keyName));
+            output.add(column);
         }
         return output;
     }
@@ -647,9 +876,4 @@ public class MvSqlGen implements AutoCloseable {
         sb.append(">");
         return sb;
     }
-
-    public static String structForTable(MvTableInfo ti) {
-        return structForTable(null, ti).toString();
-    }
-
 }
