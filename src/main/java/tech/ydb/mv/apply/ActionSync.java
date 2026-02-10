@@ -62,7 +62,16 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 this.rowType = sg.toRowType();
             }
         }
-        this.targetCtx = context.getJobContext().getYdb().getQueryRetryCtx(); // FIXME
+        if (target.getView().isDefaultDestination()) {
+            // default destination means to execute writes over the source database
+            this.targetCtx = context.getJobContext().getYdb().getQueryRetryCtx();
+        } else {
+            // non-default destination means there should be a separate connection
+            // configured to access the target table
+            this.targetCtx = context.getJobContext().getYdb()
+                    .getConnExt(target.getView().getDestination())
+                    .getQueryRetryCtx();
+        }
         MvJoinSource src = target.getTopMostSource();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
                 instance, context.getHandler().getName(),

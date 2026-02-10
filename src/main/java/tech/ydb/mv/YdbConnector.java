@@ -102,6 +102,7 @@ public class YdbConnector implements AutoCloseable {
         if (name == null || name.trim().length() == 0) {
             throw new IllegalArgumentException("Connection name cannot be empty");
         }
+        name = name.trim().toLowerCase();
         // happy path - connection known and configured
         MvConnector.ConnExt conn;
         synchronized (connExt) {

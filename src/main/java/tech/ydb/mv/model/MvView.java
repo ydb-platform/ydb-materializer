@@ -13,19 +13,32 @@ public class MvView implements MvSqlPosHolder {
 
     // fields grabbed from the SQL statement
     private final String viewName;
+    private final String destinationName;
     private final MvSqlPos sqlPos;
     private final HashMap<String, MvViewExpr> parts = new HashMap<>();
     // fields computed later or added based on the database metadata
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private MvTableInfo tableInfo;
 
-    public MvView(String viewName, MvSqlPos sqlPos) {
+    public MvView(String viewName, String destinationName, MvSqlPos sqlPos) {
         this.viewName = viewName;
+        this.destinationName = destinationName;
         this.sqlPos = sqlPos;
     }
 
     public String getName() {
         return viewName;
+    }
+
+    public String getDestination() {
+        return destinationName;
+    }
+
+    public boolean isDefaultDestination() {
+        if (destinationName == null || destinationName.length() == 0) {
+            return true;
+        }
+        return false;
     }
 
     @Override

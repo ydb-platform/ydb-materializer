@@ -298,13 +298,40 @@ public class MvConnector implements AutoCloseable {
      */
     public static class ConnExt extends MvConnector {
 
+        private final TableClient tableClient;
+        private final tech.ydb.table.SessionRetryContext tableRetryCtx;
+
         public ConnExt(MvConfig config, GrpcTransport transport) {
             super(config, transport, config.getPoolSize());
+            this.tableClient = QueryClient.newTableClient(this.transport)
+                    .sessionPoolSize(1, config.getPoolSize())
+                    .build();
+            this.tableRetryCtx = tech.ydb.table.SessionRetryContext
+                    .create(this.tableClient)
+                    .sessionCreationTimeout(Duration.ofSeconds(5L))
+                    .idempotent(true)
+                    .build();
+            setOpened();
+        }
+
+        public TableClient getTableClient() {
+            return tableClient;
+        }
+
+        public tech.ydb.table.SessionRetryContext getTableRetryCtx() {
+            return tableRetryCtx;
         }
 
         @Override
         public void close() {
             unsetOpened();
+            if (tableClient != null) {
+                try {
+                    tableClient.close();
+                } catch (Exception ex) {
+                    LOG.warn("TableClient closing threw an exception", ex);
+                }
+            }
             super.close();
             // In this case transport is controlled "inside", so it should be closed.
             if (transport != null) {

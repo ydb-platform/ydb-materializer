@@ -6,7 +6,8 @@ sql_script: SEMICOLON* sql_stmt (SEMICOLON+ sql_stmt)* SEMICOLON* EOF;
 
 sql_stmt: create_mat_view_stmt | create_handler_stmt;
 
-create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW identifier
+create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW view_name
+  (DESTINATION destination_name)?
   AS some_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
@@ -60,6 +61,7 @@ CHANGEFEED: C H A N G E F E E D;
 COMPUTE: C O M P U T E;
 CONSUMER: C O N S U M E R;
 CREATE: C R E A T E;
+DESTINATION: D E S T I N A T I O N;
 FROM: F R O M;
 JOIN: J O I N;
 HANDLER: H A N D L E R;
@@ -90,6 +92,8 @@ mat_view_ref: identifier;
 join_table_ref: identifier;
 changefeed_name: identifier;
 consumer_name: identifier;
+view_name: identifier;
+destination_name: identifier;
 
 table_alias: ID_PLAIN;
 column_alias: ID_PLAIN;

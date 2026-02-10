@@ -49,7 +49,7 @@ public class MvDictionaryScan {
         this.describer = describer;
         this.controlTableName = conn.getProperty(MvConfig.CONF_SCAN_TABLE, MvConfig.DEF_SCAN_TABLE);
         this.historyTableName = conn.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
-        this.historyTableInfo = describer.describeTable(this.historyTableName);
+        this.historyTableInfo = describer.describeTable(this.historyTableName, null);
         this.sqlSelectInitial = getSelectInitial(this.historyTableName);
         this.sqlSelectNext = getSelectNext(this.historyTableName);
     }
@@ -165,7 +165,7 @@ public class MvDictionaryScan {
 
         Adapter(String sourceTableName) {
             this.sourceTableName = sourceTableName;
-            this.sourceTableInfo = describer.describeTable(sourceTableName);
+            this.sourceTableInfo = describer.describeTable(sourceTableName, null);
         }
 
         @Override

@@ -402,7 +402,7 @@ public class MvService implements MvApi {
 
     private void appendDictHist(MvMetadata m) {
         String historyTableName = ydb.getProperty(MvConfig.CONF_DICT_HIST_TABLE, MvConfig.DEF_DICT_HIST_TABLE);
-        var tableInfo = new MvDescriberYdb(ydb).describeTable(historyTableName);
+        var tableInfo = new MvDescriberYdb(ydb).describeTable(historyTableName, null);
         m.getTables().put(tableInfo.getName(), tableInfo);
     }
 
