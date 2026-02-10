@@ -80,7 +80,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     public void basicIntegrationTest() {
         // now the work
         System.err.println("[AAA] Starting up...");
-        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes());
         try (YdbConnector conn = new YdbConnector(cfg, true)) {
             MvService wc = new MvService(conn);
             try {

@@ -33,7 +33,7 @@ public class ConcurrencyIntegrationTest extends AbstractIntegrationBase {
     @Test
     public void concurrencyIntegrationTest() {
         System.err.println("[CCC] Starting up...");
-        var cfg = MvConfig.fromBytes(getConfigBytes(), "config.xml", null);
+        var cfg = MvConfig.fromBytes(getConfigBytes());
         cfg.getProperties().setProperty(MvConfig.CONF_COORD_TIMEOUT, "5");
 
         Thread t1 = new Thread(() -> handler(cfg, "handler1"));

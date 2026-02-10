@@ -253,7 +253,7 @@ public class MvSqlParser {
         if (prev != null) {
             mc.addIssue(new MvIssue.DuplicateHandler(mh, prev));
         }
-        if (mh.getName().toLowerCase().startsWith(MvConfig.SYS_PREFIX)) {
+        if (mh.getName().toLowerCase().startsWith(MvConfig.SYS_NAME_PREFIX)) {
             mc.addIssue(new MvIssue.IllegalHandlerName(mh));
         }
     }

@@ -9,41 +9,7 @@ import com.google.gson.GsonBuilder;
  *
  * @author zinal
  */
-public class MvConfigBase {
-
-    private final Properties properties = new Properties();
-
-    public MvConfigBase() {
-    }
-
-    public MvConfigBase(Properties properties) {
-        this.properties.putAll(properties);
-    }
-
-    public Properties getProperties() {
-        return properties;
-    }
-
-    public String getProperty(String name) {
-        return properties.getProperty(name);
-    }
-
-    public String getProperty(String name, String defval) {
-        return properties.getProperty(name, defval);
-    }
-
-    public int getProperty(String name, int defval) {
-        return parseInt(properties, name, defval);
-    }
-
-    public long getProperty(String name, long defval) {
-        return parseLong(properties, name, defval);
-    }
-
-    public boolean getProperty(String name, boolean defval) {
-        String v = properties.getProperty(name, String.valueOf(defval));
-        return Boolean.parseBoolean(v);
-    }
+public class MvName {
 
     /**
      * Gson instance for basic conversions.
@@ -53,7 +19,7 @@ public class MvConfigBase {
     /**
      * System-used prefix for job names / handler names.
      */
-    public static final String SYS_PREFIX = "ydbmv";
+    public static final String SYS_NAME_PREFIX = "ydbmv$";
 
     /**
      * Name for the dictionary change logging handler.
@@ -64,6 +30,47 @@ public class MvConfigBase {
      * Name for the global job coordinator handler.
      */
     public static final String HANDLER_COORDINATOR = "ydbmv$coordinator";
+
+    /**
+     * YDB connection URL, grpc[s]://hostname:2135/dbname
+     */
+    public static final String CONF_YDB_URL = "ydb.url";
+
+    /**
+     * YDB authentication mode, {@link AuthMode}
+     */
+    public static final String CONF_YDB_AUTH_MODE = "ydb.auth.mode";
+
+    /**
+     * Path to YDB authentication service account key file, for
+     * {@link AuthMode.SAKEY}
+     */
+    public static final String CONF_YDB_AUTH_SAKEY = "ydb.auth.sakey";
+
+    /**
+     * YDB username, for {@link AuthMode.STATIC}
+     */
+    public static final String CONF_YDB_AUTH_USERNAME = "ydb.auth.username";
+
+    /**
+     * YDB password, for {@link AuthMode.STATIC}
+     */
+    public static final String CONF_YDB_AUTH_PASSWORD = "ydb.auth.password";
+
+    /**
+     * Path to trusted CA file to be used by YDB connections.
+     */
+    public static final String CONF_YDB_CAFILE = "ydb.cafile";
+
+    /**
+     * true, if local dc connections are preferred
+     */
+    public static final String CONF_YDB_PREFER_LOCAL_DC = "ydb.preferLocalDc";
+
+    /**
+     * YDB session pool size
+     */
+    public static final String CONF_YDB_POOL_SIZE = "ydb.poolSize";
 
     /**
      * FILE read input statements from file TABLE read input statements from

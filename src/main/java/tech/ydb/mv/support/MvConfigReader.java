@@ -7,7 +7,7 @@ import java.util.Properties;
 
 import tech.ydb.table.query.Params;
 
-import tech.ydb.mv.MvConfigBase;
+import tech.ydb.mv.MvName;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.parser.MvSqlParser;
@@ -17,23 +17,24 @@ import tech.ydb.mv.parser.MvSqlParser;
  *
  * @author zinal
  */
-public class MvConfigReader extends MvConfigBase {
+public class MvConfigReader extends MvName {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvConfigReader.class);
 
-    public static MvMetadata read(YdbConnector ydb, Properties props) {
+    public static MvMetadata read(YdbConnector ydb) {
+        Properties props = ydb.getConfig().getProperties();
         String mode = props.getProperty(CONF_INPUT_MODE, Input.FILE.name());
         MvMetadata metadata;
-        switch (MvConfigBase.parseInput(mode)) {
+        switch (MvName.parseInput(mode)) {
             case FILE -> {
-                metadata = readFile(ydb, props);
+                metadata = readFile(props);
             }
             case TABLE -> {
                 metadata = readTable(ydb, props);
             }
             default -> {
                 throw new IllegalArgumentException("Illegal value [" + mode + "] for "
-                        + "property " + MvConfigBase.CONF_INPUT_MODE);
+                        + "property " + MvName.CONF_INPUT_MODE);
             }
 
         }
@@ -41,7 +42,7 @@ public class MvConfigReader extends MvConfigBase {
         return metadata;
     }
 
-    private static MvMetadata readFile(YdbConnector ydb, Properties props) {
+    private static MvMetadata readFile(Properties props) {
         String fname = props.getProperty(CONF_INPUT_FILE, DEF_STMT_FILE);
         LOG.info("Reading MV script from file {}", fname);
         try (FileInputStream fis = new FileInputStream(fname)) {

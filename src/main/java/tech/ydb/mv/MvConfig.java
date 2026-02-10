@@ -15,48 +15,73 @@ import java.util.Properties;
  * by the class allows loading configuration from an external XML properties
  * file.
  */
-public class MvConfig extends MvConfigBase {
+public class MvConfig extends MvName {
 
     private String connectionString;
-    private MvConfigBase.AuthMode authMode = MvConfigBase.AuthMode.NONE;
+    private MvName.AuthMode authMode = MvName.AuthMode.NONE;
     private String saKeyFile;
     private String staticLogin;
     private String staticPassword;
     private String tlsCertificateFile;
     private int poolSize = 2 * (1 + Runtime.getRuntime().availableProcessors());
     private boolean preferLocalDc = false;
-    private final String prefix;
+
+    private final Properties properties = new Properties();
 
     public MvConfig() {
-        this.prefix = "ydb.";
         this.connectionString = "/local";
     }
 
-    public MvConfig(Properties props) {
-        this(props, null);
+    public MvConfig(Properties properties) {
+        this(properties, null);
     }
 
-    public MvConfig(Properties props, String prefix) {
-        super(props);
+    public MvConfig(Properties p, String prefix) {
         if (prefix == null) {
-            prefix = "ydb.";
+            prefix = "";
+        } else {
+            prefix = prefix.trim();
+            if (prefix.length() > 0 && !prefix.endsWith(".")) {
+                prefix = prefix + ".";
+            }
         }
-        this.prefix = prefix;
-        this.connectionString = props.getProperty(prefix + "url");
+        this.properties.putAll(p);
+        this.connectionString = p.getProperty("ydb.url");
         if (this.connectionString == null || this.connectionString.length() == 0) {
             this.connectionString = "/local";
         }
-        this.authMode = parseAuthMode(props.getProperty(prefix + "auth.mode"));
-        this.saKeyFile = props.getProperty(prefix + "auth.sakey");
-        this.staticLogin = props.getProperty(prefix + "auth.username");
-        this.staticPassword = props.getProperty(prefix + "auth.password");
-        this.tlsCertificateFile = props.getProperty(prefix + "cafile");
-        this.preferLocalDc = super.getProperty(prefix + "preferLocalDc", false);
-        this.poolSize = super.getProperty(prefix + "poolSize", this.poolSize);
+        this.authMode = parseAuthMode(p.getProperty(prefix + MvName.CONF_YDB_AUTH_MODE));
+        this.saKeyFile = p.getProperty(prefix + MvName.CONF_YDB_AUTH_SAKEY);
+        this.staticLogin = p.getProperty(prefix + MvName.CONF_YDB_AUTH_USERNAME);
+        this.staticPassword = p.getProperty(prefix + MvName.CONF_YDB_AUTH_PASSWORD);
+        this.tlsCertificateFile = p.getProperty(prefix + MvName.CONF_YDB_CAFILE);
+        this.preferLocalDc = getProperty(prefix + MvName.CONF_YDB_PREFER_LOCAL_DC, false);
+        this.poolSize = getProperty(prefix + MvName.CONF_YDB_POOL_SIZE, this.poolSize);
     }
 
-    public String getPrefix() {
-        return prefix;
+    public final Properties getProperties() {
+        return properties;
+    }
+
+    public final String getProperty(String name) {
+        return properties.getProperty(name);
+    }
+
+    public final String getProperty(String name, String defval) {
+        return properties.getProperty(name, defval);
+    }
+
+    public final int getProperty(String name, int defval) {
+        return parseInt(properties, name, defval);
+    }
+
+    public final long getProperty(String name, long defval) {
+        return parseLong(properties, name, defval);
+    }
+
+    public final boolean getProperty(String name, boolean defval) {
+        String v = properties.getProperty(name, String.valueOf(defval));
+        return Boolean.parseBoolean(v);
     }
 
     public String getConnectionString() {
@@ -67,13 +92,13 @@ public class MvConfig extends MvConfigBase {
         this.connectionString = connectionString;
     }
 
-    public MvConfigBase.AuthMode getAuthMode() {
+    public MvName.AuthMode getAuthMode() {
         return authMode;
     }
 
-    public void setAuthMode(MvConfigBase.AuthMode authMode) {
+    public void setAuthMode(MvName.AuthMode authMode) {
         if (authMode == null) {
-            this.authMode = MvConfigBase.AuthMode.NONE;
+            this.authMode = MvName.AuthMode.NONE;
         } else {
             this.authMode = authMode;
         }
@@ -131,47 +156,50 @@ public class MvConfig extends MvConfigBase {
     }
 
     /**
-     * Loads a configuration from the specified file. This is a convenience
-     * method that delegates to the overloaded version without an explicit
-     * property name prefix parameter.
-     *
-     * @param fname the file path to load the configuration from
-     * @return the parsed configuration object
-     */
-    public static MvConfig fromFile(String fname) {
-        return fromFile(fname, null);
-    }
-
-    /**
-     * Reads and parses a configuration file into a {@link MvConfig}
-     * object.The file is read as bytes, then parsed as XML properties.A custom
-     * prefix for property names can be applied during configuration processing.
+     * Reads and parses a configuration file into a {@link MvConfig} object.The
+     * file is read as bytes, then parsed as XML properties.A custom prefix for
+     * property names can be applied during configuration processing.
      *
      * @param fname the path to the configuration file
-     * @param prefix the custom prefix for property names to be read when
-     * constructing the Config object
      * @return a new {@link MvConfig} object loaded with the specified
      * properties
      * @throws RuntimeException if the file cannot be read or parsed
      */
-    public static MvConfig fromFile(String fname, String prefix) {
+    public static MvConfig fromFile(String fname) {
         byte[] data;
         try {
             data = Files.readAllBytes(Paths.get(fname));
         } catch (IOException ix) {
             throw new RuntimeException("Failed to read file " + fname, ix);
         }
-        return fromBytes(data, fname, prefix);
+        return fromBytes(data, fname);
     }
 
-    public static MvConfig fromBytes(byte[] data, String fname, String prefix) {
+    /**
+     * Reads and parses configuration data into a {@link MvConfig} object.
+     *
+     * @param data Configuration data as XML
+     * @param fname Filename, from which the data has been obtained
+     * @return Configuration object
+     */
+    public static MvConfig fromBytes(byte[] data, String fname) {
         Properties props = new Properties();
         try {
             props.loadFromXML(new ByteArrayInputStream(data));
         } catch (IOException ix) {
             throw new RuntimeException("Failed to parse properties file " + fname, ix);
         }
-        return new MvConfig(props, prefix);
+        return new MvConfig(props);
+    }
+
+    /**
+     * Reads and parses configuration data into a {@link MvConfig} object.
+     *
+     * @param data Configuration data as XML
+     * @return Configuration object
+     */
+    public static MvConfig fromBytes(byte[] data) {
+        return fromBytes(data, "config.xml");
     }
 
 }

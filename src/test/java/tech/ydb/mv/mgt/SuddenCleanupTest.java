@@ -63,7 +63,7 @@ public class SuddenCleanupTest extends MgmtTestBase {
             createDataTables(i);
             configureMv(i);
         }
-        var cfg = new MvConfig(getConfigProps(), null);
+        var cfg = new MvConfig(getConfigProps());
         workerConn = new YdbConnector(cfg, true);
     }
 
