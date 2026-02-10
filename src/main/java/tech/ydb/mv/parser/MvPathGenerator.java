@@ -245,14 +245,7 @@ public class MvPathGenerator {
         return null;
     }
 
-    private static final class Mapping {
-        final String alias;
-        final String column;
-
-        Mapping(String alias, String column) {
-            this.alias = alias;
-            this.column = column;
-        }
+    private record Mapping(String alias, String column) {
     }
 
     /**
