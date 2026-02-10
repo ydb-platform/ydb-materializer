@@ -95,27 +95,27 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
         System.err.println("[FFF] Database cleanup phase 2...");
         try (YdbConnector conn = new YdbConnector(getConfig())) {
             try {
-                runDdl(conn, "DROP TABLE mv_jobs;");
+                runDdl(conn, "DROP TABLE `mv/jobs`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_JOBS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE mv_job_scans;");
+                runDdl(conn, "DROP TABLE `mv/job_scans`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_JOB_SCANS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE mv_runners;");
+                runDdl(conn, "DROP TABLE `mv/runners`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_RUNNERS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE mv_runner_jobs;");
+                runDdl(conn, "DROP TABLE `mv/runner_jobs`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_RUNNER_JOBS: " + ex.toString());
             }
             try {
-                runDdl(conn, "DROP TABLE mv_commands;");
+                runDdl(conn, "DROP TABLE `mv/commands`;");
             } catch (Exception ex) {
                 System.err.println("[FFF] Cannot drop MV_COMMANDS: " + ex.toString());
             }
@@ -154,7 +154,7 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
 
         try (YdbConnector conn = new YdbConnector(cfg)) {
             runDdl(conn, """
-                    INSERT INTO `mv_jobs` (job_name, should_run) VALUES
+                    INSERT INTO `mv/jobs` (job_name, should_run) VALUES
                         ('handler1', true),
                         ('handler2', true);
                         """);
@@ -191,10 +191,14 @@ public class FullIntegrationTest extends AbstractIntegrationBase {
                     pause(1_000);
                     coord.start();
                     pause(40_000);
+                    if (runner.isFailing()) {
+                        System.err.println("[FFF] Instance FAILED: " + name);
+                    } else {
+                        successCounter.incrementAndGet();
+                        System.err.println("[FFF] Instance succeeded: " + name);
+                    }
                 }
             }
-            successCounter.incrementAndGet();
-            System.err.println("[FFF] Instance succeeded: " + name);
         } catch (Exception ex) {
             System.err.println("[FFF] Instance failed: " + name);
             ex.printStackTrace(System.err);

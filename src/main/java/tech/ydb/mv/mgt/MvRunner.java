@@ -33,6 +33,7 @@ public class MvRunner implements AutoCloseable {
     private final String runnerIdentity;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean failing = new AtomicBoolean(false);
     private final Map<String, MvRunnerJobInfo> localJobs = new HashMap<>();
     private volatile Thread runnerThread = null;
 
@@ -151,6 +152,8 @@ public class MvRunner implements AutoCloseable {
         long lastCommandCheckTime = 0;
         boolean registered = false;
 
+        failing.set(false);
+
         while (running.get()) {
             long currentTime = System.currentTimeMillis();
             try {
@@ -180,10 +183,13 @@ public class MvRunner implements AutoCloseable {
                     lastCommandCheckTime = currentTime;
                 }
 
+                failing.set(false);
+
                 // Sleep for a short time to avoid busy waiting
                 YdbMisc.sleep(200L);
 
             } catch (Exception ex) {
+                failing.set(true);
                 LOG.error("[{}] Error in MvRunner main loop", runnerId, ex);
                 YdbMisc.sleep(5000); // Sleep longer on error
             }
@@ -425,6 +431,13 @@ public class MvRunner implements AutoCloseable {
      */
     public boolean isRunning() {
         return running.get();
+    }
+
+    /**
+     * Check if the runner is failing.
+     */
+    public boolean isFailing() {
+        return failing.get();
     }
 
     /**
