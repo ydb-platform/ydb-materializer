@@ -71,17 +71,24 @@ The language supports two main statement types:
 Basic materialized view:
 
 ```sql
-CREATE ASYNC MATERIALIZED VIEW <view_name> AS
+CREATE ASYNC MATERIALIZED VIEW <view_name>
+  [DESTINATION <connection_name>]
+AS
   SELECT <column_definitions>
   FROM <main_table> AS <alias>
   [<join_clauses>]
   [WHERE <filter_expression>];
 ```
 
+- The `SELECT` clause defines the list of tables being used as sources for the MV, as well as the relations between the source tables, in the form of a limited SQL query.
+- The optional `DESTINATION` clause allows to put the MV into a separate database (see the related section below).
+
 Composite materialized view:
 
 ```sql
-CREATE ASYNC MATERIALIZED VIEW <view_name> AS
+CREATE ASYNC MATERIALIZED VIEW <view_name>
+  [DESTINATION <connection_name>]
+AS
   (SELECT <column_definitions>
    FROM <main_table1> AS <alias>
    [<join_clauses>]
@@ -96,7 +103,49 @@ UNION ALL
    ;
 ```
 
-A composite materialized view definition consists of two or more subqueries, each with the same syntax as a basic materialized view query, combined using the `UNION ALL` operator. Each subquery must also contain an alias that is unique within the composite materialized view and used to identify the subquery during its processing.
+A composite materialized view definition consists of two or more SELECT subqueries, each with the same syntax as a basic materialized view query, combined using the `UNION ALL` operator. Each subquery must also contain an alias that is unique within the composite materialized view and used to identify the subquery during its processing.
+
+#### Destination databases
+
+By default, materialized view tables are created and updated in the same YDB database from which the input data is read, and which is configured through the `ydb.url` connection setting.
+
+Optionally, a materialized view can be associated with a **separate destination database** by using the `DESTINATION` clause:
+
+```sql
+CREATE ASYNC MATERIALIZED VIEW <view_name>
+  DESTINATION <connection_name>
+AS
+  SELECT ...
+```
+
+- **`<connection_name>`** is a logical name of an additional YDB connection.
+- Source tables for the view are still read from the **main** database.
+- All writes (`UPSERT` / `DELETE`) for the materialized view are executed against the **destination** database.
+
+To use a non-default destination, define a separate connection in the configuration by prefixing standard YDB settings with `<connection_name>.`, for example:
+
+```xml
+<!-- Main database (source tables) -->
+<entry key="ydb.url">grpcs://ydb01.localdomain:2135/cluster1/testdb</entry>
+
+<!-- Separate destination database for MV `pk_test/mv1` -->
+<entry key="altdest1.ydb.url">grpcs://ydb01.localdomain:2135/cluster1/testdb_mv</entry>
+<entry key="altdest1.ydb.cafile">/path/to/ca.crt</entry>
+<entry key="altdest1.ydb.auth.mode">STATIC</entry>
+<entry key="altdest1.ydb.auth.username">root</entry>
+<entry key="altdest1.ydb.auth.password">your_password</entry>
+```
+
+In the materialized view definition, reference this connection name:
+
+```sql
+CREATE ASYNC MATERIALIZED VIEW `pk_test/mv1`
+  DESTINATION `altdest1`
+AS
+  SELECT ...
+```
+
+If the `DESTINATION` clause is omitted, the materialized view is written to the main database connection.
 
 #### Column Definitions
 
