@@ -1,6 +1,7 @@
 package tech.ydb.mv;
 
 import java.lang.management.ManagementFactory;
+import java.util.HashMap;
 import java.util.Properties;
 
 import tech.ydb.core.grpc.GrpcTransport;
@@ -28,6 +29,7 @@ public class YdbConnector implements AutoCloseable {
     private final MvConnector.ConnStd connStd;
     private final GrpcTransport transMgt;
     private final MvConnector.ConnMgt connMgt;
+    private final HashMap<String, MvConnector.ConnExt> connExt = new HashMap<>();
 
     public YdbConnector(MvConfig config, boolean management) {
         this.config = config;
@@ -94,6 +96,38 @@ public class YdbConnector implements AutoCloseable {
             throw new IllegalStateException("Managament connection has not been configured");
         }
         return connMgt;
+    }
+
+    public MvConnector.ConnExt getConnExt(String name) {
+        if (name == null || name.trim().length() == 0) {
+            throw new IllegalArgumentException("Connection name cannot be empty");
+        }
+        // happy path - connection known and configured
+        MvConnector.ConnExt conn;
+        synchronized (connExt) {
+            conn = connExt.get(name);
+        }
+        if (conn != null) {
+            return conn;
+        }
+        // check if connection is known
+        String url = config.getProperty(name + "." + MvName.CONF_YDB_URL);
+        if (url == null) {
+            throw new IllegalArgumentException("Connection has not been configured: " + name);
+        }
+        // configure and store the connection
+        var namedConf = new MvConfig(config.getProperties(), name);
+        synchronized (connExt) {
+            var transport = MvConnector.configure(namedConf);
+            try {
+                conn = new MvConnector.ConnExt(namedConf, transMgt);
+            } catch (Exception ex) {
+                transport.close();
+                throw ex;
+            }
+            connExt.put(name, conn);
+            return conn;
+        }
     }
 
     public boolean isOpen() {
@@ -174,8 +208,12 @@ public class YdbConnector implements AutoCloseable {
 
     @Override
     public void close() {
-        dumpThreadsIfConfigured();
+        dumpThreadsIfConfigured(true);
         LOG.info("Closing YDB connections...");
+        synchronized (connExt) {
+            connExt.forEach((name, conn) -> conn.close());
+            connExt.clear();
+        }
         if (connMgt != null) {
             connMgt.close();
         }
@@ -189,10 +227,20 @@ public class YdbConnector implements AutoCloseable {
             transStd.close();
         }
         LOG.info("Disconnected from YDB.");
+        dumpThreadsIfConfigured(false);
     }
 
-    private void dumpThreadsIfConfigured() {
-        if (!config.getProperty("dump.threads.on.close", false)) {
+    private void dumpThreadsIfConfigured(boolean before) {
+        String mode = config.getProperty("dump.threads.on.close");
+        boolean skip = true;
+        if ("both".equalsIgnoreCase(mode)) {
+            skip = false;
+        } else if (before && "before".equalsIgnoreCase(mode)) {
+            skip = false;
+        } else if (!before && "after".equalsIgnoreCase(mode)) {
+            skip = false;
+        }
+        if (skip) {
             return;
         }
         LOG.info("Performing pre-closure thread dump.");

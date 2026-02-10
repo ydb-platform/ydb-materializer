@@ -292,4 +292,24 @@ public class MvConnector implements AutoCloseable {
             super.close();
         }
     }
+
+    /**
+     * "Secondary" type connector.
+     */
+    public static class ConnExt extends MvConnector {
+
+        public ConnExt(MvConfig config, GrpcTransport transport) {
+            super(config, transport, config.getPoolSize());
+        }
+
+        @Override
+        public void close() {
+            unsetOpened();
+            super.close();
+            // In this case transport is controlled "inside", so it should be closed.
+            if (transport != null) {
+                transport.close();
+            }
+        }
+    }
 }
