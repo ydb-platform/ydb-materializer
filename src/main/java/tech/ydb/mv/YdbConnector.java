@@ -136,6 +136,10 @@ public class YdbConnector implements AutoCloseable {
         return connStd.isOpen();
     }
 
+    public boolean isManagementEnabled() {
+        return (connMgt != null);
+    }
+
     public String getDatabase() {
         return connStd.getDatabase();
     }

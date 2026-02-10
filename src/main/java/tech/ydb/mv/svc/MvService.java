@@ -53,7 +53,11 @@ public class MvService implements MvApi {
     public MvService(YdbConnector ydb) {
         this.ydb = ydb;
         this.metadata = loadMetadata(ydb, null);
-        this.locker = new MvLocker(ydb.getConnMgt());
+        if (ydb.isManagementEnabled()) {
+            this.locker = new MvLocker(ydb.getConnMgt());
+        } else {
+            this.locker = null;
+        }
         this.handlerSettings = new AtomicReference<>(new MvHandlerSettings());
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
@@ -77,6 +81,9 @@ public class MvService implements MvApi {
 
     @Override
     public MvLocker getLocker() {
+        if (locker == null) {
+            throw new IllegalStateException("Management connection has not been configured");
+        }
         return locker;
     }
 
@@ -152,7 +159,9 @@ public class MvService implements MvApi {
         synchronized (this) {
             handlers.clear();
         }
-        locker.releaseAll();
+        if (locker != null) {
+            locker.releaseAll();
+        }
     }
 
     @Override
@@ -164,7 +173,9 @@ public class MvService implements MvApi {
         } catch (InterruptedException ix) {
             Thread.currentThread().interrupt();
         }
-        locker.close();
+        if (locker != null) {
+            locker.close();
+        }
     }
 
     public synchronized boolean startDictionaryHandler() {

@@ -346,7 +346,7 @@ public final class MvMetrics {
                     .labelNames(scanLabels)
                     .register(registry);
 
-            String[] procLabels = {"type", "handler", "target", "alias", "source", "item", "action"};
+            String[] procLabels = {"type", "handler", "target", "alias", "source", "action"};
             processedRecords = Counter.builder()
                     .name("ydbmv_processing_records")
                     .help("Records processed per action and target")

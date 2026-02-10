@@ -46,7 +46,7 @@ public class MvConfig extends MvName {
             }
         }
         this.properties.putAll(p);
-        this.connectionString = p.getProperty("ydb.url");
+        this.connectionString = p.getProperty(prefix + MvName.CONF_YDB_URL);
         if (this.connectionString == null || this.connectionString.length() == 0) {
             this.connectionString = "/local";
         }
