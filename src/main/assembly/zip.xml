@@ -52,5 +52,21 @@
         </excludes>
         <fileMode>640</fileMode>
     </fileSet>
+    <fileSet>
+        <directory>${basedir}/monitoring</directory>
+        <outputDirectory>monitoring</outputDirectory>
+        <includes>
+            <include>prometheus.yml</include>
+        </includes>
+        <fileMode>640</fileMode>
+    </fileSet>
+    <fileSet>
+        <directory>${basedir}/monitoring/grafana/dashboards</directory>
+        <outputDirectory>monitoring</outputDirectory>
+        <includes>
+            <include>*.json</include>
+        </includes>
+        <fileMode>640</fileMode>
+    </fileSet>
   </fileSets>
 </assembly>
