@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>tech.ydb.apps</groupId>
     <artifactId>ydb-materializer</artifactId>
-    <version>1.11</version>
+    <version>1.12-SNAPSHOT</version>
     <name>YDB Materializer</name>
     <description>YDB Materializer — tool for materializing YDB data.</description>
     <url>https://github.com/ydb-platform/ydb-materializer</url>
