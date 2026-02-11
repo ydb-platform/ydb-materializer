@@ -452,7 +452,7 @@ See the table below for metric definitions.
 | `ydbmv_handler_threads` | Gauge | Number of worker threads for the handler |
 | `ydbmv_handler_queue_size` | Gauge | Current size of the input queue for the handler |
 | `ydbmv_handler_queue_limit` | Gauge | Maximum allowed size of the input queue |
-| `ydbmv_handler_queue_wait` | Counter | Number of waits on the full queue during the message submission |
+| `ydbmv_handler_queue_wait_millis` | Histogram | Time of waits on the full queue during the message submission |
 
 Labels description is provided below.
 
