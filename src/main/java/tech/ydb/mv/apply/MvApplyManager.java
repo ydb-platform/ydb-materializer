@@ -18,6 +18,7 @@ import tech.ydb.mv.model.MvInput;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.support.YdbMisc;
 import tech.ydb.mv.feeder.MvSink;
+import tech.ydb.mv.metrics.MvMetrics;
 
 /**
  * The apply manager processes the changes in the context of a single handler.
@@ -226,6 +227,8 @@ public class MvApplyManager implements MvSink {
                 getWorker(task, sourceConfig).submit(task);
                 ++position;
             } else {
+                // Report the queue wait event
+                MvMetrics.recordQueueWait(context.getHandler().getName());
                 // Allow the queue to get released.
                 YdbMisc.randomSleep(10L, 50L);
             }

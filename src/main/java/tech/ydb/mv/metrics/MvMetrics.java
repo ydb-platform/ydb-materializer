@@ -9,6 +9,7 @@ import io.prometheus.metrics.core.metrics.Histogram;
 import io.prometheus.metrics.exporter.httpserver.HTTPServer;
 import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
 import io.prometheus.metrics.model.registry.PrometheusRegistry;
+import io.prometheus.metrics.model.snapshots.Unit;
 
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
@@ -326,12 +327,14 @@ public final class MvMetrics {
                     .help("CDC message parsing time histogram")
                     .labelNames(cdcLabels)
                     .classicUpperBounds(timingBounds)
+                    .unit(Unit.SECONDS)
                     .register(registry);
             cdcSubmitTime = Histogram.builder()
                     .name("ydbmv_cdc_submit_seconds")
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
                     .classicUpperBounds(timingBounds)
+                    .unit(Unit.SECONDS)
                     .register(registry);
 
             String[] scanLabels = {"handler", "target", "alias"};
@@ -362,12 +365,14 @@ public final class MvMetrics {
                     .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
                     .classicUpperBounds(timingBounds)
+                    .unit(Unit.SECONDS)
                     .register(registry);
             sqlTime = Histogram.builder()
                     .name("ydbmv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
                     .classicUpperBounds(timingBounds)
+                    .unit(Unit.SECONDS)
                     .register(registry);
 
             String[] jobLabels = {"handler"};
