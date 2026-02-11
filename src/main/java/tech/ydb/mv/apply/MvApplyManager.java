@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import tech.ydb.table.TableClient;
@@ -227,10 +228,11 @@ public class MvApplyManager implements MvSink {
                 getWorker(task, sourceConfig).submit(task);
                 ++position;
             } else {
-                // Report the queue wait event
-                MvMetrics.recordQueueWait(context.getHandler().getName());
                 // Allow the queue to get released.
-                YdbMisc.randomSleep(10L, 50L);
+                long waitMillis = ThreadLocalRandom.current().nextLong(10L, 51L);
+                YdbMisc.sleep(waitMillis);
+                // Report the queue wait event
+                MvMetrics.recordQueueWait(context.getHandler().getName(), waitMillis);
             }
         }
         return (position >= curr.size());

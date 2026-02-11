@@ -102,13 +102,13 @@ public final class MvMetrics {
         m.jobQueueLimit.labelValues(labels).set(queueLimit);
     }
 
-    public static void recordQueueWait(String handler) {
+    public static void recordQueueWait(String handler, long millis) {
         var m = metrics;
         if (handler == null || m == null) {
             return;
         }
         String[] labels = {handler};
-        m.jobQueueWait.labelValues(labels).inc();
+        m.jobQueueWait.labelValues(labels).observe(millis);
     }
 
     public static void recordCdcRead(CdcScope scope, int count) {
@@ -296,14 +296,18 @@ public final class MvMetrics {
         final Gauge jobThreads;
         final Gauge jobQueueSize;
         final Gauge jobQueueLimit;
-        final Counter jobQueueWait;
+        final Histogram jobQueueWait;
 
         public Metrics(PrometheusRegistry registry) {
-            double[] timingBounds = {
+            double[] secondsBounds = {
                 0.05, 0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0,
                 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 20.0,
                 25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 75.0, 100.0, 150.0, 200.0,
                 250.0, 300.0, 350.0, 400.0, 500.0, 1000.0
+            };
+            double[] millisBounds = {
+                1, 2, 5, 7, 10, 15, 20, 25, 30, 40, 50, 75, 100, 125, 150, 175,
+                200, 250, 500, 1000, 2000, 5000
             };
 
             String[] cdcLabels = {"handler", "consumer", "topic"};
@@ -326,14 +330,14 @@ public final class MvMetrics {
                     .name("ydbmv_cdc_parse_seconds")
                     .help("CDC message parsing time histogram")
                     .labelNames(cdcLabels)
-                    .classicUpperBounds(timingBounds)
+                    .classicUpperBounds(secondsBounds)
                     .unit(Unit.SECONDS)
                     .register(registry);
             cdcSubmitTime = Histogram.builder()
                     .name("ydbmv_cdc_submit_seconds")
                     .help("CDC message submission time histogram")
                     .labelNames(cdcLabels)
-                    .classicUpperBounds(timingBounds)
+                    .classicUpperBounds(secondsBounds)
                     .unit(Unit.SECONDS)
                     .register(registry);
 
@@ -364,14 +368,14 @@ public final class MvMetrics {
                     .name("ydbmv_processing_seconds")
                     .help("Processing time histogram per action and target")
                     .labelNames(procLabels)
-                    .classicUpperBounds(timingBounds)
+                    .classicUpperBounds(secondsBounds)
                     .unit(Unit.SECONDS)
                     .register(registry);
             sqlTime = Histogram.builder()
                     .name("ydbmv_sql_seconds")
                     .help("SQL execution time histogram per action and target")
                     .labelNames(procLabels)
-                    .classicUpperBounds(timingBounds)
+                    .classicUpperBounds(secondsBounds)
                     .unit(Unit.SECONDS)
                     .register(registry);
 
@@ -401,10 +405,11 @@ public final class MvMetrics {
                     .help("Reports the limit on input queue size per handler")
                     .labelNames(jobLabels)
                     .register(registry);
-            jobQueueWait = Counter.builder()
-                    .name("ydbmv_handler_queue_wait")
-                    .help("Reports the number of waits on input queue per handler")
+            jobQueueWait = Histogram.builder()
+                    .name("ydbmv_handler_queue_wait_millis")
+                    .help("Reports the time of waiting on input queue per handler")
                     .labelNames(jobLabels)
+                    .classicUpperBounds(millisBounds)
                     .register(registry);
         }
     }
