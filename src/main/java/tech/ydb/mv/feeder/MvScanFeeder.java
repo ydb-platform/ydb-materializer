@@ -141,8 +141,9 @@ public class MvScanFeeder {
             if (key == null) {
                 ctx.getScanDao().registerScan();
             }
-            LOG.info("Started scan feeder for target `{}` as {} in handler `{}`, position {}",
-                    target.getName(), target.getAlias(), job.getHandler().getName(), key);
+            LOG.info("Started scan feeder for target `{}` as {} in handler `{}`, "
+                    + "max rate {}, position {}", target.getName(), target.getAlias(),
+                    job.getHandler().getName(), rateLimiterLimit, key);
         }
         rateLimiterCounter = 0;
         rateLimiterStamp = System.currentTimeMillis();
@@ -156,7 +157,8 @@ public class MvScanFeeder {
         ctx.getScanDao().unregisterScan();
         job.forgetScan(target);
         if (completion != null) {
-            completion.onScanComplete();
+            boolean incomplete = !isRunning();
+            completion.onScanComplete(incomplete);
         }
         LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
                 target.getName(), target.getAlias(), job.getHandler().getName());

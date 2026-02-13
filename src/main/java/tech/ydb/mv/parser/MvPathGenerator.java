@@ -180,6 +180,30 @@ public class MvPathGenerator {
     }
 
     /**
+     * Create the transformation to grab the keys for dictionary scans.
+     *
+     * @return Transformation returning the primary key of the topmost-left
+     * table along with the fields for dictionary filter checks. null if there
+     * are no BATCH-style inputs.
+     */
+    public MvViewExpr makeDictTrans() {
+        var batchSources = expr.getSources().stream()
+                .filter(js -> js.isTableKnown())
+                .filter(js -> js.getInput().isBatchMode())
+                .filter(js -> js.isRelated())
+                .toList();
+        if (batchSources.isEmpty()) {
+            return null;
+        }
+        var filter = MvPathGenerator.newFilter();
+        filter.add(topMostSource, topMostSource.getKeyColumnNames());
+        for (var js : batchSources) {
+            filter.add(js, js.getKeyColumnNames());
+        }
+        return applyFilter(filter);
+    }
+
+    /**
      * Checks if the input source can directly map to the target primary key
      * without joins. This analyzes join conditions to find direct mappings
      * between columns or literal values.
@@ -235,40 +259,6 @@ public class MvPathGenerator {
         if (condition.getFirstRef() == target
                 && condition.getSecondRef() == source) {
             if (fieldName.equals(condition.getFirstColumn())) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if the target fields can be directly mapped from the top-most
-     * source without joins by analyzing join conditions.
-     */
-    private boolean canDirectlyMapFields(MvJoinSource targetSource, List<String> fieldNames) {
-        for (String fieldName : fieldNames) {
-            if (!canMapTargetField(targetSource, fieldName)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Checks if a specific target field can be mapped directly from the
-     * top-most source by analyzing join conditions. Used by field path
-     * generator.
-     */
-    private boolean canMapTargetField(MvJoinSource source, String fieldName) {
-        if (source == topMostSource
-                && source.getTableInfo().getColumns().containsKey(fieldName)) {
-            return true;
-        }
-
-        // Look through all join conditions in the target source
-        for (MvJoinCondition condition : source.getConditions()) {
-            if (isMappingCondition(condition, topMostSource, source, fieldName)) {
                 return true;
             }
         }

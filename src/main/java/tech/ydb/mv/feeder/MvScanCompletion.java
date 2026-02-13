@@ -7,6 +7,12 @@ package tech.ydb.mv.feeder;
  */
 public interface MvScanCompletion {
 
-    void onScanComplete();
+    /**
+     * Called on scan finish
+     *
+     * @param incomplete true, if the scan has not been completed fully (e.g. in
+     * case of preliminary shutdown), false otherwise
+     */
+    void onScanComplete(boolean incomplete);
 
 }

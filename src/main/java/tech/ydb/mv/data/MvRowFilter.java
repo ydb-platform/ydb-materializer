@@ -86,6 +86,11 @@ public class MvRowFilter {
         blocks.add(block);
     }
 
+    @Override
+    public String toString() {
+        return "MvRowFilter{" + "target=" + target + ", transformation=" + transformation + ", blocks=" + blocks + '}';
+    }
+
     /**
      * A single block of tuple matches for a row subrange.
      */
@@ -135,6 +140,11 @@ public class MvRowFilter {
                 part[i] = row[startPos + i];
             }
             return tuples.contains(new MvTuple(part));
+        }
+
+        @Override
+        public String toString() {
+            return "Block{" + startPos + "/" + length + ": " + tuples + '}';
         }
     }
 

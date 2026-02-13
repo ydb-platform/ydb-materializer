@@ -268,15 +268,32 @@ public class MvApplyManager implements MvSink {
     }
 
     /**
-     * Forcibly insert the input data to the queue of the proper workers. May
-     * overflow the expected size of the queues.
+     * Forcibly insert the input data to the queue of the proper workers.
      *
-     * @param target Perform refresh of the specified target only. null
-     * otherwise
+     * May overflow the expected size of the queues.
+     *
      * @param changes The change records to be submitted for processing.
      * @param handler The commit processing handler
      */
-    public void submitForce(MvViewExpr target, Collection<MvChangeRecord> changes,
+    public void submitForce(Collection<MvChangeRecord> changes,
+            MvCommitHandler handler) {
+        var sourceConfig = findSource(changes, handler);
+        if (sourceConfig != null) {
+            MvApplyActionList actions = sourceConfig.getActions();
+            doSubmit(actions, sourceConfig, changes, handler, true);
+        }
+    }
+
+    /**
+     * Insert the input data to the queue of the proper workers.
+     *
+     * May overflow the expected size of the queues.
+     *
+     * @param target Perform refresh of the specified target only.
+     * @param changes The change records to be submitted for processing.
+     * @param handler The commit processing handler
+     */
+    public void submitFilter(MvViewExpr target, Collection<MvChangeRecord> changes,
             MvCommitHandler handler) {
         var sourceConfig = findSource(changes, handler);
         if (sourceConfig != null) {

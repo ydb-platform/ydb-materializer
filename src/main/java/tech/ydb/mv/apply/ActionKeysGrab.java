@@ -78,8 +78,9 @@ class ActionKeysGrab extends ActionKeysAbstract {
         }
         // Allow for extra operations before the actual commit.
         handler.reserve(output.size());
-        // Send the keys for processing.
-        applyManager.submitForce(null, output, handler);
+        // Send the keys for processing, no matter how large the queue is.
+        // Otherwise the processing may deadlock.
+        applyManager.submitForce(output, handler);
     }
 
 }

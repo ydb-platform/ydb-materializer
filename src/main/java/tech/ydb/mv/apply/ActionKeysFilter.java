@@ -41,6 +41,12 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
                 instance, context.getHandler().getName(), target.getName(),
                 target.getAlias(), filter.getBlocks().size());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(" [{}] \tInput grabber SQL: {}", instance, sqlSelect);
+            for (var block : filter.getBlocks()) {
+                LOG.debug(" [{}] \tFiltering block: {}", instance, block);
+            }
+        }
     }
 
     @Override
@@ -54,18 +60,24 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     }
 
     private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
-        var rsr = readTaskRows(tasks);
-        var records = new ArrayList<MvChangeRecord>();
         Instant tv = Instant.now();
+        var rsr = readTaskRows(tasks);
+        var records = new ArrayList<MvChangeRecord>(rsr.getRowCount());
         while (rsr.next()) {
             var row = YdbConv.toPojoRow(rsr);
             if (filter.matches(row)) {
-                records.add(convert(row, tv));
+                var record = convert(row, tv);
+                records.add(record);
+                LOG.trace("[{}] Matched row {} -> {}", instance, row, record);
+            } else {
+                LOG.trace("[{}] Rejected row {}", instance, row);
             }
         }
         if (!records.isEmpty()) {
+            // input records to be committed
             handler.reserve(records.size());
-            applyManager.submitForce(target, records, handler);
+            // Filtering action has its own type of submit operation.
+            applyManager.submitFilter(target, records, handler);
         }
     }
 

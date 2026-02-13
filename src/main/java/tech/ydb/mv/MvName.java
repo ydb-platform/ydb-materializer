@@ -321,9 +321,13 @@ public class MvName {
          */
         CHECK,
         /**
-         * Generate and print SQL queries used by the Materializer.
+         * Generate and print basic SQL queries used by the Materializer.
          */
         SQL,
+        /**
+         * Generate and print internal SQL queries used by the Materializer.
+         */
+        SQL_DEBUG,
         /**
          * Generate and print (and optionally apply) SQL queries for CDC streams
          * and consumers.

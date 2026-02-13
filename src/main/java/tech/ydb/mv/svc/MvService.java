@@ -305,8 +305,16 @@ public class MvService implements MvApi {
      * Generate the set of SQL statements and print.
      */
     @Override
-    public void printSql(PrintStream pw) {
-        new MvSqlPrinter(metadata).write(pw);
+    public void printBasicSql(PrintStream pw) {
+        new MvSqlPrinter(metadata, false).write(pw);
+    }
+
+    /**
+     * Generate the set of SQL statements and print.
+     */
+    @Override
+    public void printDebugSql(PrintStream pw) {
+        new MvSqlPrinter(metadata, true).write(pw);
     }
 
     /**

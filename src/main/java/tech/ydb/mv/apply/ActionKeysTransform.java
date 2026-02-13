@@ -78,8 +78,9 @@ class ActionKeysTransform extends ActionKeysAbstract {
         if (!output.isEmpty()) {
             // extra records to be committed
             handler.reserve(output.size());
-            // submit the extracted keys for processing
-            applyManager.submitForce(null, output, handler);
+            // Send the keys for processing, no matter how large the queue is.
+            // Otherwise the processing may deadlock.
+            applyManager.submitForce(output, handler);
         }
     }
 
