@@ -57,8 +57,12 @@ public class App {
                 api.printIssues(System.out);
             }
             case SQL -> {
-                LOG.info("SQL output requested.");
-                api.printSql(System.out);
+                LOG.info("Basic SQL output requested.");
+                api.printBasicSql(System.out);
+            }
+            case SQL_DEBUG -> {
+                LOG.info("Debug SQL output requested.");
+                api.printDebugSql(System.out);
             }
             case STREAMS -> {
                 LOG.info("CDC streams generation requested.");

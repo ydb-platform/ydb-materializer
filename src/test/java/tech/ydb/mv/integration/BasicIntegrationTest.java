@@ -91,7 +91,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 Assertions.assertTrue(wc.getMetadata().isValid());
 
                 System.err.println("[AAA] Printing SQL...");
-                wc.printSql(System.out);
+                wc.printBasicSql(System.out);
 
                 System.err.println("[AAA] Generating SELECT ALL query...");
                 MvViewExpr mainTarget = wc.getMetadata().getHandlers()

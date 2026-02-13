@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import tech.ydb.mv.MvConfig;
 
-import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvTableInfo;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvPathGenerator;
-import tech.ydb.mv.svc.MvJobContext;
 
 /**
  * The apply configuration includes the settings to process the change records
@@ -192,7 +190,7 @@ class MvApply {
             makeSource(source.getTableInfo()).addAction(actionSync);
             // Put the sync action as a refresh-only for this target
             MvPathGenerator pathGenerator = new MvPathGenerator(target);
-            makeTarget(target, makeDictTrans(target, pathGenerator)).addAction(actionSync);
+            makeTarget(target, pathGenerator.makeDictTrans()).addAction(actionSync);
             // Create configuration for other sources
             for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
                 source = target.getSources().get(sourceIndex);
@@ -232,24 +230,6 @@ class MvApply {
                 action = new ActionKeysGrab(pg.getExpr(), source, transformation, context);
             }
             makeSource(source.getTableInfo()).addAction(action);
-        }
-
-        MvViewExpr makeDictTrans(MvViewExpr target, MvPathGenerator pathGenerator) {
-            var batchSources = target.getSources().stream()
-                    .filter(js -> js.isTableKnown())
-                    .filter(js -> js.getInput().isBatchMode())
-                    .filter(js -> js.isRelated())
-                    .toList();
-            if (batchSources.isEmpty()) {
-                return null;
-            }
-            var topmostSource = target.getTopMostSource();
-            var filter = MvPathGenerator.newFilter();
-            filter.add(topmostSource, topmostSource.getKeyColumnNames());
-            for (var js : batchSources) {
-                filter.add(js, js.getKeyColumnNames());
-            }
-            return pathGenerator.applyFilter(filter);
         }
     }
 }

@@ -156,11 +156,18 @@ public interface MvApi extends AutoCloseable {
     void printIssues(PrintStream pw);
 
     /**
-     * Generate the set of all SQL statements used and print.
+     * Generate the set of basic SQL statements used and print.
      *
      * @param pw The output print stream
      */
-    void printSql(PrintStream pw);
+    void printBasicSql(PrintStream pw);
+
+    /**
+     * Generate the set of internal SQL statements used internally and print.
+     *
+     * @param pw The output print stream
+     */
+    void printDebugSql(PrintStream pw);
 
     /**
      * Start the default handlers (as listed in the properties) and return.

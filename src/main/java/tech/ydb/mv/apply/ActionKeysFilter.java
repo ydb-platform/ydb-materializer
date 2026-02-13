@@ -29,6 +29,8 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private final MvRowFilter filter;
     private final String sqlSelect;
 
+    private final ArrayList<MvChangeRecord> workRecords = new ArrayList<>();
+
     public ActionKeysFilter(MvActionContext context, MvViewExpr target,
             MvViewExpr request, MvRowFilter filter) {
         super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target, request));
@@ -41,6 +43,12 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
                 instance, context.getHandler().getName(), target.getName(),
                 target.getAlias(), filter.getBlocks().size());
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(" [{}] \tInput grabber SQL: {}", instance, sqlSelect);
+            for (var block : filter.getBlocks()) {
+                LOG.debug(" [{}] \tFiltering block: {}", instance, block);
+            }
+        }
     }
 
     @Override
@@ -54,18 +62,24 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     }
 
     private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
-        var rsr = readTaskRows(tasks);
-        var records = new ArrayList<MvChangeRecord>();
         Instant tv = Instant.now();
+        var rsr = readTaskRows(tasks);
+        workRecords.clear();
         while (rsr.next()) {
             var row = YdbConv.toPojoRow(rsr);
             if (filter.matches(row)) {
-                records.add(convert(row, tv));
+                var record = convert(row, tv);
+                workRecords.add(record);
+                LOG.trace("[{}] Matched row {} -> {}", instance, row, record);
+            } else {
+                LOG.trace("[{}] Rejected row {}", instance, row);
             }
         }
-        if (!records.isEmpty()) {
-            handler.reserve(records.size());
-            applyManager.submitForce(target, records, handler);
+        if (!workRecords.isEmpty()) {
+            // input records to be committed
+            handler.reserve(workRecords.size());
+            // Filtering action has its own type of submit operation.
+            applyManager.submitFilter(target, workRecords, handler);
         }
     }
 

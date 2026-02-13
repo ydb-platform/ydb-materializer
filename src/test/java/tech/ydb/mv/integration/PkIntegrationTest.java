@@ -271,7 +271,7 @@ UPSERT INTO `pk_test/main2` (id,c4,c6) VALUES
                 Assertions.assertTrue(svc.getMetadata().isValid());
 
                 System.err.println("[UUU] Printing SQL...");
-                svc.printSql(System.out);
+                svc.printBasicSql(System.out);
 
                 System.err.println("[UUU] Entering main test...");
                 testLogic(svc);

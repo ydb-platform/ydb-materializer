@@ -16,9 +16,11 @@ import tech.ydb.mv.model.MvViewExpr;
 public class MvSqlPrinter {
 
     private final MvMetadata ctx;
+    private final boolean debug;
 
-    public MvSqlPrinter(MvMetadata ctx) {
+    public MvSqlPrinter(MvMetadata ctx, boolean debug) {
         this.ctx = ctx;
+        this.debug = debug;
     }
 
     public void write(PrintStream pw) {
@@ -44,18 +46,16 @@ public class MvSqlPrinter {
         return cmp;
     }
 
-    public void write(PrintStream pw, MvViewExpr mt) {
-        MvSqlGen sg = new MvSqlGen(mt);
-        pw.println("-------------------------------------------------------");
-        pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
-        pw.println("-------------------------------------------------------");
-        pw.println();
+    private void writeRegular(PrintStream pw, MvViewExpr mt, MvSqlGen sg) {
         pw.println("  ** Equivalent view DDL:");
         pw.println();
         pw.println(sg.makeCreateView());
         pw.println("  ** Destination table DDL:");
         pw.println();
         pw.println(sg.makeCreateTable());
+    }
+
+    private void writeDebug(PrintStream pw, MvViewExpr mt, MvSqlGen sg) {
         pw.println("  ** Refresh statement:");
         pw.println();
         pw.println(sg.makeSelect());
@@ -76,7 +76,7 @@ public class MvSqlPrinter {
         pw.println("  ** Topmost scan next:");
         pw.println();
         pw.println(sg.makeScanNext());
-        MvPathGenerator pathGenerator = new MvPathGenerator(mt);
+        var pathGen = new MvPathGenerator(mt);
         for (int pos = 1; pos < mt.getSources().size(); ++pos) {
             MvJoinSource js = mt.getSources().get(pos);
             if (!js.isTableKnown() || js.getInput() == null) {
@@ -84,19 +84,52 @@ public class MvSqlPrinter {
                         + "join source " + js.getTableName() + " as " + js.getTableAlias());
                 continue;
             }
-            if (js.getInput().isBatchMode()) {
-                // Key extraction not needed in batch mode
-                continue;
+            if (!js.getInput().isBatchMode()) {
+                writeKeyExtraction(pw, pathGen, js);
             }
-            MvViewExpr temp = pathGenerator.extractKeysReverse(js);
-            pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
+        }
+        var filterExpr = pathGen.makeDictTrans();
+        if (filterExpr != null) {
+            pw.println("  ** Dictionary filter input statement:");
             pw.println();
-            if (temp != null) {
-                pw.println(new MvSqlGen(temp).makeSelect());
-            } else {
-                pw.println("<mapping is not possible>");
-                pw.println();
-            }
+            pw.println(new MvSqlGen(filterExpr).makeSelect());
+        }
+    }
+
+    private void writeKeyExtraction(PrintStream pw, MvPathGenerator pathGen, MvJoinSource js) {
+        MvViewExpr temp = pathGen.extractKeysReverse(js);
+        pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
+        pw.println();
+        if (temp != null) {
+            pw.println(new MvSqlGen(temp).makeSelect());
+        } else {
+            pw.println("<mapping is not possible>");
+            pw.println();
+        }
+    }
+
+    private void writeFiltering(PrintStream pw, MvPathGenerator pathGen, MvJoinSource js) {
+        MvViewExpr temp = pathGen.extractKeysReverse(js);
+        pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
+        pw.println();
+        if (temp != null) {
+            pw.println(new MvSqlGen(temp).makeSelect());
+        } else {
+            pw.println("<mapping is not possible>");
+            pw.println();
+        }
+    }
+
+    public void write(PrintStream pw, MvViewExpr mt) {
+        MvSqlGen sg = new MvSqlGen(mt);
+        pw.println("-------------------------------------------------------");
+        pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
+        pw.println("-------------------------------------------------------");
+        pw.println();
+        if (debug) {
+            writeDebug(pw, mt, sg);
+        } else {
+            writeRegular(pw, mt, sg);
         }
     }
 
