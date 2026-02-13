@@ -287,6 +287,8 @@ public class MvApplyManager implements MvSink {
     /**
      * Insert the input data to the queue of the proper workers.
      *
+     * May overflow the expected size of the queues.
+     *
      * @param target Perform refresh of the specified target only.
      * @param changes The change records to be submitted for processing.
      * @param handler The commit processing handler
@@ -306,7 +308,7 @@ public class MvApplyManager implements MvSink {
                     actions = null;
                 }
             }
-            doSubmit(actions, sourceConfig, changes, handler, false);
+            doSubmit(actions, sourceConfig, changes, handler, true);
         }
     }
 

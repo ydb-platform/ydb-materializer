@@ -29,8 +29,6 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private final MvRowFilter filter;
     private final String sqlSelect;
 
-    private final ArrayList<MvChangeRecord> workRecords = new ArrayList<>();
-
     public ActionKeysFilter(MvActionContext context, MvViewExpr target,
             MvViewExpr request, MvRowFilter filter) {
         super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target, request));
@@ -64,22 +62,22 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private void process(MvCommitHandler handler, List<MvApplyTask> tasks) {
         Instant tv = Instant.now();
         var rsr = readTaskRows(tasks);
-        workRecords.clear();
+        var records = new ArrayList<MvChangeRecord>(rsr.getRowCount());
         while (rsr.next()) {
             var row = YdbConv.toPojoRow(rsr);
             if (filter.matches(row)) {
                 var record = convert(row, tv);
-                workRecords.add(record);
+                records.add(record);
                 LOG.trace("[{}] Matched row {} -> {}", instance, row, record);
             } else {
                 LOG.trace("[{}] Rejected row {}", instance, row);
             }
         }
-        if (!workRecords.isEmpty()) {
+        if (!records.isEmpty()) {
             // input records to be committed
-            handler.reserve(workRecords.size());
+            handler.reserve(records.size());
             // Filtering action has its own type of submit operation.
-            applyManager.submitFilter(target, workRecords, handler);
+            applyManager.submitFilter(target, records, handler);
         }
     }
 
