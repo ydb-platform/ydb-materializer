@@ -56,41 +56,6 @@ class MvScanCommitHandler implements MvCommitHandler {
     }
 
     @Override
-    public void commit(int count) {
-        if (committed.get() || counter.get() < 0) {
-            return;
-        }
-        if (!context.isRunning()) {
-            // no commits for an already stopped scan feeder
-            committed.set(true);
-            resetNextChain();
-            LOG.debug("instance {} reset due to context stop", instance);
-            return;
-        }
-        int value = counter.updateAndGet(v -> (v > count) ? v - count : 0);
-        LOG.debug("instance {} commit {} -> {}", instance, count, value);
-        if (isReady()) {
-            committed.set(true);
-            LOG.debug("instance {} commit APPLY", instance);
-            try {
-                if (terminal) {
-                    LOG.info("Final commit for scan feeder of target `{}` as {} in handler `{}`",
-                            context.getTarget().getName(), context.getTarget().getAlias(),
-                            context.getHandler().getName());
-                    context.getScanDao().unregisterScan();
-                } else {
-                    context.getScanDao().saveScan(key);
-                }
-            } catch (Exception ex) {
-                LOG.warn("Failed to commit the scan feeder for target `{}` as {} in handler `{}`",
-                        context.getTarget().getName(), context.getTarget().getAlias(),
-                        context.getHandler().getName(), ex);
-            }
-            resetNext();
-        }
-    }
-
-    @Override
     public void reserve(int count) {
         if (count > 0 && !committed.get()) {
             int value = counter.addAndGet(count);
@@ -98,23 +63,98 @@ class MvScanCommitHandler implements MvCommitHandler {
         }
     }
 
-    private MvScanCommitHandler resetNext() {
+    @Override
+    public void commit(int count) {
+        if (committed.get() || counter.get() < 0) {
+            return;
+        }
+        if (!context.isRunning()) {
+            // no commits for an already stopped scan feeder
+            committed.set(true);
+            resetFullChain();
+            LOG.debug("instance {} reset due to context stop", instance);
+            return;
+        }
+        // Iterate through the chain without recursion to avoid stack overflow on long chains
+        var currentHandler = this;
+        int remainingCount = count;
+        while (currentHandler != null) {
+            var nextHandler = currentHandler.doCommit(remainingCount);
+            if (nextHandler == null) {
+                break;
+            }
+            currentHandler = nextHandler;
+            remainingCount = 0; // zero for all but the first handler
+        }
+    }
+
+    /**
+     * Performs commit for this handler only. Returns the next handler to
+     * process if this handler committed and there is a successor, or null to
+     * stop propagation.
+     */
+    private MvScanCommitHandler doCommit(int count) {
+        if (committed.get() || counter.get() < 0) {
+            return null;
+        }
+        if (!context.isRunning()) {
+            committed.set(true);
+            return null;
+        }
+        int value = counter.updateAndGet(v -> (v > count) ? v - count : 0);
+        LOG.debug("instance {} commit {} -> {}", instance, count, value);
+        if (!isReady()) {
+            return null;
+        }
+        committed.set(true);
+        LOG.debug("instance {} commit APPLY", instance);
+        try {
+            if (terminal) {
+                LOG.info("Final commit for scan feeder of target `{}` as {} in handler `{}`",
+                        context.getTarget().getName(), context.getTarget().getAlias(),
+                        context.getHandler().getName());
+                context.getScanDao().unregisterScan();
+            } else {
+                context.getScanDao().saveScan(key);
+            }
+        } catch (Exception ex) {
+            LOG.error("Failed to commit the scan feeder for target `{}` as {} in handler `{}`",
+                    context.getTarget().getName(), context.getTarget().getAlias(),
+                    context.getHandler().getName(), ex);
+        }
+        return detachNext();
+    }
+
+    /**
+     * Detaches the next handler from the chain and returns it. Does not invoke
+     * commit.
+     */
+    private MvScanCommitHandler detachNext() {
         MvScanCommitHandler n = next.getAndSet(null);
         if (n != null) {
             MvScanCommitHandler p = n.previous.getAndSet(null);
             if (p != this) {
                 LOG.warn("Commit handler chain mismatched: expected {}, got {}",
-                        instance, p.instance);
+                        instance, p != null ? p.instance : "null");
             }
-            n.commit(0);
         }
         return n;
     }
 
-    private void resetNextChain() {
-        MvScanCommitHandler n = this;
+    /**
+     * Marks the rest of the chain as committed to prevent commits on premature
+     * scan shutdown. Does not call detachNext/commit - just iterates and sets
+     * the committed flag.
+     */
+    private void resetFullChain() {
+        if (context.isRunning()) {
+            LOG.warn("Logical error: resetFullChain() call on the running context");
+            return;
+        }
+        MvScanCommitHandler n = next.get();
         while (n != null) {
-            n = n.resetNext();
+            n.committed.set(true);
+            n = n.next.get();
         }
     }
 
