@@ -108,18 +108,6 @@ public class MvSqlPrinter {
         }
     }
 
-    private void writeFiltering(PrintStream pw, MvPathGenerator pathGen, MvJoinSource js) {
-        MvViewExpr temp = pathGen.extractKeysReverse(js);
-        pw.println("  ** Key extraction, " + js.getTableName() + " as " + js.getTableAlias());
-        pw.println();
-        if (temp != null) {
-            pw.println(new MvSqlGen(temp).makeSelect());
-        } else {
-            pw.println("<mapping is not possible>");
-            pw.println();
-        }
-    }
-
     public void write(PrintStream pw, MvViewExpr mt) {
         MvSqlGen sg = new MvSqlGen(mt);
         pw.println("-------------------------------------------------------");

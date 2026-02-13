@@ -272,6 +272,7 @@ public class MvJobController implements AutoCloseable {
         final MvDictionaryScan dictScan;
         final MvChangesMultiDict changes;
         final AtomicInteger counter;
+        final AtomicInteger incomplete;
 
         public DictScanComplete(
                 MvDictionaryScan dictScan,
@@ -281,15 +282,31 @@ public class MvJobController implements AutoCloseable {
             this.dictScan = dictScan;
             this.changes = changes;
             this.counter = new AtomicInteger(counter);
+            this.incomplete = new AtomicInteger(0);
         }
 
         @Override
-        public void onScanComplete() {
-            if (counter.decrementAndGet() == 0) {
-                LOG.info("Updating dictionary scan positions for handler `{}`",
-                        dictScan.getHandler().getName());
-                dictScan.commitAll(changes);
+        public void onScanComplete(boolean incomplete) {
+            if (incomplete) {
+                this.incomplete.incrementAndGet();
             }
+            if (counter.decrementAndGet() == 0) {
+                commitIf();
+            }
+        }
+
+        private void commitIf() {
+            if (counter.get() > 0) {
+                return;
+            }
+            if (incomplete.get() > 0) {
+                LOG.info("Dictionary scan INCOMPLETE for handler `{}`, scan position left intact.",
+                        dictScan.getHandler().getName());
+                return;
+            }
+            LOG.info("Updating dictionary scan positions for handler `{}`",
+                    dictScan.getHandler().getName());
+            dictScan.commitAll(changes);
         }
 
     }
