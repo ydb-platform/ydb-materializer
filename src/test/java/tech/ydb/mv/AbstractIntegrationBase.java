@@ -69,6 +69,7 @@ CREATE TABLE `test1/main_table` (
     c6 Int32,
     c15 Int32,
     c20 Text,
+    c21 Int32 NOT NULL,
     PRIMARY KEY(id),
     INDEX ix_c1_c2 GLOBAL ON (c1,c2),
     INDEX ix_c3 GLOBAL ON (c3)
@@ -103,6 +104,12 @@ CREATE TABLE `test1/sub_table4` (
     PRIMARY KEY(c15)
 );
 
+CREATE TABLE `test1/sub_table5` (
+    c21 Int32 NOT NULL,
+    c22 Text,
+    PRIMARY KEY(c21)
+);
+
 CREATE TABLE `test1/mv1` (
     id Text NOT NULL,
     c1 Timestamp,
@@ -115,6 +122,7 @@ CREATE TABLE `test1/mv1` (
     c11 Text,
     c12 Int32,
     c16 Text,
+    c22 Text,
     PRIMARY KEY(id),
     INDEX ix_c1 GLOBAL ON (c1)
 );
@@ -130,6 +138,7 @@ CREATE TABLE `test1/mv2` (
     c10 Text,
     c11 Text,
     c12 Int32,
+    c22 Text,
     PRIMARY KEY(id),
     INDEX ix_c1 GLOBAL ON (c1)
 );
@@ -139,6 +148,7 @@ ALTER TABLE `test1/sub_table1` ADD CHANGEFEED `cf1` WITH (FORMAT = 'JSON', MODE 
 ALTER TABLE `test1/sub_table2` ADD CHANGEFEED `cf2` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 ALTER TABLE `test1/sub_table3` ADD CHANGEFEED `cf3` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 ALTER TABLE `test1/sub_table4` ADD CHANGEFEED `cf4` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
+ALTER TABLE `test1/sub_table5` ADD CHANGEFEED `cf5` WITH (FORMAT = 'JSON', MODE = 'NEW_AND_OLD_IMAGES');
 """;
 
     public static final String DROP_TABLES_BASE
@@ -155,6 +165,7 @@ DROP TABLE `test1/sub_table1`;
 DROP TABLE `test1/sub_table2`;
 DROP TABLE `test1/sub_table3`;
 DROP TABLE `test1/sub_table4`;
+DROP TABLE `test1/sub_table5`;
 DROP TABLE `test1/mv1`;
 DROP TABLE `test1/mv2`;
 """;
@@ -166,6 +177,7 @@ ALTER TOPIC `test1/sub_table1/cf1` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table2/cf2` ADD CONSUMER `consumer1`;
 ALTER TOPIC `test1/sub_table3/cf3` ADD CONSUMER `dictionary`;
 ALTER TOPIC `test1/sub_table4/cf4` ADD CONSUMER `dictionary`;
+ALTER TOPIC `test1/sub_table5/cf5` ADD CONSUMER `dictionary`;
 """;
 
     public static final String CDC_CONSUMERS2
@@ -191,15 +203,18 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INNER JOIN `test1/sub_table3` AS sub3
     ON sub3.c5=58
   INNER JOIN `test1/sub_table4` AS sub4
-      ON sub4.c15=main.c15
-    WHERE #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
+    ON sub4.c15=main.c15
+  LEFT JOIN `test1/sub_table5` AS sub5
+    ON sub5.c21=main.c21
+  WHERE #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
 
   (2, @@CREATE ASYNC HANDLER handler1 CONSUMER consumer1 PROCESS `test1/mv1`,
   INPUT `test1/main_table` CHANGEFEED cf0 AS STREAM,
   INPUT `test1/sub_table1` CHANGEFEED cf1 AS STREAM,
   INPUT `test1/sub_table2` CHANGEFEED cf2 AS STREAM,
   INPUT `test1/sub_table3` CHANGEFEED cf3 AS BATCH,
-  INPUT `test1/sub_table4` CHANGEFEED cf4 AS BATCH;@@),
+  INPUT `test1/sub_table4` CHANGEFEED cf4 AS BATCH,
+  INPUT `test1/sub_table5` CHANGEFEED cf5 AS BATCH;@@),
 
   (3, @@CREATE ASYNC MATERIALIZED VIEW `test1/mv2` AS
     SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
@@ -213,22 +228,25 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
       ON main.c3=sub2.c3 AND 'val1'u=sub2.c4 AND main.id=sub2.main_id
     INNER JOIN `test1/sub_table3` AS sub3
       ON sub3.c5=59
+    LEFT JOIN `test1/sub_table5` AS sub5
+      ON sub5.c21=main.c21
     WHERE #[ main.c6=7 AND (sub2.c7 IS NULL OR sub2.c7='val2'u) ]#;@@),
 
     (4, @@CREATE ASYNC HANDLER handler2 CONSUMER consumer2 PROCESS `test1/mv2`,
   INPUT `test1/main_table` CHANGEFEED cf0 AS STREAM,
   INPUT `test1/sub_table1` CHANGEFEED cf1 AS STREAM,
   INPUT `test1/sub_table2` CHANGEFEED cf2 AS STREAM,
-  INPUT `test1/sub_table3` CHANGEFEED cf3 AS BATCH;@@);
+  INPUT `test1/sub_table3` CHANGEFEED cf3 AS BATCH,
+  INPUT `test1/sub_table5` CHANGEFEED cf5 AS BATCH;@@);
 """;
 
     public static final String WRITE_INITIAL_DATA
             = """
-INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20) VALUES
- ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u)
-,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 102, 'text message two'u)
-,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 7, 103, 'text message three'u)
-,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 7, 104, 'text message four'u)
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20,c21) VALUES
+ ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u,   201)
+,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 102, 'text message two'u,   202)
+,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 7, 103, 'text message three'u, 203)
+,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 7, 104, 'text message four'u,  204)
 ;
 INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
  (Timestamp('2021-01-02T10:15:21Z'), 10001, 501)
@@ -254,6 +272,12 @@ INSERT INTO `test1/sub_table4` (c15,c16) VALUES
 ,(102, 'Zwei'u)
 ,(103, 'Drei'u)
 ,(104, 'Vier'u)
+;
+INSERT INTO `test1/sub_table5` (c21,c22) VALUES
+ (201, 'Eins'u)
+,(202, 'Zwei'u)
+,(203, 'Drei'u)
+,(204, 'Vier'u)
 ;
 """;
 

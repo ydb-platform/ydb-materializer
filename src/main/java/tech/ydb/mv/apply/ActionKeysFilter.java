@@ -30,12 +30,12 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private final String sqlSelect;
 
     public ActionKeysFilter(MvActionContext context, MvViewExpr target,
-            MvViewExpr request, MvRowFilter filter) {
-        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target, request));
+            MvViewExpr dictTrans, MvRowFilter filter) {
+        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target));
         this.target = target;
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.filter = filter;
-        try (MvSqlGen sg = new MvSqlGen(request)) {
+        try (MvSqlGen sg = new MvSqlGen(dictTrans)) {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",

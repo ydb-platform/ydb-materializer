@@ -255,7 +255,7 @@ public final class MvMetrics {
         return alias;
     }
 
-    public static ActionScope scopeForActionFilter(MvHandler handler, MvViewExpr target, MvViewExpr request) {
+    public static ActionScope scopeForActionFilter(MvHandler handler, MvViewExpr target) {
         return new ActionScope("filter", handler.getName(), target.getName(),
                 getAlias(target), null);
     }

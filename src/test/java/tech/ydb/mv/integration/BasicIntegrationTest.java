@@ -27,8 +27,8 @@ public class BasicIntegrationTest extends AbstractIntegrationBase {
 
     private static final String WRITE_UP1
             = """
-INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20) VALUES
- ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u)
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20,c21) VALUES
+ ('main-005'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u,201)
 ;
 UPSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
  (Timestamp('2021-01-02T10:15:21Z'), 10001, 1501)

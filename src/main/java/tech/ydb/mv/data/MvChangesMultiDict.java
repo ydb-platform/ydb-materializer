@@ -114,10 +114,17 @@ public class MvChangesMultiDict {
         }
 
         // Build the desired transformation to return the keys.
+        // IMPORTANT: Iterate in target source order so that pathFilter column order
+        // matches dictionary transformation (used by ActionKeysFilter for SQL),
+        // which is built from target.getSources() order.
+        // For details see MvPathGenerator.makeDictTrans()
         MvPathGenerator.Filter pathFilter = new MvPathGenerator.Filter();
         pathFilter.add(target.getTopMostSource());
-        for (var tableAlias : dictChecks.keySet()) {
-            pathFilter.add(target.getSourceByAlias(tableAlias));
+        for (var src : target.getSources()) {
+            if (src != target.getTopMostSource()
+                    && dictChecks.containsKey(src.getTableAlias())) {
+                pathFilter.add(src);
+            }
         }
         MvViewExpr transformation = new MvPathGenerator(target).applyFilter(pathFilter);
         if (transformation == null) {

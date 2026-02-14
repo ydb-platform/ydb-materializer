@@ -487,6 +487,20 @@ public class MvChangesMultiDictTest {
         assertNotNull(filter);
         assertFalse(filter.isEmpty());
         assertEquals(targetMultiDict, filter.getTarget());
+
+        // Block offsets must match DictTrans column order (target source order:
+        // main, dict1, dict2, dict3). Main has 1 key col, each dict has 1 key col.
+        var blocks = filter.getBlocks();
+        assertEquals(3, blocks.size());
+        assertEquals(1, blocks.get(0).getStartPos());  // dict1 at pos 1
+        assertEquals(2, blocks.get(1).getStartPos());  // dict2 at pos 2
+        assertEquals(3, blocks.get(2).getStartPos());  // dict3 at pos 3
+
+        // Verify filter matches rows with correct key positions.
+        // Row layout: [main_id, dict1_id, dict2_id, dict3_id]
+        assertTrue(filter.matches(new Comparable<?>[]{100L, 1L, 3L, 5L}));   // dict1=1, dict2=3, dict3=5
+        assertTrue(filter.matches(new Comparable<?>[]{200L, 2L, 4L, 6L}));   // dict1=2, dict2=4, dict3=6
+        assertFalse(filter.matches(new Comparable<?>[]{300L, 99L, 99L, 99L})); // none match
     }
 
     @Test

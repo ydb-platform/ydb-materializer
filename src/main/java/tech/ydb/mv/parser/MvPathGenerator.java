@@ -182,6 +182,9 @@ public class MvPathGenerator {
     /**
      * Create the transformation to grab the keys for dictionary scans.
      *
+     * The order of the output columns matches the order of sources in the
+     * original MV expression.
+     *
      * @return Transformation returning the primary key of the topmost-left
      * table along with the fields for dictionary filter checks. null if there
      * are no BATCH-style inputs.
@@ -189,7 +192,7 @@ public class MvPathGenerator {
     public MvViewExpr makeDictTrans() {
         var batchSources = expr.getSources().stream()
                 .filter(js -> js.isTableKnown())
-                .filter(js -> js.getInput().isBatchMode())
+                .filter(js -> js.getInput() != null && js.getInput().isBatchMode())
                 .filter(js -> js.isRelated())
                 .toList();
         if (batchSources.isEmpty()) {
