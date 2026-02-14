@@ -52,7 +52,7 @@ Maven dependency for embedding the YDB Materializer into the application:
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.10</version>
+            <version>1.13</version>
         </dependency>
 ```
 
