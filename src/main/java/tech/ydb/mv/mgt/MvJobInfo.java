@@ -8,6 +8,7 @@ import tech.ydb.mv.MvConfig;
  * Information about a job in the mv_jobs table.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvJobInfo implements Serializable {
 

@@ -14,7 +14,8 @@ import tech.ydb.mv.MvConfig;
 /**
  * Job balancing logic, part of the coordinator.
  *
- * @author mzinal
+ * @author zinal
+ * @author Kirill Kurdyukov
  */
 class MvBalancer {
 

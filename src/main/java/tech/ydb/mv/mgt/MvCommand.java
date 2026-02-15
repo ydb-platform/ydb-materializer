@@ -8,6 +8,7 @@ import java.util.Objects;
  * Information about a command in the mv_commands table.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvCommand implements Serializable {
 

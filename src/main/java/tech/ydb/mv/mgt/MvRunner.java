@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import tech.ydb.mv.MvApi;
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
-import tech.ydb.mv.svc.MvConnector;
 import tech.ydb.mv.support.YdbMisc;
 
 /**
@@ -21,6 +20,7 @@ import tech.ydb.mv.support.YdbMisc;
  * executes commands.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvRunner implements AutoCloseable {
 

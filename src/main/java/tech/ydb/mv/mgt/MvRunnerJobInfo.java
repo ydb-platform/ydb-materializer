@@ -9,6 +9,7 @@ import tech.ydb.mv.MvConfig;
  * Information about a runner job in the mv_runner_jobs table.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvRunnerJobInfo implements Serializable {
 

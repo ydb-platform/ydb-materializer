@@ -17,6 +17,7 @@ import tech.ydb.mv.support.MvDaoHelpers;
  * mv_commands tables.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvJobDao extends MvDaoHelpers {
 
