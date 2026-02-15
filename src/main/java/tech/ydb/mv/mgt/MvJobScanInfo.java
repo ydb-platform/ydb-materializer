@@ -10,6 +10,7 @@ import tech.ydb.mv.MvConfig;
  * Information about a job scan in the mv_job_scans table.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvJobScanInfo implements Serializable {
 

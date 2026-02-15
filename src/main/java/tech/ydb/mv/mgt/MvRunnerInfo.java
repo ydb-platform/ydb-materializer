@@ -7,8 +7,10 @@ import java.time.Instant;
  * Information about a runner in the mv_runners table.
  *
  * @author zinal
+ * @author Kirill Kurdyukov
  */
 public class MvRunnerInfo implements Serializable {
+
     private static final long serialVersionUID = 20250113001L;
 
     private final String runnerId;
@@ -16,7 +18,7 @@ public class MvRunnerInfo implements Serializable {
     private final Instant updatedAt;
 
     public MvRunnerInfo(String runnerId, String identity, Instant updatedAt) {
-        if (identity==null) {
+        if (identity == null) {
             identity = makeIdentity();
         }
         if (updatedAt == null) {
@@ -45,21 +47,25 @@ public class MvRunnerInfo implements Serializable {
 
     @Override
     public String toString() {
-        return "MvRunnerInfo{" +
-                "runnerId='" + runnerId + '\'' +
-                ", runnerIdentity='" + identity + '\'' +
-                ", updatedAt=" + updatedAt +
-                '}';
+        return "MvRunnerInfo{"
+                + "runnerId='" + runnerId + '\''
+                + ", runnerIdentity='" + identity + '\''
+                + ", updatedAt=" + updatedAt
+                + '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         MvRunnerInfo that = (MvRunnerInfo) o;
-        return java.util.Objects.equals(runnerId, that.runnerId) &&
-                java.util.Objects.equals(identity, that.identity) &&
-                java.util.Objects.equals(updatedAt, that.updatedAt);
+        return java.util.Objects.equals(runnerId, that.runnerId)
+                && java.util.Objects.equals(identity, that.identity)
+                && java.util.Objects.equals(updatedAt, that.updatedAt);
     }
 
     @Override
