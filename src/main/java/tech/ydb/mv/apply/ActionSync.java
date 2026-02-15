@@ -140,6 +140,10 @@ class ActionSync extends ActionBase implements MvApplyAction {
     }
 
     private void runDelete(List<MvKey> rowKeys) {
+        // FIXME: the implementation below only works for the case when
+        // the PK for the MV is exactly the same as the PK for the topmost
+        // join source. It needs to be extended for the case when PK is
+        // computed based on some input columns.
         Value<?> keys = keysToParam(rowKeys);
         if (LOG.isDebugEnabled()) {
             LOG.debug("DELETE FROM {}: {}", targetTableName, keys);
