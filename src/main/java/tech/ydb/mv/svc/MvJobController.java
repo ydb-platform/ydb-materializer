@@ -3,16 +3,13 @@ package tech.ydb.mv.svc;
 import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
-import tech.ydb.mv.data.MvChangesMultiDict;
 import tech.ydb.mv.feeder.MvCdcFeeder;
-import tech.ydb.mv.feeder.MvScanCompletion;
 import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvHandlerSettings;
@@ -255,42 +252,14 @@ public class MvJobController implements AutoCloseable {
                     + "due to already running scans", context.getHandler().getName());
             return;
         }
-        var completionHandler = new DictScanComplete(dictScan, filters.size());
         for (var filter : filters) {
             LOG.info("Initiating dictionary refresh scan for target `{}` as {} in handler `{}`",
                     filter.getTarget().getName(), filter.getTarget().getAlias(),
                     context.getHandler().getName());
             var action = applyManager.createFilterAction(filter);
             var actions = new MvApplyActionList(action);
-            context.startScan(filter.getTarget(), settings, applyManager,
-                    actions, completionHandler);
+            context.startScan(filter.getTarget(), settings, applyManager, actions);
         }
-    }
-
-    static class DictScanComplete implements MvScanCompletion {
-
-        final MvDictionaryScan dictScan;
-        final AtomicInteger counter;
-
-        public DictScanComplete(
-                MvDictionaryScan dictScan,
-                int counter
-        ) {
-            this.dictScan = dictScan;
-            this.counter = new AtomicInteger(counter);
-        }
-
-        @Override
-        public void onScanComplete() {
-            if (counter.decrementAndGet() == 0) {
-                LOG.info("Dictionary scan COMPLETED for handler `{}`",
-                        dictScan.getHandler().getName());
-                // Scan position is updated in the MvScanCommitHandler.
-                // It should NOT be updated here, as that may be too early
-                // (scan data may not be processed yet).
-            }
-        }
-
     }
 
     class TempScanDaoAdapter implements MvScanAdapter {

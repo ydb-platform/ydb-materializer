@@ -117,6 +117,11 @@ public class MvJobContext implements MvCdcAdapter {
         return startScan(target, settings, applyManager, null, null);
     }
 
+    public boolean startScan(MvViewExpr target, MvScanSettings settings,
+            MvApplyManager applyManager, MvApplyActionList actions) {
+        return startScan(target, settings, applyManager, actions, null);
+    }
+
     public synchronized boolean startScan(MvViewExpr target, MvScanSettings settings,
             MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
         if (target == null || !handler.containsPart(target)) {

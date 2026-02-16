@@ -99,6 +99,7 @@ class MvScanCommitHandler implements MvCommitHandler {
         }
         if (!context.isRunning()) {
             committed.set(true);
+            context.getJob().forgetScan(context.getTarget());
             return null;
         }
         int value = counter.updateAndGet(v -> (v > count) ? v - count : 0);
@@ -114,6 +115,7 @@ class MvScanCommitHandler implements MvCommitHandler {
                         context.getTarget().getName(), context.getTarget().getAlias(),
                         context.getHandler().getName());
                 context.getScanDao().unregisterScan();
+                context.getJob().forgetScan(context.getTarget());
             } else {
                 context.getScanDao().saveScan(key);
             }

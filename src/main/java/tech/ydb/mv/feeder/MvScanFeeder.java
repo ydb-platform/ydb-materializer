@@ -75,9 +75,9 @@ public class MvScanFeeder {
         if (context.get() != null) {
             return false;
         }
-        MvScanContext ctx = context.getAndSet(
-                new MvScanContext(job.getHandler(), target, job.getYdb(), controlTable));
+        var ctx = context.getAndSet(new MvScanContext(job, target, controlTable));
         if (ctx != null) {
+            context.set(ctx); // return previous value
             throw new IllegalStateException("Illegal startup sequence for MvScanFeeder");
         }
         Thread thread = new Thread(() -> safeRun());
@@ -157,8 +157,8 @@ public class MvScanFeeder {
         if (completion != null) {
             completion.onScanComplete();
         }
-        ctx.getScanDao().unregisterScan();
-        job.forgetScan(target);
+        // Here we should not exclude the scan from the job,
+        // all the un-registrations are performed in the MvScanCommitHandler.
         LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
                 target.getName(), target.getAlias(), job.getHandler().getName());
     }
