@@ -8,8 +8,13 @@ package tech.ydb.mv.feeder;
 public interface MvScanCompletion {
 
     /**
-     * Called on scan finish
+     * Called on scan feeder finish.
      */
-    void onScanComplete();
+    void onEndScan();
+
+    /**
+     * Called after the processing of the last scanned record is complete.
+     */
+    void onEndProcessing();
 
 }

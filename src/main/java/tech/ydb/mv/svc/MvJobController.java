@@ -233,6 +233,7 @@ public class MvJobController implements AutoCloseable {
     }
 
     private void performDictionaryChecks() {
+        // Scan the dictionary log for changes
         var settings = context.getService().getDictionarySettings();
         var dictScan = new MvDictionaryScan(context.getYdb(),
                 context.getDescriber(), context.getHandler(), settings);
@@ -241,6 +242,7 @@ public class MvJobController implements AutoCloseable {
             dictScan.commitAll(changes);
             return;
         }
+        // Create a separate filter for each relevant MV part
         var filters = changes.toFilters(context.getHandler());
         if (filters.isEmpty()) {
             // No relevant changes in the dictionaries, so move out.
@@ -248,17 +250,22 @@ public class MvJobController implements AutoCloseable {
             return;
         }
         if (context.isAnyScanRunning()) {
-            LOG.info("Dictionary refresh delayed on handler `{}` "
+            LOG.debug("Dictionary refresh delayed on handler `{}` "
                     + "due to already running scans", context.getHandler().getName());
             return;
         }
+        // One scan per filter (e.g. per MV part affected by the changes)
+        var committer = new MvDictionaryCommitter(dictScan, changes, filters.size());
         for (var filter : filters) {
             LOG.info("Initiating dictionary refresh scan for target `{}` as {} in handler `{}`",
                     filter.getTarget().getName(), filter.getTarget().getAlias(),
                     context.getHandler().getName());
-            var action = applyManager.createFilterAction(filter);
-            var actions = new MvApplyActionList(action);
-            context.startScan(filter.getTarget(), settings, applyManager, actions);
+            boolean okay = context.startScan(filter, committer, settings, applyManager);
+            if (!okay) {
+                LOG.error("Dictionary refresh scan REFUSED for target `{}` as {} in handler `{}`",
+                        filter.getTarget().getName(), filter.getTarget().getAlias(),
+                        context.getHandler().getName());
+            }
         }
     }
 

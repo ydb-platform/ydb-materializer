@@ -7,6 +7,7 @@ import tech.ydb.mv.MvConfig;
 import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
+import tech.ydb.mv.data.MvRowFilter;
 import tech.ydb.mv.feeder.MvCdcAdapter;
 import tech.ydb.mv.feeder.MvScanCompletion;
 import tech.ydb.mv.feeder.MvScanFeeder;
@@ -117,13 +118,15 @@ public class MvJobContext implements MvCdcAdapter {
         return startScan(target, settings, applyManager, null, null);
     }
 
-    public boolean startScan(MvViewExpr target, MvScanSettings settings,
-            MvApplyManager applyManager, MvApplyActionList actions) {
-        return startScan(target, settings, applyManager, actions, null);
+    public boolean startScan(MvRowFilter filter, MvScanCompletion completion,
+            MvScanSettings settings, MvApplyManager applyManager) {
+        var actions = new MvApplyActionList(applyManager.createFilterAction(filter));
+        return startScan(filter.getTarget(), settings, applyManager, actions, completion);
     }
 
     public synchronized boolean startScan(MvViewExpr target, MvScanSettings settings,
-            MvApplyManager applyManager, MvApplyActionList actions, MvScanCompletion completion) {
+            MvApplyManager applyManager, MvApplyActionList actions,
+            MvScanCompletion completion) {
         if (target == null || !handler.containsPart(target)) {
             throw new IllegalArgumentException("Illegal target `" + target
                     + "` for handler `" + handler.getName() + "`");

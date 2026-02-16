@@ -135,7 +135,7 @@ public class MvDictionaryScan {
     }
 
     public MvChangesMultiDict scanAll() {
-        LOG.info("[{}] Performing regular dictionary changes scan.", handler.getName());
+        LOG.debug("[{}] Performing regular dictionary changes scan.", handler.getName());
         MvChangesMultiDict ret = new MvChangesMultiDict();
         handler.getInputs().values().stream()
                 .filter(i -> i.isBatchMode())
@@ -149,8 +149,11 @@ public class MvDictionaryScan {
                     .toList();
             LOG.info("[{}] Relevant changes in the following dictionaries: {}",
                     handler.getName(), items);
+        } else {
+            LOG.debug("[{}] No relevant changes in the dictionaries.",
+                    handler.getName());
         }
-        LOG.info("[{}] Regular dictionary changes scan completed.", handler.getName());
+        LOG.debug("[{}] Regular dictionary changes scan completed.", handler.getName());
         return ret;
     }
 

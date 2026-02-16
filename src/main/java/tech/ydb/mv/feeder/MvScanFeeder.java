@@ -75,7 +75,7 @@ public class MvScanFeeder {
         if (context.get() != null) {
             return false;
         }
-        var ctx = context.getAndSet(new MvScanContext(job, target, controlTable));
+        var ctx = context.getAndSet(new MvScanContext(job, target, controlTable, completion));
         if (ctx != null) {
             context.set(ctx); // return previous value
             throw new IllegalStateException("Illegal startup sequence for MvScanFeeder");
@@ -108,7 +108,7 @@ public class MvScanFeeder {
 
     private void sleepSome() {
         final long tvFinish = System.currentTimeMillis()
-                + ThreadLocalRandom.current().nextLong(2000, 20000);
+                + ThreadLocalRandom.current().nextLong(2000, 10000);
         while (isRunning()) {
             YdbMisc.sleep(100L);
             if (System.currentTimeMillis() >= tvFinish) {
@@ -154,11 +154,6 @@ public class MvScanFeeder {
             }
             rateLimiter(count);
         }
-        if (completion != null) {
-            completion.onScanComplete();
-        }
-        // Here we should not exclude the scan from the job,
-        // all the un-registrations are performed in the MvScanCommitHandler.
         LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
                 target.getName(), target.getAlias(), job.getHandler().getName());
     }
@@ -217,6 +212,10 @@ public class MvScanFeeder {
         handler.commit(0);
         // report the metrics
         MvMetrics.recordScanSubmit(metricsScope, rsr.getRowCount());
+        // mark the scan as completed
+        if (handler.isTerminal() && completion != null) {
+            completion.onEndScan();
+        }
     }
 
     private void rateLimiter(int count) {

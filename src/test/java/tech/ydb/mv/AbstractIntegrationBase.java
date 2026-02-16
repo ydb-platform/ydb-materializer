@@ -306,7 +306,7 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
-        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
+        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "2");
         props.setProperty(MvBatchSettings.CONF_COORD_STARTUP_MS, "2000");
         props.setProperty(MvBatchSettings.CONF_SCAN_PERIOD_MS, "2000");
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
@@ -356,6 +356,10 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
 
     protected static void standardPause() {
         pause(2000L);
+    }
+
+    protected static void dictionaryScanPause() {
+        pause(8000L);
     }
 
     protected static void pause(long millis) {

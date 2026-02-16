@@ -117,7 +117,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 System.err.println("[AAA] Updating BOTH dictionary tables...");
                 runDml(conn, WRITE_DICTS_0);
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
-                pause(10_000L);
+                dictionaryScanPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery, true);
                 Assertions.assertEquals(0, diffCount,
@@ -126,7 +126,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 System.err.println("[AAA] Updating FIRST dictionary table...");
                 runDml(conn, WRITE_DICTS_1);
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
-                pause(15_000L);
+                dictionaryScanPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery, false);
                 Assertions.assertEquals(0, diffCount,
@@ -135,7 +135,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 System.err.println("[AAA] Updating SECOND dictionary table...");
                 runDml(conn, WRITE_DICTS_2);
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
-                pause(15_000L);
+                dictionaryScanPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery, true);
                 Assertions.assertEquals(0, diffCount,

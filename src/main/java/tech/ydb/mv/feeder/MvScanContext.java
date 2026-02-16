@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
@@ -33,8 +32,10 @@ class MvScanContext implements MvScanAdapter {
     private final String sqlSelectNext;
 
     private final MvScanDao scanDao;
+    private final MvScanCompletion completion;
 
-    public MvScanContext(MvJobContext job, MvViewExpr target, String controlTable) {
+    public MvScanContext(MvJobContext job, MvViewExpr target, String controlTable,
+            MvScanCompletion completion) {
         this.job = job;
         this.target = target;
         this.shouldRun = new AtomicBoolean(true);
@@ -48,6 +49,7 @@ class MvScanContext implements MvScanAdapter {
             this.sqlSelectNext = sg.makeScanNext();
         }
         this.scanDao = new MvScanDao(job.getYdb(), this);
+        this.completion = completion;
     }
 
     public boolean isRunning() {
@@ -120,6 +122,10 @@ class MvScanContext implements MvScanAdapter {
     @Override
     public String getControlTable() {
         return controlTable;
+    }
+
+    public MvScanCompletion getCompletion() {
+        return completion;
     }
 
 }
