@@ -88,7 +88,7 @@ public class MvDictionaryScan {
         MvKey curKey = startKey;
         result.setScanPosition(startKey);
 
-        LOG.info("[{}] Scanning dictionary `{}` at position {}",
+        LOG.debug("[{}] Scanning dictionary `{}` at position {}",
                 handler.getName(), tableName, startKey);
 
         long changeRowsScanned = 0;
