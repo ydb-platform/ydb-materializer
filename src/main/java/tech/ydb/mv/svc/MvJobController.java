@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import tech.ydb.mv.MvConfig;
-import tech.ydb.mv.apply.MvApplyActionList;
 import tech.ydb.mv.apply.MvApplyManager;
 import tech.ydb.mv.feeder.MvCdcFeeder;
 import tech.ydb.mv.metrics.MvMetrics;
@@ -150,6 +149,13 @@ public class MvJobController implements AutoCloseable {
         return (counter > 0);
     }
 
+    /**
+     * Check that the lock is actually held by this job as the current owner.
+     *
+     * Currently unused.
+     *
+     * @return true if the lock is still held by this job, and false otherwise.
+     */
     public boolean validateDatabaseLock() {
         return context.getService().getLocker().check(getName());
     }
