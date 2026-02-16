@@ -15,13 +15,19 @@ class MvCdcCommitHandler implements MvCommitHandler {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvCdcCommitHandler.class);
     private static final AtomicLong COUNTER = new AtomicLong(0L);
 
+    // used by equals() and hashCode()
     private final long instance;
+    // used to find out that the instance has been shut down
+    private final MvCdcEventReader owner;
+    // data to be committed
     private final DataReceivedEvent event;
+    // processing counter & committed sign
     private volatile int counter;
     private volatile boolean committed;
 
-    MvCdcCommitHandler(DataReceivedEvent event, int counter) {
+    MvCdcCommitHandler(MvCdcEventReader owner, DataReceivedEvent event, int counter) {
         this.instance = COUNTER.incrementAndGet();
+        this.owner = owner;
         this.event = event;
         this.counter = counter;
         this.committed = false;
@@ -53,7 +59,9 @@ class MvCdcCommitHandler implements MvCommitHandler {
     }
 
     private Void reportError(Throwable t) {
-        LOG.error("Failed to commit the CDC message pack", t);
+        if (owner.isRunning()) {
+            LOG.error("Failed to commit the CDC message pack", t);
+        }
         return null;
     }
 

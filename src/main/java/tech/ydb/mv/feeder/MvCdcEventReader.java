@@ -29,6 +29,10 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         this.sink = owner.getSink();
     }
 
+    public boolean isRunning() {
+        return owner.isRunning();
+    }
+
     @Override
     public void onStartPartitionSession(StartPartitionSessionEvent ev) {
         LOG.debug("Feeder `{}` topic `{}` session {} for partition {} "
@@ -99,7 +103,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
         long submitStart = System.nanoTime();
         try {
-            sink.submit(records, new MvCdcCommitHandler(event, records.size()));
+            sink.submit(records, new MvCdcCommitHandler(this, event, records.size()));
             MvMetrics.recordCdcSubmit(scope, submitStart, records.size());
         } catch (Exception ex) {
             // We should not throw from onMessages(), as it stops the CDC reader.

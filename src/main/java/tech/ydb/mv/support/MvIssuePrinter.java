@@ -24,7 +24,7 @@ public class MvIssuePrinter {
     public void write(PrintStream pw) {
         pw.println("Begin context status: " + (ctx.isValid() ? "VALID" : "INVALID"));
         pw.println("  Roots:    " + ctx.getViews().size()
-                + " target(s) and " + ctx.getHandlers().size() + " handler(s).");
+                + " views(s) and " + ctx.getHandlers().size() + " handler(s).");
         pw.println("  Inputs:   " + getInputsCount(false) + " streaming, " + getInputsCount(true) + " batch.");
         pw.println("  Messages: " + ctx.getErrors().size() + " errors, " + ctx.getWarnings().size() + " warnings.");
         for (MvIssue x : sort(ctx.getErrors())) {

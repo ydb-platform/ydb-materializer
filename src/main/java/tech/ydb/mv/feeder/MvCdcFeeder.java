@@ -78,6 +78,10 @@ public class MvCdcFeeder implements AutoCloseable {
         return adapter.getFeederName();
     }
 
+    public boolean isRunning() {
+        return adapter.isRunning();
+    }
+
     /**
      * Start CDC consumption (idempotent).
      */
