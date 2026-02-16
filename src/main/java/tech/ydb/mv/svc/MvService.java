@@ -170,9 +170,12 @@ public class MvService implements MvApi {
         shutdown();
         scheduler.shutdown();
         try {
-            scheduler.awaitTermination(10L, TimeUnit.SECONDS);
+            if (!scheduler.awaitTermination(30L, TimeUnit.SECONDS)) {
+                LOG.warn("Service scheduler did not shut down in time.");
+            }
         } catch (InterruptedException ix) {
             Thread.currentThread().interrupt();
+            LOG.warn("Interruption on closure");
         }
         if (locker != null) {
             locker.close();

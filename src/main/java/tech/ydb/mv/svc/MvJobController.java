@@ -102,16 +102,15 @@ public class MvJobController implements AutoCloseable {
         if (context.setStopped()) {
             LOG.info("Stopping the controller `{}`", getName());
         }
+        var cdcFeederTemp = cdcFeeder.getAndSet(null);
+        if (cdcFeederTemp != null) {
+            cdcFeederTemp.close();
+        }
     }
 
     public synchronized void stop() {
         signalStop();
         cancelRegularJobs();
-        var cdcFeederTemp = cdcFeeder.get();
-        if (cdcFeederTemp != null) {
-            cdcFeeder.set(null);
-            cdcFeederTemp.close();
-        }
         // no explicit stop for applyManager - threads are stopped by context flag
         applyManager.awaitTermination(Duration.ofSeconds(60));
         releaseLock();
@@ -119,9 +118,7 @@ public class MvJobController implements AutoCloseable {
 
     @Override
     public void close() {
-        if (context.isRunning()) {
-            stop();
-        }
+        stop();
     }
 
     public boolean startScan(String name, MvScanSettings settings) {

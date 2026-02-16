@@ -115,8 +115,15 @@ public class App {
         }
     }
 
-    @SuppressWarnings("sunapi")
     private void setupHandler(Runnable handler) {
+        setupHandlerDirect(() -> {
+            LOG.warn("Service shutdown initiated by signal.");
+            handler.run();
+        });
+    }
+
+    @SuppressWarnings("sunapi")
+    private void setupHandlerDirect(Runnable handler) {
         sun.misc.Signal.handle(new sun.misc.Signal("TERM"), (signal) -> handler.run());
         sun.misc.Signal.handle(new sun.misc.Signal("INT"), (signal) -> handler.run());
     }

@@ -122,20 +122,8 @@ public class MvRunner implements AutoCloseable {
      * Stop all local jobs.
      */
     private void stopAllJobs() {
-        List<String> jobNames;
-        synchronized (localJobs) {
-            jobNames = localJobs.values().stream()
-                    .map(v -> v.getJobName())
-                    .toList();
-        }
-        for (String jobName : jobNames) {
-            LOG.info("[{}] Stopping job {}", runnerId, jobName);
-            try {
-                stopHandler(jobName);
-            } catch (Exception ex) {
-                LOG.error("[{}] Failed to stop job {} during shutdown", runnerId, jobName, ex);
-            }
-        }
+        // Use the fast algorithm
+        api.shutdown();
         synchronized (localJobs) {
             localJobs.clear();
         }
