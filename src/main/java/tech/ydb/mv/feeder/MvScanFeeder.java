@@ -154,12 +154,11 @@ public class MvScanFeeder {
             }
             rateLimiter(count);
         }
+        if (completion != null) {
+            completion.onScanComplete();
+        }
         ctx.getScanDao().unregisterScan();
         job.forgetScan(target);
-        if (completion != null) {
-            boolean incomplete = !isRunning();
-            completion.onScanComplete(incomplete);
-        }
         LOG.info("Finished scan feeder for target `{}` as {} in handler `{}`",
                 target.getName(), target.getAlias(), job.getHandler().getName());
     }

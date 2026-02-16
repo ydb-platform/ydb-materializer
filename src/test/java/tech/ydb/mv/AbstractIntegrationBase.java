@@ -428,7 +428,8 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
         return dump.toString();
     }
 
-    protected static int checkViewOutput(YdbConnector conn, String viewName, String sqlMain) {
+    protected static int checkViewOutput(YdbConnector conn, String viewName,
+            String sqlMain, boolean showNormal) {
         String sqlMv = "SELECT * FROM `" + viewName + "`";
         var left = convertResultSet(
                 conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
@@ -458,11 +459,15 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 ++diffCount;
             }
         }
+        if (diffCount == 0 && showNormal) {
+            System.out.println("  full dataset: " + left.toString());
+        }
         return diffCount;
     }
 
-    protected static int checkViewOutput(MvService svc, String viewName, String sqlMain) {
-        return checkViewOutput(svc.getYdb(), viewName, sqlMain);
+    protected static int checkViewOutput(MvService svc, String viewName,
+            String sqlMain, boolean showNormal) {
+        return checkViewOutput(svc.getYdb(), viewName, sqlMain, showNormal);
     }
 
 }

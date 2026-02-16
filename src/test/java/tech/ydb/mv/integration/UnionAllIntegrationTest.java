@@ -294,7 +294,7 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
     }
 
     private int checkViewOutput(MvService svc) {
-        return checkViewOutput(svc, "test2/mv1", SELECT_ALL_UA);
+        return checkViewOutput(svc, "test2/mv1", SELECT_ALL_UA, false);
     }
 
 }

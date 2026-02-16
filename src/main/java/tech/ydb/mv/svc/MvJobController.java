@@ -255,7 +255,7 @@ public class MvJobController implements AutoCloseable {
                     + "due to already running scans", context.getHandler().getName());
             return;
         }
-        var completionHandler = new DictScanComplete(dictScan, changes, filters.size());
+        var completionHandler = new DictScanComplete(dictScan, filters.size());
         for (var filter : filters) {
             LOG.info("Initiating dictionary refresh scan for target `{}` as {} in handler `{}`",
                     filter.getTarget().getName(), filter.getTarget().getAlias(),
@@ -270,43 +270,25 @@ public class MvJobController implements AutoCloseable {
     static class DictScanComplete implements MvScanCompletion {
 
         final MvDictionaryScan dictScan;
-        final MvChangesMultiDict changes;
         final AtomicInteger counter;
-        final AtomicInteger incomplete;
 
         public DictScanComplete(
                 MvDictionaryScan dictScan,
-                MvChangesMultiDict changes,
                 int counter
         ) {
             this.dictScan = dictScan;
-            this.changes = changes;
             this.counter = new AtomicInteger(counter);
-            this.incomplete = new AtomicInteger(0);
         }
 
         @Override
-        public void onScanComplete(boolean incomplete) {
-            if (incomplete) {
-                this.incomplete.incrementAndGet();
-            }
+        public void onScanComplete() {
             if (counter.decrementAndGet() == 0) {
-                commitIf();
-            }
-        }
-
-        private void commitIf() {
-            if (counter.get() > 0) {
-                return;
-            }
-            if (incomplete.get() > 0) {
-                LOG.info("Dictionary scan INCOMPLETE for handler `{}`, scan position left intact.",
+                LOG.info("Dictionary scan COMPLETED for handler `{}`",
                         dictScan.getHandler().getName());
-                return;
+                // Scan position is updated in the MvScanCommitHandler.
+                // It should NOT be updated here, as that may be too early
+                // (scan data may not be processed yet).
             }
-            LOG.info("Updating dictionary scan positions for handler `{}`",
-                    dictScan.getHandler().getName());
-            dictScan.commitAll(changes);
         }
 
     }

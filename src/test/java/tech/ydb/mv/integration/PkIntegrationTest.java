@@ -313,7 +313,7 @@ UPSERT INTO `pk_test/main2` (id,c4,c6) VALUES
     }
 
     private int checkViewOutput(MvService svc) {
-        return checkViewOutput(svc, "pk_test/mv1", SELECT_ALL_PK);
+        return checkViewOutput(svc, "pk_test/mv1", SELECT_ALL_PK, false);
     }
 
 }

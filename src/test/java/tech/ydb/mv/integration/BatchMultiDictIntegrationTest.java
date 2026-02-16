@@ -31,14 +31,28 @@ public class BatchMultiDictIntegrationTest extends AbstractIntegrationBase {
      * the dictionary scan runs, MvChangesMultiDict has changes for both, and
      * toFilter builds a filter with multiple blocks.
      */
-    private static final String WRITE_BOTH_DICTS
+    private static final String WRITE_DICTS_0
             = """
 UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
- (101, 'Eins Updated'u)
-,(103, 'Drei Updated'u);
+ (101, 'Eins Updated 0'u)
+,(103, 'Drei Updated 0'u);
 UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
- (102, 'Zwei Updated'u)
-,(104, 'Vier Updated'u);
+ (102, 'Zwei Updated 0'u)
+,(104, 'Vier Updated 0'u);
+""";
+
+    private static final String WRITE_DICTS_1
+            = """
+UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
+ (101, 'Eins Updated 1'u)
+,(103, 'Drei Updated 1'u);
+""";
+
+    private static final String WRITE_DICTS_2
+            = """
+UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
+ (102, 'Zwei Updated 2'u)
+,(104, 'Vier Updated 2'u);
 """;
 
     @BeforeEach
@@ -82,14 +96,14 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 standardPause();
 
                 System.err.println("[AAA] Checking the view output (should be empty)...");
-                int diffCount = checkViewOutput(conn, sqlQuery);
+                int diffCount = checkViewOutput(conn, sqlQuery, false);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Writing initial data...");
                 runDml(conn, WRITE_INITIAL_DATA);
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery);
+                diffCount = checkViewOutput(conn, sqlQuery, false);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Clearing MV and doing full refresh...");
@@ -97,32 +111,43 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 refreshMV(wc);
                 standardPause();
                 standardPause();
-                diffCount = checkViewOutput(conn, sqlQuery);
+                diffCount = checkViewOutput(conn, sqlQuery, false);
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating BOTH dictionary tables...");
-                runDml(conn, WRITE_BOTH_DICTS);
-                standardPause();
-
+                runDml(conn, WRITE_DICTS_0);
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
-                pause(20_000L);
-
-                System.err.println("[AAA] Checking the view output after multi-dict refresh...");
-                diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
+                pause(10_000L);
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery, false);
                 Assertions.assertEquals(0, diffCount,
-                        "View output mismatch after dictionary refresh with multiple dicts");
+                        "View output mismatch after dictionary refresh with BOTH dicts");
+
+                System.err.println("[AAA] Updating FIRST dictionary table...");
+                runDml(conn, WRITE_DICTS_1);
+                System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
+                pause(15_000L);
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery, false);
+                Assertions.assertEquals(0, diffCount,
+                        "View output mismatch after dictionary refresh with FIRST dicts");
+
+                System.err.println("[AAA] Updating SECOND dictionary table...");
+                runDml(conn, WRITE_DICTS_2);
+                System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
+                pause(15_000L);
+                System.err.println("[AAA] Checking the view output...");
+                diffCount = checkViewOutput(conn, sqlQuery, false);
+                Assertions.assertEquals(0, diffCount,
+                        "View output mismatch after dictionary refresh with SECOND dicts");
             } finally {
                 wc.shutdown();
             }
         }
     }
 
-    private int checkViewOutput(YdbConnector conn, String sqlMain) {
-        return checkViewOutput(conn, "test1/mv1", sqlMain);
+    private int checkViewOutput(YdbConnector conn, String sqlMain, boolean showNormal) {
+        return checkViewOutput(conn, "test1/mv1", sqlMain, showNormal);
     }
 
     private void clearMV(YdbConnector conn) {
