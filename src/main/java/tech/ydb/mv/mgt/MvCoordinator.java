@@ -247,6 +247,9 @@ public class MvCoordinator implements AutoCloseable {
         if (!isRunning()) {
             return false;
         }
+        if (!locker.check(MvConfig.HANDLER_COORDINATOR)) {
+            return false;
+        }
         var runners = jobDao.getJobRunners(MvConfig.HANDLER_COORDINATOR);
         if (runners.size() != 1) {
             return false;

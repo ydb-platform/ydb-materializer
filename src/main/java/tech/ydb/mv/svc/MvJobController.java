@@ -98,13 +98,14 @@ public class MvJobController implements AutoCloseable {
         return true;
     }
 
-    public synchronized boolean stop() {
-        if (!context.isRunning()) {
-            LOG.warn("Ignored stop call for an already stopped controller `{}`", getName());
-            return false;
+    public void signalStop() {
+        if (context.setStopped()) {
+            LOG.info("Stopping the controller `{}`", getName());
         }
-        LOG.info("Stopping the controller `{}`", getName());
-        context.setStopped();
+    }
+
+    public synchronized void stop() {
+        signalStop();
         cancelRegularJobs();
         var cdcFeederTemp = cdcFeeder.get();
         if (cdcFeederTemp != null) {
@@ -112,9 +113,8 @@ public class MvJobController implements AutoCloseable {
             cdcFeederTemp.close();
         }
         // no explicit stop for applyManager - threads are stopped by context flag
-        applyManager.awaitTermination(Duration.ofSeconds(120));
+        applyManager.awaitTermination(Duration.ofSeconds(60));
         releaseLock();
-        return true;
     }
 
     @Override
@@ -151,6 +151,10 @@ public class MvJobController implements AutoCloseable {
             }
         }
         return (counter > 0);
+    }
+
+    public boolean validateDatabaseLock() {
+        return context.getService().getLocker().check(getName());
     }
 
     private boolean obtainLock() {

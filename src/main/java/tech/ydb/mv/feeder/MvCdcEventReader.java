@@ -2,6 +2,7 @@ package tech.ydb.mv.feeder;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import tech.ydb.topic.read.Message;
 import tech.ydb.topic.read.events.AbstractReadEventHandler;
@@ -23,6 +24,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     private final MvCdcFeeder owner;
     private final MvSink sink;
+    private final HashSet<Long> closedPartitions = new HashSet<>();
 
     MvCdcEventReader(MvCdcFeeder owner) {
         this.owner = owner;
@@ -35,12 +37,24 @@ class MvCdcEventReader extends AbstractReadEventHandler {
 
     @Override
     public void onStartPartitionSession(StartPartitionSessionEvent ev) {
-        LOG.debug("Feeder `{}` topic `{}` session {} for partition {} "
-                + "onStart with last committed offset {}",
-                owner.getName(), ev.getPartitionSession().getPath(),
-                ev.getPartitionSession().getId(), ev.getPartitionSession().getPartitionId(),
-                ev.getCommittedOffset());
         ev.confirm();
+        boolean exists;
+        synchronized (closedPartitions) {
+            exists = closedPartitions.remove(ev.getPartitionSession().getPartitionId());
+        }
+        if (exists) {
+            LOG.info("Feeder `{}` topic `{}` session {} for partition {} "
+                    + "re-established with last committed offset {}",
+                    owner.getName(), ev.getPartitionSession().getPath(),
+                    ev.getPartitionSession().getId(), ev.getPartitionSession().getPartitionId(),
+                    ev.getCommittedOffset());
+        } else {
+            LOG.debug("Feeder `{}` topic `{}` session {} for partition {} "
+                    + "onStart with last committed offset {}",
+                    owner.getName(), ev.getPartitionSession().getPath(),
+                    ev.getPartitionSession().getId(), ev.getPartitionSession().getPartitionId(),
+                    ev.getCommittedOffset());
+        }
     }
 
     @Override
@@ -56,6 +70,9 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         LOG.debug("Feeder `{}` topic `{}` session {} onClosed",
                 owner.getName(), ev.getPartitionSession().getPath(),
                 ev.getPartitionSession().getId());
+        synchronized (closedPartitions) {
+            closedPartitions.add(ev.getPartitionSession().getPartitionId());
+        }
     }
 
     @Override

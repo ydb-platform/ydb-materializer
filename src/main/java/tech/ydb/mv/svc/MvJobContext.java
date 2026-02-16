@@ -76,8 +76,8 @@ public class MvJobContext implements MvCdcAdapter {
         shouldRun.set(true);
     }
 
-    public void setStopped() {
-        shouldRun.set(false);
+    public boolean setStopped() {
+        return shouldRun.getAndSet(false);
     }
 
     @Override

@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import tech.ydb.coordination.CoordinationClient;
 import tech.ydb.coordination.CoordinationSession;
 import tech.ydb.coordination.SemaphoreLease;
+import tech.ydb.coordination.settings.DescribeSemaphoreMode;
 import tech.ydb.core.Result;
 import tech.ydb.query.tools.SessionRetryContext;
 
@@ -137,6 +138,18 @@ public class MvLocker implements AutoCloseable {
         return success;
     }
 
+    public boolean check(String name) {
+        name = MvConfig.safe(name);
+        Lease lease;
+        synchronized (leases) {
+            lease = leases.get(name);
+        }
+        if (lease == null) {
+            return false;
+        }
+        return lease.check();
+    }
+
     private CoordinationSession obtainSession() {
         return retryCtx.supplyResult(
                 qs -> {
@@ -165,6 +178,26 @@ public class MvLocker implements AutoCloseable {
                 this.session.close();
                 throw new RuntimeException("Failed to obtain lock " + name, ex);
             }
+        }
+
+        boolean check() {
+            switch (session.getState()) {
+                case LOST:
+                case CLOSED:
+                    return false;
+                default:
+                    ;
+            }
+            var result = session.describeSemaphore(name, DescribeSemaphoreMode.WITH_OWNERS).join();
+            if (!result.isSuccess()) {
+                return false;
+            }
+            for (var owner : result.getValue().getOwnersList()) {
+                if (owner.getId() == session.getId()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
     }

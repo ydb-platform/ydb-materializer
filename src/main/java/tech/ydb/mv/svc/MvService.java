@@ -45,8 +45,8 @@ public class MvService implements MvApi {
     private final AtomicReference<MvDictionarySettings> dictionarySettings;
     private final AtomicReference<MvScanSettings> scanSettings;
     private final ScheduledExecutorService scheduler;
-    private final AtomicReference<ScheduledFuture<?>> refreshFuture = new AtomicReference<>();
-    private final AtomicReference<ScheduledFuture<?>> metricsFuture = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> slowFuture = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> fastFuture = new AtomicReference<>();
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
 
@@ -154,6 +154,7 @@ public class MvService implements MvApi {
         synchronized (this) {
             currentJobs = new ArrayList<>(handlers.values());
         }
+        currentJobs.forEach(h -> h.signalStop());
         currentJobs.forEach(h -> h.close());
         stopDictionaryHandler();
         synchronized (this) {
@@ -366,26 +367,26 @@ public class MvService implements MvApi {
     }
 
     private void scheduleRegularJobs() {
-        if (metricsFuture.get() == null) {
+        if (fastFuture.get() == null) {
             var f = scheduler.scheduleWithFixedDelay(
-                    this::metricsRefresh,
+                    this::fastRefresh,
                     5,
                     5,
                     TimeUnit.SECONDS
             );
-            f = metricsFuture.getAndSet(f);
+            f = fastFuture.getAndSet(f);
             if (f != null) {
                 f.cancel(false);
             }
         }
-        if (refreshFuture.get() == null) {
+        if (slowFuture.get() == null) {
             var f = scheduler.scheduleWithFixedDelay(
-                    this::partitionsRefresh,
+                    this::slowRefresh,
                     60,
                     60,
                     TimeUnit.SECONDS
             );
-            f = refreshFuture.getAndSet(f);
+            f = slowFuture.getAndSet(f);
             if (f != null) {
                 f.cancel(false);
             }
@@ -393,23 +394,27 @@ public class MvService implements MvApi {
     }
 
     private void cancelRegularJobs() {
-        var f = refreshFuture.getAndSet(null);
+        var f = slowFuture.getAndSet(null);
         if (f != null) {
             f.cancel(true);
         }
-        f = metricsFuture.getAndSet(null);
+        f = fastFuture.getAndSet(null);
         if (f != null) {
             f.cancel(true);
         }
     }
 
-    private void partitionsRefresh() {
+    private void slowRefresh() {
         for (MvJobController c : grabControllers()) {
             c.getApplyManager().refreshSelectors(ydb.getTableClient());
+            if (!c.validateDatabaseLock()) {
+                LOG.warn("Lost distributed lock for handler `{}`, shutting it down...");
+                stopHandler(c.getName());
+            }
         }
     }
 
-    private void metricsRefresh() {
+    private void fastRefresh() {
         for (MvJobController c : grabControllers()) {
             MvMetrics.recordHandlerState(c.getName(), c.isRunning(), c.isLocked());
         }
