@@ -8,6 +8,7 @@ import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -194,7 +195,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
          #[ Unicode::Substring(main.c20,3,5) ]# AS c11,
-         #[ CAST(999 AS Int32?) ]# AS c12, sub3.c5 AS c5, sub4.c16 AS c16
+         #[ CAST(999 AS Int32?) ]# AS c12, sub3.c5 AS c5,
+         sub4.c16 AS c16, sub5.c22 AS c22
   FROM `test1/main_table` AS main
   INNER JOIN `test1/sub_table1` AS sub1
     ON main.c1=sub1.c1 AND main.c2=sub1.c2
@@ -220,7 +222,8 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
     SELECT main.id AS id, main.c1 AS c1, main . c2 AS c2, main . c3 AS c3,
            sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
            #[ Unicode::Substring(main.c20,3,5) ]# AS c11,
-           #[ CAST(999 AS Int32?) ]# AS c12, sub3.c5 AS c5
+           #[ CAST(999 AS Int32?) ]# AS c12, sub3.c5 AS c5,
+           sub5.c22 AS c22
     FROM `test1/main_table` AS main
     INNER JOIN `test1/sub_table1` AS sub1
       ON main.c1=sub1.c1 AND main.c2=sub1.c2
@@ -264,20 +267,20 @@ INSERT INTO `test1/sub_table2` (c3,c4,c7,c9,main_id) VALUES
 ,(Decimal('10004.567',22,9), 'val4'u, NULL,    Date('2020-07-16'), 'main-004'u)
 ;
 INSERT INTO `test1/sub_table3` (c5,c10) VALUES
- (58, 'Welcome!'u)
-,(59, 'Adieu!'u)
+ (58, 'sub_table3 Welcome!'u)
+,(59, 'sub_table3 Adieu!'u)
 ;
 INSERT INTO `test1/sub_table4` (c15,c16) VALUES
- (101, 'Eins'u)
-,(102, 'Zwei'u)
-,(103, 'Drei'u)
-,(104, 'Vier'u)
+ (101, 'sub_table4 Eins'u)
+,(102, 'sub_table4 Zwei'u)
+,(103, 'sub_table4 Drei'u)
+,(104, 'sub_table4 Vier'u)
 ;
 INSERT INTO `test1/sub_table5` (c21,c22) VALUES
- (201, 'Eins'u)
-,(202, 'Zwei'u)
-,(203, 'Drei'u)
-,(204, 'Vier'u)
+ (201, 'sub_table5 Eins'u)
+,(202, 'sub_table5 Zwei'u)
+,(203, 'sub_table5 Drei'u)
+,(204, 'sub_table5 Vier'u)
 ;
 """;
 
@@ -303,7 +306,7 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
         props.setProperty(MvConfig.CONF_SCAN_TABLE, "test1/scans_state");
         props.setProperty(MvConfig.CONF_DICT_HIST_TABLE, "test1/dict_hist");
         props.setProperty(MvConfig.CONF_DICT_CONSUMER, "dictionary");
-        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "10");
+        props.setProperty(MvConfig.CONF_DICT_SCAN_SECONDS, "2");
         props.setProperty(MvBatchSettings.CONF_COORD_STARTUP_MS, "2000");
         props.setProperty(MvBatchSettings.CONF_SCAN_PERIOD_MS, "2000");
         props.setProperty(MvConfig.CONF_HANDLERS, "handler1");
@@ -353,6 +356,10 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
 
     protected static void standardPause() {
         pause(2000L);
+    }
+
+    protected static void dictionaryScanPause() {
+        pause(8000L);
     }
 
     protected static void pause(long millis) {
@@ -428,7 +435,8 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
         return dump.toString();
     }
 
-    protected static int checkViewOutput(YdbConnector conn, String viewName, String sqlMain) {
+    protected static int checkViewOutput(YdbConnector conn, String viewName,
+            String sqlMain, boolean showNormal) {
         String sqlMv = "SELECT * FROM `" + viewName + "`";
         var left = convertResultSet(
                 conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
@@ -458,11 +466,28 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 ++diffCount;
             }
         }
+        if (diffCount == 0 && showNormal) {
+            System.out.println("  full dataset:");
+            var names = new TreeSet<String>();
+            left.values().stream().map(v -> v.keySet()).forEach(ks -> names.addAll(ks));
+            for (var name : names) {
+                System.out.print("\t" + name + " |");
+            }
+            System.out.println();
+            for (var leftMe : left.entrySet()) {
+                for (var name : names) {
+                    var val = leftMe.getValue().get(name);
+                    System.out.print("\t" + ((val == null) ? "" : val.toString()) + " |");
+                }
+                System.out.println();
+            }
+        }
         return diffCount;
     }
 
-    protected static int checkViewOutput(MvService svc, String viewName, String sqlMain) {
-        return checkViewOutput(svc.getYdb(), viewName, sqlMain);
+    protected static int checkViewOutput(MvService svc, String viewName,
+            String sqlMain, boolean showNormal) {
+        return checkViewOutput(svc.getYdb(), viewName, sqlMain, showNormal);
     }
 
 }

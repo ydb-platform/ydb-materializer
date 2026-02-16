@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import tech.ydb.mv.YdbConnector;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.model.MvHandler;
 import tech.ydb.mv.model.MvTableInfo;
@@ -12,6 +11,7 @@ import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.support.MvScanAdapter;
 import tech.ydb.mv.support.MvScanDao;
+import tech.ydb.mv.svc.MvJobContext;
 
 /**
  *
@@ -19,7 +19,7 @@ import tech.ydb.mv.support.MvScanDao;
  */
 class MvScanContext implements MvScanAdapter {
 
-    private final MvHandler handler;
+    private final MvJobContext job;
     private final MvViewExpr target;
     private final AtomicBoolean shouldRun;
     private final AtomicReference<MvKey> currentKey;
@@ -32,10 +32,11 @@ class MvScanContext implements MvScanAdapter {
     private final String sqlSelectNext;
 
     private final MvScanDao scanDao;
+    private final MvScanCompletion completion;
 
-    public MvScanContext(MvHandler handler, MvViewExpr target,
-            YdbConnector ydb, String controlTable) {
-        this.handler = handler;
+    public MvScanContext(MvJobContext job, MvViewExpr target, String controlTable,
+            MvScanCompletion completion) {
+        this.job = job;
         this.target = target;
         this.shouldRun = new AtomicBoolean(true);
         this.currentKey = new AtomicReference<>();
@@ -47,19 +48,24 @@ class MvScanContext implements MvScanAdapter {
             this.sqlSelectStart = sg.makeScanStart();
             this.sqlSelectNext = sg.makeScanNext();
         }
-        this.scanDao = new MvScanDao(ydb, this);
+        this.scanDao = new MvScanDao(job.getYdb(), this);
+        this.completion = completion;
     }
 
     public boolean isRunning() {
-        return shouldRun.get();
+        return shouldRun.get() && job.isRunning();
     }
 
     public void stop() {
         shouldRun.set(false);
     }
 
+    public MvJobContext getJob() {
+        return job;
+    }
+
     public MvHandler getHandler() {
-        return handler;
+        return job.getHandler();
     }
 
     public MvViewExpr getTarget() {
@@ -100,7 +106,7 @@ class MvScanContext implements MvScanAdapter {
 
     @Override
     public String getJobName() {
-        return handler.getName();
+        return job.getHandler().getName();
     }
 
     @Override
@@ -116,6 +122,10 @@ class MvScanContext implements MvScanAdapter {
     @Override
     public String getControlTable() {
         return controlTable;
+    }
+
+    public MvScanCompletion getCompletion() {
+        return completion;
     }
 
 }

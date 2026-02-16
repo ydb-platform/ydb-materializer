@@ -29,13 +29,12 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private final MvRowFilter filter;
     private final String sqlSelect;
 
-    public ActionKeysFilter(MvActionContext context, MvViewExpr target,
-            MvViewExpr dictTrans, MvRowFilter filter) {
-        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target));
-        this.target = target;
+    public ActionKeysFilter(MvActionContext context, MvRowFilter filter) {
+        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), filter.getTarget()));
+        this.target = filter.getTarget();
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.filter = filter;
-        try (MvSqlGen sg = new MvSqlGen(dictTrans)) {
+        try (MvSqlGen sg = new MvSqlGen(filter.getTransformation())) {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",

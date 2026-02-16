@@ -313,18 +313,11 @@ public class MvApplyManager implements MvSink {
     }
 
     public MvApplyAction createFilterAction(MvRowFilter filter) {
-        var target = filter.getTarget();
-        var targetConfig = targetConfigs.get(target);
-        if (targetConfig == null) {
-            throw new IllegalArgumentException("Cannot produce filter action "
-                    + "for unknown target " + target.getName() + " as " + target.getAlias());
+        if (filter == null || filter.isEmpty() || filter.getTarget() == null
+                || filter.getTransformation() == null) {
+            throw new IllegalArgumentException("Null or empty filter passed");
         }
-        if (targetConfig.getDictTrans() == null) {
-            throw new IllegalArgumentException(
-                    "Cannot produce filter action for non-dictionary target "
-                    + target.getName() + " as " + target.getAlias());
-        }
-        return new ActionKeysFilter(context, target, targetConfig.getDictTrans(), filter);
+        return new ActionKeysFilter(context, filter);
     }
 
 }

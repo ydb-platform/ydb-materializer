@@ -8,11 +8,13 @@ package tech.ydb.mv.feeder;
 public interface MvScanCompletion {
 
     /**
-     * Called on scan finish
-     *
-     * @param incomplete true, if the scan has not been completed fully (e.g. in
-     * case of preliminary shutdown), false otherwise
+     * Called on scan feeder finish.
      */
-    void onScanComplete(boolean incomplete);
+    void onEndScan();
+
+    /**
+     * Called after the processing of the last scanned record is complete.
+     */
+    void onEndProcessing();
 
 }

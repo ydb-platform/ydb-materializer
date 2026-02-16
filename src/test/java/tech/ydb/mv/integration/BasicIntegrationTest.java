@@ -201,7 +201,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
-        return checkViewOutput(conn, "test1/mv1", sqlMain);
+        return checkViewOutput(conn, "test1/mv1", sqlMain, false);
     }
 
     private void checkConsumerPositions(YdbConnector conn) {

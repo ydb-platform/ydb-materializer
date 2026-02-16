@@ -34,6 +34,7 @@ CREATE TABLE `test2/main1` (
     c4 Int32,
     c5 Int32,
     c6 Text,
+    c99 Int32,
     PRIMARY KEY(id),
     INDEX ix_c4 GLOBAL ON (c4)
 );
@@ -52,6 +53,7 @@ CREATE TABLE `test2/main2` (
     c4 Int32,
     c5 Int32,
     c6 Text,
+    c99 Int32,
     PRIMARY KEY(id),
     INDEX ix_c4 GLOBAL ON (c4)
 );
@@ -60,6 +62,12 @@ CREATE TABLE `test2/sub2` (
     c4 Int32 NOT NULL,
     c7 Text,
     PRIMARY KEY(c4)
+);
+
+CREATE TABLE `test2/sub99` (
+    c99 Int32 NOT NULL,
+    c100 Text,
+    PRIMARY KEY(c99)
 );
 
 CREATE TABLE `test2/mv1` (
@@ -71,6 +79,7 @@ CREATE TABLE `test2/mv1` (
     c5 Int32,
     c6 Text,
     c7 Text,
+    c100 Text,
     PRIMARY KEY(id),
     INDEX ix_c1 GLOBAL ON (c1),
     INDEX ix_c7 GLOBAL ON (c7)
@@ -83,6 +92,7 @@ DROP TABLE `test2/main1`;
 DROP TABLE `test2/main2`;
 DROP TABLE `test2/sub1`;
 DROP TABLE `test2/sub2`;
+DROP TABLE `test2/sub99`;
 DROP TABLE `test2/mv1`;
 """;
 
@@ -100,10 +110,13 @@ SELECT
     m.c4 AS c4,
     m.c5 AS c5,
     m.c6 AS c6,
-    s.c7 AS c7
+    s.c7 AS c7,
+    s99.c100 AS c100
 FROM `test2/main1` AS m
 INNER JOIN `test2/sub1` AS s
   ON m.c4=s.c4
+LEFT JOIN `test2/sub99` AS s99
+  ON m.c99=s99.c99
 ) AS part1
 UNION ALL
 (
@@ -115,14 +128,18 @@ SELECT
     m.c4 AS c4,
     m.c5 AS c5,
     m.c6 AS c6,
-    s.c7 AS c7
+    s.c7 AS c7,
+    s99.c100 AS c100
 FROM `test2/main2` AS m
 INNER JOIN `test2/sub2` AS s
   ON m.c4=s.c4
+LEFT JOIN `test2/sub99` AS s99
+  ON m.c99=s99.c99
 ) AS part2;@@),
 
   (2, @@CREATE ASYNC HANDLER handler3 CONSUMER consumer3
   PROCESS `test2/mv1`,
+  INPUT `test2/sub99` CHANGEFEED mv AS BATCH,
   INPUT `test2/main1` CHANGEFEED cf0 AS STREAM,
   INPUT `test2/sub1` CHANGEFEED cf1 AS STREAM,
   INPUT `test2/main2` CHANGEFEED cf2 AS STREAM,
@@ -138,10 +155,13 @@ INNER JOIN `test2/sub2` AS s
     m.c4 AS c4,
     m.c5 AS c5,
     m.c6 AS c6,
-    s.c7 AS c7
+    s.c7 AS c7,
+    s99.c100 AS c100
 FROM `test2/main1` AS m
 INNER JOIN `test2/sub1` AS s
-  ON m.c4=s.c4)
+  ON m.c4=s.c4
+LEFT JOIN `test2/sub99` AS s99
+  ON m.c99=s99.c99)
 UNION ALL
 (SELECT
     m.id AS id,
@@ -151,19 +171,22 @@ UNION ALL
     m.c4 AS c4,
     m.c5 AS c5,
     m.c6 AS c6,
-    s.c7 AS c7
+    s.c7 AS c7,
+    s99.c100 AS c100
 FROM `test2/main2` AS m
 INNER JOIN `test2/sub2` AS s
-  ON m.c4=s.c4)
+  ON m.c4=s.c4
+LEFT JOIN `test2/sub99` AS s99
+  ON m.c99=s99.c99)
 """;
 
     public static final String WRITE_UA_INIT1
             = """
-INSERT INTO `test2/main1` (id,c1,c2,c3,c4,c5,c6) VALUES
- ('main1-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 101, 1, 'text message one'u)
-,('main1-002'u, Timestamp('2022-01-02T10:15:22Z'), 10002, Decimal('10002.567',22,9), 102, 3, 'text message two'u)
-,('main1-003'u, Timestamp('2023-01-02T10:15:23Z'), 10003, Decimal('10003.567',22,9), 103, 5, 'text message three'u)
-,('main1-004'u, Timestamp('2024-01-02T10:15:24Z'), 10004, Decimal('10004.567',22,9), 104, 7, 'text message four'u)
+INSERT INTO `test2/main1` (id,c1,c2,c3,c4,c5,c6,c99) VALUES
+ ('main1-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 101, 1, 'text message one'u, 501)
+,('main1-002'u, Timestamp('2022-01-02T10:15:22Z'), 10002, Decimal('10002.567',22,9), 102, 3, 'text message two'u, 502)
+,('main1-003'u, Timestamp('2023-01-02T10:15:23Z'), 10003, Decimal('10003.567',22,9), 103, 5, 'text message three'u, 503)
+,('main1-004'u, Timestamp('2024-01-02T10:15:24Z'), 10004, Decimal('10004.567',22,9), 104, 7, 'text message four'u, 504)
 ;
 INSERT INTO `test2/sub1` (c4, c7) VALUES
  (101, '101-aga'u)
@@ -171,15 +194,21 @@ INSERT INTO `test2/sub1` (c4, c7) VALUES
 ,(103, '103-aga'u)
 ,(104, '104-aga'u)
 ;
+INSERT INTO `test2/sub99` (c99, c100) VALUES
+ (501, '501-ugu'u)
+,(502, '502-ugu'u)
+,(503, '503-ugu'u)
+,(504, '504-ugu'u)
+;
 """;
 
     public static final String WRITE_UA_INIT2
             = """
-INSERT INTO `test2/main2` (id,c1,c2,c3,c4,c5,c6) VALUES
- ('main0-001'u, Timestamp('2021-01-02T11:15:21Z'), 20001, Decimal('20001.567',22,9), 201, 2, 'text message one'u)
-,('main0-002'u, Timestamp('2022-01-02T11:15:22Z'), 20002, Decimal('20002.567',22,9), 202, 4, 'text message two'u)
-,('main0-003'u, Timestamp('2023-01-02T11:15:23Z'), 20003, Decimal('20003.567',22,9), 203, 6, 'text message three'u)
-,('main0-004'u, Timestamp('2024-01-02T11:15:24Z'), 20004, Decimal('20004.567',22,9), 204, 8, 'text message four'u)
+INSERT INTO `test2/main2` (id,c1,c2,c3,c4,c5,c6,c99) VALUES
+ ('main0-001'u, Timestamp('2021-01-02T11:15:21Z'), 20001, Decimal('20001.567',22,9), 201, 2, 'text message one'u, 501)
+,('main0-002'u, Timestamp('2022-01-02T11:15:22Z'), 20002, Decimal('20002.567',22,9), 202, 4, 'text message two'u, 502)
+,('main0-003'u, Timestamp('2023-01-02T11:15:23Z'), 20003, Decimal('20003.567',22,9), 203, 6, 'text message three'u, 503)
+,('main0-004'u, Timestamp('2024-01-02T11:15:24Z'), 20004, Decimal('20004.567',22,9), 204, 8, 'text message four'u, 504)
 ;
 INSERT INTO `test2/sub2` (c4, c7) VALUES
  (201, '201-hehe'u)
@@ -198,6 +227,14 @@ UPSERT INTO `test2/main1` (id,c4,c6) VALUES
 UPSERT INTO `test2/main2` (id,c4,c6) VALUES
  ('main0-001'u, 204, 'text message one-bis'u)
 ,('main0-004'u, 201, 'text message four-bis'u)
+;
+""";
+
+    public static final String WRITE_UA_UPDATE2
+            = """
+UPSERT INTO `test2/sub99` (c99,c100) VALUES
+ (501, '501-ugu+1'u)
+,(503, '503-ugu+1'u)
 ;
 """;
 
@@ -291,10 +328,17 @@ UPSERT INTO `test2/main2` (id,c4,c6) VALUES
         System.err.println("[UUU] Checking the view output...");
         diffCount = checkViewOutput(svc);
         Assertions.assertEquals(0, diffCount);
+
+        System.err.println("[UUU] Writing input data 4...");
+        runDml(svc.getYdb(), WRITE_UA_UPDATE2);
+        dictionaryScanPause();
+        System.err.println("[UUU] Checking the view output...");
+        diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
     }
 
     private int checkViewOutput(MvService svc) {
-        return checkViewOutput(svc, "test2/mv1", SELECT_ALL_UA);
+        return checkViewOutput(svc, "test2/mv1", SELECT_ALL_UA, true);
     }
 
 }

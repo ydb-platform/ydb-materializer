@@ -14,16 +14,18 @@ import tech.ydb.mv.model.MvViewExpr;
 public class MvRowFilter {
 
     private final MvViewExpr target;
-    private MvViewExpr transformation;
+    private final MvViewExpr transformation;
     private final ArrayList<Block> blocks = new ArrayList<>();
 
     /**
      * Create filter for a specific view part.
      *
      * @param target View part for which the filter is built.
+     * @param transformation The expression to grab the dictionary keys
      */
-    public MvRowFilter(MvViewExpr target) {
+    public MvRowFilter(MvViewExpr target, MvViewExpr transformation) {
         this.target = target;
+        this.transformation = transformation;
     }
 
     public ArrayList<Block> getBlocks() {
@@ -36,10 +38,6 @@ public class MvRowFilter {
 
     public MvViewExpr getTransformation() {
         return transformation;
-    }
-
-    public void setTransformation(MvViewExpr transformation) {
-        this.transformation = transformation;
     }
 
     /**

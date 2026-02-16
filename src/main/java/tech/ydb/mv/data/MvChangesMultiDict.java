@@ -20,6 +20,7 @@ public class MvChangesMultiDict {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvChangesMultiDict.class);
 
+    // dictionary table name -> dictionary changes
     private final HashMap<String, MvChangesSingleDict> items = new HashMap<>();
 
     /**
@@ -58,6 +59,20 @@ public class MvChangesMultiDict {
     }
 
     /**
+     * Check if there are any changes in the specified dictionary table.
+     *
+     * @param tableName Dictionary table name
+     * @return true, if there are changes, false otherwise
+     */
+    public boolean hasKnownChanges(String tableName) {
+        var changes = items.get(tableName);
+        if (changes == null) {
+            return false;
+        }
+        return !changes.isEmpty();
+    }
+
+    /**
      * Build row filters for all view parts impacted by dictionary changes.
      *
      * @param handler Handler definition (views, sources).
@@ -92,7 +107,9 @@ public class MvChangesMultiDict {
         var columnUsage = getColumnUsage(target);
         var dictSources = target.getSources().stream()
                 .filter(js -> js.isRelated())
+                .filter(js -> js.getInput() != null)
                 .filter(js -> js.getInput().isBatchMode())
+                .filter(js -> hasKnownChanges(js.getInput().getTableName()))
                 .toList();
         // Collect key changes per dictionary source
         for (var dict : dictSources) {
@@ -118,7 +135,7 @@ public class MvChangesMultiDict {
         // matches dictionary transformation (used by ActionKeysFilter for SQL),
         // which is built from target.getSources() order.
         // For details see MvPathGenerator.makeDictTrans()
-        MvPathGenerator.Filter pathFilter = new MvPathGenerator.Filter();
+        var pathFilter = new MvPathGenerator.Filter();
         pathFilter.add(target.getTopMostSource());
         for (var src : target.getSources()) {
             if (src != target.getTopMostSource()
@@ -126,15 +143,14 @@ public class MvChangesMultiDict {
                 pathFilter.add(src);
             }
         }
-        MvViewExpr transformation = new MvPathGenerator(target).applyFilter(pathFilter);
+        var transformation = new MvPathGenerator(target).applyFilter(pathFilter);
         if (transformation == null) {
             LOG.error("DICTIONARY CHANGES LOST. Unable to build transformation "
                     + "for target {}, filter {}", target, pathFilter);
             return null;
         }
 
-        MvRowFilter filter = new MvRowFilter(target);
-        filter.setTransformation(transformation);
+        var filter = new MvRowFilter(target, transformation);
         int position = target.getTopMostSource().getTableInfo().getKey().size();
         for (var item : pathFilter.getItems()) {
             int length = item.source.getTableInfo().getKey().size();

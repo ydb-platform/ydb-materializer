@@ -23,8 +23,8 @@ class MvApply {
         return new SourceBuilder(table, selector);
     }
 
-    static TargetBuilder newTarget(MvViewExpr target, MvViewExpr dictTrans) {
-        return new TargetBuilder(target, dictTrans);
+    static TargetBuilder newTarget(MvViewExpr target) {
+        return new TargetBuilder(target);
     }
 
     static class Source {
@@ -77,12 +77,10 @@ class MvApply {
 
         private final MvViewExpr target;
         private final MvApplyActionList refreshActions;
-        private final MvViewExpr dictTrans;
 
         Target(TargetBuilder builder) {
             this.target = builder.target;
             this.refreshActions = new MvApplyActionList(builder.actions);
-            this.dictTrans = builder.dictTrans;
         }
 
         public MvViewExpr getTarget() {
@@ -92,21 +90,15 @@ class MvApply {
         public MvApplyActionList getRefreshActions() {
             return refreshActions;
         }
-
-        public MvViewExpr getDictTrans() {
-            return dictTrans;
-        }
     }
 
     static class TargetBuilder {
 
         private final MvViewExpr target;
         private final ArrayList<MvApplyAction> actions = new ArrayList<>();
-        private final MvViewExpr dictTrans;
 
-        TargetBuilder(MvViewExpr target, MvViewExpr dictTrans) {
+        TargetBuilder(MvViewExpr target) {
             this.target = target;
-            this.dictTrans = dictTrans;
         }
 
         TargetBuilder addAction(MvApplyAction action) {
@@ -151,10 +143,10 @@ class MvApply {
             return b;
         }
 
-        TargetBuilder makeTarget(MvViewExpr target, MvViewExpr dictTrans) {
+        TargetBuilder makeTarget(MvViewExpr target) {
             var b = targets.get(target);
             if (b == null) {
-                b = newTarget(target, dictTrans);
+                b = newTarget(target);
                 targets.put(target, b);
             }
             return b;
@@ -190,7 +182,7 @@ class MvApply {
             makeSource(source.getTableInfo()).addAction(actionSync);
             // Put the sync action as a refresh-only for this target
             MvPathGenerator pathGenerator = new MvPathGenerator(target);
-            makeTarget(target, pathGenerator.makeDictTrans()).addAction(actionSync);
+            makeTarget(target).addAction(actionSync);
             // Create configuration for other sources
             for (int sourceIndex = 1; sourceIndex < sourceCount; ++sourceIndex) {
                 source = target.getSources().get(sourceIndex);
