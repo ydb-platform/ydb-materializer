@@ -135,7 +135,7 @@ public class MvChangesMultiDict {
         // matches dictionary transformation (used by ActionKeysFilter for SQL),
         // which is built from target.getSources() order.
         // For details see MvPathGenerator.makeDictTrans()
-        MvPathGenerator.Filter pathFilter = new MvPathGenerator.Filter();
+        var pathFilter = new MvPathGenerator.Filter();
         pathFilter.add(target.getTopMostSource());
         for (var src : target.getSources()) {
             if (src != target.getTopMostSource()
@@ -143,15 +143,14 @@ public class MvChangesMultiDict {
                 pathFilter.add(src);
             }
         }
-        MvViewExpr transformation = new MvPathGenerator(target).applyFilter(pathFilter);
+        var transformation = new MvPathGenerator(target).applyFilter(pathFilter);
         if (transformation == null) {
             LOG.error("DICTIONARY CHANGES LOST. Unable to build transformation "
                     + "for target {}, filter {}", target, pathFilter);
             return null;
         }
 
-        MvRowFilter filter = new MvRowFilter(target);
-        filter.setTransformation(transformation);
+        var filter = new MvRowFilter(target, transformation);
         int position = target.getTopMostSource().getTableInfo().getKey().size();
         for (var item : pathFilter.getItems()) {
             int length = item.source.getTableInfo().getKey().size();

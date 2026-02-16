@@ -29,24 +29,23 @@ class ActionKeysFilter extends ActionBase implements MvApplyAction {
     private final MvRowFilter filter;
     private final String sqlSelect;
 
-    public ActionKeysFilter(MvActionContext context, MvViewExpr target,
-            MvViewExpr dictTrans, MvRowFilter filter) {
-        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), target));
-        this.target = target;
+    public ActionKeysFilter(MvActionContext context, MvRowFilter filter) {
+        super(context, MvMetrics.scopeForActionFilter(context.getHandler(), filter.getTarget()));
+        this.target = filter.getTarget();
         this.topmostKey = target.getTopMostSource().getTableInfo().getKeyInfo();
         this.filter = filter;
-        try (MvSqlGen sg = new MvSqlGen(dictTrans)) {
+        try (MvSqlGen sg = new MvSqlGen(filter.getTransformation())) {
             this.sqlSelect = sg.makeSelect();
         }
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, total {} filter(s)",
                 instance, context.getHandler().getName(), target.getName(),
                 target.getAlias(), filter.getBlocks().size());
-//        if (LOG.isDebugEnabled()) {
-        LOG.info(" [{}] \tInput grabber SQL: {}", instance, sqlSelect);
-        for (var block : filter.getBlocks()) {
-            LOG.info(" [{}] \tFiltering block: {}", instance, block);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(" [{}] \tInput grabber SQL: {}", instance, sqlSelect);
+            for (var block : filter.getBlocks()) {
+                LOG.debug(" [{}] \tFiltering block: {}", instance, block);
+            }
         }
-//        }
     }
 
     @Override
