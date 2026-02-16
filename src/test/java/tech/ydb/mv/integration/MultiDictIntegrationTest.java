@@ -24,7 +24,7 @@ import tech.ydb.mv.parser.MvSqlGen;
  *
  * @author zinal
  */
-public class BatchMultiDictIntegrationTest extends AbstractIntegrationBase {
+public class MultiDictIntegrationTest extends AbstractIntegrationBase {
 
     /**
      * Update BOTH dictionary tables (sub_table4 and sub_table5) so that when
@@ -34,25 +34,25 @@ public class BatchMultiDictIntegrationTest extends AbstractIntegrationBase {
     private static final String WRITE_DICTS_0
             = """
 UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
- (101, 'Eins Updated 0'u)
-,(103, 'Drei Updated 0'u);
+ (101, 'sub_table4 Eins Updated 0'u)
+,(103, 'sub_table4 Drei Updated 0'u);
 UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
- (102, 'Zwei Updated 0'u)
-,(104, 'Vier Updated 0'u);
+ (202, 'sub_table5 Zwei Updated 0'u)
+,(204, 'sub_table5 Vier Updated 0'u);
 """;
 
     private static final String WRITE_DICTS_1
             = """
 UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
- (101, 'Eins Updated 1'u)
-,(103, 'Drei Updated 1'u);
+ (102, 'sub_table4 Zwei Updated 1'u)
+,(104, 'sub_table4 Vier Updated 1'u);
 """;
 
     private static final String WRITE_DICTS_2
             = """
 UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
- (102, 'Zwei Updated 2'u)
-,(104, 'Vier Updated 2'u);
+ (201, 'sub_table5 Eins Updated 2'u)
+,(203, 'sub_table5 Drei Updated 2'u);
 """;
 
     @BeforeEach
@@ -119,7 +119,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
                 pause(10_000L);
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery, false);
+                diffCount = checkViewOutput(conn, sqlQuery, true);
                 Assertions.assertEquals(0, diffCount,
                         "View output mismatch after dictionary refresh with BOTH dicts");
 
@@ -137,7 +137,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 System.err.println("[AAA] Waiting for dictionary refresh (multi-dict scan)...");
                 pause(15_000L);
                 System.err.println("[AAA] Checking the view output...");
-                diffCount = checkViewOutput(conn, sqlQuery, false);
+                diffCount = checkViewOutput(conn, sqlQuery, true);
                 Assertions.assertEquals(0, diffCount,
                         "View output mismatch after dictionary refresh with SECOND dicts");
             } finally {
