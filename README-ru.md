@@ -52,7 +52,7 @@ YDB Materializer может быть встроен как библиотека 
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.13</version>
+            <version>1.14</version>
         </dependency>
 ```
 
