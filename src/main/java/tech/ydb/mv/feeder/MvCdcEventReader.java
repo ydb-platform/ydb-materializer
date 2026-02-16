@@ -42,7 +42,7 @@ class MvCdcEventReader extends AbstractReadEventHandler {
         synchronized (closedPartitions) {
             exists = closedPartitions.remove(ev.getPartitionSession().getPartitionId());
         }
-        if (exists) {
+        if (exists && owner.isRunning()) {
             LOG.info("Feeder `{}` topic `{}` session {} for partition {} "
                     + "re-established with last committed offset {}",
                     owner.getName(), ev.getPartitionSession().getPath(),

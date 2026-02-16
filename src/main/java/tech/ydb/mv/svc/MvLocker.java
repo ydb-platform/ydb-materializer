@@ -181,15 +181,9 @@ public class MvLocker implements AutoCloseable {
         }
 
         boolean check() {
-            switch (session.getState()) {
-                case LOST:
-                case CLOSED:
-                    return false;
-                default:
-                    ;
-            }
             var result = session.describeSemaphore(name, DescribeSemaphoreMode.WITH_OWNERS).join();
             if (!result.isSuccess()) {
+                LOG.info("Negative check for lock `{}` due to operation result {}", name, result.getStatus());
                 return false;
             }
             for (var owner : result.getValue().getOwnersList()) {
@@ -197,6 +191,7 @@ public class MvLocker implements AutoCloseable {
                     return true;
                 }
             }
+            LOG.info("Negative check for lock `{}` due to owner mismatch", name);
             return false;
         }
 

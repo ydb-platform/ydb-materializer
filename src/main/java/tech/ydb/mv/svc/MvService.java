@@ -411,7 +411,8 @@ public class MvService implements MvApi {
         for (MvJobController c : grabControllers()) {
             c.getApplyManager().refreshSelectors(ydb.getTableClient());
             if (!c.validateDatabaseLock()) {
-                LOG.warn("Lost distributed lock for handler `{}`, shutting it down...");
+                LOG.warn("Lost distributed lock for handler `{}`, shutting it down...",
+                        c.getName());
                 stopHandler(c.getName());
             }
         }
