@@ -2,6 +2,9 @@ package tech.ydb.mv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.util.Base64;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.mgt.MvBatchSettings;
@@ -155,7 +158,7 @@ public class App {
             LOG.info("Starting the YDB Materializer...");
             try (YdbConnector conn = new YdbConnector(ycc, isManagementMode(mode))) {
                 LOG.info("Database connection established.");
-                try (MvApi api = MvApi.newInstance(conn)) {
+                try (MvApi api = MvApi.newInstance(conn, MvApi.generateId())) {
                     new App(conn, api).run(mode);
                 }
             }

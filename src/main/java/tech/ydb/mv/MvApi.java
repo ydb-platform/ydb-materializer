@@ -2,7 +2,10 @@ package tech.ydb.mv;
 
 import tech.ydb.mv.svc.MvService;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 
 import tech.ydb.mv.model.MvDictionarySettings;
@@ -22,11 +25,38 @@ public interface MvApi extends AutoCloseable {
      * Create the new service API instance.
      *
      * @param ydb YDB connection
+     * @param identification Identification string
+     * @return New service API instance created and configured
+     */
+    static MvApi newInstance(YdbConnector ydb, String identification) {
+        return new MvService(ydb, identification);
+    }
+
+    /**
+     * Create the new service API instance.
+     *
+     * @param ydb YDB connection
      * @return New service API instance created and configured
      */
     static MvApi newInstance(YdbConnector ydb) {
-        return new MvService(ydb);
+        return new MvService(ydb, generateId());
     }
+
+    /**
+     * Generate a unique runner ID.
+     */
+    static String generateId() {
+        UUID uuid = UUID.randomUUID();
+        ByteBuffer bb = ByteBuffer.allocate(16);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return Base64.getUrlEncoder().encodeToString(bb.array()).substring(0, 22);
+    }
+
+    /**
+     * @return Identification value
+     */
+    String getIdentification();
 
     /**
      * @return The instance of the scheduler to run the tasks against.

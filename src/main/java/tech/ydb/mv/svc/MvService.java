@@ -39,6 +39,7 @@ public class MvService implements MvApi {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(MvService.class);
 
     private final YdbConnector ydb;
+    private final String identification;
     private final MvMetadata metadata;
     private final MvLocker locker;
     private final AtomicReference<MvHandlerSettings> handlerSettings;
@@ -50,11 +51,12 @@ public class MvService implements MvApi {
     private volatile MvDictionaryLogger dictionaryManager = null;
     private final HashMap<String, MvJobController> handlers = new HashMap<>();
 
-    public MvService(YdbConnector ydb) {
+    public MvService(YdbConnector ydb, String identification) {
         this.ydb = ydb;
+        this.identification = identification;
         this.metadata = loadMetadata(ydb, null);
         if (ydb.isManagementEnabled()) {
-            this.locker = new MvLocker(ydb.getConnMgt());
+            this.locker = new MvLocker(ydb.getConnMgt(), "service://" + identification);
         } else {
             this.locker = null;
         }
@@ -62,6 +64,15 @@ public class MvService implements MvApi {
         this.dictionarySettings = new AtomicReference<>(new MvDictionarySettings());
         this.scanSettings = new AtomicReference<>(new MvScanSettings());
         this.scheduler = Executors.newScheduledThreadPool(1);
+    }
+
+    public MvService(YdbConnector ydb) {
+        this(ydb, MvApi.generateId());
+    }
+
+    @Override
+    public String getIdentification() {
+        return identification;
     }
 
     @Override

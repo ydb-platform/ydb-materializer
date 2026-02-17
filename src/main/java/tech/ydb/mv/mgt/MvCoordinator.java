@@ -64,7 +64,7 @@ public class MvCoordinator implements AutoCloseable {
             MvBatchSettings settings, String runnerId,
             ScheduledExecutorService scheduler,
             MvCoordinatorActions job) {
-        MvLocker locker = new MvLocker(ydb.getConnMgt());
+        MvLocker locker = new MvLocker(ydb.getConnMgt(), "coordinator://" + runnerId);
         MvJobDao jobDao = new MvJobDao(ydb.getConnMgt(), settings);
         if (scheduler == null) {
             scheduler = Executors.newScheduledThreadPool(1);

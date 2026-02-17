@@ -1,12 +1,9 @@
 package tech.ydb.mv.mgt;
 
-import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.MvApi;
@@ -41,12 +38,12 @@ public class MvRunner implements AutoCloseable {
         this.api = api;
         this.settings = settings;
         this.tableOps = new MvJobDao(ydb.getConnMgt(), settings);
-        this.runnerId = (runnerId == null) ? generateRunnerId() : runnerId;
+        this.runnerId = (runnerId == null) ? MvApi.generateId() : runnerId;
         this.runnerIdentity = generateRunnerIdentity();
     }
 
     public MvRunner(YdbConnector ydb, MvApi api, MvBatchSettings settings) {
-        this(ydb, api, settings, null);
+        this(ydb, api, settings, api.getIdentification());
     }
 
     public MvRunner(YdbConnector ydb, MvApi api, String runnerId) {
@@ -54,7 +51,7 @@ public class MvRunner implements AutoCloseable {
     }
 
     public MvRunner(YdbConnector ydb, MvApi api) {
-        this(ydb, api, new MvBatchSettings(), null);
+        this(ydb, api, new MvBatchSettings(), api.getIdentification());
     }
 
     public int getJobsCount() {
@@ -365,26 +362,15 @@ public class MvRunner implements AutoCloseable {
     }
 
     /**
-     * Generate a unique runner ID.
-     */
-    private String generateRunnerId() {
-        UUID uuid = UUID.randomUUID();
-        ByteBuffer bb = ByteBuffer.allocate(16);
-        bb.putLong(uuid.getMostSignificantBits());
-        bb.putLong(uuid.getLeastSignificantBits());
-        return Base64.getUrlEncoder().encodeToString(bb.array()).substring(0, 22);
-    }
-
-    /**
      * Generate runner identity information.
      */
-    private String generateRunnerIdentity() {
+    public String generateRunnerIdentity() {
         return "host:" + getHostname()
                 + ",pid:" + getProcessId()
                 + ",start:" + System.currentTimeMillis();
     }
 
-    private String getHostname() {
+    public static String getHostname() {
         try {
             return java.net.InetAddress.getLocalHost().getHostName();
         } catch (Exception ex) {
@@ -392,7 +378,7 @@ public class MvRunner implements AutoCloseable {
         }
     }
 
-    private long getProcessId() {
+    public static long getProcessId() {
         try {
             return ProcessHandle.current().pid();
         } catch (Exception ex) {

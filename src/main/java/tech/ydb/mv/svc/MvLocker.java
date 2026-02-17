@@ -1,6 +1,8 @@
 package tech.ydb.mv.svc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -26,8 +28,9 @@ public class MvLocker implements AutoCloseable {
     private final String nodePath;
     private final HashMap<String, Lease> leases = new HashMap<>();
     private final Duration timeout;
+    private final byte[] identification;
 
-    public MvLocker(MvConnector.ConnMgt conn) {
+    public MvLocker(MvConnector.ConnMgt conn, String identification) {
         this.retryCtx = conn.getQueryRetryCtx();
         this.client = conn.getCoordinationClient();
         this.nodePath = conn.getProperty(MvConfig.CONF_COORD_PATH, MvConfig.DEF_COORD_PATH);
@@ -37,6 +40,7 @@ public class MvLocker implements AutoCloseable {
             seconds = 5;
         }
         this.timeout = Duration.ofSeconds(seconds);
+        this.identification = identification.getBytes(StandardCharsets.UTF_8);
         LOG.debug("Initialized locking guard {} on `{}` with default timeout {}",
                 System.identityHashCode(this), this.nodePath, this.timeout);
     }
@@ -147,7 +151,12 @@ public class MvLocker implements AutoCloseable {
         if (lease == null) {
             return false;
         }
-        return lease.check();
+        try {
+            return lease.check();
+        } catch (Exception ex) {
+            LOG.warn("Lock `{}` check threw an exception", name, ex);
+            return true; // we cannot decide that semaphore is gone here
+        }
     }
 
     private CoordinationSession obtainSession() {
@@ -172,11 +181,11 @@ public class MvLocker implements AutoCloseable {
             this.session = obtainSession();
             try {
                 this.semaphore = this.session
-                        .acquireEphemeralSemaphore(name, true, timeout)
+                        .acquireEphemeralSemaphore(name, true, identification, timeout)
                         .join().getValue();
             } catch (Exception ex) {
                 this.session.close();
-                throw new RuntimeException("Failed to obtain lock " + name, ex);
+                throw ex;
             }
         }
 
@@ -186,10 +195,12 @@ public class MvLocker implements AutoCloseable {
                 LOG.info("Negative check for lock `{}` due to operation result {}", name, result.getStatus());
                 return false;
             }
+            var owners = new ArrayList<Long>();
             for (var owner : result.getValue().getOwnersList()) {
                 if (owner.getId() == session.getId()) {
                     return true;
                 }
+                owners.add(owner.getId());
             }
             LOG.info("Negative check for lock `{}` due to owner mismatch", name);
             return false;
