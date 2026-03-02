@@ -70,6 +70,11 @@ public class MvSqlPrinter {
         pw.println("  ** Delete statement:");
         pw.println();
         pw.println(sg.makePlainDelete());
+        if (!mt.isDestKeyDirect()) {
+            pw.println("  ** Pre-delete keys grabbing statement:");
+            pw.println();
+            pw.println(new MvPathGenerator(mt).makeTargetKeysSql());
+        }
         pw.println("  ** Topmost scan start:");
         pw.println();
         pw.println(sg.makeScanStart());
@@ -87,12 +92,6 @@ public class MvSqlPrinter {
             if (!js.getInput().isBatchMode()) {
                 writeKeyExtraction(pw, pathGen, js);
             }
-        }
-        var filterExpr = pathGen.makeDictTrans();
-        if (filterExpr != null) {
-            pw.println("  ** Dictionary filter input statement:");
-            pw.println();
-            pw.println(new MvSqlGen(filterExpr).makeSelect());
         }
     }
 

@@ -214,11 +214,8 @@ public class MvSqlParser {
             if (colref.table_alias() == null || colref.column_name() == null) {
                 continue;
             }
-            var src = new MvComputation.Source(
-                    unquote(colref.table_alias().ID_PLAIN()),
-                    unquote(colref.column_name().identifier().ID_PLAIN())
-            );
-            expr.getSources().add(src);
+            expr.addSource(unquote(colref.table_alias().ID_PLAIN()),
+                    unquote(colref.column_name().identifier().ID_PLAIN()));
         }
         return expr;
     }

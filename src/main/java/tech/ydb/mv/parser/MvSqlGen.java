@@ -59,8 +59,22 @@ public class MvSqlGen implements AutoCloseable {
         /* noop */
     }
 
-    public StructType toKeyType() {
-        return toKeyType(target);
+    public StructType toSourceKeyType() {
+        if (target == null || target.getSources().isEmpty()) {
+            throw new IllegalArgumentException();
+        }
+        return toKeyType(target.getTopMostSource().getTableInfo());
+    }
+
+    /**
+     * Returns the key type for the destination table's primary key. Used for DELETE operations when destination PK may
+     * differ from topmost. Falls back to topmost key type when destination table info is unavailable.
+     */
+    public StructType toDestinationKeyType() {
+        if (target == null || target.getTableInfo() == null) {
+            throw new IllegalArgumentException();
+        }
+        return toKeyType(target.getTableInfo());
     }
 
     public StructType toRowType() {
@@ -72,13 +86,13 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     /**
-     * The create table variant grabs data types from the input tables, and
-     * combines them into the definition of the output MV table.
+     * The create table variant grabs data types from the input tables, and combines them into the definition of the
+     * output MV table.
      *
      * @return CREATE TABLE statement
      */
     public String makeCreateTable() {
-        final StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         sb.append("CREATE TABLE ");
         safeId(sb, target.getName());
         sb.append(" (").append(EOL);
@@ -122,7 +136,7 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String makeCreateView() {
-        final StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         sb.append("CREATE VIEW ");
         safeId(sb, target.getName()).append(EOL);
         sb.append("  WITH (security_invoker=TRUE) AS").append(EOL);
@@ -132,22 +146,22 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     public String makeSelectAll() {
-        final StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         genFullSelect(sb, false);
         sb.append(";").append(EOL);
         return sb.toString();
     }
 
     public String makeSelect() {
-        final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyList(sb);
+        var sb = new StringBuilder();
+        genDeclareKeyList(sb, toSourceKeyType());
         genFullSelect(sb, true);
         sb.append(";").append(EOL);
         return sb.toString();
     }
 
     public String makePlainUpsert() {
-        final StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         genDeclareTargetFields(sb);
         sb.append("UPSERT INTO ");
         safeId(sb, target.getName()).append(EOL);
@@ -156,9 +170,18 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    /**
+     * Generates DELETE statement.
+     *
+     * When isDestKeyDirect is true, uses destination table's PK type (for DELETE after key expansion).
+     */
     public String makePlainDelete() {
-        final StringBuilder sb = new StringBuilder();
-        genDeclareMainKeyList(sb);
+        var sb = new StringBuilder();
+        if (target.isDestKeyDirect()) {
+            genDeclareKeyList(sb, toSourceKeyType());
+        } else {
+            genDeclareKeyList(sb, toDestinationKeyType());
+        }
         sb.append("DELETE FROM ");
         safeId(sb, target.getName()).append(EOL);
         sb.append(" ON SELECT * FROM AS_TABLE(").append(SYS_KEYS_VAR).append(")");
@@ -227,13 +250,10 @@ public class MvSqlGen implements AutoCloseable {
         }
     }
 
-    private void genDeclareMainKeyList(StringBuilder sb) {
-        if (target.getSources().isEmpty()) {
-            throw new IllegalStateException("No source tables for target `" + target.getName() + "`");
-        }
+    private void genDeclareKeyList(StringBuilder sb, StructType st) {
         sb.append("DECLARE ").append(SYS_KEYS_VAR).append(" AS ");
         sb.append("List<");
-        formatType(sb, toKeyType());
+        formatType(sb, st);
         sb.append(">;").append(EOL);
     }
 
@@ -558,13 +578,6 @@ public class MvSqlGen implements AutoCloseable {
             }
         }
         return output;
-    }
-
-    public static StructType toKeyType(MvViewExpr target) {
-        if (target == null || target.getSources().isEmpty()) {
-            throw new IllegalArgumentException();
-        }
-        return toKeyType(target.getTopMostSource().getTableInfo());
     }
 
     public static StructType toKeyType(MvTableInfo ti) {

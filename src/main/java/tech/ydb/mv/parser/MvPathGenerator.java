@@ -2,6 +2,7 @@ package tech.ydb.mv.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 
 import tech.ydb.mv.model.MvColumn;
 import tech.ydb.mv.model.MvComputation;
@@ -96,12 +98,15 @@ public class MvPathGenerator {
      * @return Transformation after the filter is applied
      */
     public MvViewExpr applyFilter(Filter filter) {
-        if (filter == null || filter.items.isEmpty()) {
+        if (filter == null || filter.isEmpty()) {
             throw new IllegalArgumentException("Empty filter passed");
         }
 
         Set<MvJoinSource> required = new HashSet<>();
-        for (FilterItem item : filter.items) {
+        for (var item : filter.getItems()) {
+            if (item.isEmpty()) {
+                continue;
+            }
             if (!expr.getSources().contains(item.source)) {
                 throw new IllegalArgumentException("Filter contains join source "
                         + "`" + item.source.getTableAlias() + "` which is not included "
@@ -121,11 +126,11 @@ public class MvPathGenerator {
         MvViewExpr result = new MvViewExpr("filter");
         // Add all sources
         int index = 0;
-        for (MvJoinSource src : expr.getSources()) {
+        for (var src : expr.getSources()) {
             if (!required.contains(src)) {
                 continue;
             }
-            MvJoinSource dst = cloneJoinSource(src);
+            var dst = cloneJoinSource(src);
             if (index == 0) {
                 dst.setMode(MvJoinMode.MAIN);
             } else {
@@ -154,16 +159,16 @@ public class MvPathGenerator {
 
         // Add the requested columns
         index = 0;
-        for (FilterItem item : filter.items) {
-            MvJoinSource ref = result.getSourceByAlias(item.source.getTableAlias());
+        for (var item : filter.getItems()) {
+            var ref = result.getSourceByAlias(item.source.getTableAlias());
             if (ref == null) {
                 throw new IllegalStateException("Could not find reference by name: "
                         + item.source.getTableAlias());
             }
             for (String fieldName : item.fieldNames) {
-                MvColumn column = new MvColumn("c" + String.valueOf(index++));
-                column.setSourceAlias(ref.getTableAlias());
+                var column = new MvColumn("c" + String.valueOf(index++));
                 column.setSourceRef(ref);
+                column.setSourceAlias(ref.getTableAlias());
                 column.setSourceColumn(fieldName);
                 column.setType(ref.getTableInfo().getColumns().get(fieldName));
                 if (column.getType() == null) {
@@ -179,31 +184,68 @@ public class MvPathGenerator {
         return result;
     }
 
-    /**
-     * Create the transformation to grab the keys for dictionary scans.
-     *
-     * The order of the output columns matches the order of sources in the
-     * original MV expression.
-     *
-     * @return Transformation returning the primary key of the topmost-left
-     * table along with the fields for dictionary filter checks. null if there
-     * are no BATCH-style inputs.
-     */
-    public MvViewExpr makeDictTrans() {
-        var batchSources = expr.getSources().stream()
-                .filter(js -> js.isTableKnown())
-                .filter(js -> js.getInput() != null && js.getInput().isBatchMode())
-                .filter(js -> js.isRelated())
-                .toList();
-        if (batchSources.isEmpty()) {
-            return null;
+    public MvViewExpr makeTargetKeysTrans() {
+        if (expr.getTableInfo() == null) {
+            throw new IllegalStateException("Destination table information "
+                    + "has not been configured");
         }
         var filter = MvPathGenerator.newFilter();
-        filter.add(topMostSource, topMostSource.getKeyColumnNames());
-        for (var js : batchSources) {
-            filter.add(js, js.getKeyColumnNames());
+        for (String targetKeyName : expr.getTableInfo().getKey()) {
+            var origCol = expr.getColumnByName(targetKeyName);
+            if (origCol == null) {
+                throw new IllegalStateException("Key column `" + targetKeyName
+                        + "` has not been defined in MV `" + expr.getName()
+                        + " as " + expr.getAlias());
+            }
+            if (origCol.isReference()) {
+                filter.add(origCol.getSourceRef());
+            } else if (origCol.isComputation()) {
+                for (var src : origCol.getComputation().getSources()) {
+                    filter.add(src.getReference());
+                }
+            }
         }
-        return applyFilter(filter);
+
+        MvViewExpr ret;
+        if (filter.isEmpty()) {
+            ret = new MvViewExpr("empty");
+        } else {
+            ret = applyFilter(filter);
+        }
+        // Replace the transformation output columns with the destination primary key
+        ret.getColumns().clear();
+        for (String targetKeyName : expr.getTableInfo().getKey()) {
+            var origCol = expr.getColumnByName(targetKeyName);
+            ret.getColumns().add(cloneColumn(ret, origCol));
+        }
+        return ret;
+    }
+
+    public String makeTargetKeysSql() {
+        return new MvSqlGen(makeTargetKeysTrans()).makeSelect();
+    }
+
+    private static MvColumn cloneColumn(MvViewExpr dest, MvColumn input) {
+        var newCol = new MvColumn(input.getName());
+        newCol.setType(input.getType());
+        if (input.isReference()) {
+            newCol.setSourceRef(dest.getSourceByAlias(input.getSourceAlias()));
+            newCol.setSourceAlias(input.getSourceAlias());
+            newCol.setSourceColumn(input.getSourceColumn());
+        } else if (input.isComputation()) {
+            MvComputation newCmp = null;
+            var oldCmp = input.getComputation();
+            if (oldCmp.isLiteral()) {
+                newCmp = new MvComputation(dest.addLiteral(oldCmp.getLiteral().getValue()));
+            } else {
+                newCmp = new MvComputation(oldCmp.getExpression());
+                for (var src : oldCmp.getSources()) {
+                    newCmp.addSource(dest.getSourceByAlias(src.getAlias()), src.getColumn());
+                }
+            }
+            newCol.setComputation(newCmp);
+        }
+        return newCol;
     }
 
     /**
@@ -655,15 +697,15 @@ public class MvPathGenerator {
         Map<MvJoinSource, List<MvJoinSource>> map = new HashMap<>();
 
         // Initialize map with all sources
-        for (MvJoinSource source : target.getSources()) {
+        for (var source : target.getSources()) {
             map.put(source, new ArrayList<>());
         }
 
         // Add connections based on join conditions
-        for (MvJoinSource source : target.getSources()) {
-            for (MvJoinCondition condition : source.getConditions()) {
-                MvJoinSource firstRef = condition.getFirstRef();
-                MvJoinSource secondRef = condition.getSecondRef();
+        for (var source : target.getSources()) {
+            for (var condition : source.getConditions()) {
+                var firstRef = condition.getFirstRef();
+                var secondRef = condition.getSecondRef();
 
                 // Handle alias-based references
                 if (firstRef == null && condition.getFirstAlias() != null) {
@@ -690,30 +732,63 @@ public class MvPathGenerator {
 
     public static final class FilterItem {
 
-        public final MvJoinSource source;
-        public final String[] fieldNames;
+        private final MvJoinSource source;
+        private final TreeSet<String> fieldNames;
 
-        FilterItem(MvJoinSource source, String[] fieldNames) {
+        FilterItem(MvJoinSource source) {
             this.source = source;
-            this.fieldNames = fieldNames;
+            this.fieldNames = new TreeSet<>();
+        }
+
+        public MvJoinSource getSource() {
+            return source;
+        }
+
+        public TreeSet<String> getFieldNames() {
+            return fieldNames;
+        }
+
+        public boolean isEmpty() {
+            return fieldNames.isEmpty();
         }
 
         @Override
         public String toString() {
-            return "{" + source + ": " + Arrays.toString(fieldNames) + '}';
+            return "{" + source + ": " + fieldNames + '}';
         }
     }
 
     public static final class Filter {
 
-        private final ArrayList<FilterItem> items = new ArrayList<>();
+        private final HashMap<String, FilterItem> items = new HashMap<>();
 
-        public ArrayList<FilterItem> getItems() {
-            return items;
+        public boolean isEmpty() {
+            for (var item : items.values()) {
+                if (!item.isEmpty()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public Collection<FilterItem> getItems() {
+            return items.values();
+        }
+
+        public FilterItem addItem(MvJoinSource source) {
+            var item = items.get(source.getTableAlias());
+            if (item == null) {
+                item = new FilterItem(source);
+                items.put(source.getTableAlias(), item);
+            }
+            return item;
         }
 
         public Filter add(MvJoinSource source, String... names) {
-            items.add(new FilterItem(source, names));
+            var item = addItem(source);
+            for (String name : names) {
+                item.fieldNames.add(name);
+            }
             return this;
         }
 

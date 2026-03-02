@@ -153,8 +153,8 @@ public class MvChangesMultiDict {
         var filter = new MvRowFilter(target, transformation);
         int position = target.getTopMostSource().getTableInfo().getKey().size();
         for (var item : pathFilter.getItems()) {
-            int length = item.source.getTableInfo().getKey().size();
-            var keys = dictChecks.get(item.source.getTableAlias());
+            int length = item.getSource().getTableInfo().getKey().size();
+            var keys = dictChecks.get(item.getSource().getTableAlias());
             if (keys != null) {
                 // processing just the relevant tables
                 filter.addBlock(position, length, keys);
