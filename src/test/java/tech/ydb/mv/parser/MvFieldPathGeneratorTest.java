@@ -192,4 +192,117 @@ public class MvFieldPathGeneratorTest {
         assertEquals(1, result.getSources().get(2).getConditions().size());
         assertEquals(5, result.getColumns().size());
     }
+
+    /**
+     * Verifies that applyFilter() produces columns in the same order as defined
+     * by the sequence of Filter.add() calls. The ordering is critical for
+     * ActionKeysFilter which expects column positions to match dictionary blocks.
+     */
+    @Test
+    public void testApplyFilterColumnOrderingMatchesFilterAddSequence() {
+        // Filter: add(sourceA, "id"), add(sourceB, "id", "a_id"), add(sourceD, "id", "a_id")
+        // Expected column order: a.id, b.id, b.a_id, d.id, d.a_id
+        var filter = MvPathGenerator.newFilter()
+                .add(sourceA, "id")
+                .add(sourceB, "id", "a_id")
+                .add(sourceD, "id", "a_id");
+
+        MvViewExpr result = new MvPathGenerator(originalTarget).applyFilter(filter);
+
+        var columns = result.getColumns();
+        assertEquals(5, columns.size());
+
+        assertColumnAt(columns, 0, "a", "id");
+        assertColumnAt(columns, 1, "b", "id");
+        assertColumnAt(columns, 2, "b", "a_id");
+        assertColumnAt(columns, 3, "d", "id");
+        assertColumnAt(columns, 4, "d", "a_id");
+
+        // Verify generated SQL lists columns in the same order
+        String sql = new MvSqlGen(result).makeSelect();
+        assertSqlColumnOrder(sql, "a.id", "b.id", "b.a_id", "d.id", "d.a_id");
+    }
+
+    /**
+     * Verifies column ordering when add() calls are interleaved across sources.
+     * Order must follow the exact sequence of column names passed to add().
+     */
+    @Test
+    public void testApplyFilterColumnOrderingInterleavedSources() {
+        // Interleaved: a.id, d.id, b.id, b.a_id, a.name
+        var filter = MvPathGenerator.newFilter()
+                .add(sourceA, "id")
+                .add(sourceD, "id")
+                .add(sourceB, "id", "a_id")
+                .add(sourceA, "name");
+
+        MvViewExpr result = new MvPathGenerator(originalTarget).applyFilter(filter);
+
+        var columns = result.getColumns();
+        assertEquals(5, columns.size());
+
+        assertColumnAt(columns, 0, "a", "id");
+        assertColumnAt(columns, 1, "d", "id");
+        assertColumnAt(columns, 2, "b", "id");
+        assertColumnAt(columns, 3, "b", "a_id");
+        assertColumnAt(columns, 4, "a", "name");
+
+        String sql = new MvSqlGen(result).makeSelect();
+        assertSqlColumnOrder(sql, "a.id", "d.id", "b.id", "b.a_id", "a.name");
+    }
+
+    /**
+     * Verifies column ordering with single source and multiple columns.
+     */
+    @Test
+    public void testApplyFilterColumnOrderingSingleSourceMultipleColumns() {
+        var filter = MvPathGenerator.newFilter()
+                .add(sourceB, "id", "a_id", "some", "description");
+
+        MvViewExpr result = new MvPathGenerator(originalTarget).applyFilter(filter);
+
+        var columns = result.getColumns();
+        assertEquals(4, columns.size());
+
+        assertColumnAt(columns, 0, "b", "id");
+        assertColumnAt(columns, 1, "b", "a_id");
+        assertColumnAt(columns, 2, "b", "some");
+        assertColumnAt(columns, 3, "b", "description");
+
+        String sql = new MvSqlGen(result).makeSelect();
+        assertSqlColumnOrder(sql, "b.id", "b.a_id", "b.some", "b.description");
+    }
+
+    private static void assertColumnAt(java.util.List<MvColumn> columns, int index,
+            String expectedAlias, String expectedSourceColumn) {
+        MvColumn col = columns.get(index);
+        assertEquals(expectedAlias, col.getSourceAlias(),
+                "Column at index " + index + " should have alias " + expectedAlias);
+        assertEquals(expectedSourceColumn, col.getSourceColumn(),
+                "Column at index " + index + " should have sourceColumn " + expectedSourceColumn);
+    }
+
+    private static void assertSqlColumnOrder(String sql, String... expectedColumnRefs) {
+        // SQL format: "alias.column AS name" - extract SELECT clause and check column order
+        int selectStart = sql.indexOf("SELECT");
+        assertTrue(selectStart >= 0, "SQL should contain SELECT");
+        int fromStart = sql.indexOf("FROM", selectStart);
+        assertTrue(fromStart >= 0, "SQL should contain FROM");
+        String selectClause = sql.substring(selectStart + 6, fromStart);
+
+        String[] parts = selectClause.split(",");
+        assertEquals(expectedColumnRefs.length, parts.length,
+                "Number of columns in SELECT should match expected");
+
+        for (int i = 0; i < expectedColumnRefs.length; i++) {
+            String part = parts[i].trim();
+            // Extract "alias.column" from "alias.column AS cN" (or "`alias`.`column` AS `cN`")
+            int asIdx = part.indexOf(" AS ");
+            String columnRef = asIdx >= 0 ? part.substring(0, asIdx).trim() : part;
+            String normalized = columnRef.replace("`", "");
+            String expected = expectedColumnRefs[i].replace("`", "");
+            assertTrue(normalized.equals(expected),
+                    "Column at position " + i + " should be " + expected + ", got: " + normalized);
+        }
+    }
 }
