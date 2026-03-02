@@ -61,8 +61,8 @@ UPSERT INTO `test1/sub_table3` (c5,c10) VALUES
     private static final String WRITE_UP4
             = """
 UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
- (101, 'Eins - Bis'u)
-,(103, 'Drei - Bis'u)
+ (101, 'sub_table4 Eins - Bis'u)
+,(103, 'sub_table4 Drei - Bis'u)
 ;
 """;
 
@@ -153,7 +153,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 diffCount = checkViewOutput(conn, sqlQuery);
                 if (diffCount > 0) {
                     System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
+                    //System.out.println(generateThreadDump());
                 }
                 Assertions.assertEquals(0, diffCount);
 
@@ -174,7 +174,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 diffCount = checkViewOutput(conn, sqlQuery);
                 if (diffCount > 0) {
                     System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
+                    //System.out.println(generateThreadDump());
                 }
                 Assertions.assertEquals(0, diffCount);
 
@@ -191,7 +191,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 diffCount = checkViewOutput(conn, sqlQuery);
                 if (diffCount > 0) {
                     System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
+                    //System.out.println(generateThreadDump());
                 }
                 Assertions.assertEquals(0, diffCount);
             } finally {

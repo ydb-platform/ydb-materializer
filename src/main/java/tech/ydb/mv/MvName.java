@@ -199,19 +199,24 @@ public class MvName {
     public static final String DEF_STMT_TABLE = "mv/statements";
 
     /**
-     * Scan position control table name.
+     * Default scan position control table name.
      */
     public static final String DEF_SCAN_TABLE = "mv/scans_state";
 
     /**
-     * Dictionary history table name.
+     * Default dictionary history table name.
      */
     public static final String DEF_DICT_HIST_TABLE = "mv/dict_hist";
 
     /**
-     * Coordination node path.
+     * Default coordination node path.
      */
     public static final String DEF_COORD_PATH = "mv/coordination";
+
+    /**
+     * Default period between dictionary scans, seconds.
+     */
+    public static final int DEF_DICT_SCAN_SECONDS = 28800;
 
     public static String safe(String value) {
         return value.replaceAll("[;.$`'\\\"()\\\\]", "_");

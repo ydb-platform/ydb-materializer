@@ -41,7 +41,7 @@ public class MvHandlerSettings implements Serializable {
         this.applyQueueSize = MvConfig.parseInt(props, MvConfig.CONF_APPLY_QUEUE, 10000);
         this.selectBatchSize = MvConfig.parseInt(props, MvConfig.CONF_BATCH_SELECT, 1000);
         this.upsertBatchSize = MvConfig.parseInt(props, MvConfig.CONF_BATCH_UPSERT, 500);
-        this.dictionaryScanSeconds = MvConfig.parseInt(props, MvConfig.CONF_DICT_SCAN_SECONDS, 28800);
+        this.dictionaryScanSeconds = MvConfig.parseInt(props, MvConfig.CONF_DICT_SCAN_SECONDS, MvConfig.DEF_DICT_SCAN_SECONDS);
         this.queryTimeoutSeconds = MvConfig.parseInt(props, MvConfig.CONF_QUERY_TIMEOUT, 30);
     }
 
