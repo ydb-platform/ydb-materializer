@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import tech.ydb.mv.model.MvColumn;
@@ -159,26 +161,20 @@ public class MvPathGenerator {
 
         // Add the requested columns
         index = 0;
-        for (var item : filter.getItems()) {
-            var ref = result.getSourceByAlias(item.source.getTableAlias());
-            if (ref == null) {
-                throw new IllegalStateException("Could not find reference by name: "
-                        + item.source.getTableAlias());
+        for (var filterColumn : filter.collect()) {
+            var ref = filterColumn.source;
+            var column = new MvColumn("c" + String.valueOf(index++));
+            column.setSourceRef(ref);
+            column.setSourceAlias(ref.getTableAlias());
+            column.setSourceColumn(filterColumn.name);
+            column.setType(ref.getTableInfo().getColumns().get(filterColumn.name));
+            if (column.getType() == null) {
+                throw new IllegalArgumentException("Filter requested column"
+                        + "`" + filterColumn.name + "` which is missing in the join source "
+                        + "`" + ref.getTableAlias() + "` linked to table "
+                        + "`" + ref.getTableName() + "`");
             }
-            for (String fieldName : item.fieldNames) {
-                var column = new MvColumn("c" + String.valueOf(index++));
-                column.setSourceRef(ref);
-                column.setSourceAlias(ref.getTableAlias());
-                column.setSourceColumn(fieldName);
-                column.setType(ref.getTableInfo().getColumns().get(fieldName));
-                if (column.getType() == null) {
-                    throw new IllegalArgumentException("Filter requested column"
-                            + "`" + fieldName + "` which is missing in the join source "
-                            + "`" + item.source.getTableAlias() + "` linked to table "
-                            + "`" + item.source.getTableName() + "`");
-                }
-                result.getColumns().add(column);
-            }
+            result.getColumns().add(column);
         }
 
         return result;
@@ -730,22 +726,36 @@ public class MvPathGenerator {
         return new Filter();
     }
 
+    private static final class FilterColumn {
+
+        private final MvJoinSource source;
+        private final String name;
+        private final int position;
+
+        FilterColumn(MvJoinSource source, String name, int position) {
+            this.source = source;
+            this.name = name;
+            this.position = position;
+        }
+    }
+
     public static final class FilterItem {
 
         private final MvJoinSource source;
-        private final TreeSet<String> fieldNames;
+        // field name -> field output position
+        private final HashMap<String, Integer> fieldNames;
 
         FilterItem(MvJoinSource source) {
             this.source = source;
-            this.fieldNames = new TreeSet<>();
+            this.fieldNames = new HashMap<>();
         }
 
         public MvJoinSource getSource() {
             return source;
         }
 
-        public TreeSet<String> getFieldNames() {
-            return fieldNames;
+        public Map<String, Integer> getFieldNames() {
+            return Collections.unmodifiableMap(fieldNames);
         }
 
         public boolean isEmpty() {
@@ -761,6 +771,7 @@ public class MvPathGenerator {
     public static final class Filter {
 
         private final HashMap<String, FilterItem> items = new HashMap<>();
+        private int columnCount = 0;
 
         public boolean isEmpty() {
             for (var item : items.values()) {
@@ -787,13 +798,27 @@ public class MvPathGenerator {
         public Filter add(MvJoinSource source, String... names) {
             var item = addItem(source);
             for (String name : names) {
-                item.fieldNames.add(name);
+                var pos = item.fieldNames.get(name);
+                if (pos == null) {
+                    item.fieldNames.put(name, ++columnCount);
+                }
             }
             return this;
         }
 
         public Filter add(MvJoinSource source) {
             return add(source, source.getKeyColumnNames());
+        }
+
+        List<FilterColumn> collect() {
+            var ret = new ArrayList<FilterColumn>(columnCount);
+            for (var item : items.values()) {
+                for (var fn : item.getFieldNames().entrySet()) {
+                    ret.add(new FilterColumn(item.source, fn.getKey(), fn.getValue()));
+                }
+            }
+            ret.sort(Comparator.comparingInt(x -> x.position));
+            return ret;
         }
 
         @Override

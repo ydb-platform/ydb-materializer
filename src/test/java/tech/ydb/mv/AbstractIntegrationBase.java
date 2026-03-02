@@ -6,8 +6,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -398,12 +399,13 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 .expectSuccess();
     }
 
-    protected static HashMap<String, HashMap<String, String>> convertResultSet(ResultSetReader rsr, String keyName) {
+    protected static Map<String, Map<String, String>>
+            convertResultSet(ResultSetReader rsr, String keyName) {
         int indexColumn = rsr.getColumnIndex(keyName);
-        HashMap<String, HashMap<String, String>> output = new HashMap<>();
+        Map<String, Map<String, String>> output = new TreeMap<>();
         while (rsr.next()) {
             String key = YdbConv.toPojo(rsr.getColumn(indexColumn).getValue()).toString();
-            HashMap<String, String> value = new HashMap<>();
+            Map<String, String> value = new TreeMap<>();
             for (int index = 0; index < rsr.getColumnCount(); ++index) {
                 String name = rsr.getColumnName(index);
                 Comparable<?> x = YdbConv.toPojo(rsr.getColumn(index).getValue());
