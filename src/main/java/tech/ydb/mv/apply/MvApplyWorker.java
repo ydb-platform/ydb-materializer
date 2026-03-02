@@ -68,7 +68,9 @@ class MvApplyWorker implements Runnable {
     public void submit(MvApplyTask task) {
         owner.incrementQueueSize();
         queue.add(task);
-        LOG.debug("Task accepted: {}", task);
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("Task accepted: {}, actions: {}", task.getData(), task.getActions());
+        }
     }
 
     @Override

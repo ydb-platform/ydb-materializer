@@ -96,6 +96,11 @@ abstract class ActionBase {
         return this.instance == other.instance;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "#" + instance;
+    }
+
     protected String getSqlSelect() {
         throw new UnsupportedOperationException("ActionBase.getSqlSelect()");
     }

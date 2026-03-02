@@ -38,4 +38,9 @@ public class MvApplyActionList {
         return items;
     }
 
+    @Override
+    public String toString() {
+        return items.toString();
+    }
+
 }
