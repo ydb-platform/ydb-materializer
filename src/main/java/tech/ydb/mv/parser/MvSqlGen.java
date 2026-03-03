@@ -67,8 +67,9 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     /**
-     * Returns the key type for the destination table's primary key. Used for DELETE operations when destination PK may
-     * differ from topmost. Falls back to topmost key type when destination table info is unavailable.
+     * Returns the key type for the destination table's primary key. Used for
+     * DELETE operations when destination PK may differ from topmost. Falls back
+     * to topmost key type when destination table info is unavailable.
      */
     public StructType toDestinationKeyType() {
         if (target == null || target.getTableInfo() == null) {
@@ -86,8 +87,8 @@ public class MvSqlGen implements AutoCloseable {
     }
 
     /**
-     * The create table variant grabs data types from the input tables, and combines them into the definition of the
-     * output MV table.
+     * The create table variant grabs data types from the input tables, and
+     * combines them into the definition of the output MV table.
      *
      * @return CREATE TABLE statement
      */
@@ -173,7 +174,10 @@ public class MvSqlGen implements AutoCloseable {
     /**
      * Generates DELETE statement.
      *
-     * When isDestKeyDirect is true, uses destination table's PK type (for DELETE after key expansion).
+     * When isDestKeyDirect is true, uses destination table's PK type (for
+     * DELETE after key expansion).
+     *
+     * @return DELETE statement
      */
     public String makePlainDelete() {
         var sb = new StringBuilder();
@@ -189,6 +193,82 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    /**
+     * Build a SELECT statement to convert the topmost-left source's key to the
+     * destination table's key.
+     *
+     * @return SELECT statement, or null, if the transformation is not possible.
+     */
+    public String makeConvertKeyToTarget() {
+        if (target.getTableInfo() == null) {
+            throw new IllegalStateException("Target table info has not been defined "
+                    + "for MV " + target.getName());
+        }
+        var topMost = target.getTopMostSource();
+        if (topMost == null) {
+            throw new IllegalStateException("No sources defined for MV " + target.getName());
+        }
+        if (topMost.getTableInfo() == null) {
+            throw new IllegalStateException("Target table info has not been defined "
+                    + "for table `" + topMost.getTableName() + "` being part of "
+                    + "MV " + target.getName());
+        }
+        var sb = new StringBuilder();
+        genDeclareKeyList(sb, toSourceKeyType());
+        sb.append("SELECT ");
+        int position = 0;
+        for (String keyName : target.getTableInfo().getKey()) {
+            if (position++ > 0) {
+                sb.append(", ");
+            }
+            MvColumn column = target.getColumnByName(keyName);
+            if (column == null) {
+                throw new IllegalStateException("Key column `" + keyName
+                        + "` has not been mapped in the MV " + target.getName()
+                        + " as " + target.getAlias());
+            }
+            if (isMappedToTopmostLeftKey(topMost, column)) {
+                genColumn(sb, column);
+            } else {
+                return null;
+            }
+        }
+        sb.append(" FROM AS_TABLE(").append(SYS_KEYS_VAR).append(") AS ");
+        safeId(sb, topMost.getTableAlias());
+        return sb.toString();
+    }
+
+    private boolean isMappedToTopmostLeftKey(MvJoinSource topMost, MvColumn column) {
+        var ti = topMost.getTableInfo();
+        if (ti == null) {
+            throw new IllegalStateException();
+        }
+        if (column.isReference()) {
+            if (column.getSourceRef() != topMost) {
+                return false;
+            }
+            return ti.getKey().contains(column.getSourceColumn());
+        }
+        if (column.isComputation()) {
+            var comp = column.getComputation();
+            for (var src : comp.getSources()) {
+                if (src.getReference() != topMost) {
+                    return false;
+                }
+                if (!ti.getKey().contains(src.getColumn())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Generates the statement for second and further table scan iterations.
+     *
+     * @return SELECT statement
+     */
     public String makeScanNext() {
         MvTableInfo topmost = target.getTopMostSource().getTableInfo();
         StringBuilder sb = new StringBuilder();
@@ -223,6 +303,11 @@ public class MvSqlGen implements AutoCloseable {
         return sb.toString();
     }
 
+    /**
+     * Generates the statement for first table scan iteration.
+     *
+     * @return SELECT statement
+     */
     public String makeScanStart() {
         MvTableInfo topmost = target.getTopMostSource().getTableInfo();
         StringBuilder sb = new StringBuilder();

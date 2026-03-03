@@ -26,7 +26,6 @@ import tech.ydb.mv.metrics.MvMetrics;
 import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
-import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.parser.MvSqlGen;
 
 /**
@@ -64,7 +63,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             if (target.isDestKeyDirect()) {
                 this.sqlSelectKeys4Delete = null;
             } else {
-                this.sqlSelectKeys4Delete = new MvPathGenerator(target).makeTargetKeysSql();
+                this.sqlSelectKeys4Delete = sg.makeConvertKeyToTarget();
             }
         }
         if (target.getView().isDefaultDestination()) {

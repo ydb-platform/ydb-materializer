@@ -73,7 +73,12 @@ public class MvSqlPrinter {
         if (!mt.isDestKeyDirect()) {
             pw.println("  ** Pre-delete keys grabbing statement:");
             pw.println();
-            pw.println(new MvPathGenerator(mt).makeTargetKeysSql());
+            String sql = sg.makeConvertKeyToTarget();
+            if (sg == null) {
+                pw.println("<< WARNING: conversion not possible, DELETE processing will not work >>");
+            } else {
+                pw.println(sql);
+            }
         }
         pw.println("  ** Topmost scan start:");
         pw.println();
