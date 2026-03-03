@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.google.common.collect.Lists;
+import java.util.Collections;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
@@ -44,6 +45,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final String sqlDelete;
     private final StructType rowType;
     private final SessionRetryContext targetCtx;
+    private final boolean destKeyDirect;
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
@@ -56,11 +58,12 @@ class ActionSync extends ActionBase implements MvApplyAction {
         }
         this.target = target;
         this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+        this.destKeyDirect = target.isDestKeyDirect();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.sqlDelete = sg.makePlainDelete();
-            if (target.isDestKeyDirect()) {
+            if (this.destKeyDirect) {
                 this.sqlSelectKeys4Delete = null;
             } else {
                 this.sqlSelectKeys4Delete = sg.makeConvertKeyToTarget();
@@ -83,6 +86,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
+        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+            LOG.warn(" [{}] Handler `{}`, target `{}` as {} cannot process DELETE events",
+                    instance, context.getHandler().getName(),
+                    target.getName(), target.getAlias());
+        }
     }
 
     @Override
@@ -147,6 +155,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
      * return the original set of keys.
      */
     private List<MvKey> extractDestKeys(List<MvKey> topmostKeys) {
+        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+            return Collections.emptyList();
+        }
         if (sqlSelectKeys4Delete == null || topmostKeys.isEmpty()) {
             return topmostKeys;
         }

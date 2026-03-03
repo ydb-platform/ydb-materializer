@@ -95,13 +95,13 @@ public class MvValidateBasic {
                 if (firstHandler == null) {
                     firstHandler = mh;
                 } else {
-                    context.addIssue(new MvIssue.TargetMultipleHandlers(mt, firstHandler, mh));
+                    context.addIssue(new MvIssue.ViewMultiHandlers(mt.getView(), firstHandler, mh));
                 }
             }
         }
         if (firstHandler == null) {
             // Unused/unreferenced target, so issue a warning
-            context.addIssue(new MvIssue.UselessTarget(mt));
+            context.addIssue(new MvIssue.UselessView(mt.getView()));
         }
         mt.getSources().forEach(src -> checkJoinConditions(mt, src));
         mt.getColumns().forEach(column -> checkTargetOutputColumn(mt, column));

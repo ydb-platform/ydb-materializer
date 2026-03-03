@@ -7,37 +7,38 @@ sql_script: SEMICOLON* sql_stmt (SEMICOLON+ sql_stmt)* SEMICOLON* EOF;
 sql_stmt: create_mat_view_stmt | create_handler_stmt;
 
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW view_name
-  (DESTINATION destination_name)?
-  AS some_select_stmt;
+    (DESTINATION destination_name)?
+    AS some_select_stmt;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
-  (CONSUMER consumer_name)? COMMA?
-  handler_part (COMMA handler_part)* COMMA?;
+    (CONSUMER consumer_name)? COMMA?
+    handler_part (COMMA handler_part)* COMMA?;
 
 handler_part: (handler_input_part | handler_process_part);
 
 handler_process_part: PROCESS mat_view_ref;
 
 handler_input_part: INPUT main_table_ref
-  CHANGEFEED changefeed_name AS (STREAM | BATCH);
+    CHANGEFEED changefeed_name AS (STREAM | BATCH);
 
 some_select_stmt: simple_select_stmt | union_all_select_stmt;
 
 union_all_select_stmt: aliased_select_stmt
-  | (aliased_select_stmt UNION ALL union_all_select_stmt);
+    | (aliased_select_stmt UNION ALL union_all_select_stmt);
 
 aliased_select_stmt: simple_select_stmt AS table_alias
-  | LPAREN simple_select_stmt RPAREN AS table_alias;
+    | LPAREN simple_select_stmt RPAREN AS table_alias;
 
 simple_select_stmt: SELECT result_column (COMMA result_column)* COMMA?
-  FROM main_table_ref AS table_alias
-  (simple_join_part)*
-  (WHERE opaque_expression)?;
+    FROM main_table_ref AS table_alias
+    (simple_join_part)*
+    (WHERE opaque_expression)?;
 
 simple_join_part: (INNER | LEFT OUTER?)? JOIN join_table_ref AS table_alias
-  ON join_condition (AND join_condition)*;
+    ON join_condition (AND join_condition)*;
 
-result_column: (column_reference | opaque_expression) AS column_alias;
+result_column: (column_reference | result_constant | opaque_expression) AS column_alias;
+result_constant: integer_constant | string_constant;
 
 opaque_expression: (COMPUTE (ON column_reference (COMMA column_reference)*)?)? opaque_expression_body;
 opaque_expression_body: OPAQUE_EXPRESSION;

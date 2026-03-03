@@ -230,6 +230,9 @@ public class MvSqlParser {
             if (expr != null) {
                 column.setComputation(expr);
             }
+        } else if (cc.result_constant() != null) {
+            var temp = cc.result_constant();
+            column.setComputation(new MvComputation(temp.getText(), toSqlPos(temp)));
         } else if (cc.column_reference() != null
                 && cc.column_reference().column_name() != null
                 && cc.column_reference().table_alias() != null) {

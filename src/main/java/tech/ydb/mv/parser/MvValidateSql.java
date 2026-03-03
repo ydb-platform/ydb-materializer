@@ -35,15 +35,27 @@ public class MvValidateSql {
         if (!context.isValid()) {
             return false;
         }
-        for (MvView mv : context.getViews().values()) {
-            for (MvViewExpr mt : mv.getParts().values()) {
-                validateViewPart(mt);
+        for (MvView view : context.getViews().values()) {
+            for (MvViewExpr part : view.getParts().values()) {
+                validateMainQuery(part);
+                validateIndirectKeys(part);
             }
         }
         return context.isValid();
     }
 
-    private boolean validateViewPart(MvViewExpr part) {
+    private boolean validateIndirectKeys(MvViewExpr part) {
+        if (part.isDestKeyDirect()) {
+            return true;
+        }
+        if (new MvSqlGen(part).makeConvertKeyToTarget() == null) {
+            context.addIssue(new MvIssue.ComplexKeyGeneration(part));
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validateMainQuery(MvViewExpr part) {
         MvSqlGen sg = new MvSqlGen(part);
         // fast track - attempt to check the whole SELECT, if valid - stop
         String currentSql = sg.makeSelect();
