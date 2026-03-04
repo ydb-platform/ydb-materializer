@@ -96,6 +96,11 @@ abstract class ActionBase {
         return this.instance == other.instance;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "#" + instance;
+    }
+
     protected String getSqlSelect() {
         throw new UnsupportedOperationException("ActionBase.getSqlSelect()");
     }
@@ -107,8 +112,7 @@ abstract class ActionBase {
                 .toList());
     }
 
-    protected final ResultSetReader readRows(List<MvKey> items) {
-        String statement = getSqlSelect();
+    protected final ResultSetReader readRows(List<MvKey> items, String statement, String label) {
         Value<?> keys = keysToParam(items);
         if (LOG.isDebugEnabled()) {
             LOG.debug("SELECT via statement << {} >>, keys {}", statement, keys);
@@ -121,10 +125,14 @@ abstract class ActionBase {
         )).join().getValue().getResultSet(0);
         MvMetrics.ActionScope scope = metricsScope;
         if (scope != null && scope.target() != null) {
-            MvMetrics.recordSqlTime(scope, "select", startNs);
+            MvMetrics.recordSqlTime(scope, label, startNs);
         }
         lastSqlStatement.set(null);
         return rsr;
+    }
+
+    protected final ResultSetReader readRows(List<MvKey> items) {
+        return readRows(items, getSqlSelect(), "select");
     }
 
     protected static Value<?> keysToParam(List<MvKey> items) {

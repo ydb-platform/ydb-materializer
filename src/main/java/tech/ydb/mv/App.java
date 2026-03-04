@@ -2,9 +2,6 @@ package tech.ydb.mv;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.nio.ByteBuffer;
-import java.util.Base64;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tech.ydb.mv.mgt.MvBatchSettings;

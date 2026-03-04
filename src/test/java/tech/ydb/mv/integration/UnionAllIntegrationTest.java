@@ -72,6 +72,7 @@ CREATE TABLE `test2/sub99` (
 
 CREATE TABLE `test2/mv1` (
     id Text NOT NULL,
+    source Text NOT NULL,
     c1 Timestamp,
     c2 Int64,
     c3 Decimal(22,9),
@@ -80,7 +81,7 @@ CREATE TABLE `test2/mv1` (
     c6 Text,
     c7 Text,
     c100 Text,
-    PRIMARY KEY(id),
+    PRIMARY KEY(id, source),
     INDEX ix_c1 GLOBAL ON (c1),
     INDEX ix_c7 GLOBAL ON (c7)
 );
@@ -104,6 +105,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
 (
 SELECT
     m.id AS id,
+    'first'u AS source,
     m.c1 AS c1,
     m.c2 AS c2,
     m.c3 AS c3,
@@ -122,6 +124,7 @@ UNION ALL
 (
 SELECT
     m.id AS id,
+    'second'u AS source,
     m.c1 AS c1,
     m.c2 AS c2,
     m.c3 AS c3,
@@ -149,6 +152,7 @@ LEFT JOIN `test2/sub99` AS s99
     public static final String SELECT_ALL_UA = """
 (SELECT
     m.id AS id,
+    'first'u AS source,
     m.c1 AS c1,
     m.c2 AS c2,
     m.c3 AS c3,
@@ -165,6 +169,7 @@ LEFT JOIN `test2/sub99` AS s99
 UNION ALL
 (SELECT
     m.id AS id,
+    'second'u AS source,
     m.c1 AS c1,
     m.c2 AS c2,
     m.c3 AS c3,
@@ -183,10 +188,10 @@ LEFT JOIN `test2/sub99` AS s99
     public static final String WRITE_UA_INIT1
             = """
 INSERT INTO `test2/main1` (id,c1,c2,c3,c4,c5,c6,c99) VALUES
- ('main1-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 101, 1, 'text message one'u, 501)
-,('main1-002'u, Timestamp('2022-01-02T10:15:22Z'), 10002, Decimal('10002.567',22,9), 102, 3, 'text message two'u, 502)
-,('main1-003'u, Timestamp('2023-01-02T10:15:23Z'), 10003, Decimal('10003.567',22,9), 103, 5, 'text message three'u, 503)
-,('main1-004'u, Timestamp('2024-01-02T10:15:24Z'), 10004, Decimal('10004.567',22,9), 104, 7, 'text message four'u, 504)
+ ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 101, 1, 'text message one'u, 501)
+,('main-002'u, Timestamp('2022-01-02T10:15:22Z'), 10002, Decimal('10002.567',22,9), 102, 3, 'text message two'u, 502)
+,('main-003'u, Timestamp('2023-01-02T10:15:23Z'), 10003, Decimal('10003.567',22,9), 103, 5, 'text message three'u, 503)
+,('main-004'u, Timestamp('2024-01-02T10:15:24Z'), 10004, Decimal('10004.567',22,9), 104, 7, 'text message four'u, 504)
 ;
 INSERT INTO `test2/sub1` (c4, c7) VALUES
  (101, '101-aga'u)
@@ -205,10 +210,10 @@ INSERT INTO `test2/sub99` (c99, c100) VALUES
     public static final String WRITE_UA_INIT2
             = """
 INSERT INTO `test2/main2` (id,c1,c2,c3,c4,c5,c6,c99) VALUES
- ('main0-001'u, Timestamp('2021-01-02T11:15:21Z'), 20001, Decimal('20001.567',22,9), 201, 2, 'text message one'u, 501)
-,('main0-002'u, Timestamp('2022-01-02T11:15:22Z'), 20002, Decimal('20002.567',22,9), 202, 4, 'text message two'u, 502)
-,('main0-003'u, Timestamp('2023-01-02T11:15:23Z'), 20003, Decimal('20003.567',22,9), 203, 6, 'text message three'u, 503)
-,('main0-004'u, Timestamp('2024-01-02T11:15:24Z'), 20004, Decimal('20004.567',22,9), 204, 8, 'text message four'u, 504)
+ ('main-001'u, Timestamp('2021-01-02T11:15:21Z'), 20001, Decimal('20001.567',22,9), 201, 2, 'text message one'u, 501)
+,('main-002'u, Timestamp('2022-01-02T11:15:22Z'), 20002, Decimal('20002.567',22,9), 202, 4, 'text message two'u, 502)
+,('main-003'u, Timestamp('2023-01-02T11:15:23Z'), 20003, Decimal('20003.567',22,9), 203, 6, 'text message three'u, 503)
+,('main-004'u, Timestamp('2024-01-02T11:15:24Z'), 20004, Decimal('20004.567',22,9), 204, 8, 'text message four'u, 504)
 ;
 INSERT INTO `test2/sub2` (c4, c7) VALUES
  (201, '201-hehe'u)
@@ -221,12 +226,12 @@ INSERT INTO `test2/sub2` (c4, c7) VALUES
     public static final String WRITE_UA_UPDATE1
             = """
 UPSERT INTO `test2/main1` (id,c4,c6) VALUES
- ('main1-002'u, 101, 'text message two-bis'u)
-,('main1-003'u, 101, 'text message three-bis'u)
+ ('main-002'u, 101, 'text message two-bis'u)
+,('main-003'u, 101, 'text message three-bis'u)
 ;
 UPSERT INTO `test2/main2` (id,c4,c6) VALUES
- ('main0-001'u, 204, 'text message one-bis'u)
-,('main0-004'u, 201, 'text message four-bis'u)
+ ('main-001'u, 204, 'text message one-bis'u)
+,('main-004'u, 201, 'text message four-bis'u)
 ;
 """;
 
@@ -236,6 +241,12 @@ UPSERT INTO `test2/sub99` (c99,c100) VALUES
  (501, '501-ugu+1'u)
 ,(503, '503-ugu+1'u)
 ;
+""";
+
+    public static final String WRITE_UA_DELETE1
+            = """
+DELETE FROM `test2/main1` WHERE id='main-002'u;
+DELETE FROM `test2/main2` WHERE id='main-003'u;
 """;
 
     @Override
@@ -335,10 +346,17 @@ UPSERT INTO `test2/sub99` (c99,c100) VALUES
         System.err.println("[UUU] Checking the view output...");
         diffCount = checkViewOutput(svc);
         Assertions.assertEquals(0, diffCount);
+
+        System.err.println("[UUU] Deleting rows 5...");
+        runDml(svc.getYdb(), WRITE_UA_DELETE1);
+        standardPause();
+        System.err.println("[UUU] Checking the view output...");
+        diffCount = checkViewOutput(svc);
+        Assertions.assertEquals(0, diffCount);
     }
 
     private int checkViewOutput(MvService svc) {
-        return checkViewOutput(svc, "test2/mv1", SELECT_ALL_UA, true);
+        return checkViewOutput(svc.getYdb(), "test2/mv1", SELECT_ALL_UA, true, "id", "source");
     }
 
 }

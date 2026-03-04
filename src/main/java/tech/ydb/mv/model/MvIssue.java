@@ -474,7 +474,7 @@ public interface MvIssue extends MvSqlPosHolder {
                     + "` is missing input for table `" + source.getTableName()
                     + "` used as `" + source.getTableAlias()
                     + "` in target " + target
-                    + " at " + sqlPos;
+                    + "` as " + target.getAlias() + " at " + sqlPos;
         }
     }
 
@@ -576,22 +576,22 @@ public interface MvIssue extends MvSqlPosHolder {
         NO_INPUTS
     }
 
-    public static class TargetMultipleHandlers extends Error {
+    public static class ViewMultiHandlers extends Error {
 
-        private final MvViewExpr target;
+        private final MvView view;
         private final MvHandler handler1;
         private final MvHandler handler2;
 
-        public TargetMultipleHandlers(MvViewExpr target, MvHandler handler1, MvHandler handler2) {
+        public ViewMultiHandlers(MvView view, MvHandler handler1, MvHandler handler2) {
             super(handler2.getSqlPos());
-            this.target = target;
+            this.view = view;
             this.handler1 = handler1;
             this.handler2 = handler2;
         }
 
         @Override
         public String getMessage() {
-            return "Target `" + target.getName()
+            return "View `" + view.getName()
                     + "` referenced by handler `" + handler2.getName()
                     + "` at " + handler2.getSqlPos()
                     + "` is also referenced by handler `" + handler1.getName()
@@ -599,20 +599,19 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
-    public static class UselessTarget extends Warning {
+    public static class UselessView extends Warning {
 
-        private final MvViewExpr target;
+        private final MvView view;
 
-        public UselessTarget(MvViewExpr target) {
-            super(target.getSqlPos());
-            this.target = target;
+        public UselessView(MvView view) {
+            super(view.getSqlPos());
+            this.view = view;
         }
 
         @Override
         public String getMessage() {
-            return "Target `" + target.getName()
-                    + "` at " + sqlPos
-                    + "` is not used in any handler.";
+            return "View `" + view.getName() + "` at " + sqlPos
+                    + " is not used in any handler.";
         }
     }
 
@@ -633,7 +632,7 @@ public interface MvIssue extends MvSqlPosHolder {
                     + " for table `" + source.getTableName()
                     + "` used as alias `" + source.getTableAlias()
                     + "` in target `" + target.getName()
-                    + "` at " + sqlPos;
+                    + "` as " + target.getAlias() + " at " + sqlPos;
         }
     }
 
@@ -656,7 +655,25 @@ public interface MvIssue extends MvSqlPosHolder {
                     + " for table `" + source.getTableName()
                     + "` used as alias `" + source.getTableAlias()
                     + "` in target `" + target.getName()
-                    + "` at " + sqlPos;
+                    + "` as " + target.getAlias() + " at " + sqlPos;
+        }
+    }
+
+    public static class ComplexKeyGeneration extends Warning {
+
+        private final MvViewExpr target;
+
+        public ComplexKeyGeneration(MvViewExpr target) {
+            super(target.getSqlPos());
+            this.target = target;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Complex SQL transformation is used to generate MV primary key, "
+                    + "which effectively disables DELETE processing "
+                    + "for target `" + target.getName()
+                    + "` as " + target.getAlias() + " at " + sqlPos;
         }
     }
 

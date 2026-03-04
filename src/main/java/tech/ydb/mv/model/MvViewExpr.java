@@ -183,6 +183,53 @@ public class MvViewExpr implements MvSqlPosHolder {
         return usedColumns;
     }
 
+    public MvColumn getColumnByName(String name) {
+        for (MvColumn c : columns) {
+            if (name.equals(c.getName())) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the destination table's key info when the destination table
+     * schema is available. Returns null when the destination table is not yet
+     * described.
+     */
+    public MvKeyInfo getDestinationKeyInfo() {
+        if (view.getTableInfo() == null) {
+            return null;
+        }
+        return view.getTableInfo().getKeyInfo();
+    }
+
+    /**
+     * Returns true when the destination table's primary key matches the topmost
+     * source's primary key (as mapped to output column names). When false,
+     * DELETE operations require key-based transformation to obtain full
+     * destination keys.
+     */
+    public boolean isDestKeyDirect() {
+        var topMostSource = getTopMostSource();
+        var topMost = (topMostSource == null) ? null : topMostSource.getTableInfo();
+        var tableInfo = getTableInfo();
+        if (topMost == null || tableInfo == null) {
+            throw new IllegalStateException();
+        }
+        if (tableInfo.getKey().size() != topMost.getKey().size()) {
+            return false;
+        }
+        for (String key : tableInfo.getKey()) {
+            var typeSrc = topMost.getColumns().get(key);
+            var typeDst = tableInfo.getColumns().get(key);
+            if (typeSrc == null || !typeSrc.equals(typeDst)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public MvSqlPos getSqlPos() {
         return sqlPos;

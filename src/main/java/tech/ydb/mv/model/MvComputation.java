@@ -106,6 +106,16 @@ public class MvComputation implements MvSqlPosHolder {
         return sources;
     }
 
+    public MvComputation addSource(String alias, String column) {
+        sources.add(new Source(alias, column));
+        return this;
+    }
+
+    public MvComputation addSource(MvJoinSource js, String column) {
+        sources.add(new Source(js.getTableAlias(), column, js));
+        return this;
+    }
+
     @Override
     /**
      * {@inheritDoc}

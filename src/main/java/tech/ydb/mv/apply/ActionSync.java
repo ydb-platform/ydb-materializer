@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.google.common.collect.Lists;
+import java.util.Collections;
 
 import tech.ydb.common.transaction.TxMode;
 import tech.ydb.core.Result;
@@ -23,6 +24,7 @@ import tech.ydb.mv.data.MvChangeRecord;
 import tech.ydb.mv.data.MvKey;
 import tech.ydb.mv.data.YdbConv;
 import tech.ydb.mv.metrics.MvMetrics;
+import tech.ydb.mv.model.MvKeyInfo;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.parser.MvSqlGen;
@@ -36,30 +38,35 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionSync.class);
 
-    private final String targetTableName;
+    private final MvViewExpr target;
     private final String sqlSelect;
+    private final String sqlSelectKeys4Delete;
     private final String sqlUpsert;
     private final String sqlDelete;
     private final StructType rowType;
     private final SessionRetryContext targetCtx;
+    private final boolean destKeyDirect;
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
     public ActionSync(MvViewExpr target, MvActionContext context) {
         super(context, MvMetrics.scopeForActionSync(context.getHandler(), target));
-        if (target == null || target.getSources().isEmpty()
+        if (target == null || target.getTableInfo() == null
+                || target.getSources().isEmpty()
                 || target.getTopMostSource().getChangefeedInfo() == null) {
-            throw new IllegalArgumentException("Missing input");
+            throw new IllegalArgumentException("Missing input for ActionSync");
         }
-        this.targetTableName = target.getName();
+        this.target = target;
+        this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+        this.destKeyDirect = target.isDestKeyDirect();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
             this.sqlDelete = sg.makePlainDelete();
-            if (target.getTableInfo() != null) {
-                this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+            if (this.destKeyDirect) {
+                this.sqlSelectKeys4Delete = null;
             } else {
-                this.rowType = sg.toRowType();
+                this.sqlSelectKeys4Delete = sg.makeConvertKeyToTarget();
             }
         }
         if (target.getView().isDefaultDestination()) {
@@ -79,10 +86,11 @@ class ActionSync extends ActionBase implements MvApplyAction {
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
                 src.getChangefeedInfo().getMode());
-    }
-
-    public String getTargetTableName() {
-        return targetTableName;
+        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+            LOG.warn(" [{}] Handler `{}`, target `{}` as {} cannot process DELETE events",
+                    instance, context.getHandler().getName(),
+                    target.getName(), target.getAlias());
+        }
     }
 
     @Override
@@ -92,7 +100,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "MvSynchronize{" + targetTableName + '}';
+        return "MvSynchronize{" + target.getName() + " as " + target.getAlias() + '}';
     }
 
     @Override
@@ -130,23 +138,64 @@ class ActionSync extends ActionBase implements MvApplyAction {
     }
 
     private void deleteRows(List<MvKey> rowKeys) {
+        var keysToDelete = extractDestKeys(rowKeys);
+        if (keysToDelete.isEmpty()) {
+            return;
+        }
         int writeBatchSize = getWriteBatchSize();
-        for (List<MvKey> dr : Lists.partition(rowKeys, writeBatchSize)) {
-            // delete some records by keys
+        for (List<MvKey> dr : Lists.partition(keysToDelete, writeBatchSize)) {
             runDelete(dr);
-            // check whether the context is running, and throw if not
             checkRunning();
         }
     }
 
+    /**
+     * When destination PK differs from topmost, run SELECT from destination
+     * table by topmost keys to get destination keys for DELETE. Otherwise,
+     * return the original set of keys.
+     */
+    private List<MvKey> extractDestKeys(List<MvKey> topmostKeys) {
+        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+            return Collections.emptyList();
+        }
+        if (sqlSelectKeys4Delete == null || topmostKeys.isEmpty()) {
+            return topmostKeys;
+        }
+        MvKeyInfo destKeyInfo = target.getDestinationKeyInfo();
+        if (destKeyInfo == null) {
+            throw new IllegalStateException();
+        }
+        HashSet<MvKey> seen = new HashSet<>();
+        ArrayList<MvKey> result = new ArrayList<>(topmostKeys.size());
+        int readBatchSize = getReadBatchSize();
+        for (List<MvKey> batch : Lists.partition(topmostKeys, readBatchSize)) {
+            var rsr = readRows(batch, sqlSelectKeys4Delete, "select4delete");
+            if (rsr.getRowCount() == 0) {
+                continue;
+            }
+            int[] keyPositions = new int[destKeyInfo.size()];
+            for (int i = 0; i < destKeyInfo.size(); ++i) {
+                keyPositions[i] = rsr.getColumnIndex(destKeyInfo.getName(i));
+            }
+            while (rsr.next()) {
+                Comparable<?>[] values = new Comparable<?>[destKeyInfo.size()];
+                for (int i = 0; i < destKeyInfo.size(); ++i) {
+                    int pos = keyPositions[i];
+                    values[i] = pos >= 0 ? YdbConv.toPojo(rsr.getColumn(pos).getValue()) : null;
+                }
+                MvKey key = new MvKey(destKeyInfo, values);
+                if (seen.add(key)) {
+                    result.add(key);
+                }
+            }
+        }
+        return result;
+    }
+
     private void runDelete(List<MvKey> rowKeys) {
-        // FIXME: the implementation below only works for the case when
-        // the PK for the MV is exactly the same as the PK for the topmost
-        // join source. It needs to be extended for the case when PK is
-        // computed based on some input columns.
         Value<?> keys = keysToParam(rowKeys);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("DELETE FROM {}: {}", targetTableName, keys);
+            LOG.debug("DELETE FROM {}: {}", target.getName(), keys);
         }
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         // wait for the previous query to complete
@@ -181,7 +230,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private void runUpsert(List<StructValue> items) {
         Value<?> data = structsToParam(items);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("UPSERT TO {}: {}", targetTableName, data);
+            LOG.debug("UPSERT TO {}: {}", target.getName(), data);
         }
         Params params = Params.of(MvSqlGen.SYS_INPUT_VAR, data);
         // wait for the previous query to complete

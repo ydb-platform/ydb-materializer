@@ -6,11 +6,14 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -398,12 +401,17 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 .expectSuccess();
     }
 
-    protected static HashMap<String, HashMap<String, String>> convertResultSet(ResultSetReader rsr, String keyName) {
-        int indexColumn = rsr.getColumnIndex(keyName);
-        HashMap<String, HashMap<String, String>> output = new HashMap<>();
+    protected static Map<String, Map<String, String>>
+            convertResultSet(ResultSetReader rsr, String[] keys) {
+        var keyIndexes = Arrays.asList(keys).stream()
+                .map(keyName -> rsr.getColumnIndex(keyName))
+                .toList();
+        Map<String, Map<String, String>> output = new TreeMap<>();
         while (rsr.next()) {
-            String key = YdbConv.toPojo(rsr.getColumn(indexColumn).getValue()).toString();
-            HashMap<String, String> value = new HashMap<>();
+            String key = keyIndexes.stream()
+                    .map(ix -> YdbConv.toPojo(rsr.getColumn(ix).getValue()).toString())
+                    .collect(Collectors.joining("|"));
+            Map<String, String> value = new TreeMap<>();
             for (int index = 0; index < rsr.getColumnCount(); ++index) {
                 String name = rsr.getColumnName(index);
                 Comparable<?> x = YdbConv.toPojo(rsr.getColumn(index).getValue());
@@ -436,12 +444,15 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
     }
 
     protected static int checkViewOutput(YdbConnector conn, String viewName,
-            String sqlMain, boolean showNormal) {
+            String sqlMain, boolean showNormal, String... keys) {
+        if (keys.length == 0) {
+            throw new IllegalArgumentException();
+        }
         String sqlMv = "SELECT * FROM `" + viewName + "`";
         var left = convertResultSet(
-                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), "id");
+                conn.sqlRead(sqlMain, Params.empty()).getResultSet(0), keys);
         var right = convertResultSet(
-                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), "id");
+                conn.sqlRead(sqlMv, Params.empty()).getResultSet(0), keys);
         System.out.println("*** comparing rowsets, size1="
                 + left.size() + ", size2=" + right.size());
         int diffCount = 0;
@@ -487,7 +498,7 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
 
     protected static int checkViewOutput(MvService svc, String viewName,
             String sqlMain, boolean showNormal) {
-        return checkViewOutput(svc.getYdb(), viewName, sqlMain, showNormal);
+        return checkViewOutput(svc.getYdb(), viewName, sqlMain, showNormal, "id");
     }
 
 }

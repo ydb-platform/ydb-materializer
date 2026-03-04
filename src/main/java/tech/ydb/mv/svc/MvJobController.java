@@ -179,12 +179,26 @@ public class MvJobController implements AutoCloseable {
         }
     }
 
+    private int getDictCheckPeriod() {
+        int dictScanSeconds = context.getYdb().getConfig().getProperty(
+                MvConfig.CONF_DICT_SCAN_SECONDS, MvConfig.DEF_DICT_SCAN_SECONDS);
+        int period = dictScanSeconds / 10;
+        period -= period % 10;
+        if (period > 60000) {
+            period = 60000;
+        } else if (period < 5) {
+            period = 5;
+        }
+        return period;
+    }
+
     private void scheduleRegularJobs() {
         // Dictionary re-scan scheduler checker
+        int dictCheckSeconds = getDictCheckPeriod();
         var f = context.getService().getScheduler().scheduleAtFixedRate(
                 this::analyzeDictionaryChecks,
-                10,
-                10,
+                dictCheckSeconds,
+                dictCheckSeconds,
                 TimeUnit.SECONDS
         );
         f = dictCheckFuture.getAndSet(f);

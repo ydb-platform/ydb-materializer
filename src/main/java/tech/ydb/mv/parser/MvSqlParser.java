@@ -214,11 +214,8 @@ public class MvSqlParser {
             if (colref.table_alias() == null || colref.column_name() == null) {
                 continue;
             }
-            var src = new MvComputation.Source(
-                    unquote(colref.table_alias().ID_PLAIN()),
-                    unquote(colref.column_name().identifier().ID_PLAIN())
-            );
-            expr.getSources().add(src);
+            expr.addSource(unquote(colref.table_alias().ID_PLAIN()),
+                    unquote(colref.column_name().identifier().ID_PLAIN()));
         }
         return expr;
     }
@@ -233,6 +230,9 @@ public class MvSqlParser {
             if (expr != null) {
                 column.setComputation(expr);
             }
+        } else if (cc.result_constant() != null) {
+            var temp = cc.result_constant();
+            column.setComputation(new MvComputation(temp.getText(), toSqlPos(temp)));
         } else if (cc.column_reference() != null
                 && cc.column_reference().column_name() != null
                 && cc.column_reference().table_alias() != null) {
