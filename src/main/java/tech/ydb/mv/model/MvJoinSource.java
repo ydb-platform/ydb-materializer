@@ -46,6 +46,20 @@ public class MvJoinSource implements MvSqlPosHolder {
         return tableInfo.getKey().toArray(String[]::new);
     }
 
+    public boolean isInnerJoin() {
+        switch (mode) {
+            case INNER -> {
+                return true;
+            }
+            case MAIN -> {
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
     /**
      * @return true, if this join source depends on at least one other join
      * source through its conditions, and false otherwise

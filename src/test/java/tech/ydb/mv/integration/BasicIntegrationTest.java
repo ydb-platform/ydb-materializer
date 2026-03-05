@@ -122,10 +122,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more rows...");
@@ -133,10 +129,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    System.out.println(generateThreadDump());
-                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Checking the topic consumer positions...");
@@ -151,10 +143,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    //System.out.println(generateThreadDump());
-                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Checking the dictionary history...");
@@ -172,10 +160,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 standardPause();
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    //System.out.println(generateThreadDump());
-                }
                 Assertions.assertEquals(0, diffCount);
 
                 System.err.println("[AAA] Updating more dictionary rows...");
@@ -189,10 +173,6 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
                 pause(20_000L);
                 System.err.println("[AAA] Checking the view output...");
                 diffCount = checkViewOutput(conn, sqlQuery);
-                if (diffCount > 0) {
-                    System.out.println("********* dumping threads **********");
-                    //System.out.println(generateThreadDump());
-                }
                 Assertions.assertEquals(0, diffCount);
             } finally {
                 wc.shutdown();
@@ -201,7 +181,7 @@ UPSERT INTO `test1/sub_table4` (c15,c16) VALUES
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain) {
-        return checkViewOutput(conn, "test1/mv1", sqlMain, false);
+        return checkViewOutput(conn, "test1/mv1", sqlMain, false, "id");
     }
 
     private void checkConsumerPositions(YdbConnector conn) {

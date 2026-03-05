@@ -21,6 +21,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(ActionKeysTransform.class);
 
+    private final boolean innerJoin;
     private final boolean keysTransform;
     private final List<MvColumn> columns;
 
@@ -35,6 +36,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
             throw new IllegalArgumentException("Illegal key setup, expected "
                     + this.keyInfo.size() + " keys, got " + this.keyInfo.size());
         }
+        this.innerJoin = src.isInnerJoin();
         this.keysTransform = transformation.isKeyOnlyTransformation();
         this.columns = transformation.getColumns();
         LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as {}, changefeed `{}` mode {}",
@@ -57,7 +59,7 @@ class ActionKeysTransform extends ActionKeysAbstract {
         ArrayList<MvChangeRecord> output = new ArrayList<>(2 * tasks.size());
         for (MvApplyTask task : tasks) {
             MvChangeRecord cr = task.getData();
-            LOG.debug("Processing {}", cr);
+            LOG.trace("Processing {}", cr);
             MvKey key = null;
             if (keysTransform) {
                 key = buildKey(cr, (name) -> cr.getKey().getValue(name));
@@ -70,9 +72,9 @@ class ActionKeysTransform extends ActionKeysAbstract {
                 }
             }
             if (key != null) {
-                LOG.debug("Result key: {}", key);
-                output.add(new MvChangeRecord(key,
-                        task.getData().getTv(), MvChangeRecord.OpType.UPSERT));
+                var opType = getOperationType(task.getData());
+                LOG.trace("Result key: {}, action {}", key, opType);
+                output.add(new MvChangeRecord(key, task.getData().getTv(), opType));
             }
         }
         if (!output.isEmpty()) {
@@ -82,6 +84,21 @@ class ActionKeysTransform extends ActionKeysAbstract {
             // Otherwise the processing may deadlock.
             applyManager.submitForce(output, handler);
         }
+    }
+
+    private MvChangeRecord.OpType getOperationType(MvChangeRecord cr) {
+        var opType = cr.getOperationType();
+        switch (opType) {
+            case UPSERT -> {
+                return opType;
+            }
+            case DELETE -> {
+                if (innerJoin) {
+                    return opType;
+                }
+            }
+        }
+        return MvChangeRecord.OpType.UPSERT;
     }
 
     private MvKey buildKey(MvChangeRecord cr, Grabber grabber) {
