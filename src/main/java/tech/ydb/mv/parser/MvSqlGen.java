@@ -3,7 +3,6 @@ package tech.ydb.mv.parser;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import tech.ydb.table.values.DecimalType;
@@ -348,7 +347,7 @@ public class MvSqlGen implements AutoCloseable {
         }
         sb.append("DECLARE ").append(SYS_INPUT_VAR).append(" AS ");
         sb.append("List<");
-        structForTable(sb, target.getTableInfo());
+        structForTarget(sb, target);
         sb.append(">;").append(EOL);
     }
 
@@ -685,10 +684,6 @@ public class MvSqlGen implements AutoCloseable {
         return StructType.of(columns);
     }
 
-    public static StructType toRowType(MvTableInfo ti) {
-        return StructType.of(ti.getColumns());
-    }
-
     public static String formatType(Type t) {
         if (t == null) {
             throw new NullPointerException();
@@ -719,8 +714,8 @@ public class MvSqlGen implements AutoCloseable {
         return sb;
     }
 
-    public static StringBuilder structForTable(StringBuilder sb, MvTableInfo ti) {
-        if (ti == null) {
+    private StringBuilder structForTarget(StringBuilder sb, MvViewExpr expr) {
+        if (expr == null) {
             throw new NullPointerException();
         }
         if (sb == null) {
@@ -728,9 +723,9 @@ public class MvSqlGen implements AutoCloseable {
         }
         sb.append("Struct<");
         boolean comma = false;
-        for (Map.Entry<String, Type> me : ti.getColumns().entrySet()) {
-            String name = me.getKey();
-            String type = MvSqlGen.formatType(me.getValue());
+        for (var column : expr.getColumns()) {
+            String name = column.getName();
+            String type = MvSqlGen.formatType(column.getType());
             if (comma) {
                 sb.append(",");
             } else {
@@ -740,10 +735,6 @@ public class MvSqlGen implements AutoCloseable {
         }
         sb.append(">");
         return sb;
-    }
-
-    public static String structForTable(MvTableInfo ti) {
-        return structForTable(null, ti).toString();
     }
 
 }

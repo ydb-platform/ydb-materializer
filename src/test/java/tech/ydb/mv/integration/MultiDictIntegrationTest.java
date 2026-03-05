@@ -147,7 +147,7 @@ UPSERT INTO `test1/sub_table5` (c21,c22) VALUES
     }
 
     private int checkViewOutput(YdbConnector conn, String sqlMain, boolean showNormal) {
-        return checkViewOutput(conn, "test1/mv1", sqlMain, showNormal);
+        return checkViewOutput(conn, "test1/mv1", sqlMain, showNormal, "id");
     }
 
     private void clearMV(YdbConnector conn) {

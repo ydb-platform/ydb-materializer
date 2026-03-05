@@ -36,6 +36,8 @@ import tech.ydb.table.query.Params;
  */
 public abstract class AbstractIntegrationBase {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(AbstractIntegrationBase.class);
+
     public static final String CREATE_TABLES_BASE
             = """
 CREATE TABLE `test1/statements` (
@@ -358,7 +360,7 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
     }
 
     protected static void standardPause() {
-        pause(2000L);
+        pause(1500L);
     }
 
     protected static void dictionaryScanPause() {
@@ -399,6 +401,7 @@ INSERT INTO `test1/sub_table5` (c21,c22) VALUES
                 .supplyStatus(qs -> runSql(qs, sql, TxMode.SERIALIZABLE_RW))
                 .join()
                 .expectSuccess();
+        LOG.trace("DML: {}", sql);
     }
 
     protected static Map<String, Map<String, String>>

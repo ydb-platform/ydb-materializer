@@ -57,7 +57,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
             throw new IllegalArgumentException("Missing input for ActionSync");
         }
         this.target = target;
-        this.rowType = MvSqlGen.toRowType(target.getTableInfo());
+        this.rowType = MvSqlGen.toRowType(target);
         this.destKeyDirect = target.isDestKeyDirect();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
@@ -100,7 +100,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     @Override
     public String toString() {
-        return "MvSynchronize{" + target.getName() + " as " + target.getAlias() + '}';
+        return "ActionSync{" + target.getName() + " as " + target.getAlias() + '}';
     }
 
     @Override
@@ -155,7 +155,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
      * return the original set of keys.
      */
     private List<MvKey> extractDestKeys(List<MvKey> topmostKeys) {
-        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+        if (!destKeyDirect && sqlSelectKeys4Delete == null) {
             return Collections.emptyList();
         }
         if (sqlSelectKeys4Delete == null || topmostKeys.isEmpty()) {
@@ -194,9 +194,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
 
     private void runDelete(List<MvKey> rowKeys) {
         Value<?> keys = keysToParam(rowKeys);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("DELETE FROM {}: {}", target.getName(), keys);
-        }
+        LOG.debug("DELETE FROM {}: {}", target.getName(), keys);
         Params params = Params.of(MvSqlGen.SYS_KEYS_VAR, keys);
         // wait for the previous query to complete
         finishStatement();
