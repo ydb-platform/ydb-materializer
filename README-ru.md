@@ -267,10 +267,11 @@ java -jar ydb-materializer-*.jar <config.xml> <MODE>
 - `<config.xml>` — путь к файлу XML-конфигурации.
 - `<MODE>` — режим работы, в соответствии с приведённым ниже перечнем.
 
-Приложение поддерживает три режима работы:
+Приложение поддерживает следующие режимы работы:
 - CHECK: проверка конфигурации;
 - SQL: генерация SQL-инструкций, представляющих логику материализации;
-- STREAMS: генерация операторов для создания CDC-потоков и CDC-консьюмеров;
+- SQL_DEBUG: генерация внутренних SQL-инструкций, используемых Materializer;
+- STREAMS: создание недостающих CDC-потоков и CDC-консьюмеров для входов обработчиков;
 - LOCAL: фактическая синхронизация MV в режиме отдельного приложения;
 - JOB: фактическая синхронизация MV под управлением встроенного менеджера распределённых заданий.
 
@@ -288,13 +289,17 @@ java -jar ydb-materializer-*.jar config.xml CHECK
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
 
+#### Режим SQL_DEBUG
+Генерирует и выводит дополнительные внутренние SQL-инструкции, используемые Materializer:
+```bash
+java -jar ydb-materializer-*.jar config.xml SQL_DEBUG
+```
+
 #### Режим STREAMS
-Генерирует и (опционально) применяет к рабочей базе данных SQL-инструкции для создания потоков CDC:
+Создаёт недостающие CDC-потоки и CDC-консьюмеры в рабочей базе данных для всех настроенных входов обработчиков:
 ```bash
 java -jar ydb-materializer-*.jar config.xml STREAMS
 ```
-
-Создание потоков CDC осуществляется при наличии в конфигурации установленного параметра `job.streams.create=true`.
 
 #### Режим LOCAL
 Запускает локальную одноузловую службу обработки материализованных представлений:
@@ -333,7 +338,6 @@ java -jar ydb-materializer-*.jar config.xml JOB
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
 <entry key="job.input.table">mv/statements</entry>
-<entry key="job.streams.create">false</entry>
 
 <!-- Конфигурация обработчика -->
 <entry key="job.handlers">h1,h2,h3</entry>
@@ -395,7 +399,6 @@ java -jar ydb-materializer-*.jar config.xml JOB
 - `job.input.mode` — источник ввода: `FILE` или `TABLE`.
 - `job.input.file` — путь к SQL-файлу (для режима FILE).
 - `job.input.table` — имя таблицы для инструкций (для режима TABLE).
-- `job.streams.create` - если установлено в `true`, создать недостающие объекты потоков CDC.
 - `job.handlers` — список имён обработчиков для активации, разделённый запятыми.
 - `job.scan.table` — имя таблицы для ведения позиций сканирования
 - `job.dict.hist.table` - имя таблицы для ведения истории изменения справочников

@@ -714,7 +714,7 @@ public class MvSqlGen implements AutoCloseable {
         return sb;
     }
 
-    private StringBuilder structForTarget(StringBuilder sb, MvViewExpr expr) {
+    public static StringBuilder structForTarget(StringBuilder sb, MvViewExpr expr) {
         if (expr == null) {
             throw new NullPointerException();
         }

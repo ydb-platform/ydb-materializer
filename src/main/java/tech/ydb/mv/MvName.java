@@ -89,11 +89,6 @@ public class MvName {
     public static final String CONF_INPUT_TABLE = "job.input.table";
 
     /**
-     * If set to "true", attempt to create CDC streams and consumers.
-     */
-    public static final String CONF_STREAMS_CREATE = "job.streams.create";
-
-    /**
      * Comma-separated list of handler names to be activated on RUN action.
      */
     public static final String CONF_HANDLERS = "job.handlers";

@@ -270,7 +270,8 @@ java -jar ydb-materializer-*.jar <config.xml> <MODE>
 The application supports the following operational modes:
 - CHECK: configuration validation;
 - SQL: generating SQL statements representing the materialization logic;
-- STREAMS: actual MV synchronization;
+- SQL_DEBUG: generating internal SQL statements used by the Materializer;
+- STREAMS: creating missing CDC streams and consumers required by handlers;
 - LOCAL: single-instance execution of actual MV synchronization;
 - JOB: actual MV synchronization under the control of the distributed job manager.
 
@@ -288,13 +289,17 @@ Generates and outputs the SQL statements for materialized views:
 java -jar ydb-materializer-*.jar config.xml SQL
 ```
 
+#### SQL_DEBUG Mode
+Generates and outputs additional internal SQL statements used by the Materializer:
+```bash
+java -jar ydb-materializer-*.jar config.xml SQL_DEBUG
+```
+
 #### STREAMS Mode
-Generates and (optionally) applies to the working database SQL instructions for CDC streams creation:
+Creates missing CDC streams and consumers in the working database for all configured handler inputs:
 ```bash
 java -jar ydb-materializer-*.jar config.xml STREAMS
 ```
-
-CDC streams creation is performed when the configuration includes the parameter `job.streams.create=true`.
 
 #### LOCAL Mode
 Starts a local, single-node materialized view processing service:
@@ -333,7 +338,6 @@ The configuration file is an XML properties file that defines connection paramet
 <entry key="job.input.mode">FILE</entry>
 <entry key="job.input.file">example-job1.sql</entry>
 <entry key="job.input.table">mv/statements</entry>
-<entry key="job.streams.create">false</entry>
 
 <!-- Handler configuration -->
 <entry key="job.handlers">h1,h2,h3</entry>
@@ -395,7 +399,6 @@ The configuration file is an XML properties file that defines connection paramet
 - `job.input.mode` - Input source: `FILE` or `TABLE`
 - `job.input.file` - Path to SQL file (for FILE mode)
 - `job.input.table` - Table name for statements (for TABLE mode)
-- `job.streams.create` - when set to `true`, create the missing CDC streams.
 - `job.handlers` - Comma-separated list of handler names to activate
 - `job.scan.table` - Scan position control table name
 - `job.dict.hist.table` - Dictionary history table name
