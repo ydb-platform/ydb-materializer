@@ -16,6 +16,7 @@ public class MvView implements MvSqlPosHolder {
     private final String destinationName;
     private final MvSqlPos sqlPos;
     private final HashMap<String, MvViewExpr> parts = new HashMap<>();
+    private final HashMap<MvViewOption, Object> options = new HashMap<>();
     // fields computed later or added based on the database metadata
     private final ArrayList<MvColumn> columns = new ArrayList<>();
     private MvTableInfo tableInfo;
@@ -56,6 +57,10 @@ public class MvView implements MvSqlPosHolder {
 
     public HashMap<String, MvViewExpr> getParts() {
         return parts;
+    }
+
+    public HashMap<MvViewOption, Object> getOptions() {
+        return options;
     }
 
     public ArrayList<MvColumn> getColumns() {

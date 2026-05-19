@@ -8,7 +8,13 @@ sql_stmt: create_mat_view_stmt | create_handler_stmt;
 
 create_mat_view_stmt: CREATE ASYNC MATERIALIZED VIEW view_name
     (DESTINATION destination_name)?
+    (OPTIONS options_list)?
     AS some_select_stmt;
+
+options_list: options_item (COMMA options_item)*;
+options_item: option_name option_value;
+option_name: identifier;
+option_value: string_constant;
 
 create_handler_stmt: CREATE ASYNC HANDLER identifier
     (CONSUMER consumer_name)? COMMA?
@@ -71,6 +77,7 @@ INPUT: I N P U T;
 LEFT: L E F T;
 MATERIALIZED: M A T E R I A L I Z E D;
 ON: O N;
+OPTIONS: O P T I O N S;
 OUTER: O U T E R;
 PROCESS: P R O C E S S;
 SELECT:  S E L E C T;

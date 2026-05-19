@@ -571,6 +571,41 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    public static class IllegalBooleanValueError extends Error {
+
+        private final String optionName;
+        private final String value;
+
+        public IllegalBooleanValueError(String optionName, String value, MvSqlPosHolder holder) {
+            super(holder.getSqlPos());
+            this.optionName = optionName;
+            this.value = value;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Illegal value for boolean at " + sqlPos
+                    + " for  option `" + optionName
+                    + "`: " + value;
+        }
+    }
+
+    public static class UnknownViewOptionError extends Error {
+
+        private final String optionName;
+
+        public UnknownViewOptionError(String optionName, MvSqlPosHolder holder) {
+            super(holder.getSqlPos());
+            this.optionName = optionName;
+        }
+
+        @Override
+        public String getMessage() {
+            return "Unknown view option `" + optionName
+                    + "` at " + sqlPos;
+        }
+    }
+
     public static enum EmptyHandlerType {
         NO_TARGETS,
         NO_INPUTS

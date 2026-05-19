@@ -31,6 +31,7 @@ import tech.ydb.mv.model.MvJoinMode;
 import tech.ydb.mv.model.MvJoinSource;
 import tech.ydb.mv.model.MvViewExpr;
 import tech.ydb.mv.model.MvView;
+import tech.ydb.mv.model.MvViewOption;
 
 /**
  * Parsing, linking and minimal logical checks for input SQL script.
@@ -91,12 +92,31 @@ public class MvSqlParser {
     }
 
     private void fillView(MvMetadata mc, YdbMatViewV1Parser.Create_mat_view_stmtContext stmt) {
-        String viewName = unquote(stmt.view_name());
+        String viewName = unquoteId(stmt.view_name());
         String destinationName = null;
         if (stmt.destination_name() != null) {
-            destinationName = unquote(stmt.destination_name());
+            destinationName = unquoteId(stmt.destination_name());
         }
         var view = new MvView(viewName, destinationName, toSqlPos(stmt));
+        var options = stmt.options_list();
+        if (options != null && options.options_item() != null) {
+            for (var option : options.options_item()) {
+                String name = option.option_name().identifier().getText();
+                String value = unquoteText(option.option_value().string_constant());
+                var vo = MvViewOption.ENTRIES.get(name);
+                Object ov = null;
+                if (vo == null) {
+                    ov = new MvIssue.UnknownViewOptionError(name, view);
+                } else {
+                    ov = vo.parse(value, view);
+                }
+                if (ov instanceof MvIssue i) {
+                    mc.addIssue(i);
+                } else {
+                    view.getOptions().put(vo, ov);
+                }
+            }
+        }
         var expr = stmt.some_select_stmt();
         if (expr.simple_select_stmt() != null) {
             fillTarget(mc, view, MvViewExpr.ALIAS_DEFAULT, expr.simple_select_stmt());
@@ -105,7 +125,7 @@ public class MvSqlParser {
         while (ua != null) {
             var sel = ua.aliased_select_stmt();
             if (sel != null && sel.simple_select_stmt() != null) {
-                String alias = unquote(sel.table_alias().ID_PLAIN());
+                String alias = unquoteId(sel.table_alias().ID_PLAIN());
                 fillTarget(mc, view, alias, sel.simple_select_stmt());
             }
             ua = ua.union_all_select_stmt();
@@ -121,8 +141,8 @@ public class MvSqlParser {
         var mt = new MvViewExpr(view, alias, toSqlPos(sel));
         var src = new MvJoinSource(toSqlPos(sel.main_table_ref()));
         mt.getSources().add(src);
-        src.setTableName(unquote(sel.main_table_ref().identifier()));
-        src.setTableAlias(unquote(sel.table_alias().ID_PLAIN()));
+        src.setTableName(unquoteId(sel.main_table_ref().identifier()));
+        src.setTableAlias(unquoteId(sel.table_alias().ID_PLAIN()));
         src.setMode(MvJoinMode.MAIN);
         for (var part : sel.simple_join_part()) {
             fillJoinSource(mt, part);
@@ -160,10 +180,10 @@ public class MvSqlParser {
         MvJoinSource src = new MvJoinSource(toSqlPos(part));
         mt.getSources().add(src);
         if (part.join_table_ref() != null) {
-            src.setTableName(unquote(part.join_table_ref().identifier()));
+            src.setTableName(unquoteId(part.join_table_ref().identifier()));
         }
         if (part.table_alias() != null) {
-            src.setTableAlias(unquote(part.table_alias().ID_PLAIN()));
+            src.setTableAlias(unquoteId(part.table_alias().ID_PLAIN()));
         }
         if (part.LEFT() != null) {
             src.setMode(MvJoinMode.LEFT);
@@ -181,13 +201,13 @@ public class MvSqlParser {
         src.getConditions().add(mjc);
         if (cond.column_reference_first() != null) {
             var v = cond.column_reference_first().column_reference();
-            mjc.setFirstAlias(unquote(v.table_alias().ID_PLAIN()));
-            mjc.setFirstColumn(unquote(v.column_name().identifier()));
+            mjc.setFirstAlias(unquoteId(v.table_alias().ID_PLAIN()));
+            mjc.setFirstColumn(unquoteId(v.column_name().identifier()));
         }
         if (cond.column_reference_second() != null) {
             var v = cond.column_reference_second().column_reference();
-            mjc.setSecondAlias(unquote(v.table_alias().ID_PLAIN()));
-            mjc.setSecondColumn(unquote(v.column_name().identifier()));
+            mjc.setSecondAlias(unquoteId(v.table_alias().ID_PLAIN()));
+            mjc.setSecondColumn(unquoteId(v.column_name().identifier()));
         }
         if (cond.constant_first() != null) {
             mjc.setFirstLiteral(mt.addLiteral(cond.constant_first().getText()));
@@ -214,15 +234,15 @@ public class MvSqlParser {
             if (colref.table_alias() == null || colref.column_name() == null) {
                 continue;
             }
-            expr.addSource(unquote(colref.table_alias().ID_PLAIN()),
-                    unquote(colref.column_name().identifier().ID_PLAIN()));
+            expr.addSource(unquoteId(colref.table_alias().ID_PLAIN()),
+                    unquoteId(colref.column_name().identifier().ID_PLAIN()));
         }
         return expr;
     }
 
     private void fillColumn(MvViewExpr mt, YdbMatViewV1Parser.Result_columnContext cc) {
         var column = new MvColumn(
-                unquote(cc.column_alias().ID_PLAIN()),
+                unquoteId(cc.column_alias().ID_PLAIN()),
                 toSqlPos(cc));
         mt.getColumns().add(column);
         if (cc.opaque_expression() != null) {
@@ -236,15 +256,15 @@ public class MvSqlParser {
         } else if (cc.column_reference() != null
                 && cc.column_reference().column_name() != null
                 && cc.column_reference().table_alias() != null) {
-            column.setSourceColumn(unquote(cc.column_reference().column_name().identifier()));
-            column.setSourceAlias(unquote(cc.column_reference().table_alias().ID_PLAIN()));
+            column.setSourceColumn(unquoteId(cc.column_reference().column_name().identifier()));
+            column.setSourceAlias(unquoteId(cc.column_reference().table_alias().ID_PLAIN()));
         }
     }
 
     private void fillHandler(MvMetadata mc, YdbMatViewV1Parser.Create_handler_stmtContext stmt) {
-        var mh = new MvHandler(unquote(stmt.identifier()), toSqlPos(stmt));
+        var mh = new MvHandler(unquoteId(stmt.identifier()), toSqlPos(stmt));
         if (stmt.consumer_name() != null) {
-            mh.setConsumerName(unquote(stmt.consumer_name().identifier()));
+            mh.setConsumerName(unquoteId(stmt.consumer_name().identifier()));
         }
         for (var part : stmt.handler_part()) {
             if (part.handler_input_part() != null) {
@@ -266,8 +286,8 @@ public class MvSqlParser {
     private void fillHandlerInput(MvMetadata mc, MvHandler mh,
             YdbMatViewV1Parser.Handler_input_partContext part) {
         MvInput mi = new MvInput(
-                unquote(part.main_table_ref().identifier()),
-                unquote(part.changefeed_name().identifier()),
+                unquoteId(part.main_table_ref().identifier()),
+                unquoteId(part.changefeed_name().identifier()),
                 toSqlPos(part));
         if (part.STREAM() != null) {
             mi.setBatchMode(false);
@@ -282,7 +302,7 @@ public class MvSqlParser {
 
     private void fillHandlerProcess(MvMetadata mc, MvHandler mh,
             YdbMatViewV1Parser.Handler_process_partContext part) {
-        String mvName = unquote(part.mat_view_ref().identifier());
+        String mvName = unquoteId(part.mat_view_ref().identifier());
         var view = mc.getViews().get(mvName);
         if (view == null) {
             mc.addIssue(new MvIssue.UnknownView(mh, mvName));
@@ -291,10 +311,22 @@ public class MvSqlParser {
         }
     }
 
-    private static String unquote(ParseTree node) {
+    private static String unquoteId(ParseTree node) {
         String v = node.getText();
         if (v.length() > 2 && v.startsWith("`") && v.endsWith("`")) {
             v = v.substring(1, v.length() - 1);
+        }
+        return v;
+    }
+
+    private static String unquoteText(ParseTree node) {
+        String v = node.getText();
+        if (v.length() >= 2) {
+            if (v.startsWith("'") && v.endsWith("'")) {
+                v = v.substring(1, v.length() - 1);
+            } else if (v.startsWith("\"") && v.endsWith("\"")) {
+                v = v.substring(1, v.length() - 1);
+            }
         }
         return v;
     }
