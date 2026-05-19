@@ -205,7 +205,7 @@ public class MvViewExpr implements MvSqlPosHolder {
     }
 
     /**
-     * Returns true when the destination table's primary key can reuse the
+     * @return true when the destination table's primary key can reuse the
      * topmost source CDC key unchanged. Computed or renamed keys can still be
      * safe for DELETE processing, but they first need key conversion instead of
      * this direct path.
@@ -220,33 +220,27 @@ public class MvViewExpr implements MvSqlPosHolder {
         if (tableInfo.getKey().size() != topMost.getKey().size()) {
             return false;
         }
-        for (String key : tableInfo.getKey()) {
-            if (!isDirectTopmostKey(topMostSource, key)) {
+        for (String keyName : tableInfo.getKey()) {
+            MvColumn column = getColumnByName(keyName);
+            if (column == null || !column.isReference()) {
+                return false;
+            }
+            if (column.getSourceRef() != topMostSource) {
+                return false;
+            }
+            if (!keyName.equals(column.getSourceColumn())) {
+                return false;
+            }
+            if (!topMost.getKey().contains(column.getSourceColumn())) {
+                return false;
+            }
+            var typeSrc = topMost.getColumns().get(column.getSourceColumn());
+            var typeDst = tableInfo.getColumns().get(keyName);
+            if (typeSrc == null || !typeSrc.equals(typeDst)) {
                 return false;
             }
         }
         return true;
-    }
-
-    private boolean isDirectTopmostKey(MvJoinSource topMostSource, String keyName) {
-        MvColumn column = getColumnByName(keyName);
-        if (column == null || !column.isReference()) {
-            return false;
-        }
-        if (column.getSourceRef() != topMostSource) {
-            return false;
-        }
-        if (!keyName.equals(column.getSourceColumn())) {
-            return false;
-        }
-        var topMost = topMostSource.getTableInfo();
-        if (!topMost.getKey().contains(column.getSourceColumn())) {
-            return false;
-        }
-        var typeSrc = topMost.getColumns().get(column.getSourceColumn());
-        var tableInfo = getTableInfo();
-        var typeDst = tableInfo.getColumns().get(keyName);
-        return typeSrc != null && typeSrc.equals(typeDst);
     }
 
     @Override
