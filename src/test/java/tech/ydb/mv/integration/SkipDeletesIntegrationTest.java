@@ -67,8 +67,8 @@ ALTER TOPIC `skipdel_test/fact/cf_fact` ADD CONSUMER `skipdel_consumer`;
 """;
 
     public static final String UPSERT_CONFIG_SKIPDEL = """
-UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
-  (100, @@CREATE ASYNC MATERIALIZED VIEW `skipdel_test/mv`
+UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
+  ('', 1, @@CREATE ASYNC MATERIALIZED VIEW `skipdel_test/mv`
   OPTIONS SKIP_DELETES 'true'
   AS
   SELECT main.id AS id, main.val AS val, fact.extra AS extra
@@ -76,7 +76,7 @@ UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
   INNER JOIN `skipdel_test/fact` AS fact
     ON main.c1=fact.c1 AND main.c2=fact.c2;@@),
 
-  (101, @@CREATE ASYNC HANDLER skipdel_handler CONSUMER skipdel_consumer
+  ('skipdel_handler', 1, @@CREATE ASYNC HANDLER skipdel_handler CONSUMER skipdel_consumer
   PROCESS `skipdel_test/mv`,
   INPUT `skipdel_test/main` CHANGEFEED cf_main AS STREAM,
   INPUT `skipdel_test/fact` CHANGEFEED cf_fact AS STREAM;@@);

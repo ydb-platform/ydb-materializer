@@ -99,8 +99,8 @@ DROP TABLE `test2/mv1`;
 
     public static final String UPSERT_CONFIG_UA
             = """
-UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
-  (1, @@CREATE ASYNC MATERIALIZED VIEW `test2/mv1` AS
+UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
+  ('', 1, @@CREATE ASYNC MATERIALIZED VIEW `test2/mv1` AS
 
 (
 SELECT
@@ -140,7 +140,7 @@ LEFT JOIN `test2/sub99` AS s99
   ON m.c99=s99.c99
 ) AS part2;@@),
 
-  (2, @@CREATE ASYNC HANDLER handler3 CONSUMER consumer3
+  ('handler3', 1, @@CREATE ASYNC HANDLER handler3 CONSUMER consumer3
   PROCESS `test2/mv1`,
   INPUT `test2/sub99` CHANGEFEED mv AS BATCH,
   INPUT `test2/main1` CHANGEFEED cf0 AS STREAM,

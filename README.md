@@ -443,7 +443,7 @@ The configuration file is an XML properties file that defines connection paramet
 #### Job Configuration
 - `job.input.mode` - Input source: `FILE` or `TABLE`
 - `job.input.file` - Path to SQL file (for FILE mode)
-- `job.input.table` - Table name for statements (for TABLE mode)
+- `job.input.table` - Table name for statements (for TABLE mode). In TABLE mode the table may use either the legacy schema (`statement_no`, `statement_text`) or the modular schema with an extra `module_id` column and primary key `(module_id, statement_no)`. The root module uses `module_id=''` for shared definitions; each handler may have its own module with `module_id` equal to the handler name. When a handler is started, only the root module and that handler's module are loaded; the legacy schema always loads all rows. The format is detected automatically from the table definition.
 - `job.handlers` - Comma-separated list of handler names to activate
 - `job.scan.table` - Scan position control table name
 - `job.dict.hist.table` - Dictionary history table name

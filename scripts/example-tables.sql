@@ -1,10 +1,11 @@
 -- *** Configuration tables ***
 
--- MV definitions
+-- MV definitions (modular: root module_id='' + per-handler modules)
 CREATE TABLE `mv/statements` (
+   module_id Text NOT NULL,
    statement_no Int32 NOT NULL,
    statement_text Text NOT NULL,
-   PRIMARY KEY(statement_no)
+   PRIMARY KEY(module_id, statement_no)
 );
 
 -- Externally controlled job definitions

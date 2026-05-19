@@ -454,7 +454,7 @@ public class MvService implements MvApi {
     }
 
     private static MvMetadata loadMetadata(YdbConnector ydb, String handlerName) {
-        var m = MvConfigReader.read(ydb);
+        var m = MvConfigReader.read(ydb, handlerName);
         if (handlerName != null) {
             MvHandler h = m.getHandlers().get(handlerName);
             if (h == null) {

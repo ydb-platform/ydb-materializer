@@ -225,18 +225,26 @@ public class SuddenCleanupTest extends MgmtTestBase {
 
     private static void configureMv(int part) {
         var sql = """
-    $colindex = (SELECT COALESCE(MAX(statement_no),0) + 1 AS statement_no FROM `test1/statements`);
-    UPSERT INTO `test1/statements` SELECT statement_no, @@
+    $mv_no = (SELECT COALESCE(MAX(statement_no), 0) + 1 AS statement_no
+        FROM `test1/statements` WHERE module_id = ''u);
+    UPSERT INTO `test1/statements` (module_id, statement_no, statement_text)
+    SELECT ''u, statement_no, @@
     CREATE ASYNC MATERIALIZED VIEW `data_%1$d/mv` AS
         SELECT main.id AS id_main, sub.id AS id_sub, main.data1 AS data1, sub.data2 AS data2
         FROM `data_%1$d/main` AS main
         LEFT JOIN `data_%1$d/sub` AS sub
           ON main.id = sub.main_ref;
+    @@u AS statement_text
+    FROM $mv_no;
+    $handler_no = (SELECT COALESCE(MAX(statement_no), 0) + 1 AS statement_no
+        FROM `test1/statements` WHERE module_id = 'handler_%1$d'u);
+    UPSERT INTO `test1/statements` (module_id, statement_no, statement_text)
+    SELECT 'handler_%1$d'u, statement_no, @@
     CREATE ASYNC HANDLER handler_%1$d CONSUMER c%1$d PROCESS `data_%1$d/mv`,
         INPUT `data_%1$d/main` CHANGEFEED mv AS STREAM,
         INPUT `data_%1$d/sub` CHANGEFEED mv AS STREAM;
-        @@u AS statement_text
-    FROM $colindex;
+    @@u AS statement_text
+    FROM $handler_no;
     UPSERT INTO `test1/mv_jobs`(job_name, should_run) VALUES('handler_%1$d'u, true);
                 """.formatted(part);
         ydbConnector.sqlWrite(sql, Params.empty());

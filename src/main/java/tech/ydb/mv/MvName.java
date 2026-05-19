@@ -194,6 +194,16 @@ public class MvName {
     public static final String DEF_STMT_TABLE = "mv/statements";
 
     /**
+     * Column name for modular configuration in the statements table.
+     */
+    public static final String STMT_COL_MODULE_ID = "module_id";
+
+    /**
+     * Root module identifier in the statements table (shared configuration).
+     */
+    public static final String STMT_MODULE_ROOT = "";
+
+    /**
      * Default scan position control table name.
      */
     public static final String DEF_SCAN_TABLE = "mv/scans_state";

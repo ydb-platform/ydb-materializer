@@ -45,14 +45,14 @@ ALTER TOPIC `colmatch_test/sub/mv` ADD CONSUMER c_colmatch;
 """;
 
     private static final String UPSERT_CONFIG = """
-UPSERT INTO `test1/statements` (statement_no, statement_text) VALUES
-  (200, @@CREATE ASYNC MATERIALIZED VIEW `colmatch_test/mv` AS
+UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
+  ('', 1, @@CREATE ASYNC MATERIALIZED VIEW `colmatch_test/mv` AS
     SELECT main.id AS main_id, sub.id AS sub_id, main.data1 AS data1, sub.data2 AS data2
     FROM `colmatch_test/main` AS main
     LEFT JOIN `colmatch_test/sub` AS sub
       ON main.id = sub.main_ref;@@),
 
-  (201, @@CREATE ASYNC HANDLER colmatch_handler CONSUMER c_colmatch
+  ('colmatch_handler', 1, @@CREATE ASYNC HANDLER colmatch_handler CONSUMER c_colmatch
   PROCESS `colmatch_test/mv`,
   INPUT `colmatch_test/main` CHANGEFEED mv AS STREAM,
   INPUT `colmatch_test/sub` CHANGEFEED mv AS STREAM;@@);

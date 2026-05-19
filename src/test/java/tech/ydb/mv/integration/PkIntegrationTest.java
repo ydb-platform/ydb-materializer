@@ -100,8 +100,8 @@ ALTER TOPIC `pk_test/sub2/cf3` ADD CONSUMER `consumer3`;
 
     public static final String UPSERT_CONFIG_PK
             = """
-UPSERT INTO `test1/statements` (statement_no,statement_text) VALUES
-  (1, @@CREATE ASYNC MATERIALIZED VIEW `pk_test/mv1` DESTINATION `altdest1` AS
+UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
+  ('', 1, @@CREATE ASYNC MATERIALIZED VIEW `pk_test/mv1` DESTINATION `altdest1` AS
 
 (
 SELECT
@@ -133,7 +133,7 @@ INNER JOIN `pk_test/sub2` AS s
   ON m.c4=s.c4
 ) AS part2;@@),
 
-  (2, @@CREATE ASYNC HANDLER pk_test CONSUMER consumer3
+  ('pk_test', 1, @@CREATE ASYNC HANDLER pk_test CONSUMER consumer3
   PROCESS `pk_test/mv1`,
   INPUT `pk_test/main1` CHANGEFEED cf0 AS STREAM,
   INPUT `pk_test/sub1` CHANGEFEED cf1 AS STREAM,
