@@ -46,6 +46,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
     private final StructType rowType;
     private final SessionRetryContext targetCtx;
     private final boolean destKeyDirect;
+    private final boolean skipDeletes;
 
     private final ThreadLocal<StatementTiming> currentStatement = new ThreadLocal<>();
 
@@ -59,6 +60,7 @@ class ActionSync extends ActionBase implements MvApplyAction {
         this.target = target;
         this.rowType = MvSqlGen.toRowType(target);
         this.destKeyDirect = target.isDestKeyDirect();
+        this.skipDeletes = target.getView().isSkipDeletes();
         try (MvSqlGen sg = new MvSqlGen(target)) {
             this.sqlSelect = sg.makeSelect();
             this.sqlUpsert = sg.makePlainUpsert();
@@ -80,13 +82,14 @@ class ActionSync extends ActionBase implements MvApplyAction {
                     .getQueryRetryCtx();
         }
         MvJoinSource src = target.getTopMostSource();
-        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}",
+        LOG.info(" [{}] Handler `{}`, target `{}` as {}, input `{}` as `{}`, changefeed `{}` mode {}, skip_deletes {}",
                 instance, context.getHandler().getName(),
                 target.getName(), target.getAlias(),
                 src.getTableName(), src.getTableAlias(),
                 src.getChangefeedInfo().getName(),
-                src.getChangefeedInfo().getMode());
-        if (destKeyDirect && sqlSelectKeys4Delete == null) {
+                src.getChangefeedInfo().getMode(),
+                skipDeletes);
+        if (!skipDeletes && !destKeyDirect && sqlSelectKeys4Delete == null) {
             LOG.warn(" [{}] Handler `{}`, target `{}` as {} cannot process DELETE events",
                     instance, context.getHandler().getName(),
                     target.getName(), target.getAlias());
@@ -112,7 +115,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
         ArrayList<MvKey> workUpsert = new ArrayList<>();
         ArrayList<MvKey> workDelete = new ArrayList<>();
         deduplicate(input, workUpsert, workDelete);
-        deleteRows(workDelete);
+        if (!skipDeletes) {
+            deleteRows(workDelete);
+        }
         upsertRows(workUpsert);
         // wait for the last write to be completed
         finishStatement();
@@ -129,7 +134,9 @@ class ActionSync extends ActionBase implements MvApplyAction {
                     tempUpsert.add(cr.getKey());
                     break;
                 case DELETE:
-                    tempDelete.add(cr.getKey());
+                    if (!skipDeletes) {
+                        tempDelete.add(cr.getKey());
+                    }
                     break;
             }
         }

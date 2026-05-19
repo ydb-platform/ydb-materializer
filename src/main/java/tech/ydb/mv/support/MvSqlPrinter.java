@@ -7,7 +7,9 @@ import tech.ydb.mv.parser.MvSqlGen;
 import tech.ydb.mv.parser.MvPathGenerator;
 import tech.ydb.mv.model.MvMetadata;
 import tech.ydb.mv.model.MvJoinSource;
+import tech.ydb.mv.model.MvView;
 import tech.ydb.mv.model.MvViewExpr;
+import tech.ydb.mv.model.MvViewOption;
 
 /**
  *
@@ -69,15 +71,20 @@ public class MvSqlPrinter {
         }
         pw.println("  ** Delete statement:");
         pw.println();
-        pw.println(sg.makePlainDelete());
-        if (!mt.isDestKeyDirect()) {
-            pw.println("  ** Pre-delete keys grabbing statement:");
+        if (mt.getView().isSkipDeletes()) {
+            pw.println("  ** Skipped at runtime - SKIP_DELETES option is enabled.");
             pw.println();
-            String sql = sg.makeConvertKeyToTarget();
-            if (sg == null) {
-                pw.println("<< WARNING: conversion not possible, DELETE processing will not work >>");
-            } else {
-                pw.println(sql);
+        } else {
+            pw.println(sg.makePlainDelete());
+            if (!mt.isDestKeyDirect()) {
+                pw.println("  ** Pre-delete keys grabbing statement:");
+                pw.println();
+                String sql = sg.makeConvertKeyToTarget();
+                if (sql == null) {
+                    pw.println("<< WARNING: conversion not possible, DELETE processing will not work >>");
+                } else {
+                    pw.println(sql);
+                }
             }
         }
         pw.println("  ** Topmost scan start:");
@@ -114,8 +121,12 @@ public class MvSqlPrinter {
 
     public void write(PrintStream pw, MvViewExpr mt) {
         MvSqlGen sg = new MvSqlGen(mt);
+        MvView view = mt.getView();
         pw.println("-------------------------------------------------------");
         pw.println("*** Target: " + mt.getName() + " AS " + mt.getAlias());
+        if (view.isSkipDeletes()) {
+            pw.println("*** View option: " + MvViewOption.SKIP_DELETES.getName() + " = true");
+        }
         pw.println("-------------------------------------------------------");
         pw.println();
         if (debug) {

@@ -67,6 +67,10 @@ public class MvView implements MvSqlPosHolder {
         return options;
     }
 
+    public boolean isSkipDeletes() {
+        return Boolean.TRUE.equals(options.get(MvViewOption.SKIP_DELETES));
+    }
+
     public ArrayList<MvColumn> getColumns() {
         return columns;
     }
@@ -100,6 +104,9 @@ public class MvView implements MvSqlPosHolder {
 
     @Override
     public String toString() {
+        if (isSkipDeletes()) {
+            return "MV `" + viewName + "` (SKIP_DELETES)";
+        }
         return "MV `" + viewName + "`";
     }
 
