@@ -46,13 +46,13 @@ In standalone application mode, YDB Materializer implements:
 
 In embedded library mode, YDB Materializer implements all the listed functions, providing the ability to call them programmatically through methods of the corresponding classes.
 
-Maven dependency for embedding the YDB Materializer into the application (use the version from `pom.xml`; the example below matches the current source tree):
+Maven dependency for embedding the YDB Materializer into the application, use the latest version from the [releases page](https://github.com/ydb-platform/ydb-materializer/releases):
 
 ```xml
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.16-SNAPSHOT</version>
+            <version>1.16</version>
         </dependency>
 ```
 

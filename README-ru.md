@@ -46,13 +46,13 @@ YDB Materializer может быть встроен как библиотека 
 
 В режиме встраиваемой библиотеки YDB Materializer реализует все перечисленные функции, предоставляя возможность их программного вызова через методы соответствующих классов.
 
-Зависимость Maven для встраивания YDB Materializer в приложение (используйте версию из `pom.xml`; пример ниже соответствует текущему дереву исходников):
+Зависимость Maven для встраивания YDB Materializer в приложение, используйте наиболее свежую версию со [страницы релизов](https://github.com/ydb-platform/ydb-materializer/releases):
 
 ```xml
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.16-SNAPSHOT</version>
+            <version>1.16</version>
         </dependency>
 ```
 
