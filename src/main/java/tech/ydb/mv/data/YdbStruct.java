@@ -29,63 +29,66 @@ import com.google.gson.JsonParser;
  */
 public class YdbStruct implements Serializable {
 
-    private static final long serialVersionUID = 20250817001L;
+    private static final long serialVersionUID = 20260519001L;
 
     public static final YdbStruct EMPTY = new YdbStruct(0);
 
     public static Map<Class<?>, TypeInfo<?>> CLS2INFO;
-    public static Map<String, TypeInfo<?>> CODE2INFO;
+    public static Map<Character, TypeInfo<?>> CODE2INFO;
 
     static {
         ArrayList<TypeInfo<?>> types = new ArrayList<>();
-        types.add(typeInfo(Boolean.class, "a",
+        types.add(typeInfo(Boolean.class, 'a',
                 v -> v.toString(),
                 v -> Boolean.valueOf(v)));
-        types.add(typeInfo(String.class, "b",
+        types.add(typeInfo(String.class, 'b',
                 v -> v.toString(),
                 v -> v));
-        types.add(typeInfo(YdbBytes.class, "c",
+        types.add(typeInfo(YdbBytes.class, 'c',
                 v -> ((YdbBytes) v).encode(),
                 v -> new YdbBytes(v)));
-        types.add(typeInfo(YdbUnsigned.class, "d",
+        types.add(typeInfo(YdbUnsigned.class, 'd',
                 v -> v.toString(),
                 v -> new YdbUnsigned(v)));
-        types.add(typeInfo(Float.class, "e",
+        types.add(typeInfo(Float.class, 'e',
                 v -> v.toString(),
                 v -> Float.valueOf(v)));
-        types.add(typeInfo(Double.class, "f",
+        types.add(typeInfo(Double.class, 'f',
                 v -> v.toString(),
                 v -> Double.valueOf(v)));
-        types.add(typeInfo(Short.class, "g",
+        types.add(typeInfo(Short.class, 'g',
                 v -> v.toString(),
                 v -> Short.valueOf(v)));
-        types.add(typeInfo(Integer.class, "h",
+        types.add(typeInfo(Integer.class, 'h',
                 v -> v.toString(),
                 v -> Integer.valueOf(v)));
-        types.add(typeInfo(Long.class, "i",
+        types.add(typeInfo(Long.class, 'i',
                 v -> v.toString(),
                 v -> Long.valueOf(v)));
-        types.add(typeInfo(BigDecimal.class, "j",
+        types.add(typeInfo(BigDecimal.class, 'j',
                 v -> v.toString(),
                 v -> new BigDecimal(v)));
-        types.add(typeInfo(LocalDate.class, "k",
+        types.add(typeInfo(LocalDate.class, 'k',
                 v -> v.toString(),
                 v -> LocalDate.parse(v)));
-        types.add(typeInfo(LocalDateTime.class, "l",
+        types.add(typeInfo(LocalDateTime.class, 'l',
                 v -> ((LocalDateTime) v).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 v -> LocalDateTime.parse(v)));
-        types.add(typeInfo(Instant.class, "m",
+        types.add(typeInfo(Instant.class, 'm',
                 v -> v.toString(),
                 v -> Instant.parse(v)));
-        types.add(typeInfo(Duration.class, "n",
+        types.add(typeInfo(Duration.class, 'n',
                 v -> String.valueOf(((Duration) v).toSeconds()),
                 v -> Duration.ofSeconds(Integer.parseInt(v))));
+        types.add(typeInfo(Byte.class, 'o',
+                v -> v.toString(),
+                v -> Byte.parseByte(v)));
 
         HashMap<Class<?>, TypeInfo<?>> m0 = new HashMap<>();
         types.forEach(ti -> m0.put(ti.clazz, ti));
         CLS2INFO = Collections.unmodifiableMap(m0);
 
-        HashMap<String, TypeInfo<?>> m1 = new HashMap<>();
+        HashMap<Character, TypeInfo<?>> m1 = new HashMap<>();
         types.forEach(ti -> m1.put(ti.typeCode, ti));
         CODE2INFO = Collections.unmodifiableMap(m1);
     }
@@ -486,10 +489,10 @@ public class YdbStruct implements Serializable {
             JsonObject jme = me.getValue().getAsJsonObject();
             String typeCode = jme.get("t").getAsString();
             String value = jme.get("v").getAsString();
-            if (typeCode == null || value == null) {
+            if (typeCode == null || value == null || typeCode.length() == 0) {
                 continue;
             }
-            TypeInfo<?> ti = CODE2INFO.get(typeCode);
+            TypeInfo<?> ti = CODE2INFO.get(typeCode.charAt(0));
             if (ti == null) {
                 throw new RuntimeException("Unexpected type code: " + typeCode);
             }
@@ -502,7 +505,7 @@ public class YdbStruct implements Serializable {
     }
 
     @SuppressWarnings("rawtypes")
-    private static <T> TypeInfo<T> typeInfo(Class<T> clazz, String typeCode,
+    private static <T> TypeInfo<T> typeInfo(Class<T> clazz, char typeCode,
             Function<Comparable, String> fnOut,
             Function<String, Comparable> fnIn) {
         return new TypeInfo<>(clazz, typeCode, fnOut, fnIn);
@@ -516,12 +519,12 @@ public class YdbStruct implements Serializable {
     @SuppressWarnings("rawtypes")
     public static class TypeInfo<T> {
 
-        public final String typeCode;
+        public final char typeCode;
         public final Class<T> clazz;
         public final Function<Comparable, String> fnOut;
         public final Function<String, Comparable> fnIn;
 
-        private TypeInfo(Class<T> clazz, String typeCode,
+        private TypeInfo(Class<T> clazz, char typeCode,
                 Function<Comparable, String> fnOut,
                 Function<String, Comparable> fnIn) {
             this.typeCode = typeCode;
