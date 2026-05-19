@@ -43,9 +43,7 @@ public class MvValidateBasic {
             checkChangefeeds();
             checkInputsVsTargets();
         }
-        if (context.isValid()) {
-            checkOutputColumnTypes();
-        }
+        checkOutputColumnTypes();
     }
 
     private void checkOutputColumnTypes() {
@@ -58,11 +56,11 @@ public class MvValidateBasic {
                     if (column.getType() != null) {
                         continue;
                     }
-                    if (!column.isComputation()
-                            && mt.getTableInfo().getColumns().get(column.getName()) == null) {
-                        // UnknownOutputColumn is reported earlier for reference columns.
+                    if (mt.getTableInfo().getColumns().get(column.getName()) == null) {
+                        // UnknownOutputColumn is reported in checkTargetOutputColumn.
                         continue;
                     }
+                    // typically never reported, provided as a safety measure
                     context.addIssue(new MvIssue.MissingOutputColumnType(mt, column));
                 }
             }
@@ -215,6 +213,10 @@ public class MvValidateBasic {
                                 mt, src.getAlias(), src.getColumn(), comp));
                     }
                 }
+            }
+            if (mt.getTableInfo() != null
+                    && mt.getTableInfo().getColumns().get(column.getName()) == null) {
+                context.addIssue(new MvIssue.UnknownOutputColumn(mt, column));
             }
         } else {
             MvJoinSource src = mt.getSourceByAlias(column.getSourceAlias());

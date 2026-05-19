@@ -253,6 +253,9 @@ public interface MvIssue extends MvSqlPosHolder {
         }
     }
 
+    /**
+     * Normally never reported, UnknownOutputColumn is typically used instead.
+     */
     public static class MissingOutputColumnType extends Error {
 
         private final MvViewExpr target;

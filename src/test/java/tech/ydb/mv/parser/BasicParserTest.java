@@ -402,7 +402,7 @@ WARNING: Missing index on columns [c3, c4] for table `schema3/main_table` used a
     }
 
     @Test
-    public void missingOutputColumnTypeTest() {
+    public void unknownOutputColumnTest() {
         String sql = """
 CREATE ASYNC MATERIALIZED VIEW `schema3/mv_mismatch` AS
 SELECT main.id AS main_id, main.c1 AS c1
@@ -429,12 +429,10 @@ CREATE ASYNC HANDLER `schema3/h_mismatch` CONSUMER iddqd
         Assertions.assertFalse(mc.isValid());
         Assertions.assertTrue(mc.getErrors().stream()
                 .anyMatch(MvIssue.UnknownOutputColumn.class::isInstance));
-        Assertions.assertFalse(mc.getErrors().stream()
-                .anyMatch(MvIssue.MissingOutputColumnType.class::isInstance));
     }
 
     @Test
-    public void missingOutputColumnTypeForComputationTest() {
+    public void unknownOutputColumnForComputationTest() {
         String sql = """
 CREATE ASYNC MATERIALIZED VIEW `schema3/mv_mismatch` AS
 SELECT main.id AS id, COMPUTE #[ CAST(1 AS Int32) ]# AS bad_name
@@ -460,7 +458,7 @@ CREATE ASYNC HANDLER `schema3/h_mismatch` CONSUMER iddqd
 
         Assertions.assertFalse(mc.isValid());
         Assertions.assertTrue(mc.getErrors().stream()
-                .anyMatch(MvIssue.MissingOutputColumnType.class::isInstance));
+                .anyMatch(MvIssue.UnknownOutputColumn.class::isInstance));
     }
 
     private void checkJoinCondition(MvJoinCondition cond,
