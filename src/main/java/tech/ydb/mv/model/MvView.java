@@ -25,6 +25,10 @@ public class MvView implements MvSqlPosHolder {
         this.viewName = viewName;
         this.destinationName = destinationName;
         this.sqlPos = sqlPos;
+        // initializing default values for all view options
+        for (var vo : MvViewOption.ENTRIES.values()) {
+            this.options.put(vo, vo.defaultValue());
+        }
     }
 
     public String getName() {
