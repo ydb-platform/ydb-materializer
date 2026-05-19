@@ -219,6 +219,10 @@ public class MvScanFeeder {
     }
 
     private void rateLimiter(int count) {
+        if (rateLimiterLimit <= 0) {
+            // no limit specified
+            return;
+        }
         rateLimiterCounter += count;
         if (rateLimiterCounter < rateLimiterLimit) {
             return;

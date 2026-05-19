@@ -153,7 +153,7 @@ class MvCdcParser {
                 case Uint32:
                     return node.getAsLong();
                 case Uint64:
-                    return new YdbUnsigned(node.getAsLong());
+                    return new YdbUnsigned(node.getAsString());
                 case Float:
                     return Double.valueOf(node.getAsDouble()).floatValue();
                 case Double:

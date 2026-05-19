@@ -101,7 +101,7 @@ public class MvJobContext implements MvCdcAdapter {
         if (partitioning == null) {
             return MvConfig.PartitioningStrategy.HASH;
         }
-        return MvConfig.PartitioningStrategy.RANGE;
+        return partitioning;
     }
 
     public synchronized boolean isAnyScanRunning() {

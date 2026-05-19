@@ -14,12 +14,13 @@ public class MvScanSettings implements Serializable {
 
     private static final long serialVersionUID = 202500926001L;
 
-    private int rowsPerSecondLimit = 10000;
+    private int rowsPerSecondLimit;
 
     /**
      * Create settings with default values.
      */
     public MvScanSettings() {
+        this.rowsPerSecondLimit = 10000;
     }
 
     /**
