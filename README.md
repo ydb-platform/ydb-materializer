@@ -37,7 +37,7 @@ mvn clean package -DskipTests=true
 
 YDB Materializer can be embedded as a library in a user application, or used as a standalone application.
 
-The description of materialized views and their processing jobs must be prepared using a special SQL-like language. The corresponding descriptions can be provided as a text file or as a database table. Connection settings and various technical parameters are provided as a set of properties (programmatically or as a Java Properties configuration file).
+The description of materialized views and their processing jobs must be prepared using a special SQL-like language. The corresponding descriptions can be provided as a text file or as a database table. Connection settings and various technical parameters are provided as a set of properties (programmatically via `java.util.Properties`, or as an XML properties file for the standalone application).
 
 In standalone application mode, YDB Materializer implements:
 - validation of materialized view and job definitions, including their compliance with the structure of source database tables, and output of corresponding error and warning messages for user analysis;
@@ -46,13 +46,13 @@ In standalone application mode, YDB Materializer implements:
 
 In embedded library mode, YDB Materializer implements all the listed functions, providing the ability to call them programmatically through methods of the corresponding classes.
 
-Maven dependency for embedding the YDB Materializer into the application:
+Maven dependency for embedding the YDB Materializer into the application (use the version from `pom.xml`; the example below matches the current source tree):
 
 ```xml
         <dependency>
             <groupId>tech.ydb.apps</groupId>
             <artifactId>ydb-materializer</artifactId>
-            <version>1.15</version>
+            <version>1.16-SNAPSHOT</version>
         </dependency>
 ```
 
@@ -191,7 +191,7 @@ CREATE ASYNC HANDLER <handler_name>
 - **INPUT**: Defines input tables and their changefeed streams
   - `STREAM`: Real-time processing of individual changes
   - `BATCH`: Batch processing of accumulated changes
-- **CONSUMER**: Optional consumer name for the changefeed
+- **CONSUMER**: Optional consumer name for the changefeed (if omitted, the handler name is used; if the handler name contains `/`, the last non-empty path segment is used)
 
 ### Opaque Expressions
 
@@ -381,7 +381,7 @@ The configuration file is an XML properties file that defines connection paramet
 #### Database Connection
 - `ydb.url` - YDB connection string (required)
 - `ydb.cafile` - Path to TLS certificate file (optional)
-- `ydb.poolSize` - Connection pool size (default: 2 × CPU cores)
+- `ydb.poolSize` - Connection pool size (default: 2 × (1 + number of CPU cores))
 - `ydb.preferLocalDc` - Prefer local data center (default: false)
 
 #### Authentication
@@ -431,7 +431,7 @@ The configuration file is an XML properties file that defines connection paramet
 - `mv.report.period.ms` - Runner status report period, in milliseconds
 - `mv.runner.timeout.ms` - Runner and Coordinator missing timeout period, in milliseconds
 - `mv.coord.startup.ms` - The delay between the Coordinator startup and job distribution activation, milliseconds
-- `mv.coord.runners.count` - The minimal number of Runners for job distribution
+- `mv.coord.runners.count` - The minimal number of Runners for job distribution (default: 0)
 
 #### Metrics
 - `metrics.enabled` - Enable Prometheus metrics endpoint (default: false)
@@ -722,7 +722,7 @@ Job name for regular jobs refer to the handler name. There are two special job n
 - **`ydbmv$dictionary`** - Dictionary scanner (manually managed)
 - **`ydbmv$coordinator`** - Coordinator job (automatically managed)
 
-These special names cannot be used for regular handlers (in fact handler name cannot start with prefix "ydbmv").
+These special names cannot be used for regular handlers (handler names must not start with the reserved prefix `ydbmv$`).
 
 ### Fault Tolerance
 

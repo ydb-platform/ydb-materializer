@@ -8,7 +8,7 @@
 
 ## Обзор проекта для разработчиков
 
-- Главный класс: `tech.ydb.mv.App`. Артефакт: `tech.ydb.apps:ydb-materializer` (версия в `pom.xml`).
+- Главный класс: `tech.ydb.mv.App`. Артефакт: `tech.ydb.apps:ydb-materializer` (версия в `pom.xml`, сейчас `1.16-SNAPSHOT`).
 - Сборка и дистрибутив: `mvn package` создаёт JAR и `*-bin.zip` (см. `src/main/assembly/zip.xml`).
 - Тесты: JUnit 5, `ydb-junit5-support`, Testcontainers; запуск: `mvn test` (переменные окружения — в `pom.xml`).
 - Зависимости: YDB SDK BOM 2.3.30, ANTLR 4.13.2, Log4j2, Gson, Prometheus metrics.
@@ -21,7 +21,8 @@
 src/main/java/tech/ydb/mv/
 ├── App.java              # Точка входа, выбор режима, режим JOB (Runner + Coordinator)
 ├── MvApi.java            # Публичный API (реализация — MvService)
-├── MvConfig.java         # Константы, режимы, ключи конфигурации, перечисления (Input, Mode, PartitioningStrategy)
+├── MvConfig.java         # Загрузка конфигурации подключения к YDB (extends MvName)
+├── MvName.java           # Константы, режимы, ключи конфигурации, перечисления (Input, Mode, PartitioningStrategy)
 ├── YdbConnector.java     # Подключение к YDB и аутентификация
 ├── apply/                # Применение изменений к таблицам MV
 │   ├── MvApply*.java     # Менеджер, воркеры, очередь задач, список действий
@@ -53,12 +54,16 @@ src/main/java/tech/ydb/mv/
 │   ├── MvPathGenerator.java   # Построение минимальных трансформаций ключей между источниками
 │   └── (генерируемые) YdbMatViewV1*.java из src/main/antlr4/tech/ydb/mv/parser/YdbMatViewV1.g4
 ├── support/              # Чтение конфигурации, DAO-хелперы, вывод замечаний/SQL, адаптер/DAO сканирования
+│   ├── MvConfigReader.java, MvIssuePrinter.java, MvSqlPrinter.java
+│   ├── MvDaoHelpers.java, MvScanDao.java, MvScanAdapter.java, YdbMisc.java
 └── svc/                  # Слой сервисов
     ├── MvService.java         # Реализация MvApi: загрузка метаданных, обработчики, справочники, запуск/остановка
+    ├── MvConnector.java       # Вспомогательные операции с подключениями YDB
     ├── MvJobController.java   # Контроллер на обработчик (пайплайн CDC + apply)
     ├── MvJobContext.java       # Контекст обработчика для apply
     ├── MvDictionaryLogger.java # Запись изменений справочников в таблицу-журнал
     ├── MvDictionaryScan.java   # Чтение журнала справочников и запуск обновлений MV
+    ├── MvDictionaryCommitter.java  # Фиксация позиций журнала после сканов по справочникам
     ├── MvLocker.java           # Распределённая блокировка (YDB Coordination)
 ```
 
@@ -184,7 +189,7 @@ src/main/java/tech/ydb/mv/
 
 #### 2. Периодическая проверка журнала
 
-В каждом **MvJobController** (на каждое задание-обработчик) планировщик `scheduleAtFixedRate` каждые 10 секунд вызывает `analyzeDictionaryChecks()`. Фактическая проверка журнала (`performDictionaryChecks`) выполняется не чаще, чем раз в `dictionaryScanSeconds` секунд (настройка **MvHandlerSettings**, параметр `job.dict.scan.seconds`, значение по умолчанию 28800 — 8 часов).
+В каждом **MvJobController** (на каждое задание-обработчик) планировщик `scheduleAtFixedRate` периодически вызывает `analyzeDictionaryChecks()`. Интервал тика вычисляется как `dictionaryScanSeconds / 10` (с ограничением от 5 до 60000 секунд). Фактическая проверка журнала (`performDictionaryChecks`) выполняется только если с момента предыдущей проверки прошло не менее `dictionaryScanSeconds` секунд (настройка **MvHandlerSettings**, параметр `job.dict.scan.seconds`, значение по умолчанию 28800 — 8 часов).
 
 При срабатывании проверки:
 
@@ -207,7 +212,7 @@ src/main/java/tech/ydb/mv/
 
 1. Создаётся экземпляр **ActionKeysFilter** со сформированным SQL-выражением для загрузки полей и заданным набором проверяемых кортежей.
 2. Запускается **MvScanFeeder**, который обеспечивает поставку ключей для соответствующей части MV.
-3. В качестве обработчика завершения сканирований устанавливается экземпляр **DictScanComplete** (см. далее подпункт 5).
+3. В качестве обработчика завершения сканирований устанавливается экземпляр **MvDictionaryCommitter** (см. далее подпункт 5).
 
 #### 4. Выполнение сканирования и фильтрация данных
 
@@ -225,7 +230,7 @@ src/main/java/tech/ydb/mv/
 
 #### 5. Фиксация позиции чтения таблицы-журнала
 
-**DictScanComplete** отслеживает завершение всех запущенных сканов с помощью счётчика. Когда все сканы завершены (`counter == 0`) и ни один не прерван (`incomplete == 0`), позиции чтения журнала для каждого справочника сохраняются в control-таблицу. При прерванном скане позиции не обновляются, чтобы при следующей проверке чтение таблицы-журнала было запущено с того же места.
+**MvDictionaryCommitter** (реализует `MvScanCompletion`) отслеживает завершение всех запущенных сканов с помощью счётчиков. Когда все сканы и связанная обработка завершены, позиции чтения журнала для каждого справочника сохраняются в control-таблицу. При прерванном скане позиции не обновляются, чтобы при следующей проверке чтение таблицы-журнала было запущено с того же места.
 
 ### Распределённый планировщик (MvRunner, MvCoordinator)
 
