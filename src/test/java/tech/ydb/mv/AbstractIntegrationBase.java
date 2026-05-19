@@ -77,6 +77,8 @@ CREATE TABLE `test1/main_table` (
     c15 Int32,
     c20 Text,
     c21 Int32 NOT NULL,
+    c23 Int64,
+    c24 Uint64,
     PRIMARY KEY(id),
     INDEX ix_c1_c2 GLOBAL ON (c1,c2),
     INDEX ix_c3 GLOBAL ON (c3)
@@ -130,6 +132,8 @@ CREATE TABLE `test1/mv1` (
     c12 Int32,
     c16 Text,
     c22 Text,
+    c23 Int64,
+    c24 Uint64,
     PRIMARY KEY(id),
     INDEX ix_c1 GLOBAL ON (c1)
 );
@@ -202,7 +206,8 @@ UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
          sub1.c8 AS c8, sub2.c9 AS c9, sub3 . c10 AS c10,
          #[ Unicode::Substring(main.c20,3,5) ]# AS c11,
          #[ CAST(999 AS Int32?) ]# AS c12, sub3.c5 AS c5,
-         sub4.c16 AS c16, sub5.c22 AS c22
+         sub4.c16 AS c16, sub5.c22 AS c22,
+         main.c23 AS c23, main.c24 AS c24
   FROM `test1/main_table` AS main
   INNER JOIN `test1/sub_table1` AS sub1
     ON main.c1=sub1.c1 AND main.c2=sub1.c2
@@ -251,11 +256,11 @@ UPSERT INTO `test1/statements` (module_id, statement_no, statement_text) VALUES
 
     public static final String WRITE_INITIAL_DATA
             = """
-INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20,c21) VALUES
- ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u,   201)
-,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 102, 'text message two'u,   202)
-,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 7, 103, 'text message three'u, 203)
-,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 7, 104, 'text message four'u,  204)
+INSERT INTO `test1/main_table` (id,c1,c2,c3,c6,c15,c20,c21,c23,c24) VALUES
+ ('main-001'u, Timestamp('2021-01-02T10:15:21Z'), 10001, Decimal('10001.567',22,9), 7, 101, 'text message one'u,   201, 7l, 42ul)
+,('main-002'u, Timestamp('2022-01-02T10:15:21Z'), 10002, Decimal('10002.567',22,9), 7, 102, 'text message two'u,   202, -1234567890123l, 9876543210987654ul)
+,('main-003'u, Timestamp('2023-01-02T10:15:21Z'), 10003, Decimal('10003.567',22,9), 7, 103, 'text message three'u, 203, 1234567890123456789l, 10000000000000000000ul)
+,('main-004'u, Timestamp('2024-01-02T10:15:21Z'), 10004, Decimal('10004.567',22,9), 7, 104, 'text message four'u,  204, -9223372036854775808l, 18446744073709551615ul)
 ;
 INSERT INTO `test1/sub_table1` (c1,c2,c8) VALUES
  (Timestamp('2021-01-02T10:15:21Z'), 10001, 501)
